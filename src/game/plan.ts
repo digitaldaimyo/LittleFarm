@@ -1,7 +1,7 @@
 import type { SpecNode } from '../domain/types';
 import { isNode, node, paramOf } from '../domain/spec';
 import { compileCondition, resolveKind, withTarget } from '../sim/compile';
-import type { World } from '../sim/world';
+import type { Tally, World } from '../sim/world';
 import { nearest } from '../sim/world';
 import { atFocus } from '../learning/features';
 import type { BehaviorId, ExecContext, Invocation } from '../learning/executive';
@@ -43,7 +43,8 @@ export interface CompiledRow {
   id: string;
   index: number;
   label: string;
-  holds(w: World): boolean;
+  /** `base`: "Has done…" counts from here (the start of the job that is finishing). */
+  holds(w: World, base?: Tally): boolean;
   job: { behaviorId: BehaviorId; args: Record<string, string> };
 }
 
@@ -70,7 +71,7 @@ export function compilePlan(plan: FarmPlan): CompiledRow[] {
     }
     return {
       id: r.id, index, label: paramOf(r, 'label', `Row ${index + 1}`),
-      holds: (w) => conds.every((c) => c({ w, prev: w.pet })),
+      holds: (w, base) => conds.every((c) => c({ w, prev: w.pet, base })),
       job: { behaviorId, args },
     };
   });
@@ -102,6 +103,13 @@ export interface PlanRuntime {
   guardUntil: number;
   /** Tick of the last "hold still" pause. */
   lastHold: number;
+  /** What had happened when the current job started ("Has done…" in rows counts from here). */
+  base?: Tally;
+}
+
+/** Does any row remember events? Only then does the farm keep a tally (so plans without memory are unchanged). */
+export function planUsesMemory(plan: FarmPlan): boolean {
+  return /"cardId":"cond\.(happened|just)"/.test(JSON.stringify(plan.rows));
 }
 export function newPlanRuntime(): PlanRuntime {
   return { starts: [], fires: {}, switches: 0, guarded: 0, guardUntil: -1, lastHold: -1 };
@@ -124,7 +132,7 @@ export function choosePlanRow(
   s: GameState, p: Pet, plan: FarmPlan, rows: CompiledRow[], ctx: ExecContext, pr: PlanRuntime, rng: Rng,
 ): { row: CompiledRow | null; guarded: boolean; learned: boolean } {
   const w = s.farm.world;
-  const applicable = rows.filter((r) => r.holds(w) && jobPossible(p, w, ctx, r.job));
+  const applicable = rows.filter((r) => r.holds(w, pr.base) && jobPossible(p, w, ctx, r.job));
   if (!applicable.length) return { row: null, guarded: false, learned: false };
   // Anti-dithering: once rows flip-flop, the guard stays on for a while. While it is on, the pet sticks with
   // the previous row if it still applies; otherwise it must pause briefly before switching (minimum commitment).

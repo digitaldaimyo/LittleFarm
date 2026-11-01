@@ -20,7 +20,7 @@ Other scripts:
 | `npm run build` | Typecheck + production build into `dist/` (static files; host anywhere or open with `npm run preview`) |
 | `npm run typecheck` | TypeScript only |
 | `npm run lint` | ESLint |
-| `npm test` | Vitest suite: 134 tests in 19 files (sim, registry, learning, saves, farm, training loop, every milestone gate, the Field Guide, the card editor, sound cues, teaching polish, pens, and a layout fingerprint that keeps existing lessons' layouts fixed) |
+| `npm test` | Vitest suite: 142 tests in 20 files (sim, registry, learning, saves, farm, training loop, every milestone gate, the Field Guide, the card editor, sound cues, teaching polish, pens, your cards and lesson cards, and a layout fingerprint that keeps existing lessons' layouts fixed) |
 | `npm run bench` | Trains every starter skill under 5 seeds and prints held-out results, hardware and timings |
 | `npm run evidence` | Reproduces the measurements behind the Field Guide and the Trainer's notebook |
 | `npm run e2e` | Browser test that plays all nine Field Guide lessons with real clicks, about 45 s (run `npm run build` first; needs Playwright with Chromium). `npm run e2e -- --from=4` runs lessons 4–9 only |
@@ -59,6 +59,12 @@ The **First lesson** banner (lesson 1 of the Field Guide) walks you through this
 - Rules can be **duplicated, reordered and switched off** (kept on the mat, but not used).
 - New conditions: **Next to** (the 8 tiles around), **Thing near thing** (e.g. a chicken within 1 of the bin), **Time in try** (before or after step N).
 
+**Your cards and lesson cards.**
+- **Your cards:** open any card (✎) and press *Save as one of your cards*, or ⧉ on a rule. It then appears first in the hand wherever it fits (rules, SUCCESS, routines' watches, farm plans) under its own name, and placed copies carry that name as a tag. A condition saved this way is a **named condition** ("Chickens home").
+- **Blanks:** in Teach → Curriculum → *Your cards*, tick the things a card should ask for each time ("Treat for reaching ___"). Placing it jumps straight to the blank.
+- **Lesson cards:** *Export lesson card* / *Import lesson card…* share a whole lesson (pen, rules, SUCCESS, learner setup) between saves. They're validated like a save, and they don't carry what a pet learned (that's a skill card).
+- **Farm plans** can use *Has done…* too; there it counts from when the current job started ("IF has picked up a berry DO nap").
+
 **Invent your own skills.** Once a pet has a certified Approach, *Your own skills* unlocks. In **Teach → Pet → + New skill…** you name a skill and choose:
 - its **senses**, i.e. what it pays attention to: *Where is…*, *How far is…*, *Standing on…*, *Walls nearby*, *Hazards nearby*, *Last heading*, *Carrying?*, *Patience*. A meter shows how many situations it must learn.
 - its **abilities**: Move, Stay, Pick up, Put down.
@@ -96,7 +102,7 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 
 - No music yet (planned as an optional generative music box), and pets have no voices yet. Crows only visit by day and at most one at a time. Guarding crops means running a skill you taught (there's no built-in guard job yet).
 - Thumbs up/down feedback applies to movement skills (Approach/Avoid), not to the Fetch controller.
-- Templates are immutable named revisions you can instantiate. "Exposed parameters" are stored but have no editing UI yet.
+- Your cards are copies: editing a saved card later doesn't change lessons that already used it (save a new revision and place it again). Blanks can be things (kinds), not numbers.
 - Avoid is the hardest preset: about 82% mean held-out success, with occasional runs at 75%. Use *Refine* to train more.
 - Learned Approach is shaky right beside fences (8×8 practice pens rarely have walls there). Pets get through with the stuck-recovery, but retraining with fences in the pen helps.
 - Up to two pets work the farm at once; others nap. Routines can't use Fetch or other routines as options yet. Plan previews always start from a fresh decision (the current job is dropped when you apply a plan).
@@ -112,5 +118,5 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 | `docs/TESTING.md` | Test suites, benchmark results, performance, browser checks |
 | `docs/ROADMAP.md` | The expansion roadmap (all six milestones shipped) and what could come next |
 | `docs/TUTORIAL_PLAN.md` | The Field Guide's design, the evidence behind each lesson, and what shipped |
-| `docs/TEACHING_PLAN.md` | Polishing rules, conditions and pens: the plan, and what phases A and B shipped |
+| `docs/TEACHING_PLAN.md` | Polishing rules, conditions and pens: the plan, and what phases A, B and C shipped |
 | `docs/SOUND_PLAN.md` | Sound effects, ambience, music and sound settings: the plan, and what phase A shipped |

@@ -1,5 +1,5 @@
 import type { Action, SimEvent, World } from '../sim/world';
-import { addObject, bfsPath, emptyWorld, inArea, nearest, nudgeableGate, objectsAt, onGround, step, type StepOptions } from '../sim/world';
+import { addObject, bfsPath, cloneTally, emptyWorld, inArea, nearest, nudgeableGate, objectsAt, onGround, step, type StepOptions } from '../sim/world';
 import { nightfallRequests, postRequests, trackRequests } from './requests';
 import { Rng } from '../sim/rng';
 import { FetchController, FetchRun, NavRun, SkillRun, isDone, randomMove, type ExecStep } from '../learning/policies';
@@ -13,7 +13,7 @@ import { activeRevision, getSkill, navPolicyFor, petById, routineRunFor, sensePo
 import { compileCondition, withTarget } from '../sim/compile';
 import { addJournal, addJournalOnce } from './journal';
 import { checkUnlocks } from './progression';
-import { GUARD_HOLD, choosePlanRow, compilePlan, newPlanRuntime, planInvocation, starterPlan, updatePlanValue, type PlanRuntime } from './plan';
+import { GUARD_HOLD, choosePlanRow, compilePlan, newPlanRuntime, planInvocation, planUsesMemory, starterPlan, updatePlanValue, type PlanRuntime } from './plan';
 
 export const FARM_W = 12;
 export const FARM_H = 9;
@@ -616,7 +616,11 @@ function petTurn(s: GameState, pet: Pet, rt: FarmRuntime, fx: FarmFx[], opts: St
     return;
   }
   if (!rt.exec) {
+    // Plans with "Has done…" rows need the farm to remember events; they count from each job's start.
+    const remembers = pet.assignment.mode === 'plan' && !!pet.plan && planUsesMemory(pet.plan);
+    if (remembers) f.world.tally ??= {};
     const inv = chooseInvocation(s, pet, rt);
+    if (remembers) rt.plan.base = cloneTally(f.world.tally);
     rt.inv = inv;
     rt.exec = buildExecutor(s, pet, inv, rt);
     rt.startCoins = s.resources.coins;

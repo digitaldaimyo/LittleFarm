@@ -2,7 +2,19 @@
 
 **Goal:** make it easier to say what you mean when you build a lesson. More of what a player intends should be expressible, the right card should be quick to find, a lesson that can't work should explain why, and players should be able to keep building on what they've made.
 
-Status: **phases A and B shipped.** Decisions (section 6) all went with the recommendations: three honest End try outcomes with old saves migrated; *Has done…* on the farm counts from when the skill started; SUCCESS and FAIL as lists; pen sizes and play-it-yourself in phase B. Sound phase C is on hold.
+Status: **phases A, B and C shipped.** Decisions (section 6) all went with the recommendations: three honest End try outcomes with old saves migrated; *Has done…* on the farm counts from when the skill started; SUCCESS and FAIL as lists; pen sizes and play-it-yourself in phase B. Sound phase C is on hold.
+
+### Phase C: what shipped, and what we learned
+- **Your cards (L2):**
+  - *Save as one of your cards* (any card's sleeve, or ⧉ on a rule) puts a card on a shelf in Teach → Curriculum. Each shows its sentence, revision, blanks and delete.
+  - In the hand they come first under "Your cards", wherever their type fits.
+  - **Blanks:** tick the things a card should ask for each time. Placing it leaves them empty and jumps to the first. Blanks are things (kinds) in single slots; numbers aren't blanks, since they're edited in the sleeve anyway.
+- **Named conditions (L3):** placed copies carry the card's name as a tag ("Chickens home: every chicken in the coop"). Because templates are typed, a saved condition is offered in SUCCESS, rules, routine watches and farm plans alike. Copies, not live references: changing the saved card doesn't silently change lessons (and their skills) that already used it.
+- **Lesson cards (L4):** export or import a whole lesson. Validated before anything is added: format, shape, ranges, size, unknown cards. Fresh ids, renamed on clash, and a Field Guide pen becomes an ordinary (not free) lesson. Every recipe round-trips with identical layouts (tested).
+- **Memory in farm plans (L5):** *Has done…* / *Just…* now work in plan rows and count from when the current job started (decision 2). Rows are tried between jobs, so a row sees what happened during the job that just ended.
+  - "IF has picked up a berry DO nap" alternates foraging and napping (tested).
+  - The farm keeps a tally only when the plan uses memory, so the starter plan still matches the built-in rules tick for tick.
+- **Tests:** `tests/cards.test.ts` (8), and browser checks that save, blank, export, import and reuse a card.
 
 ### Phase B: what shipped, and what we learned
 - **Pens:**

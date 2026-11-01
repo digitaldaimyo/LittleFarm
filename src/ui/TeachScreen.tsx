@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { cloneWorld, legalActions, step, type Action, type World } from '../sim/world';
 import { probeField, probePath } from '../learning/probe';
 import { audio } from '../audio/engine';
 import { describe, describeRule } from '../domain/describe';
+import { exportLessonCard, importLessonCard } from '../game/lessoncard';
 import { rolloutChecks } from '../learning/lint';
 import type { SpecNode, StageSpec } from '../domain/types';
 import { REGISTRY } from '../domain/registry';
@@ -16,7 +17,7 @@ import { trainingSeed } from '../learning/trainer';
 import { store, useStore, type Binder } from './store';
 import { WorldView } from './WorldView';
 import { HandCardView, ManySlot, NodeChip, Sleeve, SlotChip, cardOf, withSnapshot } from './cards';
-import { slotInSenses } from './edit';
+import { blankCandidates, placeTemplate, slotInSenses } from './edit';
 import { TrainingPanel, traceBadge } from './TrainingPanel';
 import { useReplay } from './replay';
 import { startTraining } from './training';
@@ -469,9 +470,9 @@ function RulesBinder({ stage }: { stage: StageSpec }) {
       <button className="btn ghost" data-tut="add-rule" onClick={() => { let id = ''; update((st) => { const n = node('rule', { label: `Rule ${st.rules.length + 1}`, then: [], if: [] }); id = n.id; st.rules.push(n); }); s.setUi({ slot: { parentId: id, socket: 'when', index: null } }); }}>+ Add rule</button>
       {s.state.templates.some((t) => t.output.name === 'Rule') && (
         <div className="row gap wrap">
-          <span className="small">From template:</span>
+          <span className="small">From your cards:</span>
           {s.state.templates.filter((t) => t.output.name === 'Rule').map((t) => (
-            <button key={t.id} className="chip-btn" onClick={() => update((st) => { st.rules.push(cloneStage({ ...st, rules: [t.root] } as StageSpec, true).rules[0]); })}>{t.name} r{t.revision}</button>
+            <button key={t.id} className="chip-btn" onClick={() => { const { node: n, blank } = placeTemplate(t); update((st) => { st.rules.push(n); }); audio.play('card.snap'); if (blank) s.setUi({ slot: blank }); }}>{t.name} r{t.revision}</button>
           ))}
         </div>
       )}
@@ -553,7 +554,7 @@ function RuleRow({ stage, r, errs }: { stage: StageSpec; r: SpecNode; errs: Set<
           <button className="icon-btn small" aria-label="Move rule up" disabled={stage.rules[0]?.id === r.id} onClick={() => update((st) => { const i = st.rules.findIndex((y) => y.id === r.id); if (i > 0) [st.rules[i - 1], st.rules[i]] = [st.rules[i], st.rules[i - 1]]; })}>↑</button>
           <button className="icon-btn small" aria-label="Move rule down" disabled={stage.rules.at(-1)?.id === r.id} onClick={() => update((st) => { const i = st.rules.findIndex((y) => y.id === r.id); if (i >= 0 && i < st.rules.length - 1) [st.rules[i + 1], st.rules[i]] = [st.rules[i], st.rules[i + 1]]; })}>↓</button>
           <button className="icon-btn small" title="Duplicate rule" aria-label="Duplicate rule" onClick={() => { audio.play('card.snap'); update((st) => { const i = st.rules.findIndex((y) => y.id === r.id); if (i < 0) return; const c = cloneNode(st.rules[i], true); c.args.label = `${paramOf(st.rules[i], 'label', 'Rule')} (copy)`.slice(0, 40); st.rules.splice(i + 1, 0, c); }); }}>⎘</button>
-          <button className="icon-btn small" title="Save rule as template" aria-label="Save rule as template" onClick={() => { const name = prompt('Template name', paramOf(r, 'label', 'Rule')); if (name) store.mutate((g) => { const prev = g.templates.filter((t) => t.name === name); g.templates.push({ id: newId('tpl'), name, revision: prev.length + 1, createdAt: Date.now(), output: { kind: 'nominal', name: 'Rule' }, root: structuredClone(r), exposed: [] }); store.toast(`Template “${name}” saved.`, 'good'); }); }}>⧉</button>
+          <button className="icon-btn small" title="Save rule as one of your cards" aria-label="Save rule as one of your cards" onClick={() => { const name = prompt('Template name', paramOf(r, 'label', 'Rule')); if (name) store.mutate((g) => { const prev = g.templates.filter((t) => t.name === name); g.templates.push({ id: newId('tpl'), name, revision: prev.length + 1, createdAt: Date.now(), output: { kind: 'nominal', name: 'Rule' }, root: structuredClone(r), exposed: [] }); store.toast(`Template “${name}” saved.`, 'good'); }); }}>⧉</button>
           <button className="icon-btn small" aria-label="Delete rule" onClick={() => { update((st) => { st.rules = st.rules.filter((x) => x.id !== r.id); }); s.setUi({ slot: null }); }}>✕</button>
         </span>
       </div>
@@ -853,6 +854,7 @@ function CurriculumBinder({ stage, pet }: { stage: StageSpec; pet: Pet }) {
               <div className="small muted">{st.learner.skill} · {m ? `mastery ${Math.round(m.rate * 100)}% (n=${m.episodes}, r${m.rev})` : 'not trained'}{m?.retention ? ` · retention ${Math.round(m.retention.rate * 100)}%` : ''}{m?.transfer !== undefined ? ` · transfer ${Math.round(m.transfer * 100)}%` : ''}</div>
               <div className="row gap">
                 <button className="btn ghost small" onClick={() => revisit(st)}>Re-test</button>
+                <button className="btn ghost small" data-tut="export-lesson" onClick={() => downloadJson(exportLessonCard(st), `pen-deck-lesson-${st.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.json`)}>Export lesson card</button>
                 <button className="btn ghost small" onClick={() => s.mutate((g) => { const c = cloneStage(st, true, newId('stage')); c.name = `${st.name} (copy)`; c.version = 1; g.stages.push(c); g.activeStageId = c.id; })}>Clone</button>
                 {s.state.stages.length > 1 && st.id !== 'stage-tutorial' && <button className="btn ghost small" onClick={() => { if (confirm(`Delete lesson “${st.name}”? Skills already learned are kept.`)) s.mutate((g) => { g.stages = g.stages.filter((x) => x.id !== st.id); if (g.activeStageId === st.id) g.activeStageId = g.stages[0].id; }); }}>Delete</button>}
               </div>
@@ -860,6 +862,8 @@ function CurriculumBinder({ stage, pet }: { stage: StageSpec; pet: Pet }) {
           );
         })}
       </ol>
+      <LessonCardImport />
+      <YourCards stage={stage} pet={pet} />
       <h4>New lesson from a recipe</h4>
       <div className="recipes">
         {RECIPES.map((r) => {
@@ -872,6 +876,71 @@ function CurriculumBinder({ stage, pet }: { stage: StageSpec; pet: Pet }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function downloadJson(data: unknown, filename: string) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function LessonCardImport() {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <div className="row gap wrap">
+      <button className="btn ghost small" data-tut="import-lesson" onClick={() => ref.current?.click()}>Import lesson card…</button>
+      <span className="small muted">Lesson cards share a pen and its rules (not what a pet learned — that’s a skill card).</span>
+      <input ref={ref} type="file" accept="application/json,.json" hidden data-tut="import-lesson-file" onChange={async (e) => {
+        const f = e.target.files?.[0];
+        e.target.value = '';
+        if (!f) return;
+        const text = await f.text();
+        let r = { ok: false, reason: '' } as ReturnType<typeof importLessonCard>;
+        store.mutate((g) => { r = importLessonCard(g, text); });
+        if (r.ok) { audio.play('card.snap'); store.toast(`Lesson “${r.name}” added.${r.notes.length ? ` ${r.notes.join(' ')}` : ''}`, 'good'); store.setUi({ binder: 'rules', slot: null }); }
+        else { audio.play('card.reject'); store.toast(`Couldn’t import: ${r.reason}`, 'warn'); }
+      }} />
+    </div>
+  );
+}
+
+/** "Your cards": saved cards (from “Save as one of your cards” in a sleeve), with blanks and housekeeping. */
+function YourCards({ stage, pet }: { stage: StageSpec; pet: Pet }) {
+  const s = useStore();
+  const tpls = s.state.templates;
+  return (
+    <div data-tut="your-cards-shelf">
+      <h4>Your cards</h4>
+      {tpls.length === 0 ? (
+        <p className="small muted">Open any card in a lesson (✎) and press “Save as one of your cards”. It then appears first in the hand wherever it fits — rules, SUCCESS, routines, farm plans — under its own name.</p>
+      ) : (
+        <ul className="placements">
+          {tpls.map((t) => {
+            const cands = blankCandidates(t);
+            return (
+              <li key={t.id} className="your-card">
+                <div className="grow">
+                  <strong>{t.name}</strong> <span className="small muted">r{t.revision} · {REGISTRY.cards.get(t.root.cardId)?.presentation.group ?? ''}</span>
+                  <div className="small">{t.root.cardId === 'rule' ? describeRule(t.root, { petName: pet.name, target: stage.learner.focus }) : describe(t.root, { petName: pet.name, target: stage.learner.focus })}</div>
+                  {cands.length > 0 && (
+                    <div className="row gap wrap small">
+                      <span className="muted">Blanks to fill in each time:</span>
+                      {cands.map((c) => (
+                        <label key={c.id}><input type="checkbox" checked={t.exposed.includes(c.id)} onChange={(e) => s.mutate((g) => { const x = g.templates.find((y) => y.id === t.id); if (!x) return; x.exposed = e.target.checked ? [...x.exposed, c.id] : x.exposed.filter((id) => id !== c.id); })} /> {c.title}</label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button className="icon-btn small" aria-label={`Delete your card ${t.name}`} onClick={() => { if (confirm(`Delete your card “${t.name}” r${t.revision}? Lessons that used it keep their copy.`)) s.mutate((g) => { g.templates = g.templates.filter((y) => y.id !== t.id); }); }}>✕</button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }

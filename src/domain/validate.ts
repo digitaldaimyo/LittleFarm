@@ -254,8 +254,10 @@ export function validateNodes(nodes: SpecNode[], type: TypeExpr, opts: { placed:
   const out: Diagnostic[] = [];
   const ctx: Ctx = { reg: opts.reg ?? REGISTRY, itBound: false, placed: opts.placed, out, target: 'berry', areas: opts.areas };
   for (const n of nodes) validateNode(n, type, ctx);
+  // In farm plans, "Has done…" counts from the start of the job that is finishing (rows are tried between jobs).
   for (const n of nodes) walk(n, (x) => {
-    if (MEMORY.has(x.cardId)) out.push({ severity: 'error', code: 'memory-in-plan', nodeId: x.id, message: `“${title(ctx.reg, x.cardId)}” works in lessons and skills; farm plans can’t use it yet.` });
+    const ev = x.args.event;
+    if ((x.cardId === 'cond.happened' || x.cardId === 'cond.just') && isNode(ev) && ev.cardId === 'ev.tick') out.push({ severity: 'warning', code: 'memory-every-step', nodeId: x.id, message: '“Every step” always happens — pick a real event.' });
   });
   return out;
 }

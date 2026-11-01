@@ -6,7 +6,8 @@ import { typeToString } from '../domain/typecheck';
 import { ObjectIcon } from './art';
 import type { SlotRef } from './store';
 import { store, useStore } from './store';
-import { createNode, instantiateTemplate, saveTemplate, setSlot, slotInfo, slotRole, templatesFor } from './edit';
+import { createNode, placeTemplate, saveTemplate, setSlot, slotInfo, slotRole, templatesFor } from './edit';
+import { describe } from '../domain/describe';
 import { snapshotStage } from '../game/state';
 import { audio } from '../audio/engine';
 
@@ -71,6 +72,7 @@ export function NodeChip({ stage, n, slot, errors }: { stage: StageSpec; n: Spec
   return (
     <span className={cls} role="group" aria-label={card.presentation.title}>
       <button className="node-handle" onClick={select} aria-pressed={sel} aria-label={`Edit ${card.presentation.title}`} title={`${card.presentation.title}${card.presentation.hint ? `: ${card.presentation.hint}` : ''}`}>✎</button>
+      {typeof n.extensions?.card === 'string' && <span className="card-tag" title="Placed from one of your cards">{n.extensions.card}:</span>}
       {parts.map((p, i) => {
         const m = p.match(/^\{([a-zA-Z]+)\}$/);
         if (!m) return <span key={i} className="ptext">{p}</span>;
@@ -154,24 +156,24 @@ export function Sleeve({ stage, onChange }: { stage: StageSpec; onChange: (fn: (
             const name = prompt('Template name', card?.presentation.title ?? 'Template');
             if (!name) return;
             store.mutate((g) => { const t = saveTemplate(g.templates, name.slice(0, 40), n); store.toast(`Saved template “${t.name}” r${t.revision}.`, 'good'); });
-          }}>Save as template</button>
+          }}>Save as one of your cards</button>
         </div>
       )}
-      <Hand stage={stage} slot={slot} onPick={(node) => {
+      <Hand stage={stage} slot={slot} onPick={(node, blank) => {
         let next: SlotRef | null = null;
         audio.play('card.snap');
         onChange((st) => { next = setSlot(st, slot, node); });
         store.mutate((g) => { g.recentCards = [node.cardId, ...g.recentCards.filter((x) => x !== node.cardId)].slice(0, 12); }, { save: false });
-        // Move focus to the first empty required child, else keep the filled slot selected.
+        // Move focus to a saved card's first blank, else the first empty required child, else keep the filled slot selected.
         const card2 = cardOf(node);
         const empty = card2?.sockets.find((x) => x.required && !node.args[x.id]);
-        s.setUi({ slot: empty ? { parentId: node.id, socket: empty.id, index: null } : next });
+        s.setUi({ slot: blank ?? (empty ? { parentId: node.id, socket: empty.id, index: null } : next) });
       }} />
     </div>
   );
 }
 
-export function Hand({ stage, slot, onPick }: { stage: StageSpec; slot: SlotRef; onPick: (n: SpecNode) => void }) {
+export function Hand({ stage, slot, onPick }: { stage: StageSpec; slot: SlotRef; onPick: (n: SpecNode, blank?: SlotRef | null) => void }) {
   const s = useStore();
   const info = slotInfo(stage, slot);
   if (!info) return null;
@@ -186,8 +188,8 @@ export function Hand({ stage, slot, onPick }: { stage: StageSpec; slot: SlotRef;
       <div className="hand-row">{hand.recommended.map((h) => <HandCardView key={h.card.id} h={h} onPick={() => onPick(createNode(h.card.id))} />)}</div>
       {tpls.length > 0 && (
         <>
-          <div className="eyebrow">Your templates</div>
-          <div className="hand-row">{tpls.map((t) => <button key={t.id} className="card g-tpl" onClick={() => onPick(instantiateTemplate(t))}><span className="card-title">{t.name}</span><span className="card-sub">template r{t.revision}</span></button>)}</div>
+          <div className="eyebrow">Your cards</div>
+          <div className="hand-row" data-tut="your-cards">{tpls.map((t) => <button key={t.id} className="card g-tpl" title={describe(t.root, { petName: store.state.pets.find((p) => p.id === store.state.activePetId)?.name ?? 'your pet', target: stage.learner.focus })} onClick={() => { const { node: n, blank } = placeTemplate(t); onPick(n, blank); }}><span className="card-title">{t.name}</span><span className="card-sub">{t.exposed?.length ? `${t.exposed.length} blank${t.exposed.length > 1 ? 's' : ''} · ` : ''}your card r{t.revision}</span></button>)}</div>
         </>
       )}
       {Object.keys(hand.bySheet).length > 0 && (

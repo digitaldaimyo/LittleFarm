@@ -186,12 +186,12 @@ describe('validation and repairs for memory', () => {
     expect(validateStage(shooLesson('has')).some((d) => d.code === 'memory-unsensed')).toBe(false);
   });
 
-  it('“Has done… every step” is flagged; farm plans can’t use memory yet', () => {
+  it('“Has done… every step” is flagged; farm plans accept memory (since phase C)', () => {
     const st = shooLesson('has');
     st.success = node('cond.happened', { event: node('ev.tick'), count: 1 });
     expect(validateStage(st).some((d) => d.code === 'memory-every-step')).toBe(true);
     const row = node('plan.row', { label: 'x', if: [node('cond.happened', { event: shoo(), count: 1 })], do: node('job.nap') });
-    expect(validateNodes([row], nominal('PlanRow'), { placed: new Set(['chicken']), areas: new Set(['coop']) }).some((d) => d.code === 'memory-in-plan')).toBe(true);
+    expect(validateNodes([row], nominal('PlanRow'), { placed: new Set(['chicken']), areas: new Set(['coop']) }).filter((d) => d.severity === 'error')).toEqual([]);
   });
 });
 

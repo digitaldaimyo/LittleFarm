@@ -360,6 +360,30 @@ try {
     await page.click('.binder-body .rule:not(.success-row):not(.fail-row) >> nth=1 >> button[aria-label="Switch rule off"]');
     const copy = (await page.textContent('.binder-body .rule:not(.success-row):not(.fail-row) >> nth=1')).replace(/\s+/g, ' ');
     check((await page.locator('.binder-body .rule:not(.success-row):not(.fail-row)').count()) === nRules + 1 && copy.includes('(Switched off)'), 'pens: a rule duplicated and switched off (it stays on the mat)');
+
+    // Teaching polish (phase C): save a card with a blank, share the lesson as a card, reuse the card.
+    page.once('dialog', (d) => d.accept('Shooed a chicken'));
+    await page.click('[data-tut="success-slot"] .node-handle');
+    await page.click('.sleeve button:has-text("Save as one of your cards")');
+    await tab('Curriculum');
+    const shelf = page.locator('[data-tut="your-cards-shelf"]');
+    check((await shelf.textContent()).includes('Shooed a chicken'), 'cards: the saved card is on the “Your cards” shelf, read as a sentence');
+    await shelf.locator('li:has-text("Shooed a chicken") label:has-text("Chicken") input').check();
+    const lessonDl = page.waitForEvent('download');
+    await page.click('.curriculum li.sel [data-tut="export-lesson"]');
+    const lessonFile = await (await lessonDl).path();
+    await page.setInputFiles('[data-tut="import-lesson-file"]', lessonFile);
+    await page.waitForTimeout(300);
+    const lessonName = await page.$eval('select', (el) => el.options[el.selectedIndex].text);
+    check(lessonName === 'Herd a chicken (2)', `cards: the exported lesson card imports as a new lesson (${lessonName})`);
+    await page.click('.fail-row .slot');
+    check((await page.textContent('.sleeve')).includes('Your cards'), 'cards: “Your cards” appear in the hand');
+    await page.click('.sleeve [data-tut="your-cards"] .card:has-text("Shooed a chicken")');
+    const blankHand = (await page.textContent('.sleeve .hand-row')).replace(/\s+/g, ' ');
+    check(blankHand.startsWith('Chicken') || blankHand.includes('Chicken'), `cards: placing it jumps to its blank (the hand offers things: ${blankHand.slice(0, 40)})`);
+    await page.click('.sleeve .card:has-text("Chicken")');
+    const failRow = (await page.textContent('.fail-row')).replace(/\s+/g, ' ');
+    check(failRow.includes('Shooed a chicken:') && failRow.includes('“Pip shoos chicken” has happened'), `cards: the placed card shows its name and reads back filled in (${failRow.slice(0, 90)})`);
     const a2 = await page.evaluate(() => window.__penDeckAudio);
     const want2 = ['train.loophole', 'train.certified', 'ui.unlock', 'skill.save', 'card.remove', 'guide.step', 'guide.offer', 'guide.done'];
     const missing2 = want2.filter((c) => !a2.cues.includes(c));

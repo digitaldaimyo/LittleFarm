@@ -118,8 +118,48 @@ export function templatesFor(templates: Template[], type: TypeExpr): Template[] 
   return templates.filter((t) => fits(type, t.output));
 }
 
+/**
+ * A fresh copy of a saved card. Its name travels with it (`extensions.card`, shown as a tag on the chip).
+ * Blanks (`exposed`: ids of things inside it) are left empty for the player to fill in; `blank` is the first one.
+ */
 export function instantiateTemplate(t: Template): SpecNode {
-  return cloneNode(t.root, true);
+  return placeTemplate(t).node;
+}
+export function placeTemplate(t: Template): { node: SpecNode; blank: SlotRef | null } {
+  const blanks = new Set(t.exposed ?? []);
+  let blank: SlotRef | null = null;
+  const copy = (n: SpecNode): SpecNode => {
+    const out = node(n.cardId, {});
+    if (n.extensions) out.extensions = structuredClone(n.extensions);
+    for (const [k, v] of Object.entries(n.args)) {
+      if (Array.isArray(v)) out.args[k] = v.map((x) => (isNode(x) ? copy(x) : x)) as SpecNode[];
+      else if (isNode(v)) {
+        if (blanks.has(v.id)) { blank ??= { parentId: out.id, socket: k, index: null }; continue; }
+        out.args[k] = copy(v);
+      } else out.args[k] = v;
+    }
+    return out;
+  };
+  const root = copy(t.root);
+  root.extensions = { ...(root.extensions ?? {}), card: t.name };
+  return { node: root, blank };
+}
+
+/** Things inside a saved card that can become blanks ("Treat for reaching ___"): kinds in single slots. */
+export function blankCandidates(t: Template): { id: string; title: string }[] {
+  const out: { id: string; title: string }[] = [];
+  const visit = (n: SpecNode) => {
+    for (const v of Object.values(n.args)) {
+      if (Array.isArray(v)) v.forEach((x) => isNode(x) && visit(x));
+      else if (isNode(v)) {
+        const c = REGISTRY.cards.get(v.cardId);
+        if (c && (c.presentation.group === 'kind' || v.cardId === 'ref.target')) out.push({ id: v.id, title: c.presentation.title });
+        else visit(v);
+      }
+    }
+  };
+  visit(t.root);
+  return out;
 }
 
 export function saveTemplate(templates: Template[], name: string, root: SpecNode): Template {
