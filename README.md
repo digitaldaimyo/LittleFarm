@@ -20,10 +20,10 @@ Other scripts:
 | `npm run build` | Typecheck + production build into `dist/` (static files; host anywhere or open with `npm run preview`) |
 | `npm run typecheck` | TypeScript only |
 | `npm run lint` | ESLint |
-| `npm test` | Vitest suite: 95 tests in 15 files (sim, registry, learning, saves, farm, training loop, every milestone gate, the Field Guide, the card editor) |
+| `npm test` | Vitest suite: 96 tests in 15 files (sim, registry, learning, saves, farm, training loop, every milestone gate, the Field Guide, the card editor) |
 | `npm run bench` | Trains every starter skill under 5 seeds and prints held-out results, hardware and timings |
 | `npm run evidence` | Reproduces the measurements behind the Field Guide and the Trainer's notebook |
-| `npm run e2e` | Browser test of the first three Field Guide lessons (run `npm run build` first; needs Playwright with Chromium) |
+| `npm run e2e` | Browser test that plays all nine Field Guide lessons with real clicks, about 45 s (run `npm run build` first; needs Playwright with Chromium). `npm run e2e -- --from=4` runs lessons 4–9 only |
 
 Requires Node 18+ (developed on Node 22). Needs no secrets or environment variables.
 
@@ -78,7 +78,6 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 - Templates are immutable named revisions you can instantiate. "Exposed parameters" are stored but have no editing UI yet.
 - Avoid is the hardest preset: about 82% mean held-out success, with occasional runs at 75%. Use *Refine* to train more.
 - Learned Approach is shaky right beside fences (8×8 practice pens rarely have walls there). Pets get through with the stuck-recovery, but retraining with fences in the pen helps.
-- The browser test covers lessons 1–3; lessons 4–9 are covered by game-level tests (`tests/guide.test.ts`), not by clicking through.
 - Up to two pets work the farm at once; others nap. Routines can't use Fetch or other routines as options yet. Plan previews always start from a fresh decision (the current job is dropped when you apply a plan).
 - No local language model (the spec's optional Level D). The executive is a rules baseline plus a small learned bandit.
 - Static reward checks and the preflight random-rollout comparison are heuristics, not proofs that a reward can't be exploited.

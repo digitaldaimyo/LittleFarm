@@ -7,6 +7,7 @@ Status: **All three phases shipped.** Sections 1–9 below are the original plan
 ### After phase C: playtest fixes and polish
 - **Lesson 6 bug (playtest):** after adding “How far is…”, its slot couldn't be aimed at Rock: the sense editor only opened the hand for top-level sense slots. Fixed, with Patience and How far is… now recommended in the hand (`tests/editor.test.ts`).
 - **The Guide numbers its lessons** (1–9, matching this doc), and a locked lesson says what opens it.
+- **The browser test now plays all nine lessons** (`npm run e2e`; lessons 4–9 from a prepared save). It found that lesson 9 could get stuck: on a farm with Fetch and carrots, moving the row just above "Otherwise wander" isn't enough, because the chores above it always find work. The lesson now says to keep moving it up until the preview shows it runs ("order is priority"), and ends with deleting the experiment row before using the plan, so the pet isn't left trotting to the well between chores.
 
 ### Phase C: what shipped, and what we learned
 - **Lesson 7, See what your pet learned** (offered once you've saved a skill you invented). The player opens the summary on Approach and on their own skill, uses "What does Pip do?" and taps a tile, reads the Journal's curiosities, and exports a skill card.

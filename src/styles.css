@@ -395,3 +395,6 @@ button.node { padding: 2px 9px; font-weight: 600; }
 
 .tips { display: flex; flex-direction: column; gap: 6px; }
 .tip { flex-direction: column; }
+/* Plan rows: let the row's buttons wrap under its name in narrow columns instead of being clipped. */
+.plan-row > .row.between { flex-wrap: wrap; gap: 4px 8px; }
+.plan-row > .row.between > .row:first-child { flex: 1 1 160px; min-width: 0; }

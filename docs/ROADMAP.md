@@ -228,7 +228,6 @@ The milestones shipped in the recommended order: M1 → M5 (watering + day/night
 
 ## What could come next
 Not committed; listed roughly smallest first.
-- **Browser test for lessons 4–9:** extend `npm run e2e` with a prepared save so the later Field Guide lessons are clicked through, not only tested at game level.
 - **Approach near fences:** the known transfer gap (M5 note above). Options: a fence-pen curriculum step, or a Field Guide follow-up on retraining for a changed farm.
 - **Routines over Fetch and other routines:** allow nesting (with a depth limit and a cycle check) so *Morning chores* can include deliveries.
 - **A built-in Guard job** for plans, or a recipe for one, since guarding crops currently needs a player-made skill.

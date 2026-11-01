@@ -236,7 +236,8 @@ describe('Coaching tips', () => {
 
 import { ROUTINE_STAGE, LESSON_ROW } from '../src/game/tutorial';
 import { subskillsFor, saveRevision } from '../src/game/pets';
-import { createRuntime, farmTick, previewPlan, DAY_TICKS, NIGHT_FROM } from '../src/game/farm';
+import { applyPlan, createRuntime, farmTick, previewPlan, DAY_TICKS, NIGHT_FROM } from '../src/game/farm';
+import { checkUnlocks } from '../src/game/progression';
 import { requestHelp, postRequests } from '../src/game/requests';
 import { buy } from '../src/game/progression';
 import { Rng } from '../src/sim/rng';
@@ -318,6 +319,39 @@ describe('Field Guide phase C lessons', () => {
     advanceTutorial(s);
     expect(currentStep(s)?.id).toBe('preview-again');
     expect(previewPlan(s, pet.id, plan, 300).fires[LESSON_ROW] ?? 0).toBeGreaterThan(0);
+  });
+
+  it('“Plan the farm” on a busy farm (Fetch + carrots): the row must go higher than “Otherwise wander” to run; the lesson ends once it is tidied away', () => {
+    const s = withApproach();
+    const pet = s.pets[0];
+    const ap = getSkill(pet, 'Approach')!;
+    trainAndSave(s, pet, recipeStage('bring-it-home'), ap.revisions[0].policy);
+    s.progress.totalCoins = 20;
+    checkUnlocks(s); // Fetch is certified → carrot patches; 2 skills → routines
+    expect(s.progress.unlocks).toEqual(expect.arrayContaining(['carrots', 'routines']));
+    advanceTutorial(s);
+    skipChapter(s, 'routines');
+    startChapter(s, 'plans');
+    const plan = pet.plan!;
+    const fires = () => previewPlan(s, pet.id, plan, 300).fires[LESSON_ROW] ?? 0;
+    s.progress.flags.planOpened = true; s.progress.flags.planPreviewed = true;
+    const row = plan.rows.pop()!;
+    plan.rows.splice(plan.rows.findIndex((r) => (r.args.do as { cardId: string }).cardId === 'job.wander'), 0, row);
+    advanceTutorial(s);
+    expect(currentStep(s)?.id).toBe('preview-again');
+    expect(fires()).toBe(0); // the chores above always find work: still shadowed
+    plan.rows.splice(plan.rows.indexOf(row), 1);
+    plan.rows.unshift(row); // moved to the top
+    expect(fires()).toBeGreaterThan(0);
+    s.progress.flags.planRowFired = true;
+    advanceTutorial(s);
+    expect(currentStep(s)?.id).toBe('apply');
+    applyPlan(s, createRuntime(s.farm), pet.id);
+    advanceTutorial(s);
+    expect(currentStep(s)?.id).toBe('apply'); // the experiment row is still in the plan
+    plan.rows.splice(plan.rows.indexOf(row), 1);
+    advanceTutorial(s);
+    expect(currentStep(s)?.id).toBe('two-pets');
   });
 });
 

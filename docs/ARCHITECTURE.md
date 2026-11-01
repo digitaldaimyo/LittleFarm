@@ -11,7 +11,7 @@ src/
   ui/           React presentation only (store, screens, cards/sleeves, charts, replay)
 tests/          vitest suites (+ fixtures/ with a real v1 save)
 scripts/        bench.ts (npm run bench), tutorial-evidence.ts (npm run evidence),
-                e2e-guide.mjs (npm run e2e, Playwright)
+                e2e-guide.mjs (npm run e2e, Playwright) + e2e-save.ts (its prepared save)
 public/sw.js    service worker for offline play
 ```
 

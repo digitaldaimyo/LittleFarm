@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { store, useStore } from './store';
+import { closeTraining } from './training';
 import { CHAPTERS, chapterById, currentStep, guide, guideComparison, startChapter, skipChapter, pauseChapter, ackStep } from '../game/tutorial';
 
 type Tab = 'lessons' | 'notebook' | 'glossary';
@@ -42,7 +43,7 @@ export function GuideScreen() {
                     <span className="row gap">
                       <span className={`chip ${st === 'done' ? 'good' : ''}`}>{st === 'done' ? '✓ done' : st === 'active' ? 'in progress' : st === 'offered' ? 'new' : st === 'skipped' ? 'skipped' : '🔒 later'}</span>
                       {st === 'active' && <button className="btn ghost small" onClick={() => s.mutate((x) => pauseChapter(x))}>Pause</button>}
-                      {(st === 'offered' || st === 'skipped' || st === 'done') && <button className="btn small" onClick={() => { s.mutate((x) => startChapter(x, c.id)); const first = currentStep(store.state); if (first?.screen && first.screen !== 'guide') store.setUi({ screen: first.screen }); }}>{st === 'done' ? 'Replay' : 'Start'}</button>}
+                      {(st === 'offered' || st === 'skipped' || st === 'done') && <button className="btn small" onClick={() => { s.mutate((x) => startChapter(x, c.id)); closeFinishedReport(); const first = currentStep(store.state); if (first?.screen && first.screen !== 'guide') store.setUi({ screen: first.screen }); }}>{st === 'done' ? 'Replay' : 'Start'}</button>}
                       {(st === 'offered' || st === 'active') && <button className="btn ghost small" onClick={() => s.mutate((x) => skipChapter(x, c.id))}>Skip</button>}
                     </span>
                   </div>
@@ -140,4 +141,10 @@ function Glossary() {
       <dl className="glossary">{GLOSSARY.map(([k, v]) => <div key={k}><dt>{k}</dt><dd className="small">{v}</dd></div>)}</dl>
     </div>
   );
+}
+
+/** A saved (or stopped) report from another pen would cover the new lesson's binder, so close it. Unsaved results stay. */
+function closeFinishedReport() {
+  const t = store.ui.training;
+  if (t && t.stage.id !== store.state.activeStageId && (t.saved || t.status === 'cancelled' || t.status === 'error')) closeTraining();
 }
