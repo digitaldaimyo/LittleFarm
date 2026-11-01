@@ -2,7 +2,7 @@
   "name": "pen-deck",
   "private": true,
   "version": "1.0.0",
-  "description": "Pen Deck — a cozy offline pet-training farm game with real local reinforcement learning.",
+  "description": "Pen Deck \u2014 a cozy offline pet-training farm game with real local reinforcement learning.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "bench": "vite-node scripts/bench.ts"
+    "bench": "vite-node scripts/bench.ts",
+    "evidence": "vite-node scripts/tutorial-evidence.ts"
   },
   "dependencies": {
     "react": "18.3.1",
