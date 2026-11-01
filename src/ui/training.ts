@@ -1,4 +1,5 @@
 import { audio } from '../audio/engine';
+import { trainTickCrossed } from '../game/sound';
 import type { StageSpec } from '../domain/types';
 import type { FromWorker, ToWorker, TrainSpeed } from '../learning/session';
 import { TrainingLoop } from '../learning/session';
@@ -63,6 +64,8 @@ function onMessage(m: FromWorker) {
   const t = store.ui.training;
   if (!t) return;
   if (m.type === 'progress') {
+    const was = t.progress ? t.progress.episode / Math.max(1, t.progress.total) : 0;
+    if (store.state.settings.audio.trainTicks && t.speed !== 'fast' && trainTickCrossed(was, m.progress.episode / Math.max(1, m.progress.total))) audio.play('train.tick');
     t.progress = m.progress;
     if (m.progress.sample) t.replay = m.progress.sample;
   } else if (m.type === 'evaluating') {

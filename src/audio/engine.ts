@@ -3,7 +3,7 @@
  * gentle compressor. The AudioContext is created on the first user gesture with sound on, and suspended
  * while the tab is hidden. Nothing is fetched. See docs/SOUND_PLAN.md.
  */
-import { CUES, CueLimiter, DEFAULT_AUDIO, ambienceMix, cueGain, cuesForFarmFx, cuesForSimEvents, type AudioSettings, type CueId, type CueRequest } from '../game/sound';
+import { CUES, CueLimiter, DEFAULT_AUDIO, ambienceMix, cueGain, cuesForFarmFx, cuesForSimEvents, musicBar, type AudioSettings, type CueId, type CueRequest, type MusicMood } from '../game/sound';
 import type { SimEvent } from '../sim/world';
 import type { FarmFx } from '../game/farm';
 import { AMBIENCE_OVERLAP, AMBIENCE_SECONDS, KIT, ambienceRecipe, recipeLength, type AmbienceId, type Recipe, type Voice } from './kit';
@@ -15,6 +15,8 @@ interface DebugHook {
   contexts: number; rendered: number; state: string; cues: CueId[]; ambience: Record<AmbienceId, number>;
   /** Cues whose rendered peak is near silence (should stay empty), and each ambience loop's RMS level. */
   quiet: string[]; loops: Partial<Record<AmbienceId, number>>;
+  /** Music-box notes scheduled so far. */
+  musicNotes: number;
 }
 
 declare global {
@@ -27,6 +29,7 @@ declare global {
 }
 
 const RATE = 44100;
+const DUCK = new Set<CueId>(['train.certified', 'train.notCertified', 'train.loophole', 'ui.unlock', 'guide.done', 'ui.request']);
 /** Ambience loops are rendered at a lower rate: nothing in them needs more, and they're long. */
 const AMB_RATE = 22050;
 const AMBIENCE: AmbienceId[] = ['day', 'night', 'rain'];
@@ -45,9 +48,12 @@ class AudioEngine {
   private played = false;
   private amb = new Map<AmbienceId, GainNode>();
   private scene = { night: false, raining: false, onFarm: true };
+  private music: { gain: GainNode; timer: ReturnType<typeof setInterval>; nextBar: number; bar: number } | null = null;
+  /** The duty pet's voice pitch (see voicePitch in game/sound). */
+  private petPitch = 1;
 
   constructor() {
-    if (typeof window !== 'undefined') window.__penDeckAudio = { contexts: 0, rendered: 0, state: 'none', cues: [], ambience: { day: 0, night: 0, rain: 0 }, quiet: [], loops: {} };
+    if (typeof window !== 'undefined') window.__penDeckAudio = { contexts: 0, rendered: 0, state: 'none', cues: [], ambience: { day: 0, night: 0, rain: 0 }, quiet: [], loops: {}, musicNotes: 0 };
   }
 
   configure(enabled: boolean, settings: AudioSettings) {
@@ -56,6 +62,76 @@ class AudioEngine {
     if (!enabled && this.ctx?.state === 'running') void this.ctx.suspend();
     if (enabled && this.ctx?.state === 'suspended' && !document.hidden) void this.ctx.resume();
     this.applyAmbience();
+    this.applyMusic();
+  }
+
+  setVoice(pitch: number) {
+    this.petPitch = pitch;
+  }
+
+  /** The optional music box: gentle generative bars, scheduled a little ahead on the audio clock. */
+  private applyMusic() {
+    const want = this.enabled && this.settings.musicOn && !!this.ctx && !!this.out;
+    if (!want) {
+      if (this.music) {
+        const m = this.music;
+        clearInterval(m.timer);
+        if (this.ctx) m.gain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.3);
+        setTimeout(() => m.gain.disconnect(), 1500);
+        this.music = null;
+      }
+      return;
+    }
+    const ctx = this.ctx!;
+    if (!this.music) {
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      gain.connect(this.out!);
+      this.music = { gain, nextBar: ctx.currentTime + 0.3, bar: 0, timer: setInterval(() => this.scheduleMusic(), 250) };
+    }
+    this.music.gain.gain.setTargetAtTime(this.musicLevel(), ctx.currentTime, 0.5);
+  }
+
+  private musicLevel() {
+    return this.enabled && this.settings.musicOn ? this.settings.master * this.settings.music * 0.35 : 0;
+  }
+
+  private scheduleMusic() {
+    const ctx = this.ctx, m = this.music;
+    if (!ctx || !m || ctx.state !== 'running') return;
+    const mood: MusicMood = this.scene.onFarm ? (this.scene.night ? 'night' : 'day') : 'pen';
+    const beat = mood === 'night' ? 1 : mood === 'pen' ? 0.85 : 0.75;
+    while (m.nextBar < ctx.currentTime + 1.5) {
+      for (const n of musicBar(mood, m.bar)) {
+        const t = m.nextBar + n.beat * beat, len = n.beats * beat * 1.2;
+        const f = 440 * Math.pow(2, (n.midi - 69) / 12);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.12 * n.gain, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+        g.connect(m.gain);
+        for (const [type, mult, lvl] of [['triangle', 1, 1], ['sine', 2, 0.25]] as const) {
+          const o = ctx.createOscillator();
+          o.type = type;
+          o.frequency.value = f * mult;
+          if (lvl < 1) { const gg = ctx.createGain(); gg.gain.value = lvl; o.connect(gg).connect(g); } else o.connect(g);
+          o.start(t);
+          o.stop(t + len + 0.05);
+        }
+        if (window.__penDeckAudio) window.__penDeckAudio.musicNotes++;
+      }
+      m.nextBar += 4 * beat;
+      m.bar++;
+    }
+  }
+
+  /** Music dips under the jingles that mark results, then comes back. */
+  private duck() {
+    if (!this.music || !this.ctx) return;
+    const g = this.music.gain.gain, now = this.ctx.currentTime, lvl = this.musicLevel();
+    g.cancelScheduledValues(now);
+    g.setTargetAtTime(lvl * 0.3, now, 0.05);
+    g.setTargetAtTime(lvl, now + 1.2, 0.4);
   }
 
   /** What the farm sounds like right now. Ambience crossfades over a couple of seconds when this changes. */
@@ -103,6 +179,7 @@ class AudioEngine {
       this.out = comp;
       // Render in a later task, so the click that unlocked audio stays snappy.
       this.rendering = new Promise<void>((done) => setTimeout(() => void this.renderAll().then(done), 0));
+      this.applyMusic();
     }
     if (this.ctx.state === 'suspended' && !document.hidden) void this.ctx.resume();
   }
@@ -136,6 +213,7 @@ class AudioEngine {
     }
     node.connect(this.out);
     src.start();
+    if (DUCK.has(r.id)) this.duck();
     if (!this.played) {
       this.played = true;
       this.onFirstSound?.();
@@ -146,7 +224,11 @@ class AudioEngine {
   playFarm(fx: FarmFx[], width: number, farmSpeed: number, onFarmScreen: boolean) {
     if (!this.enabled || !fx.length) return;
     if (!onFarmScreen && !this.settings.offScreen) return;
-    for (const c of cuesForFarmFx(fx, width)) this.play(c, { farmSpeed, offScreen: !onFarmScreen });
+    const cues = cuesForFarmFx(fx, width);
+    for (const c of cues) this.play(c, { farmSpeed, offScreen: !onFarmScreen });
+    // The pet's own voice: a chirp (pitched per pet) when it picks something up or finishes a job.
+    const happy = cues.find((c) => c.id === 'farm.pickup' || c.id === 'farm.celebrate');
+    if (happy) this.play({ id: 'pet.chirp', pitch: this.petPitch, pan: happy.pan }, { farmSpeed, offScreen: !onFarmScreen });
   }
 
   private async renderAll() {

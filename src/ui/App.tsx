@@ -12,6 +12,7 @@ import { activePet } from '../game/pets';
 import { warmTrainingWorker } from './training';
 import { audio } from '../audio/engine';
 import { toggleSound } from './sound';
+import { voicePitch } from '../game/sound';
 
 const NAV: { id: Screen; label: string }[] = [
   { id: 'farm', label: 'Farm' },
@@ -54,6 +55,9 @@ export function App() {
     return () => clearTimeout(t);
   }, [stepKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The pet on duty speaks in its own voice.
+  const duty = g.pets.find((p) => p.id === g.farm.dutyPetId) ?? pet;
+  useEffect(() => { if (duty) audio.setVoice(voicePitch(duty.name, duty.palette)); }, [duty?.name, duty?.palette]); // eslint-disable-line react-hooks/exhaustive-deps
   // Keep the sound engine in step with the settings.
   useEffect(() => { audio.configure(g.settings.sound, g.settings.audio); }, [g.settings.sound, g.settings.audio]);
 

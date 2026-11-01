@@ -1,4 +1,5 @@
 import { audio } from '../audio/engine';
+import { voicePitch } from '../game/sound';
 import { useState } from 'react';
 import { store, useStore } from './store';
 import { PetSprite } from './art';
@@ -30,7 +31,7 @@ export function AdoptModal({ paid }: { paid?: boolean }) {
       adoptPet(g, name, pal);
     });
     audio.unlock(); // the first click of a new game is a user gesture: sound can start here
-    audio.play('pet.adopt');
+    audio.play({ id: 'pet.adopt', pitch: voicePitch(name, pal) }); // in the new pet's own voice
     store.setUi({ modal: null });
     void store.saveNow();
   };

@@ -2,7 +2,19 @@
 
 **Goal:** add sound where it makes Pen Deck more charming *or* easier to read, without breaking what the game promises: fully offline, no outside requests, cozy, and readable with the sound off.
 
-Status: **phases A and B shipped.** Decisions (section 8) all went with the recommendations: synthesis for everything; background sounds in phase B and an opt-in generative music box in phase C; sound on by default for new and existing games; pet voices in phase C; training ticks opt-in.
+Status: **phases A, B and C shipped.** Decisions (section 8) all went with the recommendations: synthesis for everything; background sounds in phase B and an opt-in generative music box in phase C; sound on by default for new and existing games; pet voices in phase C; training ticks opt-in.
+
+### Phase C: what shipped, and what changed from the plan
+- **Music box (opt-in, off by default):**
+  - Seeded pentatonic bars (`musicBar`): fuller by day, sparser and lower at night, lighter in the teaching screens.
+  - Two soft voices per note (triangle plus a quiet octave), scheduled ahead on the audio clock, with their own volume.
+  - It dips under result jingles (certified, loophole, unlock, lesson done, request done).
+  - It does not pause during replays as first planned: ducking under the replay's own sounds wasn't needed at these levels.
+- **Pet voices:** each pet chirps at its own pitch (from its name and colours) when it picks something up or finishes a job, at most every few seconds. Adopting a pet chirps in the new pet's voice. Replays and demos stay voiceless.
+- **Nap sigh:** the nap effect fires once when a nap starts, not every tick as phase B assumed, so it now gets a single soft sigh. Dusk keeps its own chime.
+- **Probe plucks:** tapping a tile in "What does Pip do?" plays soft plucks rising along the path it would take (up to 12).
+- **Training ticks (opt-in):** one soft tick at 25%, 50% and 75% of practice, at Watch and Normal speed only.
+- **Measured:** 42 cues now; the browser test checks the chirp, and that the music box starts and stops. Unit tests cover voices, ticks and the music generator.
 
 ### Phase B: what shipped, and what changed from the plan
 - **22 more cues (38 in all):**

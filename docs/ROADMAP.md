@@ -226,10 +226,22 @@ The milestones shipped in the recommended order: M1 → M5 (watering + day/night
 2. **Requests board:** shipped (M5) as light, optional requests; missing one costs nothing.
 3. **Creatures:** chickens and crows shipped (M2). Nothing else has been requested.
 
+## After the milestones (shipped)
+- **The Trainer's Field Guide:** nine lessons on setting up training that works, the notebook, glossary, coaching tips, and request hints (`docs/TUTORIAL_PLAN.md`).
+- **Sound, phases A–C:**
+  - core cues, settings and mute;
+  - the whole farm, replays and background sounds;
+  - pet voices, nap sighs, probe plucks, optional training ticks, and an optional generative music box (`docs/SOUND_PLAN.md`).
+- **Teaching polish, phases A–C** (`docs/TEACHING_PLAN.md`):
+  - *Has done…* / *Just…* / *Any of*, an honest End try, SUCCESS lists, a context-aware hand, sentences, measured checks;
+  - better pens, play it yourself, example layouts, rule housekeeping;
+  - your cards with blanks and names, lesson cards, memory in farm plans.
+- **Fixes found along the way:** the random baseline never used Shoo or Stay (learned results unchanged); lesson 9 could get stuck on busy farms; a starting lesson's report covered the next one.
+
 ## What could come next
 Not committed; listed roughly smallest first.
-- **Approach near fences:** the known transfer gap (M5 note above). Options: a fence-pen curriculum step, or a Field Guide follow-up on retraining for a changed farm.
+- **Approach near fences:** the known transfer gap (M5 note above). Measured since: practising with *Obstacles: some* gains 7–9 points in cluttered pens (TESTING.md). A Field Guide follow-up on "practise with what the farm has now" would teach it.
 - **Routines over Fetch and other routines:** allow nesting (with a depth limit and a cycle check) so *Morning chores* can include deliveries.
 - **A built-in Guard job** for plans, or a recipe for one, since guarding crops currently needs a player-made skill.
-- **Teaching polish:** phases A, B and C shipped (*Has done…* / *Just…* / *Any of*, honest End try, SUCCESS lists, a context-aware hand, sentences, measured checks, the *Done … yet?* sense). Phase B shipped too (better pens, play it yourself, example layouts, rule housekeeping, Next to / Thing near thing / Time in try). Phase C shipped as well (your cards with blanks and names, lesson cards, memory in farm plans). See `docs/TEACHING_PLAN.md`. Sound phase C is on hold.
-- **Sound:** phases A (core cues, settings, mute) and B (the whole farm, replays, background sounds) shipped. Phase C (optional generative music, pet voices, probe plucks, training ticks) is planned in `docs/SOUND_PLAN.md`.
+- **Cards, a step further:** number blanks ("Treat of ___"), and optionally live-linked named conditions (edit once, update everywhere), with a clear story for skills already certified with the old version.
+- **Pens:** non-square *varies* sizes; "away from" for areas.

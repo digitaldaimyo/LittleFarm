@@ -18,7 +18,7 @@ let chromium;
 try { ({ chromium } = await import('playwright')); } catch { ({ chromium } = require('playwright')); }
 
 const PORT = 4179;
-const CUE_COUNT = 38; // cues in src/audio/kit.ts
+const CUE_COUNT = 42; // cues in src/audio/kit.ts
 const URL = `http://localhost:${PORT}/`;
 const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'ignore' });
 const FROM = Number(process.argv.find((a) => a.startsWith('--from='))?.slice(7) ?? 1);
@@ -123,7 +123,7 @@ try {
   check(a1.quiet.length === 0, `sound: no cue renders as silence ${a1.quiet.length ? JSON.stringify(a1.quiet) : ''}`);
   const loops = a1.loops;
   check(['day', 'night', 'rain'].every((k) => loops[k] > 0.002 && loops[k] < 0.2), `sound: ambience loops rendered at a gentle level (RMS ${JSON.stringify(loops)})`);
-  const want1 = ['card.flick', 'card.snap', 'pen.place', 'train.start', 'skill.save', 'farm.pickup', 'farm.coin'];
+  const want1 = ['card.flick', 'card.snap', 'pen.place', 'train.start', 'skill.save', 'farm.pickup', 'farm.coin', 'pet.chirp'];
   const missing1 = want1.filter((c) => !a1.cues.includes(c));
   check(!missing1.length && (a1.cues.includes('train.certified') || a1.cues.includes('train.notCertified')), `sound: lessons 1–3 cues played ${missing1.length ? `(missing ${missing1.join(', ')})` : ''}`);
   await page.close();
@@ -388,6 +388,17 @@ try {
     const want2 = ['train.loophole', 'train.certified', 'ui.unlock', 'skill.save', 'card.remove', 'guide.step', 'guide.offer', 'guide.done'];
     const missing2 = want2.filter((c) => !a2.cues.includes(c));
     check(!missing2.length, `sound: lessons 4–9 cues played (loophole, certified, unlock, save) ${missing2.length ? `(missing ${missing2.join(', ')})` : ''}`);
+    // The music box (off by default): switch it on, hear notes scheduled, switch it off.
+    await nav('Settings');
+    await page.check('[data-tut="music-on"]');
+    await page.waitForTimeout(2500);
+    const notes = await page.evaluate(() => window.__penDeckAudio.musicNotes);
+    check(notes > 0, `sound: the music box plays when switched on (${notes} notes scheduled)`);
+    await page.uncheck('[data-tut="music-on"]');
+    await page.waitForTimeout(1000);
+    const notes2 = await page.evaluate(() => window.__penDeckAudio.musicNotes);
+    await page.waitForTimeout(1500);
+    check((await page.evaluate(() => window.__penDeckAudio.musicNotes)) === notes2, 'sound: switching the music box off stops it');
     await nav('Farm');
     await page.waitForTimeout(500);
     const amb = (await page.evaluate(() => window.__penDeckAudio.ambience));

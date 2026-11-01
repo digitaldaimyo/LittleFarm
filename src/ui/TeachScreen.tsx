@@ -141,6 +141,12 @@ function PenView({ stage, pet }: { stage: StageSpec; pet: Pet }) {
   }, [probing, preview, probeAt]);
   const probeCells = useMemo(() => (probeWorld && probePolicy ? probeField(probePolicy, probeWorld, stage.learner.focus) : []), [probeWorld, probePolicy, stage.learner.focus]);
   const probeTrail = useMemo(() => (probeWorld && probePolicy && probeAt ? probePath(probePolicy, probeWorld, stage.learner.focus, Math.min(40, stage.maxTicks)) : undefined), [probeWorld, probePolicy, probeAt, stage.learner.focus, stage.maxTicks]);
+  // Soft plucks rising along the traced path when you tap a tile.
+  useEffect(() => {
+    if (!probeTrail?.length) return;
+    const timers = probeTrail.slice(1, 13).map((_, i) => setTimeout(() => audio.play({ id: 'probe.pluck', pitch: 1 + i * 0.06 }), i * 70));
+    return () => timers.forEach(clearTimeout);
+  }, [probeTrail]);
   // "Play it yourself": steer the pet through the lesson by hand. Same simulator and rules; never training.
   const [play, setPlay] = useState<PlayState | null>(null);
   const startPlay = (seed = s.ui.previewSeed) => {

@@ -132,6 +132,11 @@ export const KIT: Record<CueId, Recipe> = {
     note(E6, 0.16, 0.12, 0.06, 'sine'),
   ] },
   'guide.done': { voices: [note(C6, 0, 0.14, 0.12), note(G6, 0.12, 0.38, 0.12), note(E6, 0.12, 0.38, 0.06, 'sine')] },
+  // Phase C: a pet's chirp (pitched per pet at play time), a nap sigh, probe plucks, training ticks
+  'pet.chirp': { voices: [{ wave: 'sine', freq: [1100, 1500], at: 0, dur: 0.07, gain: 0.14, attack: 0.005 }, { wave: 'sine', freq: [1350, 1050], at: 0.08, dur: 0.08, gain: 0.12, attack: 0.005 }] },
+  'pet.sigh': { voices: [{ wave: 'noise', at: 0, dur: 0.55, gain: 0.07, attack: 0.15, filter: { type: 'bandpass', freq: [900, 400], q: 1.1 } }, { wave: 'sine', freq: [330, 250], at: 0.05, dur: 0.45, gain: 0.05, attack: 0.1 }] },
+  'probe.pluck': { voices: [{ wave: 'triangle', freq: [784, 784], at: 0, dur: 0.12, gain: 0.1, attack: 0.002 }] },
+  'train.tick': { voices: [{ wave: 'sine', freq: [1800, 1800], at: 0, dur: 0.03, gain: 0.06, attack: 0.001 }] },
 };
 
 /** A small seeded PRNG so ambience loops are the same on every device (and testable). */

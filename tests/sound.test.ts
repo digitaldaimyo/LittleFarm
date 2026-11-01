@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CUES, CueLimiter, DEFAULT_AUDIO, SILENT_EVENTS, SILENT_FX, ambienceMix, cueForFx, cueGain, cuesForFarmFx, cuesForSimEvents, sanitizeAudio, type CueId } from '../src/game/sound';
+import { CUES, CueLimiter, musicBar, trainTickCrossed, voicePitch, DEFAULT_AUDIO, SILENT_EVENTS, SILENT_FX, ambienceMix, cueForFx, cueGain, cuesForFarmFx, cuesForSimEvents, sanitizeAudio, type CueId } from '../src/game/sound';
 import type { SimEvent, SimEventType } from '../src/sim/world';
 import { AMBIENCE_OVERLAP, AMBIENCE_SECONDS, KIT, ambienceRecipe, recipeLength } from '../src/audio/kit';
 import type { FarmFx } from '../src/game/farm';
@@ -35,8 +35,8 @@ describe('sound cues', () => {
       .toEqual(['farm.scare', 'farm.celebrate', 'farm.peck', 'farm.confused', 'farm.egg']);
     expect([id('sound', 'shoo'), id('sound', 'firefly'), id('sound', 'crow'), id('sound', 'dawn'), id('sound', 'dusk')])
       .toEqual(['farm.shoo', 'farm.firefly', 'farm.crow', 'world.dawn', 'world.dusk']);
-    // Silent on purpose: naps repeat every tick, rain is carried by the ambience.
-    expect([id('nap'), id('splash', 'rain')]).toEqual([null, null]);
+    // A nap starting sighs; dusk has its own cue and rain is carried by the ambience.
+    expect([id('nap'), id('nap', 'night'), id('splash', 'rain')]).toEqual(['pet.sigh', null, null]);
   });
 
   it('a real farm run (with a night) only produces effects the mapping knows about, including dusk and dawn', () => {
@@ -71,11 +71,11 @@ describe('sound cues', () => {
       { type: 'nap', x: 2, y: 2 },
     ];
     const c = cuesForFarmFx(fx, 12);
-    expect(c.map((x) => x.id)).toEqual(['farm.pickup', 'farm.splash', 'farm.bump', 'farm.egg', 'farm.coin']);
+    expect(c.map((x) => x.id)).toEqual(['farm.pickup', 'farm.splash', 'farm.bump', 'farm.egg', 'pet.sigh', 'farm.coin']);
     expect(c[0].pitch).toBeLessThan(1); // carrots sound a little lower than berries
     expect(c[0].pan).toBe(-0.4);
     expect(c[1].pan).toBe(0.4);
-    expect(c[4].pitch).toBeGreaterThan(1.1); // 3 coins at once
+    expect(c[5].pitch).toBeGreaterThan(1.1); // 3 coins at once
   });
 
   it('replays: every sim event either has a sound or is silent on purpose, and they match the farm', () => {
@@ -173,5 +173,31 @@ describe('sound settings', () => {
     expect(cueGain(true, a, 'effects')).toBeCloseTo(0.4);
     expect(cueGain(true, a, 'ui')).toBeCloseTo(0.2);
     expect(cueGain(true, a, 'effects', true)).toBeCloseTo(0.2);
+  });
+});
+
+describe('sound phase C: voices, ticks, music box', () => {
+  it('each pet has a stable voice, and different pets usually sound different', () => {
+    expect(voicePitch('Pip', 'meadow')).toBe(voicePitch('Pip', 'meadow'));
+    const pitches = ['Pip', 'Mochi', 'Bean', 'Juniper', 'Tofu', 'Clover'].map((n) => voicePitch(n, 'meadow'));
+    for (const p of pitches) expect(p >= 0.82 && p <= 1.25).toBe(true);
+    expect(new Set(pitches).size).toBeGreaterThanOrEqual(5);
+    expect(voicePitch('Pip', 'plum')).not.toBe(voicePitch('Pip', 'meadow'));
+  });
+
+  it('training ticks fire once as practice crosses 25%, 50% and 75%', () => {
+    let ticks = 0, prev = 0;
+    for (let e = 0; e <= 1500; e += 37) { const now = e / 1500; if (trainTickCrossed(prev, now)) ticks++; prev = now; }
+    expect(ticks).toBe(3);
+  });
+
+  it('the music box is reproducible, pentatonic and gentle: night sparser than day', () => {
+    expect(musicBar('day', 7)).toEqual(musicBar('day', 7));
+    const pent = new Set([0, 2, 4, 7, 9]); // C major pentatonic = A minor pentatonic, as pitch classes
+    const count = (mood: 'day' | 'night' | 'pen') => { let n = 0; for (let b = 0; b < 200; b++) { for (const x of musicBar(mood, b)) { expect(pent.has(((x.midi % 12) + 12) % 12)).toBe(true); expect(x.beat >= 0 && x.beat < 4).toBe(true); expect(x.gain).toBeLessThanOrEqual(1); } n += musicBar(mood, b).length; } return n; };
+    const day = count('day'), night = count('night'), pen = count('pen');
+    expect(night).toBeLessThan(pen);
+    expect(pen).toBeLessThan(day);
+    expect(new Set(Array.from({ length: 50 }, (_, b) => JSON.stringify(musicBar('day', b)))).size).toBeGreaterThan(40); // rarely repeats
   });
 });

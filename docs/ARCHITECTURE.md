@@ -4,15 +4,18 @@
 src/
   domain/       canonical typed spec, card registry (Farm pack), validation, contextual hand, recipes, repairs
   sim/          deterministic gridworld (rng, world, compile: spec → runnable stage)
-  learning/     features, Double-Q tables, policies/executors, trainer, evaluation/report, executive, worker
+  domain/describe.ts  cards and rules as plain sentences
+  learning/     features, Double-Q tables, policies/executors, trainer, evaluation/report, executive, worker,
+                summaries, probe, measured lesson checks (lint)
   game/         pets & skills, farm runtime, plans, requests, expansion, progression/shop,
-                Field Guide (tutorial), coaching tips, skill cards, journal, game state
+                Field Guide (tutorial), coaching tips, skill cards, lesson cards, sound cues, journal, game state
   persistence/  versioned save format + IndexedDB storage (localStorage fallback)
   audio/        sound kit (synthesis recipes) and the Web Audio engine (browser only)
   ui/           React presentation only (store, screens, cards/sleeves, charts, replay)
-tests/          vitest suites (+ fixtures/ with a real v1 save)
+tests/          vitest suites (+ fixtures/: a real v1 save, and layout fingerprints)
 scripts/        bench.ts (npm run bench), tutorial-evidence.ts (npm run evidence),
-                e2e-guide.mjs (npm run e2e, Playwright) + e2e-save.ts (its prepared save)
+                e2e-guide.mjs (npm run e2e, Playwright) + e2e-save.ts (its prepared save),
+                layout-fingerprint.ts (the layouts fixture)
 public/sw.js    service worker for offline play
 ```
 
@@ -109,6 +112,7 @@ The same simulator runs pens, evaluation and the farm. Fixed seed + fixed action
 - `game/sound.ts` (pure): cue ids and their bus, priority, cooldown and length; `cueForFx`/`cuesForFarmFx` map one tick's `FarmFx` to cues (by type and tag; coins merge; stereo position from x; naps and rain listed in `SILENT_FX`). The farm adds sound-only effects (`type: 'sound'`: shoo, firefly, crow, dawn, dusk) that the view doesn't draw. `cuesForSimEvents` maps replay frames to the same cues (`SILENT_EVENTS` for moves, ticks and the like). `ambienceMix` says which background layers play; `CueLimiter` (per-cue cooldown, voice cap, thinner low-priority cues at high farm speeds, fake-clock testable); `AudioSettings` defaults, `sanitizeAudio`, `cueGain`.
 - `audio/kit.ts`: one synthesis recipe per cue (oscillators and filtered noise with envelopes, glides, vibrato). `audio/engine.ts`: creates the AudioContext on the first user gesture with sound on, renders every recipe once with `OfflineAudioContext`, plays buffers through a compressor with ±3% pitch variety and stereo panning, and suspends while the tab is hidden. It never fetches anything. Ambience: three 12 s loops (`ambienceRecipe`: seeded birdsong, crickets, rain) rendered at 22 kHz with an extra 0.8 s folded back into the start for a seamless loop; each plays on its own gain, which glides to `ambienceMix × master × background` (×0.4 off the Farm screen) whenever the scene changes. Noise voices share one 4.1 s noise buffer.
 - Cues come from the farm loop (`store.startFarm` → `audio.playFarm`, Farm screen only unless "Farm sounds on other screens"; it also sets the ambience scene and notices requests completed), replays (`ui/replay.ts` keeps each frame's sim events; `useReplay(..., sound)` plays them, off while training runs), the Field Guide (`store.mutate`: step, new lesson, lesson done), unlocks (`store.mutate` notices a new unlock), training (`ui/training.ts`: start; certified / not / loophole on the report) and UI handlers (cards, pen placement, save, adopt, shop). `ui/sound.ts` toggles sound (header button, M key).
+- Phase C: the duty pet's voice (`voicePitch(name, palette)`, set from `App`) pitches a `pet.chirp` added by `playFarm` after pickups and finished jobs; naps starting play `pet.sigh`. The probe's traced path plays `probe.pluck`s. `trainTickCrossed` adds optional ticks at 25/50/75% (not at Fast speed). The **music box** schedules `musicBar(mood, bar)` (seeded pentatonic bars; mood = day / night on the farm, pen elsewhere) about 1.5 s ahead on the audio clock into its own gain node, which ducks under result jingles (`DUCK`).
 - Settings: `settings.sound` and `settings.audio` (volumes and options). Additive, no save version bump: `parseGame` fills and clamps them, and older saves start with sound on because the old `sound: false` was never a player's choice.
 
 ## Learning

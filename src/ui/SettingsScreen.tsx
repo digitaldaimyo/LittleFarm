@@ -85,7 +85,7 @@ function SoundSettings() {
     audio.configure(store.state.settings.sound, store.state.settings.audio);
     if (test) audio.play(test);
   };
-  const slider = (k: 'master' | 'effects' | 'ui' | 'ambience', label: string, help: string, test: Parameters<typeof audio.play>[0]) => (
+  const slider = (k: 'master' | 'effects' | 'ui' | 'ambience' | 'music', label: string, help: string, test: Parameters<typeof audio.play>[0]) => (
     <label className="trait">
       <span><b>{label}</b> <span className="num">{Math.round(a[k] * 100)}%</span></span>
       <input type="range" min={0} max={1} step={0.05} value={a[k]} disabled={!g.settings.sound} aria-label={`${label} volume`}
@@ -105,8 +105,11 @@ function SoundSettings() {
       {slider('effects', 'Farm and pen', 'Pickups, coins, splashes, bumps.', 'farm.splash')}
       {slider('ui', 'Cards and jingles', 'Cards snapping, training results, unlocks.', 'train.certified')}
       {slider('ambience', 'Background', 'Birds by day, crickets at night, rain. Full on the farm, softer elsewhere.', 'world.dawn')}
+      <label className="small"><input type="checkbox" data-tut="music-on" checked={a.musicOn} disabled={!g.settings.sound} onChange={(e) => set({ musicOn: e.target.checked })} /> Music box (gentle tunes that never repeat; brighter by day, sparser at night, lighter while teaching)</label>
+      {a.musicOn && slider('music', 'Music', 'The music box’s volume. It dips under result jingles.', 'pet.chirp')}
+      <label className="small"><input type="checkbox" checked={a.trainTicks} disabled={!g.settings.sound} onChange={(e) => set({ trainTicks: e.target.checked })} /> Soft ticks at 25%, 50% and 75% of practice (not at Fast speed)</label>
       <label className="small"><input type="checkbox" checked={a.offScreen} disabled={!g.settings.sound} onChange={(e) => set({ offScreen: e.target.checked })} /> Farm sounds on other screens (quieter)</label>
-      <p className="small muted">All sounds are made on your device as you play; nothing is downloaded. Optional music is coming in a later update.</p>
+      <p className="small muted">All sounds are made on your device as you play; nothing is downloaded. Pets chirp in their own voice when they pick something up or finish a job.</p>
     </div>
   );
 }

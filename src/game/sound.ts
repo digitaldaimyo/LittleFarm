@@ -17,7 +17,9 @@ export type CueId =
   // World
   | 'world.dawn' | 'world.dusk'
   // Progression and the Field Guide
-  | 'pet.adopt' | 'ui.unlock' | 'ui.shop' | 'ui.request' | 'guide.step' | 'guide.offer' | 'guide.done';
+  | 'pet.adopt' | 'ui.unlock' | 'ui.shop' | 'ui.request' | 'guide.step' | 'guide.offer' | 'guide.done'
+  // Phase C: personality and small extras
+  | 'pet.chirp' | 'pet.sigh' | 'probe.pluck' | 'train.tick';
 
 export type Bus = 'effects' | 'ui';
 
@@ -64,6 +66,10 @@ export const CUES: Record<CueId, CueDef> = {
   'world.dawn': { bus: 'effects', priority: 'B', cooldownMs: 5000, durationMs: 1100 },
   'world.dusk': { bus: 'effects', priority: 'B', cooldownMs: 5000, durationMs: 1300 },
   'pet.adopt': { bus: 'ui', priority: 'A', cooldownMs: 500, durationMs: 250 },
+  'pet.chirp': { bus: 'effects', priority: 'B', cooldownMs: 2500, durationMs: 200 },
+  'pet.sigh': { bus: 'effects', priority: 'C', cooldownMs: 4000, durationMs: 650 },
+  'probe.pluck': { bus: 'ui', priority: 'C', cooldownMs: 40, durationMs: 160 },
+  'train.tick': { bus: 'ui', priority: 'C', cooldownMs: 300, durationMs: 60 },
   'ui.request': { bus: 'ui', priority: 'B', cooldownMs: 600, durationMs: 650 },
   'guide.step': { bus: 'ui', priority: 'B', cooldownMs: 300, durationMs: 90 },
   'guide.offer': { bus: 'ui', priority: 'B', cooldownMs: 800, durationMs: 300 },
@@ -82,9 +88,9 @@ export interface CueRequest {
 
 /**
  * Farm effects that are silent on purpose, keyed by `type` or `type:text`. Every FarmFx must either map to a
- * cue or appear here — tested. (`nap` repeats every tick of a nap; rain is carried by the rain ambience.)
+ * cue or appear here — tested. (Dusk has its own cue; rain is carried by the rain ambience. A plain `nap` is a nap starting: a sigh.)
  */
-export const SILENT_FX = new Set(['nap', 'splash:rain']);
+export const SILENT_FX = new Set(['nap:night', 'splash:rain']);
 
 const PICKUP_PITCH: Record<string, number> = { egg: 1.15, carrot: 0.9 };
 
@@ -104,6 +110,7 @@ export function cueForFx(f: FarmFx): CueId | null {
     case 'celebrate': return f.text === 'shoo!' ? 'farm.scare' : 'farm.celebrate';
     case 'confused': return f.text === 'pecked' ? 'farm.peck' : 'farm.confused';
     case 'sound': return (f.text && SOUND_TAGS[f.text]) || null;
+    case 'nap': return 'pet.sigh';
     default: return null;
   }
 }
@@ -219,4 +226,40 @@ export function sanitizeAudio(a: unknown): AudioSettings {
 export function cueGain(enabled: boolean, a: AudioSettings, bus: Bus | 'ambience', offScreen = false): number {
   if (!enabled) return 0;
   return a.master * (bus === 'ui' ? a.ui : bus === 'ambience' ? a.ambience : a.effects) * (offScreen ? 0.5 : 1);
+}
+
+/** Each pet's voice: a stable pitch from its name and colours, so two pets sound different (0.82–1.25). */
+export function voicePitch(name: string, palette: string): number {
+  let h = 2166136261;
+  for (const ch of `${name}|${palette}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+  return Math.round((0.82 + (h % 1000) / 1000 * 0.43) * 100) / 100;
+}
+
+/** Optional training ticks: one soft tick as practice passes 25%, 50% and 75%. */
+export function trainTickCrossed(prev: number, now: number): boolean {
+  return [0.25, 0.5, 0.75].some((q) => prev < q && now >= q);
+}
+
+export type MusicMood = 'day' | 'night' | 'pen';
+export interface MusicNote { beat: number; midi: number; beats: number; gain: number }
+
+/**
+ * The music box: one 4-beat bar of gentle pentatonic notes, chosen from a seed (the bar number), so it never
+ * repeats exactly but is reproducible. Day is brighter and fuller, night lower and sparser, the pen lighter.
+ */
+export function musicBar(mood: MusicMood, seed: number): MusicNote[] {
+  let s = (seed * 2654435761 + 12345) >>> 0;
+  const r = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
+  const scale = mood === 'night' ? [57, 60, 62, 64, 67, 69] : [60, 62, 64, 67, 69, 72]; // A minor / C major pentatonic
+  const density = mood === 'day' ? 0.6 : mood === 'pen' ? 0.45 : 0.3;
+  const out: MusicNote[] = [];
+  // A soft root under the bar (every other bar at night).
+  if (mood !== 'night' || seed % 2 === 0) out.push({ beat: 0, midi: (seed % 4 === 2 ? scale[3] : scale[0]) - 12, beats: 4, gain: 0.5 });
+  let last = Math.floor(r() * scale.length);
+  for (let beat = 0; beat < 4; beat += 0.5) {
+    if (r() > density * (beat % 1 === 0 ? 1 : 0.4)) continue;
+    last = Math.max(0, Math.min(scale.length - 1, last + Math.round((r() - 0.5) * 3)));
+    out.push({ beat, midi: scale[last] + (mood === 'pen' && r() < 0.3 ? 12 : 0), beats: r() < 0.3 ? 2 : 1, gain: 0.6 + r() * 0.3 });
+  }
+  return out;
 }
