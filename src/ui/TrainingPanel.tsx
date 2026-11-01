@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { isGuideStage } from '../game/tutorial';
 import { BehaviorSummaryView } from './Summary';
 import { curiosities } from '../learning/summary';
 import { store, useStore } from './store';
@@ -92,6 +93,7 @@ export function TrainingPanel() {
     <div className="training panel" aria-live="polite">
       <div className="row between">
         <div>
+          {isGuideStage(t.stage) && <span className="badge-exp">{t.stage.id === 'stage-tutorial' ? 'Field Guide lesson · free' : 'Field Guide experiment · free · saved only if you choose'}</span>}
           <div className="eyebrow">{t.status === 'evaluating' ? 'Testing on held-out layouts…' : running ? `${pet?.name} is learning ${t.stage.learner.skill} — real tries, real treats` : t.status === 'done' ? 'Lesson report' : t.status}</div>
           <strong>{t.stage.name}</strong>
           {t.navigator && <div className="small muted">Movement option: {t.navigator.skill} r{t.navigator.rev} (reused, not retrained)</div>}
@@ -142,6 +144,7 @@ export function TrainingPanel() {
       ['Before', r.before, t.resumedFrom ? `r${t.resumedFrom}` : 'untrained'],
       ['Random wandering', r.random, 'baseline'],
       ...(r.randomOptions ? [['Random choices', r.randomOptions, 'same skills, picked at random'] as [string, EvalResult, string]] : []),
+      ...(r.scattered ? [['Scattered layouts', r.scattered, 'target & start moved'] as [string, EvalResult, string]] : []),
       ['After', r.after, `r${nextRev}`],
       ['Transfer', r.transfer, 'bigger unseen pens'],
     ];
@@ -158,16 +161,22 @@ export function TrainingPanel() {
         <div className={`verdict ${r.passed ? 'good' : 'warn'}`}>
           {r.passed ? '✓ Certified' : '△ Not certified yet'}: {r.after.successes}/{r.after.episodes} successes on held-out layouts (needs {pct(t.stage.evaluation.minimumSuccessRate)}).
         </div>
-        <div className="compare" role="table" aria-label="Before and after comparison">
+        <div className="compare" role="table" aria-label="Before and after comparison" data-tut="report-compare">
           {rows.map(([name, e, sub]) => (
             <div key={name} className="cmp-row" role="row">
               <span role="cell" className="cmp-name">{name}<span className="muted small"> {sub}</span></span>
               <span role="cell" className="cmp-bar"><i className={name === 'After' ? 'after' : ''} style={{ width: `${e.successRate * 100}%` }} /></span>
               <span role="cell" className="num">{e.successes}/{e.episodes}</span>
               <button className="icon-btn small" onClick={() => { t.replay = e.traces[0] ?? null; store.emit(); }} aria-label={`Replay ${name}`} disabled={!e.traces.length}>▶</button>
+              {(r.scattered ? name === 'Scattered layouts' : name === 'After') && e.traces.some((x) => !x.success) && (
+                <button className="btn ghost small cmp-miss" data-tut="replay-miss" onClick={() => { t.replay = e.traces.find((x) => !x.success) ?? null; store.mutate((g) => { g.progress.flags.replayedMiss = true; }); }}>▶ a miss</button>
+              )}
             </div>
           ))}
         </div>
+        {r.scattered && r.scattered.successRate < r.after.successRate - 0.15 && (
+          <div className="diag warning small">This pen pins the {t.stage.learner.focus}{t.stage.environment.some((p) => p.cardId === 'place.pet' && p.args.mode === 'fixed') ? ' and the start' : ''}, so every test layout looks the same ({Math.round(r.after.successRate * 100)}%). When they move, it manages {Math.round(r.scattered.successRate * 100)}%. Scatter them to teach a skill instead of a route.</div>
+        )}
         <div className="small muted">Held-out seeds {r.evalSeeds[0]}…{r.evalSeeds.at(-1)} (n={r.evalSeeds.length}) are never used in training. Lesson took {(t.ms / 1000).toFixed(1)}s of compute.</div>
 
         {r.exploits.map((x) => (
@@ -205,7 +214,7 @@ export function TrainingPanel() {
           )}
         </div>
         <div className="row gap wrap actions">
-          <button className="btn primary" disabled={t.saved} onClick={save}>{t.saved ? `Saved r${nextRev - 1}` : r.passed ? `Save skill as r${nextRev}` : `Save anyway as r${nextRev}`}</button>
+          <button className="btn primary" data-tut="save-skill" disabled={t.saved} onClick={save}>{t.saved ? `Saved r${nextRev - 1}` : r.passed ? `Save skill as r${nextRev}` : `Save anyway as r${nextRev}`}</button>
           <button className="btn" onClick={() => { const err = pet && startTraining(pet, store.state.stages.find((x) => x.id === t.stage.id) ?? t.stage, { resume: !!getSkill(pet, t.stage.learner.skill) }); if (err) store.toast(err, 'warn'); }}>Train more</button>
           <button className="btn ghost" onClick={closeTraining}>{t.saved ? 'Close' : 'Discard'}</button>
         </div>

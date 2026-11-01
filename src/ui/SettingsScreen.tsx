@@ -3,7 +3,7 @@ import { store, useStore } from './store';
 import { parseGame, serializeGame } from '../persistence/save';
 import { newGame } from '../game/state';
 import { clearLocal } from '../persistence/storage';
-import { TUTORIAL } from '../game/tutorial';
+import { startChapter } from '../game/tutorial';
 
 export function SettingsScreen() {
   const s = useStore();
@@ -41,11 +41,11 @@ export function SettingsScreen() {
         <p className="small muted">Sound: this version is silent.</p>
       </div>
       <div className="panel">
-        <h3>Tutorial</h3>
-        <p className="small">{g.progress.tutorialDone ? 'Tutorial finished or skipped.' : `Step ${g.progress.tutorialStep + 1} of ${TUTORIAL.length}.`}</p>
+        <h3>Field Guide</h3>
+        <p className="small">Lessons on how to set up training that works — replay any of them, any time.</p>
         <div className="row gap">
-          <button className="btn" onClick={() => s.mutate((x) => { x.progress.tutorialDone = false; x.progress.tutorialStep = 0; })}>Replay tutorial hints</button>
-          {!g.progress.tutorialDone && <button className="btn ghost" onClick={() => s.mutate((x) => { x.progress.tutorialDone = true; })}>Skip tutorial</button>}
+          <button className="btn" onClick={() => s.setUi({ screen: 'guide' })}>Open the Guide</button>
+          <button className="btn ghost" onClick={() => { s.mutate((x) => startChapter(x, 'first')); s.setUi({ screen: 'teach' }); }}>Replay the first lesson</button>
         </div>
       </div>
       <div className="panel">

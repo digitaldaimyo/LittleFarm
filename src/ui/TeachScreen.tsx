@@ -20,6 +20,7 @@ import { MAX_OPTIONS, MAX_WATCH } from '../learning/routine';
 import { ABILITY_LABELS, ABILITY_ORDER, MAX_SENSES, STATE_MAX, STATE_WARN, presetSenses, stateSpaceSize } from '../learning/senses';
 import { templateOf } from '../learning/skilldef';
 import { canTrain, trainingCost, undoStage } from '../game/state';
+import { currentStep, isGuideStage } from '../game/tutorial';
 import { evaluate, DEFAULT_TRAITS } from '../learning/episodes';
 import { policySpecFor, heldOutSeeds } from '../learning/report';
 import { ObjectIcon } from './art';
@@ -81,10 +82,11 @@ export function TeachScreen() {
   );
 }
 
+/** Which binder the current Field Guide step needs (its tab glows). */
 function tutorialWants(g: ReturnType<typeof useStore>['state'], b: Binder): boolean {
-  if (g.progress.tutorialDone) return false;
-  const step = g.progress.tutorialStep;
-  return (step === 2 && b === 'environment') || (step === 3 && b === 'rules');
+  const id = currentStep(g)?.id;
+  if (!id) return false;
+  return ({ 'place-berry': 'environment', 'unpin': 'environment', 'treat-rule': 'rules', 'success': 'rules', 'long': 'pet' } as Record<string, Binder>)[id] === b;
 }
 
 function StagePicker({ stage }: { stage: StageSpec }) {
@@ -232,12 +234,13 @@ function TrainBar({ stage, pet, blocked }: { stage: StageSpec; pet: Pet; blocked
   return (
     <div className="train-bar">
       <div className="small muted">
+        {isGuideStage(stage) && <span className="badge-exp">Field Guide · free</span>}{' '}
         {pet.name}: {Math.round(pet.energy)} energy · lesson costs {trainingCost(stage)} · {stage.learner.episodes} tries
         {existing ? ` · has ${stage.learner.skill} r${existing.activeRev}` : ''}
       </div>
       <div className="row gap wrap">
         <button className="btn" disabled={busy || blocked} onClick={preflight}>Preflight test</button>
-        <button className={`btn primary ${s.state.progress.tutorialStep === 4 && !s.state.progress.tutorialDone ? 'pulse' : ''}`} disabled={busy || blocked || !can.ok || needsNav}
+        <button data-tut="train-btn" className="btn primary" disabled={busy || blocked || !can.ok || needsNav}
           onClick={() => { const err = startTraining(pet, stage, { resume: false }); if (err) store.toast(err, 'warn'); }}>
           {existing ? `Train fresh` : `Train ${stage.learner.skill}`}
         </button>
@@ -263,7 +266,7 @@ function EnvironmentBinder({ stage }: { stage: StageSpec }) {
         <button role="radio" aria-checked={s.ui.placeMode === 'fixed'} className={s.ui.placeMode === 'fixed' ? 'on' : ''} onClick={() => s.setUi({ placeMode: 'fixed' })}>Place here</button>
       </div>
       <div className="hand-row wrap">
-        {all.map((h) => <HandCardView key={h.card.id} h={h} selected={s.ui.placing === h.card.id} onPick={() => s.setUi({ placing: s.ui.placing === h.card.id ? null : h.card.id, slot: null })} />)}
+        {all.map((h) => <HandCardView key={h.card.id} h={h} tut={h.card.id === 'kind:berry' ? 'env-berry' : undefined} selected={s.ui.placing === h.card.id} onPick={() => s.setUi({ placing: s.ui.placing === h.card.id ? null : h.card.id, slot: null })} />)}
         <button className={`card g-obj ${s.ui.placing === 'place.pet' ? 'sel' : ''}`} onClick={() => s.setUi({ placing: s.ui.placing === 'place.pet' ? null : 'place.pet', slot: null })}><span className="card-title">Pet start</span><span className="card-sub">placement</span></button>
         <button className={`card g-obj ${s.ui.placing === 'zone.rect' ? 'sel' : ''}`} onClick={() => s.setUi({ placing: s.ui.placing === 'zone.rect' ? null : 'zone.rect', zoneStart: null, slot: null })}><span className="card-title">Area</span><span className="card-sub">paint 2 corners</span></button>
         <button className="card g-obj" onClick={() => {
@@ -278,7 +281,7 @@ function EnvironmentBinder({ stage }: { stage: StageSpec }) {
         }}><span className="card-title">Time of day</span><span className="card-sub">{(() => { const t = stage.environment.find((p) => p.cardId === 'place.time'); return t ? paramOf(t, 'mode', 'day') : 'day (default)'; })()}</span></button>
       </div>
       <h4>In this pen</h4>
-      <ul className="placements">
+      <ul className="placements" data-tut="placements">
         {stage.environment.map((p) => {
           const card = cardOf(p);
           const kind = isNode(p.args.kind) ? p.args.kind.cardId.slice(5) : null;
@@ -289,6 +292,8 @@ function EnvironmentBinder({ stage }: { stage: StageSpec }) {
                 {p.cardId === 'place.weather' ? `Weather: ${paramOf(p, 'mode', 'dry') === 'random' ? 'rain or dry (random each try)' : paramOf(p, 'mode', 'dry')}` : p.cardId === 'zone.rect' ? `Area “${paramOf(p, 'name', 'coop')}” ${paramOf(p, 'w', 2)}×${paramOf(p, 'h', 2)} ${paramOf(p, 'where', 'fixed') === 'random' ? '(random spot each try)' : `at (${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`}` : p.cardId === 'place.time' ? `Time of day: ${paramOf(p, 'mode', 'day') === 'random' ? 'day or night (random each try)' : paramOf(p, 'mode', 'day')}` : p.cardId === 'place.pet' ? `Pet starts at ${paramOf(p, 'mode', 'random') === 'random' ? 'a random spot' : `(${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`}` : p.cardId === 'place.random' ? `${paramOf(p, 'count', 1)} × ${REGISTRY.objects.get(kind ?? '')?.name ?? '?'} scattered (${paramOf(p, 'region', 'anywhere')})` : `${REGISTRY.objects.get(kind ?? '')?.name ?? '?'} at (${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`}
               </button>
               <span className="chip">{card?.presentation.title}</span>
+              {p.cardId === 'place.fixed' && <button className="btn ghost small" onClick={() => update((st) => { const x = st.environment.find((y) => y.id === p.id); if (x) { x.cardId = 'place.random'; x.args = { kind: x.args.kind, count: 1, region: 'anywhere' }; } })}>Scatter this</button>}
+              {p.cardId === 'place.pet' && paramOf(p, 'mode', 'random') === 'fixed' && <button className="btn ghost small" onClick={() => update((st) => { const x = st.environment.find((y) => y.id === p.id); if (x) x.args.mode = 'random'; })}>Random start</button>}
               <button className="icon-btn small" aria-label="Remove" onClick={() => { update((st) => { st.environment = st.environment.filter((x) => x.id !== p.id); }); s.setUi({ slot: null }); }}>✕</button>
             </li>
           );
@@ -326,19 +331,21 @@ function RulesBinder({ stage }: { stage: StageSpec }) {
   const errs = nodesWithErrors(diags);
   const update = (fn: (st: StageSpec) => void) => withSnapshot(stage.id, fn);
   const sugg = suggestedRules(stage);
-  return (
-    <div className="binder-body">
-      {sugg.map((g) => (
-        <button key={g.label} className={`suggest ${stage.rules.length === 0 ? 'pulse' : ''}`} onClick={() => update((st) => { st.rules = g.rules; st.success = g.success; })}>
+  const building = ['treat-rule', 'success'].includes(currentStep(s.state)?.id ?? '');
+  const suggestions = sugg.map((g) => (
+        <button key={g.label} className="suggest" onClick={() => update((st) => { st.rules = g.rules; st.success = g.success; })}>
           <span className="eyebrow">Suggested recipe</span>
           <strong>{g.label}</strong>
           <span className="small muted">{stage.rules.length ? 'Replaces the current rules.' : 'One tap: treats for success, a tiny nudge each step.'}</span>
         </button>
-      ))}
+      ));
+  return (
+    <div className="binder-body">
+      {building ? <details className="more"><summary>Stuck? Use the suggested recipe</summary>{suggestions}</details> : suggestions}
       <h4>Rule mat</h4>
       {stage.rules.length === 0 && <p className="small muted">No rules yet.</p>}
       {stage.rules.map((r) => <RuleRow key={r.id} stage={stage} r={r} errs={errs} />)}
-      <button className="btn ghost" onClick={() => { let id = ''; update((st) => { const n = node('rule', { label: `Rule ${st.rules.length + 1}`, then: [], if: [] }); id = n.id; st.rules.push(n); }); s.setUi({ slot: { parentId: id, socket: 'when', index: null } }); }}>+ Add rule</button>
+      <button className="btn ghost" data-tut="add-rule" onClick={() => { let id = ''; update((st) => { const n = node('rule', { label: `Rule ${st.rules.length + 1}`, then: [], if: [] }); id = n.id; st.rules.push(n); }); s.setUi({ slot: { parentId: id, socket: 'when', index: null } }); }}>+ Add rule</button>
       {s.state.templates.some((t) => t.output.name === 'Rule') && (
         <div className="row gap wrap">
           <span className="small">From template:</span>
@@ -348,7 +355,7 @@ function RulesBinder({ stage }: { stage: StageSpec }) {
         </div>
       )}
       <h4>Success & fail</h4>
-      <div className="rule success-row">
+      <div className="rule success-row" data-tut="success-slot">
         <span className="kw good">SUCCESS when</span>
         <SlotChip stage={stage} slot={{ parentId: '#success', socket: 'success', index: null }} label="condition" errors={errs} />
       </div>
@@ -479,7 +486,7 @@ function PetBinder({ stage, pet }: { stage: StageSpec; pet: Pet }) {
           </label>
         </>
       )}
-      <label className="param-edit">Practice tries
+      <label className="param-edit" data-tut="practice-slider">Practice tries
         <input type="range" min={template === 'fetch' ? 100 : 300} max={template === 'fetch' ? 4000 : 12000} step={100} value={stage.learner.episodes} onChange={(e) => update((st) => { st.learner.episodes = Number(e.target.value); })} />
         <span className="num">{stage.learner.episodes}</span>
       </label>

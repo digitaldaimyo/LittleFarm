@@ -27,10 +27,12 @@ Requires Node 18+ (developed on Node 22). Needs no secrets or environment variab
 
 ## How to play (first hour)
 
+The **First lesson** banner walks you through this, explaining *why* at each step:
+
 1. **Adopt** a pet and choose its name and colours.
 2. **Teach → Environment:** pick the *Berry* card and tap the pen. *Scatter* puts it somewhere new on every try, which teaches a skill that works anywhere.
-3. **Rules:** tap the suggested recipe *Treat for reaching the berry*. This adds rules (WHEN pet reaches berry THEN +10 treats, end try; a small nudge every step) and a SUCCESS condition.
-4. **Train Approach.** Watch the success line climb. Pause, cancel and speed controls are always available.
+3. **Rules:** build your first rule yourself. *+ Add rule*, WHEN *Reaches → Berry*, THEN *Treat* and *End try*. Then set **SUCCESS** to *Is at → Berry*. Treats teach; SUCCESS checks. (Stuck? A suggested recipe is one tap away.)
+4. **Train Approach.** Watch the success line climb. Pause, cancel and speed controls are always available. Field Guide lessons cost no energy.
 5. **Read the report.** Before vs random vs after vs transfer, measured on 20 layouts the pet never trained on. Replay any of them.
 6. **Save skill.** It becomes revision r1 in the pet's repertoire.
 7. **Farm → Forage berries.** The pet uses the Approach it just learned. Berries sell for 1 coin.
@@ -42,6 +44,8 @@ Requires Node 18+ (developed on Node 22). Needs no secrets or environment variab
 - whether success ends the try or is **judged when time is up**.
 
 Then write its rules with the same cards, using *the target* to mean "whatever this skill is aimed at". The Curriculum has two examples, *Wait for it* and *Keep clear*. On the farm, **Run a skill** runs any of your skills aimed at anything (berry, bin, home, pond…), with no retraining.
+
+After the first lesson, the **Guide** tab (the Trainer's Field Guide) offers short, free lessons that teach how to set up training that works, each by trying something the wrong way first and comparing your own pet's numbers: *Read the report: practice* (300 vs 1,500 tries) and *Scatter, don't pin* (one perfect layout vs a scattered pen). It also holds the **Trainer's notebook** (a checklist built from measured results) and a **glossary**. More lessons are coming (`docs/TUTORIAL_PLAN.md`).
 
 Try the optional **Treat for every pickup** recipe to watch a pet discover a reward loophole, then fix it with a repair card.
 

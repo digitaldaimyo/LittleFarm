@@ -2,6 +2,7 @@ import type { LearnerTemplate, SkillName, SpecNode, StageSpec, Template } from '
 import type { SenseSkillDef } from '../learning/policies';
 import type { FarmRequest } from './requests';
 import type { BehaviorSummary } from '../learning/summary';
+import type { GuideRun, GuideState } from './tutorial';
 import type { SerializedQ } from '../learning/qtable';
 import type { Traits } from '../learning/episodes';
 import type { ExecutiveTable, Invocation } from '../learning/executive';
@@ -192,6 +193,10 @@ export interface Settings {
 export interface Progress {
   tutorialStep: number;
   tutorialDone: boolean;
+  /** Field Guide lessons (created lazily; older saves map their tutorial onto Chapter 1). */
+  guide?: GuideState;
+  /** Results of training runs in Field Guide pens, for side-by-side comparisons. */
+  guideRuns?: Record<string, GuideRun[]>;
   unlocks: string[];
   totalCoins: number;
   flags: Record<string, boolean>;

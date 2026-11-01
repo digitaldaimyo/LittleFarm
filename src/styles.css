@@ -259,7 +259,7 @@ button.node { padding: 2px 9px; font-weight: 600; }
 .verdict.good { background: var(--leaf-tint); color: var(--leaf-ink); }
 .verdict.warn { background: var(--warn-bg); color: var(--warn-ink); }
 .compare { display: flex; flex-direction: column; gap: 6px; }
-.cmp-row { display: grid; grid-template-columns: 140px 1fr 48px 32px; gap: 8px; align-items: center; font-size: 13.5px; }
+.cmp-row { display: grid; grid-template-columns: 140px 1fr 48px 32px auto; gap: 8px; align-items: center; font-size: 13.5px; }
 .cmp-name { display: flex; flex-direction: column; line-height: 1.15; }
 .cmp-bar { height: 14px; background: var(--mat); border-radius: 4px; overflow: hidden; }
 .cmp-bar i { display: block; height: 100%; background: #9AA59F; border-radius: 0 4px 4px 0; }
@@ -373,3 +373,22 @@ button.node { padding: 2px 9px; font-weight: 600; }
 .probe-arrow { fill: #24527A; }
 .probe-arrow.guessed { fill: #9AA59F; }
 .probe-path { fill: none; stroke: #C27C0E; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+
+.guide-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.guide-item { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.guide-item.active { border-color: var(--leaf); box-shadow: 0 0 0 2px rgba(46,122,76,.15); }
+.guide-item.locked { opacity: .6; }
+.guide-steps { margin: 8px 0 0; padding-left: 20px; }
+.guide-steps li.done { color: var(--muted); text-decoration: line-through; }
+.guide-steps li.now { font-weight: 700; }
+.compare .cmp-row.head { font-weight: 600; }
+.notebook ol { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.glossary { margin: 0; display: grid; gap: 8px; }
+.glossary dt { font-weight: 700; }
+.glossary dd { margin: 0; color: var(--ink-2); }
+.tut-why { color: var(--ink-2); font-size: 13px; margin-top: 2px; }
+.tut-callout { outline: 3px solid #F0B44C !important; outline-offset: 3px; border-radius: 10px; animation: tutglow 1.6s ease-in-out infinite; }
+@keyframes tutglow { 0%, 100% { outline-color: #F0B44C; } 50% { outline-color: rgba(240,180,76,.35); } }
+.badge-exp { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #EFE6F6; color: #5A3780; margin-left: 6px; }
+
+.tutorial.quiet { background: var(--ground); border-bottom-color: var(--line); }

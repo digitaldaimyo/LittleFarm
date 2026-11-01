@@ -29,6 +29,7 @@ console.log('A. Where things are placed');
 run('Scatter berry + random start (default)', base, scatterTest);
 run('Berry fixed at (5,5), pet fixed at (1,1)', (seed) => { const s = base(seed); s.environment = [node('place.pet', { mode: 'fixed', x: 1, y: 1 }), node('place.fixed', { kind: node('kind:berry'), x: 5, y: 5 }), node('place.random', { kind: node('kind:rock'), count: 3 })]; return s; }, scatterTest);
 run('Berry fixed, pet random', (seed) => { const s = base(seed); s.environment = [node('place.pet', { mode: 'random' }), node('place.fixed', { kind: node('kind:berry'), x: 5, y: 5 }), node('place.random', { kind: node('kind:rock'), count: 3 })]; return s; }, scatterTest);
+run('Everything pinned (pet 0,0 / berry 7,7 / 3 fixed rocks)', (seed) => { const s = base(seed); s.environment = [node('place.pet', { mode: 'fixed', x: 0, y: 0 }), node('place.fixed', { kind: node('kind:berry'), x: 7, y: 7 }), node('place.fixed', { kind: node('kind:rock'), x: 3, y: 3 }), node('place.fixed', { kind: node('kind:rock'), x: 5, y: 2 }), node('place.fixed', { kind: node('kind:rock'), x: 2, y: 6 })]; return s; }, scatterTest);
 console.log('\nB. Rewards');
 run('Treat at berry + small nudge each step (default)', base, scatterTest);
 run('Treat at berry only, no nudge', (seed) => { const s = base(seed); s.rules = s.rules.slice(0, 1); return s; }, scatterTest);

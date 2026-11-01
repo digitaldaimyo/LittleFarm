@@ -190,7 +190,7 @@ export function FarmScreen() {
           <h3>Jobs</h3>
           <div className="job-deck" role="radiogroup" aria-label="Job assignment">
             {jobCards(pet, g.progress.unlocks).map((j) => (
-              <button key={j.id} role="radio" aria-checked={selected === j.id} disabled={!!j.locked} className={`job ${selected === j.id ? 'sel' : ''} ${j.locked ? 'locked' : ''} ${j.id === 'forage' && !g.progress.flags.assignedJob && !j.locked ? 'pulse' : ''}`} onClick={() => setJob(j.id)}>
+              <button key={j.id} data-tut={`job-${j.id}`} role="radio" aria-checked={selected === j.id} disabled={!!j.locked} className={`job ${selected === j.id ? 'sel' : ''} ${j.locked ? 'locked' : ''}`} onClick={() => setJob(j.id)}>
                 <span className="job-title">{j.title}</span>
                 <span className="job-blurb">{j.locked ?? j.blurb}</span>
                 {j.needs && !j.locked && <span className="chip">uses {j.needs}</span>}

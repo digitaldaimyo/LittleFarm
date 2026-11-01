@@ -2,7 +2,14 @@
 
 **Goal:** turn the tutorial from "here are the buttons" into "here's how a good trainer thinks". By the end, a player should be able to set up a training pen for a behaviour *they* want, predict roughly whether it will work, read the evidence when it doesn't, and fix it.
 
-Status: **plan for review.** Nothing below is implemented yet.
+Status: **Phase A shipped** (Chapter 1 revised, Field Guide engine and screen, lessons 2–3, notebook, glossary). Phases B–C are still to do.
+
+### Phase A: what shipped, and what changed from the plan
+- **Decisions taken:** contrast lessons, free Field Guide training, lessons offered in context, neutral voice, first treat rule built card by card (the suggested recipe sits behind "Stuck?").
+- **Chapter 1** now has 10 steps. The tutorial pen starts with rocks but no berry, no rules and **no SUCCESS**, and the player builds all three. "Read the report" highlights the comparison rows and ends with "I've looked".
+- **Lesson 3 (Scatter) needed a sharper contrast.** Pinning only the berry (with random rocks) gave 55–85% on new layouts, too unreliable for a lesson. A fully pinned pen (pet in one corner, berry in the other, rocks fixed) gives **15% on 5/5 seeds**, and scattering only the berry and start recovers **85–95%**.
+- **A real gap found and fixed:** when a pen pins its target or start, every "new layout" is identical, so the report showed the pinned pet at ~100%. Reports now add a **Scattered layouts** row (target and start moved) plus a warning whenever pinning hides the problem, for every lesson, not only the tutorial.
+- Old saves: a finished old tutorial maps to Chapter 1 done, and the Field Guide is offered. Settings has "Replay the first lesson", which resets its pen.
 
 ---
 
@@ -38,7 +45,7 @@ Measured in this game, not borrowed from RL folklore. Training ran on 3 seeds, a
 
 | Lesson | Evidence |
 |---|---|
-| **Scatter, don't pin.** Fixed positions teach *that* layout. | Scattered berry + random start: **96%**. Berry fixed + pet fixed: **79%**. Berry fixed, pet random: **73%**. |
+| **Scatter, don't pin.** Fixed positions teach *that* layout. | Scattered berry + random start: **96%**. Berry fixed + pet fixed (random rocks): **79%**. Berry fixed, pet random: **73%**. One fully pinned layout (pet, berry and rocks fixed): **15%** on 5/5 seeds; scattering just the berry and start recovers 85–95%. |
 | **Pay for the result.** A treat for finishing is what matters; the "hurry up" nudge is a small helper. | Treat + nudge **96%**. Treat only **92%**. Nudge only, no treat: **12%**. |
 | **Paying for effort misleads.** | "Treat for getting closer" (no step cost): **87%** vs 96%, and the rule checker warns (*shaping-loop*, *unbounded-reward*). Loophole recipes: *pay per pickup* → 0% deliveries (about 30 pickups per try); *pay per shoo* → 18% (about 30 shoos per try). "Once per object" fixes both (80–90%). |
 | **Practice has a cliff.** Too few tries looks like failure. | 100 tries **33%** · 300 **36%** · 700 **83%** · 1,500 **96%** · 3,000 **96%**. |

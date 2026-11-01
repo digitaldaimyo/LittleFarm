@@ -202,10 +202,10 @@ export function Hand({ stage, slot, onPick }: { stage: StageSpec; slot: SlotRef;
   );
 }
 
-export function HandCardView({ h, onPick, selected }: { h: HandCard; onPick: () => void; selected?: boolean }) {
+export function HandCardView({ h, onPick, selected, tut }: { h: HandCard; onPick: () => void; selected?: boolean; tut?: string }) {
   const c = h.card;
   return (
-    <button className={`card ${GROUP_CLASS[c.presentation.group] ?? ''} ${h.status === 'locked' ? 'locked' : ''} ${selected ? 'sel' : ''}`} disabled={h.status === 'locked'} onClick={onPick} title={h.reason ?? c.presentation.hint} aria-pressed={selected}>
+    <button data-tut={tut} className={`card ${GROUP_CLASS[c.presentation.group] ?? ''} ${h.status === 'locked' ? 'locked' : ''} ${selected ? 'sel' : ''}`} disabled={h.status === 'locked'} onClick={onPick} title={h.reason ?? c.presentation.hint} aria-pressed={selected}>
       {c.presentation.icon && c.presentation.icon !== 'pet' && <ObjectIcon kind={c.presentation.icon} size={26} />}
       <span className="card-title">{c.presentation.title}</span>
       <span className="card-sub">{h.status === 'locked' ? `🔒 ${h.reason}` : c.presentation.group}</span>

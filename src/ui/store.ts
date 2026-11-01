@@ -2,13 +2,13 @@ import { useSyncExternalStore } from 'react';
 import type { GameState } from '../game/types';
 import { newGame } from '../game/state';
 import { createRuntime, farmTick, type FarmFx, type FarmRuntime } from '../game/farm';
-import { advanceTutorial } from '../game/tutorial';
+import { advanceTutorial, chapterById, guide } from '../game/tutorial';
 import { saveLocal } from '../persistence/storage';
 import { UNLOCKS } from '../game/progression';
 import type { TrainingSessionState } from './training';
 import type { EpisodeTrace } from '../learning/episodes';
 
-export type Screen = 'farm' | 'teach' | 'pets' | 'journal' | 'settings';
+export type Screen = 'farm' | 'teach' | 'pets' | 'journal' | 'settings' | 'guide';
 export type Binder = 'environment' | 'rules' | 'pet' | 'curriculum' | 'behaviors' | 'inspect';
 
 export interface SlotRef {
@@ -86,10 +86,14 @@ class GameStore {
 
   /** Mutate game state, re-check tutorial, notify, and schedule an autosave. */
   mutate(fn: (s: GameState) => void, opts: { save?: boolean } = {}) {
+    const g0 = guide(this.state);
+    const before = `${g0.active}:${g0.step}`;
+    const offered0 = new Set(Object.entries(g0.status).filter(([, v]) => v === 'offered').map(([k]) => k));
     fn(this.state);
-    const before = this.state.progress.tutorialStep;
     advanceTutorial(this.state);
-    if (this.state.progress.tutorialStep !== before && !this.state.progress.tutorialDone) this.toast('Nice! Next step unlocked.', 'good');
+    const g1 = guide(this.state);
+    if (g1.active && `${g1.active}:${g1.step}` !== before && before.startsWith(`${g1.active}:`)) this.toast('Nice — next step.', 'good');
+    for (const [k, v] of Object.entries(g1.status)) if (v === 'offered' && !offered0.has(k) && g0.status[k] !== 'active') this.toast(`New Field Guide lesson: ${chapterById(k)?.title ?? k}`, 'info');
     if (opts.save !== false) this.scheduleSave();
     this.emit();
   }

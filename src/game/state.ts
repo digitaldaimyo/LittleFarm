@@ -12,7 +12,7 @@ export function newGame(): GameState {
     createdAt: Date.now(),
     updatedAt: Date.now(),
     settings: { reducedMotion: 'system', sound: false, farmSpeed: 1, trainSpeed: 'normal', showExpert: false },
-    progress: { tutorialStep: 0, tutorialDone: false, unlocks: [], totalCoins: 0, flags: {} },
+    progress: { tutorialStep: 0, tutorialDone: false, unlocks: [], totalCoins: 0, flags: {}, guide: { status: { first: 'active' }, active: 'first', step: 0 } },
     resources: { coins: 0, berries: 0, carrots: 0 },
     pets: [],
     activePetId: null,
@@ -30,6 +30,7 @@ export function newGame(): GameState {
 
 /** Training costs energy (it's tiring!). Naps refill it. */
 export function trainingCost(stage: StageSpec): number {
+  if (stage.id === 'stage-tutorial' || (stage.extensions as Record<string, unknown> | undefined)?.guide) return 0; // Field Guide lessons are free
   return stage.learner.skill === 'Avoid' ? 20 : 15;
 }
 

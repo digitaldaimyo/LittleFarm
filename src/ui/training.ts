@@ -13,6 +13,7 @@ import type { SenseSkillDef } from '../learning/policies';
 import { store } from './store';
 import { trainingCost } from '../game/state';
 import { addJournal } from '../game/journal';
+import { recordGuideRun } from '../game/tutorial';
 import { curiosities } from '../learning/summary';
 
 export interface TrainingSessionState {
@@ -78,6 +79,7 @@ function onMessage(m: FromWorker) {
       if (pet) {
         pet.stats.trainingRuns++;
         pet.stats.episodes += m.progress.episode;
+        recordGuideRun(s, t.stage, m.progress.episode, m.report.after.successRate, m.report.random.successRate, m.report.transfer.successRate, m.report.scattered?.successRate);
         const r = m.report.after;
         addJournal(s, pet.id, 'training', `${pet.name} practised “${t.stage.name}” ${m.progress.episode} times. On ${r.episodes} new layouts: ${r.successes} successes (before: ${m.report.before.successes}).`);
         for (const e of m.report.exploits) addJournal(s, pet.id, 'exploit', `${pet.name} discovered a loophole in “${t.stage.name}”: ${e.diagnostic.message}`, true);

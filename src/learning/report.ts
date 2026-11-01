@@ -13,6 +13,8 @@ export interface TrainingReport {
   transfer: EvalResult;
   /** Routines only: the same options chosen at random (a fairer baseline than random steps). */
   randomOptions?: EvalResult;
+  /** Pens that pin the target or the start: the same lesson with those positions scattered. */
+  scattered?: EvalResult;
   exploits: ExploitFinding[];
   passed: boolean;
   evalSeeds: number[];
@@ -52,9 +54,12 @@ export function buildReport(stage: StageSpec, traits: Traits, before: Serialized
   const randomOptions = templateOf(stage) === 'routine' ? evaluate(stage, { kind: 'routine', ctrl: null, subskills: subskills ?? {} }, seeds, 'baseline', traits, 1) : undefined;
   const random = evaluate(stage, { kind: 'random' }, seeds, 'baseline', traits, 1);
   const tStage = transferVariant(stage);
+  const sv = scatteredVariant(stage);
+  const scattered = sv ? evaluate(sv, spec(after, sv), seeds, 'baseline', traits, 3) : undefined;
+  if (scattered) scattered.label = 'evaluation';
   const transfer = evaluate(tStage, spec(after, tStage), evalSeeds(10, TRANSFER_SEED_BASE), 'transfer', traits, 2);
   return {
-    before: beforeR, after: afterR, random, transfer, randomOptions,
+    before: beforeR, after: afterR, random, transfer, randomOptions, scattered,
     exploits: findExploits(stage, afterR),
     passed: afterR.successRate >= stage.evaluation.minimumSuccessRate,
     evalSeeds: seeds,
@@ -85,4 +90,21 @@ export function findExploits(stage: StageSpec, r: EvalResult): ExploitFinding[] 
     });
   }
   return out;
+}
+
+/**
+ * If a pen pins the skill's target or the pet's start, every "new layout" looks the same, so the usual
+ * held-out score can't reveal overfitting. This variant scatters exactly those positions.
+ */
+export function scatteredVariant(stage: StageSpec): StageSpec | null {
+  const focus = `kind:${stage.learner.focus}`;
+  let changed = false;
+  const s = structuredClone(stage);
+  s.environment = s.environment.map((p) => {
+    const k = p.args.kind as { cardId?: string } | undefined;
+    if (p.cardId === 'place.fixed' && k?.cardId === focus) { changed = true; return { ...p, cardId: 'place.random', args: { kind: p.args.kind, count: 1, region: 'anywhere' } }; }
+    if (p.cardId === 'place.pet' && p.args.mode === 'fixed') { changed = true; return { ...p, args: { ...p.args, mode: 'random' } }; }
+    return p;
+  });
+  return changed ? s : null;
 }

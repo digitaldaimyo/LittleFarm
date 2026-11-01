@@ -291,6 +291,7 @@ function tutorialApproach(): StageSpec {
   const s = approach();
   s.environment = s.environment.filter((p) => !(p.cardId === 'place.random' && (p.args.kind as SpecNode).cardId === 'kind:berry'));
   s.rules = [];
+  s.success = null; // the player decides what "done" means
   s.recipeId = 'tutorial';
   return s;
 }
