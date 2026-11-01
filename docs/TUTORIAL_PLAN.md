@@ -2,7 +2,18 @@
 
 **Goal:** turn the tutorial from "here are the buttons" into "here's how a good trainer thinks". By the end, a player should be able to set up a training pen for a behaviour *they* want, predict roughly whether it will work, read the evidence when it doesn't, and fix it.
 
-Status: **Phases A and B shipped** (Chapter 1 revised, Field Guide engine and screen, lessons 2–6, notebook, glossary, coaching tips). Phase C is still to do.
+Status: **All three phases shipped:** Chapter 1 revised; Field Guide engine and screen; lessons 2–9; notebook; glossary; coaching tips; requests-board side quests; a browser test (`npm run e2e`).
+
+### Phase C: what shipped, and what we learned
+- **Lesson 7, See what your pet learned** (offered once you've saved a skill you invented). The player opens the summary on Approach and on their own skill, uses "What does Pip do?" and taps a tile, reads the Journal's curiosities, and exports a skill card.
+- **Lesson 8, Combine skills** (offered when routines unlock). A routine with a useless option (*Approach → rock*) that watches only "carrying" and "at the berry" scores **0% on 5/5 seeds, below random choices (15–20%)**: it can't tell when it's standing at the bin. Adding one watched condition, **"Is at → Bin"**, takes it to **85–95%**.
+  - The fourth Fetch condition ("berry visible and empty-pawed") turned out to be unnecessary, so the lesson asks for just the one easy card.
+  - Comparisons for routines use "random choices" as their baseline.
+- **Lesson 9, Plan the farm** (offered after the routines lesson, or with 2 pets). The lesson adds a row, "Check on the well", at the bottom of the pet's plan, below "Otherwise wander". The preview shows it never runs. Moving it up and previewing again shows it runs. Then apply the plan and read a note about giving two pets different jobs.
+- **Side quests:** every request on the neighbours' board shows a one-line "How:" and a link to the lesson that helps. The board also gets a new request, "Keep the orchard gate shut at nightfall", which points to the plans lesson.
+- **Browser test** (`npm run e2e`, needs Playwright with Chromium): plays Chapter 1 card by card and the practice and scatter lessons with real clicks, and checks banners, comparisons, the Scattered layouts row, page errors and outside requests.
+  - In one run: practice **55% → 80%**, scatter **25% → 90%**.
+  - Real pets' curiosity varies, so the practice gap in play is smaller than in the headless measurements (36% → 96% at default temperament), but always clearly visible.
 
 ### Phase B: what shipped, and what we learned
 - **Lesson 4, Pay for results** (offered when Fetch unlocks). The pickup experiment: **0% deliveries at ~100 treats per try**; after the "once per object" repair card, **~90% at ~11 treats per try**. The comparison card shows success *and* treats side by side.

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { PlanMat } from './PlanMat';
 import { Tips } from './Tips';
 import { farmTips } from '../game/coach';
-import { describeRequest } from '../game/requests';
+import { describeRequest, requestHelp } from '../game/requests';
+import { chapterById, startChapter } from '../game/tutorial';
 import { store, useStore } from './store';
 import { WorldView } from './WorldView';
 import { PetSprite, type PetMood } from './art';
@@ -245,7 +246,7 @@ export function FarmScreen() {
 
         {(selected === 'plan' || showPlan) && <PlanMat pet={pet} />}
         {selected !== 'plan' && !showPlan && (
-          <button className="btn ghost" onClick={() => setShowPlan(true)}>Edit farm plan…</button>
+          <button className="btn ghost" data-tut="plan-edit" onClick={() => setShowPlan(true)}>Edit farm plan…</button>
         )}
 
         <RequestsBoard />
@@ -293,8 +294,11 @@ function RequestsBoard() {
         {reqs.map((r) => (
           <li key={r.id} className={r.status}>
             <div className="row between"><strong>{describeRequest(r)}</strong><span className="chip">{r.status === 'done' ? '✓ done' : r.status === 'expired' ? 'missed' : `+${r.reward} coins${r.gift ? ' + gift' : ''}`}</span></div>
-            <span className="small muted">from {r.from} · day {r.day}{r.status === 'open' && r.kind !== 'noPecks' && r.kind !== 'coop' ? ` · ${Math.max(0, r.progress)}/${r.n}` : ''}</span>
-            {r.status === 'open' && r.kind !== 'noPecks' && r.kind !== 'coop' && <div className="bar" role="progressbar" aria-valuemin={0} aria-valuemax={r.n} aria-valuenow={Math.max(0, r.progress)} aria-label="Progress"><i style={{ width: `${(100 * Math.max(0, r.progress)) / r.n}%` }} /></div>}
+            <span className="small muted">from {r.from} · day {r.day}{r.status === 'open' && r.kind !== 'noPecks' && r.kind !== 'coop' && r.kind !== 'gate' ? ` · ${Math.max(0, r.progress)}/${r.n}` : ''}</span>
+            {r.status === 'open' && (() => { const h = requestHelp(r.kind); const ch = h.lesson ? chapterById(h.lesson) : null; return (
+              <span className="small muted">How: {h.hint}{ch && <> <button className="link" onClick={() => { store.mutate((g) => startChapter(g, ch.id)); store.setUi({ screen: 'guide' }); }}>Lesson: {ch.title}</button></>}</span>
+            ); })()}
+            {r.status === 'open' && r.kind !== 'noPecks' && r.kind !== 'coop' && r.kind !== 'gate' && <div className="bar" role="progressbar" aria-valuemin={0} aria-valuemax={r.n} aria-valuenow={Math.max(0, r.progress)} aria-label="Progress"><i style={{ width: `${(100 * Math.max(0, r.progress)) / r.n}%` }} /></div>}
           </li>
         ))}
       </ul>

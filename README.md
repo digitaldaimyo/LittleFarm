@@ -22,6 +22,8 @@ Other scripts:
 | `npm run lint` | ESLint |
 | `npm test` | Vitest suite (sim, registry, learning, saves, farm, training loop) |
 | `npm run bench` | Trains every starter skill under 5 seeds and prints held-out results, hardware and timings |
+| `npm run evidence` | Reproduces the measurements behind the Field Guide and the Trainer's notebook |
+| `npm run e2e` | Browser test of the Field Guide (after `npm run build`; needs Playwright with Chromium) |
 
 Requires Node 18+ (developed on Node 22). Needs no secrets or environment variables.
 
@@ -45,7 +47,7 @@ The **First lesson** banner walks you through this, explaining *why* at each ste
 
 Then write its rules with the same cards, using *the target* to mean "whatever this skill is aimed at". The Curriculum has two examples, *Wait for it* and *Keep clear*. On the farm, **Run a skill** runs any of your skills aimed at anything (berry, bin, home, pond…), with no retraining.
 
-After the first lesson, the **Guide** tab (the Trainer's Field Guide) offers short, free lessons that teach how to set up training that works, each by trying something the wrong way first and comparing your own pet's numbers: *Read the report: practice* (300 vs 1,500 tries), *Scatter, don't pin* (one perfect layout vs a scattered pen), *Pay for results, not effort* (the pickup loophole and its repair), *Practise where it works* (Approach vs Avoid in a pond pen) and *Invent a skill* (abilities, senses, and what one sense too many costs). It also holds the **Trainer's notebook** (a checklist built from measured results) and a **glossary**. **Coaching tips** appear in lesson reports (and on the farm) when the evidence suggests a common mistake, each linking to the lesson that explains it. More lessons are coming (`docs/TUTORIAL_PLAN.md`).
+After the first lesson, the **Guide** tab (the Trainer's Field Guide) offers short, free lessons that teach how to set up training that works, each by trying something the wrong way first and comparing your own pet's numbers: *Read the report: practice* (300 vs 1,500 tries), *Scatter, don't pin* (one perfect layout vs a scattered pen), *Pay for results, not effort* (the pickup loophole and its repair), *Practise where it works* (Approach vs Avoid in a pond pen), *Invent a skill* (abilities, senses, and what one sense too many costs), *See what your pet learned* (summaries, the probe, curiosities, skill cards), *Combine skills* (a routine is only as good as what it watches) and *Plan the farm* (preview, shadowed rows, two pets on different jobs). It also holds the **Trainer's notebook** (a checklist built from measured results) and a **glossary**. **Coaching tips** appear in lesson reports (and on the farm) when the evidence suggests a common mistake, each linking to the lesson that explains it. Requests on the neighbours' board say how they can be met and link to the lesson that helps (`docs/TUTORIAL_PLAN.md`).
 
 Try the optional **Treat for every pickup** recipe to watch a pet discover a reward loophole, then fix it with a repair card.
 

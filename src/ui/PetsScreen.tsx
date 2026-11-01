@@ -106,7 +106,7 @@ function SkillHistory({ pet, k }: { pet: Pet; k: Skill }) {
       {(k.revisions.length > 1 || staleUses(pet, activeRevision(k)).length > 0) && <button className="btn ghost small" onClick={compare}>Compare revisions now</button>}
       {cmp && <div className="small">{cmp}</div>}
       {!activeRevision(k)?.summary && (
-        <button className="btn ghost small" onClick={() => {
+        <button className="btn ghost small" data-tut="summary" onClick={() => {
           const r = activeRevision(k)!;
           const own = r.stage ?? s.state.stages.find((x) => x.id === r.stageId) ?? s.state.stages.find((x) => x.learner.skill === k.name);
           const stage = k.custom ? own : recipeStage(k.name === 'Approach' ? 'go-to-berry' : k.name === 'Avoid' ? 'avoid-pond' : 'bring-it-home');
@@ -117,14 +117,15 @@ function SkillHistory({ pet, k }: { pet: Pet; k: Skill }) {
         }}>What does it actually do? (work it out now)</button>
       )}
       {activeRevision(k)?.summary && (
-        <details className="small"><summary>What it actually does (r{k.activeRev}, held-out tries)</summary>
+        <details className="small" data-tut="summary" onToggle={(e) => { if ((e.currentTarget as HTMLDetailsElement).open) store.mutate((g) => { g.progress.flags[k.custom ? 'viewedSummaryCustom' : 'viewedSummaryPreset'] = true; }); }}><summary>What it actually does (r{k.activeRev}, held-out tries)</summary>
           <BehaviorSummaryView s={activeRevision(k)!.summary!} target={activeRevision(k)!.focus ?? activeRevision(k)!.stage?.learner.focus ?? 'target'} />
         </details>
       )}
       <div className="row gap wrap">
-        <button className="btn ghost small" onClick={() => {
+        <button className="btn ghost small" data-tut="export-card" onClick={() => {
           const card = exportSkillCard(pet, k.name);
           if (!card) return;
+          store.mutate((g) => { g.progress.flags.exportedCard = true; });
           const a = document.createElement('a');
           a.href = URL.createObjectURL(new Blob([JSON.stringify(card)], { type: 'application/json' }));
           a.download = `${k.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-r${k.activeRev}.skill.json`;

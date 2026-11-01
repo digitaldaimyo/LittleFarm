@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { LESSON_ROW } from '../game/tutorial';
 import type { SpecNode, StageSpec } from '../domain/types';
 import { node, paramOf, isNode } from '../domain/spec';
 import { nominal } from '../domain/typecheck';
@@ -44,7 +45,12 @@ export function PlanMat({ pet }: { pet: Pet }) {
   const onChange = (fn: (st: StageSpec) => void) => edit((p) => fn(planStage(p)));
   const move = (i: number, d: number) => edit((p) => { const r = p.plan!.rows; const j = i + d; if (j < 0 || j >= r.length) return; [r[i], r[j]] = [r[j], r[i]]; });
 
-  const runPreview = () => setPreview(previewPlan(s.state, pet.id, plan, 300));
+  const runPreview = () => {
+    const pv = previewPlan(s.state, pet.id, plan, 300);
+    setPreview(pv);
+    store.mutate((g) => { g.progress.flags.planPreviewed = true; if ((pv.fires[LESSON_ROW] ?? 0) > 0) g.progress.flags.planRowFired = true; });
+  };
+  useEffect(() => { if (!store.state.progress.flags.planOpened) store.mutate((g) => { g.progress.flags.planOpened = true; }); }, []);
 
   return (
     <div className="panel plan-mat">
@@ -52,7 +58,7 @@ export function PlanMat({ pet }: { pet: Pet }) {
         <h3>Farm plan</h3>
         <span className="row gap">
           <button className="btn ghost small" onClick={() => { if (confirm('Replace this plan with the starter plan (the built-in rules)?')) edit((p) => { p.plan = starterPlan(); }); }}>Starter plan</button>
-          <button className="btn small" onClick={runPreview}>Preview 300 ticks</button>
+          <button className="btn small" data-tut="plan-preview" onClick={runPreview}>Preview 300 ticks</button>
         </span>
       </div>
       <p className="small muted">Rows are tried top to bottom: {pet.name} does the first row whose conditions hold <em>and</em> whose job is possible right now.</p>
@@ -63,7 +69,7 @@ export function PlanMat({ pet }: { pet: Pet }) {
         </div>
         <label className="small"><input type="checkbox" checked={plan.guard} onChange={(e) => edit((p) => { p.plan!.guard = e.target.checked; })} /> anti-dithering guard</label>
       </div>
-      <ol className="plan-rows">
+      <ol className="plan-rows" data-tut="plan-rows">
         {plan.rows.map((r, i) => {
           const fired = fires[r.id] ?? 0;
           const job = isNode(r.args.do) ? r.args.do : null;
@@ -99,7 +105,7 @@ export function PlanMat({ pet }: { pet: Pet }) {
         </div>
       )}
       {preview && <PreviewCard preview={preview} rows={rows} />}
-      {pet.assignment.mode !== 'plan' && <button className="btn primary" onClick={() => { store.mutate((g) => applyPlan(g, store.runtime, pet.id)); store.toast(`${pet.name} is following the farm plan.`, 'good'); }}>Use this plan</button>}
+      {pet.assignment.mode !== 'plan' && <button className="btn primary" data-tut="plan-apply" onClick={() => { store.mutate((g) => applyPlan(g, store.runtime, pet.id)); store.toast(`${pet.name} is following the farm plan.`, 'good'); }}>Use this plan</button>}
     </div>
   );
 }

@@ -233,3 +233,118 @@ describe('Coaching tips', () => {
     expect(farmTips(s)).toEqual([]);
   });
 });
+
+import { ROUTINE_STAGE, LESSON_ROW } from '../src/game/tutorial';
+import { subskillsFor, saveRevision } from '../src/game/pets';
+import { createRuntime, farmTick, previewPlan, DAY_TICKS, NIGHT_FROM } from '../src/game/farm';
+import { requestHelp, postRequests } from '../src/game/requests';
+import { buy } from '../src/game/progression';
+import { Rng } from '../src/sim/rng';
+
+describe('Field Guide phase C lessons', () => {
+  function withApproach(): GameState {
+    const s = newGame();
+    const p = adoptPet(s, 'Pip', 'meadow');
+    p.traits = { ...DEFAULT_TRAITS };
+    trainAndSave(s, p, recipeStage('go-to-berry'));
+    skipChapter(s, 'first');
+    return s;
+  }
+
+  it('“See what your pet learned”: offered after inventing a skill; steps follow summary, probe, journal and card actions', () => {
+    const s = withApproach();
+    expect(guide(s).status.read).toBeUndefined();
+    trainAndSave(s, s.pets[0], recipeStage('wait-for-it'));
+    advanceTutorial(s);
+    expect(guide(s).status.read).toBe('offered');
+    startChapter(s, 'read');
+    for (const f of ['viewedSummaryPreset', 'viewedSummaryCustom', 'probed', 'probePath']) { expect(currentStep(s)?.id).not.toBe('curious'); s.progress.flags[f] = true; advanceTutorial(s); }
+    expect(currentStep(s)?.id).toBe('curious');
+    ackStep(s);
+    s.progress.flags.exportedCard = true;
+    advanceTutorial(s);
+    expect(guide(s).status.read).toBe('done');
+  });
+
+  it('“Combine skills”: watching only two things loops (below random choices); adding “at the bin” fixes it', () => {
+    const s = withApproach();
+    s.progress.unlocks.push('routines');
+    advanceTutorial(s);
+    expect(guide(s).status.routines).toBe('offered');
+    startChapter(s, 'routines');
+    const st = s.stages.find((x) => x.id === ROUTINE_STAGE)!;
+    expect(st.learner.routine!.watch.length).toBe(2);
+    const subs = subskillsFor(s.pets[0]);
+    const train = () => {
+      const t = new Trainer({ stage: st, episodes: st.learner.episodes, traits: DEFAULT_TRAITS, subskills: subs });
+      while (!t.done) t.runChunk(2000, false);
+      const r = buildReport(st, DEFAULT_TRAITS, null, t.policy(), null, undefined, subs);
+      recordGuideRun(s, st, st.learner.episodes, r.after.successRate, r.randomOptions!.successRate, r.transfer.successRate, undefined, r.after.meanReward);
+      advanceTutorial(s);
+      return { r, q: t.policy() };
+    };
+    const blind = train().r;
+    expect(blind.after.successRate).toBeLessThan(blind.randomOptions!.successRate);
+    ackStep(s);
+    expect(currentStep(s)?.id).toBe('watch-bin');
+    st.learner.routine!.watch.push(node('cond.at', { actor: node('actor.pet'), what: node('kind:bin') }));
+    advanceTutorial(s);
+    const { r: seeing, q } = train();
+    expect(seeing.after.successRate).toBeGreaterThan(seeing.randomOptions!.successRate + 0.4);
+    expect(guideComparison(s, 'routines').map((c) => c.label)).toEqual(['Watching 2 things', 'Watching 3 (+ at the bin)']);
+    ackStep(s);
+    saveRevision(s, s.pets[0], { stage: st, policy: q, report: seeing, episodes: st.learner.episodes, durationMs: 1, simTicks: 0, uses: [{ skill: 'Approach', rev: 1 }] });
+    advanceTutorial(s);
+    expect(guide(s).status.routines).toBe('done');
+    expect(guide(s).status.plans).toBe('offered');
+  });
+
+  it('“Plan the farm”: the lesson row is shadowed until moved above “Otherwise wander”, and the preview proves it', () => {
+    const s = withApproach();
+    s.progress.unlocks.push('routines');
+    advanceTutorial(s);
+    skipChapter(s, 'routines');
+    startChapter(s, 'plans');
+    const pet = s.pets[0];
+    const plan = pet.plan!;
+    expect(plan.rows.at(-1)!.id).toBe(LESSON_ROW);
+    expect(previewPlan(s, pet.id, plan, 300).fires[LESSON_ROW] ?? 0).toBe(0);
+    s.progress.flags.planOpened = true; s.progress.flags.planPreviewed = true;
+    advanceTutorial(s);
+    expect(currentStep(s)?.id).toBe('move');
+    const row = plan.rows.pop()!;
+    const w = plan.rows.findIndex((r) => (r.args.do as { cardId: string }).cardId === 'job.wander');
+    plan.rows.splice(w, 0, row);
+    advanceTutorial(s);
+    expect(currentStep(s)?.id).toBe('preview-again');
+    expect(previewPlan(s, pet.id, plan, 300).fires[LESSON_ROW] ?? 0).toBeGreaterThan(0);
+  });
+});
+
+describe('Side quests on the requests board', () => {
+  it('every request kind has a hint, and lesson links point to real lessons', () => {
+    for (const k of ['eggs', 'carrots', 'berries', 'fireflies', 'water', 'noPecks', 'coop', 'gate'] as const) {
+      const h = requestHelp(k);
+      expect(h.hint.length).toBeGreaterThan(10);
+      if (h.lesson) expect(guide(newGame()).status).toBeDefined();
+    }
+  });
+
+  it('“keep the orchard gate shut at nightfall” appears with the orchard and is judged at dusk', () => {
+    const s = newGame();
+    const p = adoptPet(s, 'Pip', 'meadow');
+    trainAndSave(s, p, recipeStage('go-to-berry'));
+    s.progress.unlocks.push('custom');
+    s.resources.coins = 50;
+    buy(s, 'orchard');
+    let tries = 0;
+    while (!(s.farm.requests ?? []).some((r) => r.kind === 'gate') && tries++ < 30) { s.farm.requests = []; postRequests(s, new Rng(tries), 1); }
+    const req = s.farm.requests!.find((r) => r.kind === 'gate')!;
+    expect(req).toBeDefined();
+    s.farm.world.objects.find((o) => o.kind === 'gate')!.open = false;
+    const rt = createRuntime(s.farm);
+    p.assignment = { mode: 'job', job: 'rest', navigator: 'Approach' };
+    while (s.farm.tick < Math.floor(DAY_TICKS * NIGHT_FROM) + 1) farmTick(s, rt);
+    expect(req.status).toBe('done');
+  });
+});

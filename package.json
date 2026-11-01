@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "bench": "vite-node scripts/bench.ts",
-    "evidence": "vite-node scripts/tutorial-evidence.ts"
+    "evidence": "vite-node scripts/tutorial-evidence.ts",
+    "e2e": "node scripts/e2e-guide.mjs"
   },
   "dependencies": {
     "react": "18.3.1",

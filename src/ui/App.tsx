@@ -19,7 +19,7 @@ const NAV: { id: Screen; label: string }[] = [
   { id: 'journal', label: 'Journal' },
   { id: 'settings', label: 'Settings' },
 ];
-const SCREEN_LABEL: Record<string, string> = { farm: 'the Farm', teach: 'Teach', pets: 'Pets', guide: 'the Guide' };
+const SCREEN_LABEL: Record<string, string> = { farm: 'the Farm', teach: 'Teach', pets: 'Pets', guide: 'the Guide', journal: 'the Journal' };
 
 export function App() {
   const s = useStore();

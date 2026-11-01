@@ -86,7 +86,7 @@ export function TeachScreen() {
 function tutorialWants(g: ReturnType<typeof useStore>['state'], b: Binder): boolean {
   const id = currentStep(g)?.id;
   if (!id) return false;
-  return ({ 'place-berry': 'environment', 'unpin': 'environment', 'treat-rule': 'rules', 'success': 'rules', 'long': 'pet', 'stay': 'pet', 'patience': 'pet', 'extra': 'pet', 'rules': 'rules' } as Record<string, Binder>)[id] === b;
+  return ({ 'place-berry': 'environment', 'unpin': 'environment', 'treat-rule': 'rules', 'success': 'rules', 'long': 'pet', 'stay': 'pet', 'patience': 'pet', 'extra': 'pet', 'rules': 'rules', 'watch-bin': 'pet' } as Record<string, Binder>)[id] === b;
 }
 
 function StagePicker({ stage }: { stage: StageSpec }) {
@@ -139,7 +139,7 @@ function PenView({ stage, pet }: { stage: StageSpec; pet: Pet }) {
 
   const onTile = (x: number, y: number) => {
     if (showingReplay) return;
-    if (probing) { setProbeAt({ x, y }); return; }
+    if (probing) { setProbeAt({ x, y }); if (!store.state.progress.flags.probePath) store.mutate((g) => { g.progress.flags.probePath = true; }); return; }
     const placing = s.ui.placing;
     if (placing === 'zone.rect') {
       // Two taps paint a rectangle: first corner, then the opposite corner.
@@ -201,7 +201,7 @@ function PenView({ stage, pet }: { stage: StageSpec; pet: Pet }) {
           <>
             <span className="small">{probing ? `Arrows = ${stage.learner.skill} r${probeRev?.rev}'s move on each tile, dots = another action (shoo, stay…). Bigger = surer, grey = never practised exactly. Tap a tile to start ${pet.name} there.` : s.ui.placing === 'zone.rect' ? (s.ui.zoneStart ? 'Now tap the opposite corner' : 'Tap one corner of the area') : s.ui.placing ? `Tap a tile to place ${cardOf(node(s.ui.placing))?.presentation.title ?? 'it'}` : 'Dashed = scattered (moves every try)'}</span>
             <span className="row gap">
-              {probePolicy && <button className="btn ghost small" aria-pressed={probing} onClick={() => { setProbing(!probing); setProbeAt(null); }}>{probing ? 'Stop probing' : `What does ${pet.name} do?`}</button>}
+              {probePolicy && <button className="btn ghost small" data-tut="probe" aria-pressed={probing} onClick={() => { setProbing(!probing); setProbeAt(null); if (!probing) store.mutate((g) => { g.progress.flags.probed = true; }); }}>{probing ? 'Stop probing' : `What does ${pet.name} do?`}</button>}
               <button className="btn ghost small" onClick={() => s.setUi({ previewSeed: s.ui.previewSeed + 1 })}>Roll layout</button>
             </span>
           </>
@@ -580,7 +580,7 @@ function RoutineEditor({ stage, pet, update }: { stage: StageSpec; pet: Pet; upd
         )}
       </div>
       <h4>Watches <span className="muted small">— what it notices when choosing</span></h4>
-      <div className="many">
+      <div className="many" data-tut="watches">
         {R.watch.map((n, i) => <NodeChip key={n.id} stage={stage} n={n} slot={{ parentId: '#watch', socket: 'watch', index: i }} errors={errs} />)}
         {R.watch.length < MAX_WATCH && <SlotChip stage={stage} slot={{ parentId: '#watch', socket: 'watch', index: null }} label="+ condition" errors={errs} />}
       </div>

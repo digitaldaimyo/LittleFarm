@@ -54,7 +54,7 @@ export function GuideScreen() {
               );
             })}
           </ol>
-          <p className="small muted">More lessons — reading your pet, routines and farm plans — are on their way.</p>
+          <p className="small muted">Lessons appear as your farm grows. Neighbours’ requests on the farm sometimes point to a lesson that helps.</p>
         </div>
       )}
       {tab === 'notebook' && <Notebook />}
@@ -76,7 +76,7 @@ function Comparison({ chapter }: { chapter: string }) {
     <div className="panel compare-card" data-tut="guide-compare">
       <h3>Your two runs</h3>
       <div className="compare" role="table" aria-label="Comparison of your runs">
-        <div className="cmp-row head small muted" role="row"><span role="columnheader" /><span role="columnheader">success on new layouts</span><span role="columnheader" className="num">score</span><span role="columnheader" className="num">{showTreats ? 'treats' : 'random'}</span></div>
+        <div className="cmp-row head small muted" role="row"><span role="columnheader" /><span role="columnheader">success on new layouts</span><span role="columnheader" className="num">score</span><span role="columnheader" className="num">{showTreats ? 'treats' : chapter === 'routines' ? 'random choices' : 'random'}</span></div>
         {rows.map((r) => (
           <div key={r.label} className="cmp-row" role="row">
             <span role="cell" className="cmp-name">{r.label}<span className="muted small"> bigger pens {pct(r.run.transfer)}</span></span>

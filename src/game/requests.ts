@@ -8,7 +8,7 @@ import { addJournal, addJournalOnce } from './journal';
  * Neighbours' requests: small, open-ended goals posted each dawn. They only ask for things the
  * farm can do right now, pay coins, and sometimes come with a gift of new cards.
  */
-export type RequestKind = 'eggs' | 'carrots' | 'berries' | 'fireflies' | 'water' | 'noPecks' | 'coop';
+export type RequestKind = 'eggs' | 'carrots' | 'berries' | 'fireflies' | 'water' | 'noPecks' | 'coop' | 'gate';
 
 export interface FarmRequest {
   id: string;
@@ -36,6 +36,21 @@ export function describeRequest(r: FarmRequest): string {
     case 'water': return `Water ${r.n} bushes or patches by nightfall`;
     case 'noPecks': return 'No crow pecks today';
     case 'coop': return 'Every chicken in the coop when night falls';
+    case 'gate': return 'Keep the orchard gate shut at nightfall';
+  }
+}
+
+/** Side quests: how a request can be met, and which Field Guide lesson helps. */
+export function requestHelp(kind: RequestKind): { hint: string; lesson?: string } {
+  switch (kind) {
+    case 'berries': return { hint: 'Forage berries with Approach (or Avoid, to stay out of the pond).', lesson: 'where' };
+    case 'eggs':
+    case 'carrots': return { hint: 'The Deliver job uses Fetch — it carries eggs as well as carrots.', lesson: 'results' };
+    case 'fireflies': return { hint: 'At night, Auto catches fireflies — or add a plan row “IF it’s night DO Catch fireflies”.', lesson: 'plans' };
+    case 'water': return { hint: 'Teach the “Water the garden” recipe (Curriculum) and run it on the farm with “Run a skill”.', lesson: 'invent' };
+    case 'noPecks': return { hint: 'Invent a guard skill with the Shoo ability (aim it at the crow) — or buy a scarecrow.', lesson: 'invent' };
+    case 'coop': return { hint: 'Try the “Herd a chicken” recipe: “Area seen from…” is the sense that makes herding work.', lesson: 'invent' };
+    case 'gate': return { hint: 'Add a plan row: IF “Gates are… any open” DO “Mind the gate (closed)”.', lesson: 'plans' };
   }
 }
 
@@ -52,6 +67,7 @@ function eligibleKinds(s: GameState): RequestKind[] {
   if (s.progress.unlocks.includes('carrots') && hasSkill('Fetch')) out.push('carrots');
   if (hasAbility('water')) out.push('water');
   if (s.progress.unlocks.includes('custom') && s.farm.tick >= 1200) out.push('noPecks');
+  if (w.objects.some((o) => o.kind === 'gate' && onGround(o))) out.push('gate');
   return out;
 }
 
@@ -65,11 +81,11 @@ export function postRequests(s: GameState, rng: Rng, day: number): void {
   const open = f.requests.filter((r) => r.status === 'open').length;
   for (let i = open; i < 3 && kinds.length; i++) {
     const kind = kinds.splice(rng.int(kinds.length), 1)[0];
-    const n = kind === 'noPecks' || kind === 'coop' ? 1 : kind === 'berries' ? 3 + rng.int(4) : kind === 'fireflies' ? 1 + rng.int(3) : kind === 'water' ? 2 + rng.int(3) : 1 + rng.int(3);
-    const base = { eggs: 3, carrots: 4, berries: 1, fireflies: 2, water: 1, noPecks: 6, coop: 6 }[kind];
+    const n = kind === 'noPecks' || kind === 'coop' || kind === 'gate' ? 1 : kind === 'berries' ? 3 + rng.int(4) : kind === 'fireflies' ? 1 + rng.int(3) : kind === 'water' ? 2 + rng.int(3) : 1 + rng.int(3);
+    const base = { eggs: 3, carrots: 4, berries: 1, fireflies: 2, water: 1, noPecks: 6, coop: 6, gate: 5 }[kind];
     const req: FarmRequest = {
       id: `req-${day}-${i}-${kind}`, kind, from: NEIGHBOURS[rng.int(NEIGHBOURS.length)], n,
-      reward: kind === 'noPecks' || kind === 'coop' ? base : base * n,
+      reward: kind === 'noPecks' || kind === 'coop' || kind === 'gate' ? base : base * n,
       day, until: kind === 'fireflies' ? 'dawn' : 'nightfall', progress: 0, status: 'open',
     };
     const gift = GIFTS.find((g) => !s.progress.unlocks.includes(g));
@@ -120,6 +136,10 @@ export function nightfallRequests(s: GameState): void {
   for (const r of s.farm.requests ?? []) {
     if (r.status !== 'open' || r.until !== 'nightfall') continue;
     if (r.kind === 'noPecks') { complete(s, r); continue; }
+    if (r.kind === 'gate') {
+      if (w.objects.filter((o) => o.kind === 'gate' && onGround(o)).every((o) => !o.open)) complete(s, r); else expire(s, r);
+      continue;
+    }
     if (r.kind === 'coop') {
       const coop = w.areas?.find((a) => a.name === 'coop');
       const ok = !!coop && w.objects.filter((o) => o.kind === 'chicken' && onGround(o)).every((o) => inArea(coop, o.x, o.y));

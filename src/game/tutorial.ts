@@ -4,6 +4,7 @@ import { activePet, getSkill } from './pets';
 import { isNode, node, placedKinds } from '../domain/spec';
 import { buildTutorialStage, recipeStage } from '../domain/recipes';
 import { addJournal } from './journal';
+import { starterPlan } from './plan';
 import { evaluate } from '../learning/episodes';
 import { heldOutSeeds, policySpecFor } from '../learning/report';
 
@@ -12,7 +13,7 @@ import { heldOutSeeds, policySpecFor } from '../learning/report';
  * *offered* when they become useful. Each lesson teaches one idea, often by trying it the wrong way first
  * (an "experiment": free, never auto-saved) and comparing the player's own numbers.
  */
-export type GuideScreen = 'farm' | 'teach' | 'pets' | 'guide';
+export type GuideScreen = 'farm' | 'teach' | 'pets' | 'guide' | 'journal';
 
 export interface GuideStep {
   id: string;
@@ -78,6 +79,9 @@ export const PINNED_STAGE = 'stage-guide-pinned';
 export const LOOPHOLE_STAGE = 'stage-guide-loophole';
 export const AVOID_STAGE = 'stage-guide-ponds';
 export const INVENT_STAGE = 'stage-guide-invent';
+export const ROUTINE_STAGE = 'stage-guide-routine';
+/** Id of the deliberately shadowed row the plans lesson adds to the pet's plan. */
+export const LESSON_ROW = 'guide-row-well';
 
 function ruleCards(st: StageSpec | undefined): SpecNode[] {
   return st?.rules.filter((r) => r.cardId === 'rule') ?? [];
@@ -249,6 +253,70 @@ export const CHAPTERS: Chapter[] = [
     ],
     compare: { stage: INVENT_STAGE, rows: [{ variant: 'first', label: 'Lean senses' }, { variant: 'latest', label: 'With the extra sense' }], note: 'Choose the fewest senses that decide the next move. Every extra one multiplies the practice your pet needs — and with the same practice, it learns worse.' },
   },
+  {
+    id: 'read', title: 'See what your pet learned', blurb: 'Summaries, the “What does Pip do?” probe, curiosities and skill cards.', minutes: 5,
+    offered: (s) => s.pets.some((p) => p.skills.some((k) => k.custom && k.revisions.length > 0)),
+    start: (s) => {
+      for (const k of ['viewedSummaryPreset', 'viewedSummaryCustom', 'probed', 'probePath', 'exportedCard']) delete s.progress.flags[k];
+      if (stage(s, TUT)) s.activeStageId = TUT;
+    },
+    steps: [
+      { id: 'summary-approach', title: 'How Approach behaves', text: 'In Pets, open “What it actually does” on Approach (press “work it out now” if it hasn’t been worked out yet).', why: 'The report says how often a skill succeeds. The summary says how: where it spends its time, what it does, and which rules paid.', screen: 'pets', highlight: 'summary', done: (s) => flag(s, 'viewedSummaryPreset') },
+      { id: 'summary-custom', title: 'Now one of your own skills', text: 'Open “What it actually does” on a skill you invented. Compare the heatmaps: Approach ends on the target; a waiting or herding skill spends its time somewhere else.', screen: 'pets', highlight: 'summary', done: (s) => flag(s, 'viewedSummaryCustom') },
+      { id: 'probe', title: 'Ask “What does Pip do?”', text: 'In Teach, on the first lesson’s pen, press “What does Pip do?”. Every arrow is a learned choice; grey ones are guesses about situations it never practised exactly.', why: 'Grey arrows show where more practice — or more variety in the pen — would help.', screen: 'teach', highlight: 'probe', done: (s) => flag(s, 'probed') },
+      { id: 'probe-tap', title: 'Start it anywhere', text: 'Tap a tile to drop your pet there and see the path it would take.', screen: 'teach', highlight: 'probe', done: (s) => flag(s, 'probePath') },
+      { id: 'curious', title: 'Read the curiosities', text: 'Journal notes marked “Curious:” point out behaviour that doesn’t match what the rules seem to ask for. They’re hints, never errors.', screen: 'journal', ack: true, done: (s) => flag(s, ackFlag('read', 'curious')) },
+      { id: 'card', title: 'Share a skill', text: 'In Pets, press “Export skill card” on any skill. Cards can be imported into another pet or another save — the skill keeps its history and its scores.', screen: 'pets', highlight: 'export-card', done: (s) => flag(s, 'exportedCard') },
+    ],
+  },
+  {
+    id: 'routines', title: 'Combine skills (routines)', blurb: 'A routine chooses between your skills — but only as well as what it watches.', minutes: 5,
+    offered: (s) => s.progress.unlocks.includes('routines'),
+    start: (s) => {
+      const st = recipeStage('fetch-routine');
+      st.id = ROUTINE_STAGE;
+      st.name = 'Field guide: berry run';
+      st.recipeId = 'guide';
+      st.extensions = { guide: true };
+      st.learner.skill = 'Berry run';
+      // A useless option (the player's deck is rarely perfect) and only two watched conditions.
+      st.learner.routine!.options.push(node('opt.skill', { skill: 'Approach', aim: node('kind:rock') }));
+      st.learner.routine!.watch = st.learner.routine!.watch.slice(0, 2);
+      upsertStage(s, st);
+      s.activeStageId = ROUTINE_STAGE;
+      delete s.progress.guideRuns?.[ROUTINE_STAGE];
+    },
+    steps: [
+      { id: 'train-blind', title: 'Experiment: a routine that watches two things', text: 'This routine can use Approach (to the berry, the bin — or a rock, which is useless here), pick up and put down. It watches “carrying the berry” and “at the berry”. Train it.', why: 'A routine doesn’t learn to walk — it reuses your Approach. It only learns which option to pick in each situation it can tell apart.', screen: 'teach', highlight: 'train-btn', done: (s) => hasVariant(s, ROUTINE_STAGE, 'watch:2') },
+      { id: 'read', title: 'Worse than random choices', text: 'Compare “After” with “Random choices” (the same options picked at random). It’s stuck in a loop.', why: 'It can’t tell “standing at the bin” from anywhere else — so it can’t know when to put the berry down.', screen: 'teach', highlight: 'report-compare', ack: true, done: (s) => flag(s, ackFlag('routines', 'read')) },
+      { id: 'watch-bin', title: 'Let it watch the bin', text: 'In the Pet binder, under Watches, press “+ condition” and pick “Is at” → Bin.', screen: 'teach', highlight: 'watches', done: (s) => (stage(s, ROUTINE_STAGE)?.learner.routine?.watch.length ?? 0) >= 3 },
+      { id: 'retrain', title: 'Train it again', text: 'Same options, same practice — one more thing to watch.', screen: 'teach', highlight: 'train-btn', done: (s) => runs(s, ROUTINE_STAGE).some((r) => (r.variant ?? '').startsWith('watch:') && Number((r.variant ?? 'watch:0').slice(6)) >= 3) },
+      { id: 'compare', title: 'Compare', text: 'Check the comparison in the Guide.', screen: 'guide', highlight: 'guide-compare', ack: true, done: (s) => flag(s, ackFlag('routines', 'compare')) },
+      { id: 'save', title: 'Keep your routine', text: 'Save “Berry run”. It always uses your current Approach — retrain Approach and the routine improves too (the Pets screen warns when a skill changed since the routine was certified).', screen: 'teach', highlight: 'save-skill', done: (s) => s.pets.some((p) => !!getSkill(p, 'Berry run')?.revisions.some((r) => r.stageId === ROUTINE_STAGE)) },
+    ],
+    compare: { stage: ROUTINE_STAGE, rows: [{ variant: 'watch:2', label: 'Watching 2 things' }, { variant: 'watch:3', label: 'Watching 3 (+ at the bin)' }], note: 'A routine chooses only as well as what it watches. If “After” isn’t clearly above “Random choices”, it’s missing something it needs to notice.' },
+  },
+  {
+    id: 'plans', title: 'Plan the farm', blurb: 'Decide when each skill runs — and preview before you commit.', minutes: 5,
+    offered: (s) => ['done', 'skipped'].includes(guideStatus(s, 'routines') ?? '') || s.pets.length >= 2,
+    start: (s) => {
+      for (const k of ['planOpened', 'planPreviewed', 'planRowFired']) delete s.progress.flags[k];
+      const p = activePet(s);
+      if (!p) return;
+      p.plan ??= starterPlanRows();
+      p.plan.rows = p.plan.rows.filter((r) => r.id !== LESSON_ROW);
+      // A new row added at the bottom — below “Otherwise wander”, which always applies.
+      p.plan.rows.push({ id: LESSON_ROW, cardId: 'plan.row', args: { label: 'Check on the well', if: [], do: node('job.goto', { aim: node('kind:well'), navigator: 'Approach' }) } });
+    },
+    steps: [
+      { id: 'open', title: 'Open the farm plan', text: 'On the Farm, press “Edit farm plan…”. These rows are the Auto rules you’ve been using all along — now yours to edit. A new row, “Check on the well”, was added at the bottom.', why: 'Rows are tried top to bottom; the first one that applies (and can do something right now) runs.', screen: 'farm', highlight: 'plan-edit', done: (s) => flag(s, 'planOpened') },
+      { id: 'preview', title: 'Preview it', text: 'Press “Preview 300 ticks”. Which row never ran?', why: 'The farm is deterministic, so the preview is exactly what would happen.', screen: 'farm', highlight: 'plan-preview', done: (s) => flag(s, 'planPreviewed') },
+      { id: 'move', title: 'Fix the shadowed row', text: '“Check on the well” sits below “Otherwise wander”, which always applies — so it can never run. Move it up (↑) above “Otherwise wander”.', screen: 'farm', highlight: 'plan-rows', done: (s) => rowAboveWander(s) },
+      { id: 'preview-again', title: 'Preview again', text: 'Preview once more and check that “Check on the well” now runs.', screen: 'farm', highlight: 'plan-preview', done: (s) => flag(s, 'planRowFired') },
+      { id: 'apply', title: 'Use the plan', text: 'Press “Use this plan”. Your pet now follows your rows.', screen: 'farm', highlight: 'plan-apply', done: (s) => s.pets.some((p) => p.assignment.mode === 'plan') },
+      { id: 'two-pets', title: 'Two pets? Different jobs', text: 'With a second pet on duty, give it a different job: two foragers share the same bushes (183 coins vs 178 for one), a forager plus a deliverer earned 387.', why: 'More hands only help if there’s more different work to do.', screen: 'farm', ack: true, done: (s) => flag(s, ackFlag('plans', 'two-pets')) },
+    ],
+  },
 ];
 
 function upsertStage(s: GameState, st: StageSpec) {
@@ -355,6 +423,7 @@ export function guideVariant(st: StageSpec): string | undefined {
   }
   if (st.id === AVOID_STAGE) return 'avoid';
   if (st.id === INVENT_STAGE) return `senses:${(st.learner.senses ?? []).map((n) => n.cardId).join(',')}`;
+  if (st.id === ROUTINE_STAGE) return `watch:${st.learner.routine?.watch.length ?? 0}`;
   return undefined;
 }
 
@@ -383,6 +452,11 @@ export function guideComparison(s: GameState, chapter: string): { label: string;
   const ch = chapterById(chapter);
   if (!ch?.compare) return [];
   const r = runs(s, ch.compare.stage);
+  if (chapter === 'routines') {
+    const two = lastVariantRun(s, ROUTINE_STAGE, 'watch:2');
+    const more = [...r].reverse().find((x) => Number((x.variant ?? 'watch:0').slice(6)) >= 3);
+    return [two && { label: 'Watching 2 things', run: two }, more && { label: `Watching ${(more.variant ?? '').slice(6)} (+ at the bin)`, run: more }].filter(Boolean) as { label: string; run: GuideRun }[];
+  }
   if (chapter === 'invent') {
     // First run = lean; latest run with different senses = the experiment.
     const first = r[0], latest = [...r].reverse().find((x) => x.variant !== first?.variant);
@@ -402,4 +476,17 @@ export function testApproachHere(s: GameState): void {
   const random = evaluate(st, { kind: 'random' }, seeds, 'baseline', p.traits, 0);
   recordGuideRun(s, st, 0, r.successRate, random.successRate, r.successRate, undefined, r.meanReward, 'approach');
   addJournal(s, p.id, 'guide-approach-ponds', `${p.name}'s Approach was tested in a pen with ponds: ${r.successes}/${r.episodes} reached the berry dry.`);
+}
+
+function starterPlanRows() {
+  return starterPlan();
+}
+
+/** Plans lesson: is the lesson row above the first always-on (no conditions) wander row? */
+function rowAboveWander(s: GameState): boolean {
+  const p = activePet(s);
+  const rows = p?.plan?.rows ?? [];
+  const i = rows.findIndex((r) => r.id === LESSON_ROW);
+  const w = rows.findIndex((r) => isNode(r.args.do) && r.args.do.cardId === 'job.wander' && !(Array.isArray(r.args.if) && r.args.if.length));
+  return i >= 0 && (w < 0 || i < w);
 }
