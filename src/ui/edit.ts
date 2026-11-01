@@ -1,6 +1,6 @@
 import type { SocketDef, SpecNode, StageSpec, Template, TypeExpr } from '../domain/types';
 import { REGISTRY } from '../domain/registry';
-import { cloneNode, findInStage, isNode, newId, node, walk } from '../domain/spec';
+import { cloneNode, findInStage, findNode, isNode, newId, node, walk } from '../domain/spec';
 import { fits, nominal } from '../domain/typecheck';
 import type { SlotRef } from './store';
 
@@ -104,6 +104,13 @@ export function setSlot(stage: StageSpec, slot: SlotRef, n: SpecNode | null): Sl
   if (n) parent.args[slot.socket] = n;
   else delete parent.args[slot.socket];
   return n ? slot : null;
+}
+
+/** Is this slot the senses list itself, or a slot inside one of its sense cards (like the “What” of “How far is…”)? */
+export function slotInSenses(stage: StageSpec, slot: SlotRef | null): boolean {
+  if (!slot) return false;
+  if (slot.parentId === '#senses') return true;
+  return (stage.learner.senses ?? []).some((n) => !!findNode(n, slot.parentId));
 }
 
 export function templatesFor(templates: Template[], type: TypeExpr): Template[] {

@@ -43,7 +43,7 @@ const GROUP_BASE: Record<string, number> = {
 const STARTER_FAVORS: Record<string, number> = {
   'ev.reach': 4, 'eff.reward': 4, 'eff.end': 3, 'ev.tick': 2, 'eff.penalty': 2, 'cond.at': 4, 'lim.perObject': 3, 'lim.once': 2,
   'ev.deliver': 2, 'cond.delivered': 2, 'ev.enter': 1, 'ev.pickup': 1,
-  'ref.target': 3, 'sense.nearest': 3, 'sense.blocked': 2, 'sense.still': 1, 'ev.stay': 1,
+  'ref.target': 3, 'sense.nearest': 3, 'sense.blocked': 2, 'sense.still': 2, 'sense.distance': 2, 'ev.stay': 1,
 };
 
 /**

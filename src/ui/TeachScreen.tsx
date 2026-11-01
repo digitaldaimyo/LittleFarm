@@ -12,6 +12,7 @@ import { generateWorld } from '../sim/compile';
 import { store, useStore, type Binder } from './store';
 import { WorldView } from './WorldView';
 import { HandCardView, ManySlot, NodeChip, Sleeve, SlotChip, cardOf, withSnapshot } from './cards';
+import { slotInSenses } from './edit';
 import { TrainingPanel, traceBadge } from './TrainingPanel';
 import { useReplay } from './replay';
 import { startTraining } from './training';
@@ -620,7 +621,8 @@ function SenseEditor({ stage, update, custom }: { stage: StageSpec; update: (fn:
         <button role="radio" aria-checked={stage.outcome !== 'survive'} className={stage.outcome !== 'survive' ? 'on' : ''} onClick={() => update((st) => { st.outcome = 'reach'; })}>Done when SUCCESS happens</button>
         <button role="radio" aria-checked={stage.outcome === 'survive'} className={stage.outcome === 'survive' ? 'on' : ''} onClick={() => update((st) => { st.outcome = 'survive'; })}>Judge when time is up</button>
       </div>
-      {s.ui.slot?.parentId === '#senses' && <Sleeve stage={stage} onChange={update} />}
+      {/* Also for slots *inside* a sense card (e.g. the “What” of “How far is…”), which is where picking a sense moves the focus. */}
+      {slotInSenses(stage, s.ui.slot) && <Sleeve stage={stage} onChange={update} />}
     </>
   );
 }
