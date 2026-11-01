@@ -61,7 +61,8 @@ export function createFarm(): FarmState {
 }
 
 export interface FarmFx {
-  type: 'coin' | 'splash' | 'pickup' | 'drop' | 'celebrate' | 'confused' | 'nap' | 'bump';
+  /** 'sound' marks a moment that is heard but not drawn (text: shoo, firefly, crow, dawn, dusk). */
+  type: 'coin' | 'splash' | 'pickup' | 'drop' | 'celebrate' | 'confused' | 'nap' | 'bump' | 'sound';
   x: number;
   y: number;
   amount?: number;
@@ -194,6 +195,7 @@ function updateCreatures(s: GameState, rt: FarmRuntime, fx: FarmFx[]): void {
     if (edge.length) {
       const [x, y] = edge[rt.rng.int(edge.length)];
       addObject(w, 'crow', x, y);
+      fx.push({ type: 'sound', x, y, text: 'crow' });
       addJournalOnce(s, null, 'first-crow', 'A crow landed at the edge of the farm, eyeing the crops. A pet that can Shoo could send it packing.');
     }
   }
@@ -219,9 +221,11 @@ function updateClock(s: GameState, rt: FarmRuntime, fx: FarmFx[]): void {
       addObject(w, 'firefly', x, y);
     }
     fx.push({ type: 'nap', x: w.pet.x, y: w.pet.y, text: 'night' });
+    fx.push({ type: 'sound', x: w.pet.x, y: w.pet.y, text: 'dusk' });
     addJournalOnce(s, null, 'first-night', `Night fell on the farm for the first time (day ${day}). Fireflies blinked over the grass.`);
   } else {
     w.objects = w.objects.filter((o) => o.kind !== 'firefly');
+    fx.push({ type: 'sound', x: w.pet.x, y: w.pet.y, text: 'dawn' });
   }
 }
 
@@ -450,6 +454,7 @@ function handleEvents(s: GameState, pet: Pet, events: SimEvent[], rt: FarmRuntim
       s.resources.fireflies = (s.resources.fireflies ?? 0) + 1;
       pet.stats.fireflies = (pet.stats.fireflies ?? 0) + 1;
       earn(s, pet, 1, e.x, e.y, fx);
+      fx.push({ type: 'sound', x: e.x, y: e.y, text: 'firefly' });
       addJournalOnce(s, pet.id, 'first-firefly', `${pet.name} caught a firefly by moonlight and let it glow in the jar.`);
     } else if (e.type === 'water') {
       pet.stats.waterings = (pet.stats.waterings ?? 0) + 1;
@@ -459,6 +464,8 @@ function handleEvents(s: GameState, pet: Pet, events: SimEvent[], rt: FarmRuntim
       fx.push({ type: 'celebrate', x: e.x, y: e.y, text: 'shoo!' });
       pet.stats.crowsShooed = (pet.stats.crowsShooed ?? 0) + 1;
       addJournalOnce(s, pet.id, 'first-scare', `${pet.name} shooed a crow off the farm. It flapped away, empty-beaked.`);
+    } else if (e.type === 'shoo') {
+      fx.push({ type: 'sound', x: e.x, y: e.y, text: 'shoo' });
     } else if (e.type === 'peck') {
       fx.push({ type: 'confused', x: e.x, y: e.y, text: 'pecked' });
       addJournalOnce(s, null, 'first-peck', `A crow pecked a ${e.kind} and flew off with it. It will regrow — but a guard would help.`);

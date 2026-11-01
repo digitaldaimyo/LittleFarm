@@ -2,7 +2,28 @@
 
 **Goal:** add sound where it makes Pen Deck more charming *or* easier to read, without breaking what the game promises: fully offline, no outside requests, cozy, and readable with the sound off.
 
-Status: **phase A shipped.** Decisions (section 8) all went with the recommendations: synthesis for everything; background sounds in phase B and an opt-in generative music box in phase C; sound on by default for new and existing games; pet voices in phase C; training ticks opt-in.
+Status: **phases A and B shipped.** Decisions (section 8) all went with the recommendations: synthesis for everything; background sounds in phase B and an opt-in generative music box in phase C; sound on by default for new and existing games; pet voices in phase C; training ticks opt-in.
+
+### Phase B: what shipped, and what changed from the plan
+- **22 more cues (38 in all):**
+  - farm: put down, deliver (replays), "hm?", well, watering, chicken shoo, crow scare, peck, egg laid, gate creak and latch, firefly, job done, crow arriving;
+  - world: dawn and dusk chimes;
+  - teaching: card removed or Undo, repair card;
+  - progress: request done, Field Guide step, new lesson, lesson done.
+- **Sound-only farm effects.** Chicken shoos, firefly catches, crow arrivals, dawn and dusk had no visual effect to hang a sound on. The farm now emits `type: 'sound'` effects for them, which the farm view ignores.
+- **Replays** play the same cues as the farm, frame by frame, at replay speed. The replay samples shown *while training runs* stay silent, keeping "no sound per training try". Only replays you watch (the auto-replay after a lesson, the ▶ buttons, "▶ a miss", demos) make sound.
+- **Ambience:** three seeded, synthesized 12 s loops: birdsong over a faint breeze, crickets at three paces, and rain with drops.
+  - They crossfade (about 2 s) as night falls, dawn breaks or rain starts. Birds drop to 30% in the rain, and crickets to 50%.
+  - Full volume on the Farm screen, 40% elsewhere. Settings gains a **Background** slider.
+  - The first rain mix was about 5× louder than birdsong (RMS 0.049 vs 0.009), so the rain bed was halved (0.026).
+- **Changes from the plan:**
+  - Ambience plays on every screen, softer away from the farm, rather than only on the Farm screen. It's the farm's soundtrack, and an empty Teach screen felt oddly silent.
+  - Naps stay silent (the nap effect repeats every tick); a single sigh is still in phase C.
+  - Rain has no start cue: the rain bed fading in is the cue.
+- **Measured:**
+  - Rendering takes about 0.3–0.5 s for the cues and 0.3 s for the loops, asynchronously, against a plan target of 150 ms. It happens once, after the first click.
+  - In about 1 of 4 runs the first click shows one ~70 ms long task, which never appears with audio disabled (creating an AudioContext costs up to ~30 ms in Chromium). Rendering was moved to its own task, and all noise voices now share one buffer.
+  - Frame rate with sound on vs muted overlaps across runs (TESTING.md).
 
 ### Phase A: what shipped, and what changed from the plan
 - **16 cues**, all synthesized: card flick / snap / reject, pen place, train start, certified, not certified, loophole, save, farm pickup / coin / splash / bump, adopt, unlock, shop. Rendered once (16 short buffers) on the first gesture with sound on.

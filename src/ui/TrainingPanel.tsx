@@ -189,7 +189,7 @@ export function TrainingPanel() {
             <strong>Loophole found!</strong> {x.diagnostic.message}
             <div className="row gap">
               {x.replay && <button className="btn ghost" onClick={() => { t.replay = x.replay!; store.emit(); }}>Watch the replay</button>}
-              {x.diagnostic.repair && <button className="btn" data-tut="repair-card" onClick={() => repair(x.ruleId, x.diagnostic.repair!.action)}>Repair card: {x.diagnostic.repair.label}</button>}
+              {x.diagnostic.repair && <button className="btn" data-tut="repair-card" onClick={() => { audio.play('card.repair'); repair(x.ruleId, x.diagnostic.repair!.action); }}>Repair card: {x.diagnostic.repair.label}</button>}
             </div>
           </div>
         ))}

@@ -3,14 +3,19 @@
  * gentle compressor. The AudioContext is created on the first user gesture with sound on, and suspended
  * while the tab is hidden. Nothing is fetched. See docs/SOUND_PLAN.md.
  */
-import { CUES, CueLimiter, DEFAULT_AUDIO, cueGain, cuesForFarmFx, type AudioSettings, type CueId, type CueRequest } from '../game/sound';
+import { CUES, CueLimiter, DEFAULT_AUDIO, ambienceMix, cueGain, cuesForFarmFx, cuesForSimEvents, type AudioSettings, type CueId, type CueRequest } from '../game/sound';
+import type { SimEvent } from '../sim/world';
 import type { FarmFx } from '../game/farm';
-import { KIT, recipeLength, type Recipe, type Voice } from './kit';
+import { AMBIENCE_OVERLAP, AMBIENCE_SECONDS, KIT, ambienceRecipe, recipeLength, type AmbienceId, type Recipe, type Voice } from './kit';
 
 type Ctor = typeof AudioContext;
 type OfflineCtor = typeof OfflineAudioContext;
 
-interface DebugHook { contexts: number; rendered: number; state: string; cues: CueId[] }
+interface DebugHook {
+  contexts: number; rendered: number; state: string; cues: CueId[]; ambience: Record<AmbienceId, number>;
+  /** Cues whose rendered peak is near silence (should stay empty), and each ambience loop's RMS level. */
+  quiet: string[]; loops: Partial<Record<AmbienceId, number>>;
+}
 
 declare global {
   interface Window {
@@ -22,6 +27,9 @@ declare global {
 }
 
 const RATE = 44100;
+/** Ambience loops are rendered at a lower rate: nothing in them needs more, and they're long. */
+const AMB_RATE = 22050;
+const AMBIENCE: AmbienceId[] = ['day', 'night', 'rain'];
 
 class AudioEngine {
   private ctx: AudioContext | null = null;
@@ -30,14 +38,16 @@ class AudioEngine {
   private limiter = new CueLimiter(8);
   private enabled = false;
   private settings: AudioSettings = { ...DEFAULT_AUDIO };
-  private noise: Float32Array | null = null;
+  private noise: AudioBuffer | null = null;
   private rendering: Promise<void> | null = null;
   /** Called once, the first time a sound actually plays (for the one-time "Sound is on" note). */
   onFirstSound: (() => void) | null = null;
   private played = false;
+  private amb = new Map<AmbienceId, GainNode>();
+  private scene = { night: false, raining: false, onFarm: true };
 
   constructor() {
-    if (typeof window !== 'undefined') window.__penDeckAudio = { contexts: 0, rendered: 0, state: 'none', cues: [] };
+    if (typeof window !== 'undefined') window.__penDeckAudio = { contexts: 0, rendered: 0, state: 'none', cues: [], ambience: { day: 0, night: 0, rain: 0 }, quiet: [], loops: {} };
   }
 
   configure(enabled: boolean, settings: AudioSettings) {
@@ -45,6 +55,33 @@ class AudioEngine {
     this.settings = settings;
     if (!enabled && this.ctx?.state === 'running') void this.ctx.suspend();
     if (enabled && this.ctx?.state === 'suspended' && !document.hidden) void this.ctx.resume();
+    this.applyAmbience();
+  }
+
+  /** What the farm sounds like right now. Ambience crossfades over a couple of seconds when this changes. */
+  setScene(scene: { night: boolean; raining: boolean; onFarm: boolean }) {
+    const s = this.scene;
+    if (s.night === scene.night && s.raining === scene.raining && s.onFarm === scene.onFarm) return;
+    this.scene = { ...scene };
+    this.applyAmbience();
+  }
+
+  private applyAmbience() {
+    const mix = ambienceMix(this.scene);
+    // Ambience is the farm's soundtrack: full on the Farm screen, softer elsewhere.
+    const level = cueGain(this.enabled, this.settings, 'ambience') * (this.scene.onFarm ? 1 : 0.4);
+    for (const id of AMBIENCE) {
+      const target = mix[id] * level;
+      if (window.__penDeckAudio) window.__penDeckAudio.ambience[id] = Math.round(target * 1000) / 1000;
+      const g = this.amb.get(id);
+      if (g && this.ctx) g.gain.setTargetAtTime(target, this.ctx.currentTime, 0.8);
+    }
+  }
+
+  /** One replay frame's sim events (only for replays the player watches, not training samples). */
+  playReplay(events: SimEvent[], width: number) {
+    if (!this.enabled) return;
+    for (const c of cuesForSimEvents(events, width)) this.play(c);
   }
 
   /** Call from a user gesture (click, key). Creates the context the first time, if sound is on. */
@@ -64,7 +101,8 @@ class AudioEngine {
       comp.ratio.value = 4;
       comp.connect(this.ctx.destination);
       this.out = comp;
-      this.rendering = this.renderAll();
+      // Render in a later task, so the click that unlocked audio stays snappy.
+      this.rendering = new Promise<void>((done) => setTimeout(() => void this.renderAll().then(done), 0));
     }
     if (this.ctx.state === 'suspended' && !document.hidden) void this.ctx.resume();
   }
@@ -116,10 +154,25 @@ class AudioEngine {
     if (!O) return;
     for (const id of Object.keys(KIT) as CueId[]) {
       try {
-        this.buffers.set(id, await this.render(O, KIT[id]));
-        window.__penDeckAudio!.rendered = this.buffers.size;
+        const buf = await this.render(O, KIT[id]);
+        this.buffers.set(id, buf);
+        const hook = window.__penDeckAudio!;
+        hook.rendered = this.buffers.size;
+        if (peak(buf.getChannelData(0)) < 0.01) hook.quiet.push(id);
       } catch {
         // A cue that can't render stays silent; the game never depends on sound.
+      }
+    }
+    for (const id of AMBIENCE) {
+      try {
+        const buf = await this.renderLoop(O, ambienceRecipe(id));
+        const d = buf.getChannelData(0);
+        let sum = 0;
+        for (let i = 0; i < d.length; i++) sum += d[i] * d[i];
+        window.__penDeckAudio!.loops[id] = Math.round(Math.sqrt(sum / d.length) * 10000) / 10000;
+        this.startLoop(id, buf);
+      } catch {
+        // No ambience is fine.
       }
     }
   }
@@ -131,19 +184,48 @@ class AudioEngine {
     return oc.startRendering();
   }
 
+  /** Render a loop with an overlap, then fold the overlap into the start so it repeats without a seam. */
+  private async renderLoop(O: OfflineCtor, recipe: Recipe): Promise<AudioBuffer> {
+    const L = Math.round(AMBIENCE_SECONDS * AMB_RATE);
+    const X = Math.round(AMBIENCE_OVERLAP * AMB_RATE);
+    const oc = new O(1, L + X, AMB_RATE);
+    for (const v of recipe.voices) this.voice(oc, v);
+    const full = (await oc.startRendering()).getChannelData(0);
+    const out = this.ctx!.createBuffer(1, L, AMB_RATE);
+    const d = out.getChannelData(0);
+    d.set(full.subarray(0, L));
+    for (let i = 0; i < X; i++) { const a = i / X; d[i] = full[i] * a + full[L + i] * (1 - a); }
+    return out;
+  }
+
+  private startLoop(id: AmbienceId, buf: AudioBuffer) {
+    if (!this.ctx || !this.out) return;
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    const g = this.ctx.createGain();
+    g.gain.value = 0;
+    src.connect(g).connect(this.out);
+    src.start();
+    this.amb.set(id, g);
+    this.applyAmbience();
+  }
+
   private voice(oc: OfflineAudioContext, v: Voice) {
     const end = v.at + v.dur;
     let src: AudioScheduledSourceNode;
     if (v.wave === 'noise') {
       if (!this.noise) {
-        this.noise = new Float32Array(RATE);
+        // 4.1 s of noise, made once and shared by every noise voice (AudioBuffers aren't tied to a context).
+        // Long enough that looping it inside a 12 s ambience bed isn't heard as a pulse.
+        const b = oc.createBuffer(1, Math.round(RATE * 4.1), RATE);
+        const d = b.getChannelData(0);
         let seed = 1;
-        for (let i = 0; i < this.noise.length; i++) { seed = (seed * 16807) % 2147483647; this.noise[i] = (seed / 2147483647) * 2 - 1; }
+        for (let i = 0; i < d.length; i++) { seed = (seed * 16807) % 2147483647; d[i] = (seed / 2147483647) * 2 - 1; }
+        this.noise = b;
       }
-      const b = oc.createBuffer(1, this.noise.length, RATE);
-      b.copyToChannel(this.noise, 0);
       const n = oc.createBufferSource();
-      n.buffer = b;
+      n.buffer = this.noise;
       n.loop = true;
       src = n;
     } else {
@@ -176,7 +258,11 @@ class AudioEngine {
     const attack = Math.min(v.attack ?? 0.005, v.dur / 2);
     g.gain.setValueAtTime(0, v.at);
     g.gain.linearRampToValueAtTime(v.gain, v.at + attack);
-    g.gain.exponentialRampToValueAtTime(0.0001, end);
+    if (v.release !== undefined) {
+      // Beds: hold, then a short fade at the very end.
+      g.gain.setValueAtTime(v.gain, Math.max(v.at + attack, end - v.release));
+      g.gain.linearRampToValueAtTime(0, end);
+    } else g.gain.exponentialRampToValueAtTime(0.0001, end);
     node.connect(g).connect(oc.destination);
     src.start(v.at);
     src.stop(end + 0.02);
@@ -186,6 +272,12 @@ class AudioEngine {
   ready(): Promise<void> {
     return this.rendering ?? Promise.resolve();
   }
+}
+
+function peak(d: Float32Array): number {
+  let m = 0;
+  for (let i = 0; i < d.length; i++) m = Math.max(m, Math.abs(d[i]));
+  return m;
 }
 
 export const audio = new AudioEngine();

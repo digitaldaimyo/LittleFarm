@@ -147,7 +147,7 @@ export function Sleeve({ stage, onChange }: { stage: StageSpec; onChange: (fn: (
       {n && (
         <div className="row gap">
           {(!info.socket.required || info.socket.many || slot.parentId === '#fail' || slot.parentId === '#success') && (
-            <button className="btn ghost" onClick={() => { audio.play('card.flick'); onChange((st) => { setSlot(st, slot, null); }); s.setUi({ slot: null }); }}>Remove</button>
+            <button className="btn ghost" onClick={() => { audio.play('card.remove'); onChange((st) => { setSlot(st, slot, null); }); s.setUi({ slot: null }); }}>Remove</button>
           )}
           <button className="btn ghost" onClick={() => {
             const name = prompt('Template name', card?.presentation.title ?? 'Template');

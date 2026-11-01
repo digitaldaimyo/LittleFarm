@@ -91,12 +91,14 @@ class GameStore {
     const before = `${g0.active}:${g0.step}`;
     const offered0 = new Set(Object.entries(g0.status).filter(([, v]) => v === 'offered').map(([k]) => k));
     const unlocks0 = this.state.progress.unlocks.length;
+    const done0 = { status: { ...g0.status } };
     fn(this.state);
     if (this.state.progress.unlocks.length > unlocks0) audio.play('ui.unlock');
     advanceTutorial(this.state);
     const g1 = guide(this.state);
-    if (g1.active && `${g1.active}:${g1.step}` !== before && before.startsWith(`${g1.active}:`)) this.toast('Nice — next step.', 'good');
-    for (const [k, v] of Object.entries(g1.status)) if (v === 'offered' && !offered0.has(k) && g0.status[k] !== 'active') this.toast(`New Field Guide lesson: ${chapterById(k)?.title ?? k}`, 'info');
+    if (g1.active && `${g1.active}:${g1.step}` !== before && before.startsWith(`${g1.active}:`)) { this.toast('Nice — next step.', 'good'); audio.play('guide.step'); }
+    for (const [k, v] of Object.entries(g1.status)) if (v === 'offered' && !offered0.has(k) && g0.status[k] !== 'active') { this.toast(`New Field Guide lesson: ${chapterById(k)?.title ?? k}`, 'info'); audio.play('guide.offer'); }
+    if (Object.entries(g1.status).some(([k, v]) => v === 'done' && done0.status[k] !== 'done')) audio.play('guide.done');
     if (opts.save !== false) this.scheduleSave();
     this.emit();
   }
@@ -137,13 +139,17 @@ class GameStore {
       const now = performance.now();
       const dt = Math.min(1000, now - last);
       last = now;
+      const w = this.state.farm.world;
+      audio.setScene({ night: !!w.night, raining: !!w.raining, onFarm: this.ui.screen === 'farm' });
       if (this.ui.farmPaused) return;
       acc += dt * this.state.settings.farmSpeed;
       const tickMs = 280;
       let changed = false;
       while (acc >= tickMs) {
         acc -= tickMs;
+        const done0 = (this.state.farm.requests ?? []).filter((x) => x.status === 'done').length;
         const r = farmTick(this.state, this.runtime);
+        if ((this.state.farm.requests ?? []).filter((x) => x.status === 'done').length > done0) audio.play('ui.request');
         changed = true;
         for (const f of r.fx) this.ui.fx.push({ ...f, id: ++this.toastId, at: now });
         audio.playFarm(r.fx, this.state.farm.world.w, this.state.settings.farmSpeed, this.ui.screen === 'farm');

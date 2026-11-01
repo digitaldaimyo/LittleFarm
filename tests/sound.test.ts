@@ -1,60 +1,107 @@
 import { describe, expect, it } from 'vitest';
-import { CUES, CueLimiter, DEFAULT_AUDIO, SILENT_FX, cueGain, cuesForFarmFx, sanitizeAudio, type CueId } from '../src/game/sound';
-import { KIT, recipeLength } from '../src/audio/kit';
+import { CUES, CueLimiter, DEFAULT_AUDIO, SILENT_EVENTS, SILENT_FX, ambienceMix, cueForFx, cueGain, cuesForFarmFx, cuesForSimEvents, sanitizeAudio, type CueId } from '../src/game/sound';
+import type { SimEvent, SimEventType } from '../src/sim/world';
+import { AMBIENCE_OVERLAP, AMBIENCE_SECONDS, KIT, ambienceRecipe, recipeLength } from '../src/audio/kit';
 import type { FarmFx } from '../src/game/farm';
-import { createRuntime, farmTick } from '../src/game/farm';
+import { DAY_TICKS, createRuntime, farmTick } from '../src/game/farm';
 import { newGame } from '../src/game/state';
 import { adoptPet } from '../src/game/pets';
 import { parseGame, serializeGame } from '../src/persistence/save';
 import { recipeStage, trainAndSave } from './helpers';
 
-const FX_TYPES: FarmFx['type'][] = ['coin', 'splash', 'pickup', 'drop', 'celebrate', 'confused', 'nap', 'bump'];
+const FX_TYPES: FarmFx['type'][] = ['coin', 'splash', 'pickup', 'drop', 'celebrate', 'confused', 'nap', 'bump', 'sound'];
 const isSilent = (f: FarmFx) => SILENT_FX.has(f.type) || (!!f.text && SILENT_FX.has(`${f.type}:${f.text}`));
+// Every tag the farm attaches to an effect (src/game/farm.ts).
+const FX_SAMPLES: FarmFx[] = [
+  ...FX_TYPES.filter((t) => t !== 'sound').map((type) => ({ type, x: 3, y: 3, amount: 1 })),
+  ...['rain'].map((text) => ({ type: 'splash' as const, x: 1, y: 1, text })),
+  ...['egg'].map((text) => ({ type: 'pickup' as const, x: 1, y: 1, text })),
+  ...['watered', 'filled', 'gate open', 'gate shut'].map((text) => ({ type: 'drop' as const, x: 1, y: 1, text })),
+  ...['shoo!'].map((text) => ({ type: 'celebrate' as const, x: 1, y: 1, text })),
+  ...['pecked', 'timed out'].map((text) => ({ type: 'confused' as const, x: 1, y: 1, text })),
+  ...['night'].map((text) => ({ type: 'nap' as const, x: 1, y: 1, text })),
+  ...['shoo', 'firefly', 'crow', 'dawn', 'dusk'].map((text) => ({ type: 'sound' as const, x: 1, y: 1, text })),
+];
+const SIM_EVENTS: SimEventType[] = ['tick', 'move', 'bump', 'reach', 'enter', 'pickup', 'drop', 'deliver', 'fumble', 'stay', 'fill', 'water', 'shoo', 'scare', 'peck', 'enterArea', 'leaveArea', 'gate'];
 
 describe('sound cues', () => {
-  it('every farm effect type either makes a sound or is silent on purpose', () => {
-    for (const type of FX_TYPES) {
-      const f: FarmFx = { type, x: 3, y: 3, amount: 1 };
-      expect(isSilent(f) || cuesForFarmFx([f], 12).length === 1, type).toBe(true);
-    }
+  it('every farm effect (and every tag on one) either makes a sound or is silent on purpose', () => {
+    for (const f of FX_SAMPLES) expect(isSilent(f) || cueForFx(f) !== null, `${f.type}:${f.text ?? ''}`).toBe(true);
+    // Phase B gave the tagged moments their own sounds.
+    const id = (type: FarmFx['type'], text?: string) => cueForFx({ type, x: 0, y: 0, text });
+    expect([id('drop', 'watered'), id('drop', 'filled'), id('drop', 'gate open'), id('drop', 'gate shut'), id('drop')])
+      .toEqual(['farm.water', 'farm.fill', 'farm.gateOpen', 'farm.gateShut', 'farm.drop']);
+    expect([id('celebrate', 'shoo!'), id('celebrate'), id('confused', 'pecked'), id('confused'), id('pickup', 'egg')])
+      .toEqual(['farm.scare', 'farm.celebrate', 'farm.peck', 'farm.confused', 'farm.egg']);
+    expect([id('sound', 'shoo'), id('sound', 'firefly'), id('sound', 'crow'), id('sound', 'dawn'), id('sound', 'dusk')])
+      .toEqual(['farm.shoo', 'farm.firefly', 'farm.crow', 'world.dawn', 'world.dusk']);
+    // Silent on purpose: naps repeat every tick, rain is carried by the ambience.
+    expect([id('nap'), id('splash', 'rain')]).toEqual([null, null]);
   });
 
-  it('a real farm run only produces effects the mapping knows about', () => {
+  it('a real farm run (with a night) only produces effects the mapping knows about, including dusk and dawn', () => {
     const s = newGame();
     const p = adoptPet(s, 'Pip', 'meadow');
     trainAndSave(s, p, recipeStage('go-to-berry'));
     const rt = createRuntime(s.farm);
     const seen = new Set<string>();
     let cues = 0;
-    for (let i = 0; i < 1500; i++) {
+    for (let i = 0; i < DAY_TICKS + 50; i++) {
       const r = farmTick(s, rt);
       for (const f of r.fx) {
-        seen.add(f.type);
+        seen.add(f.text ? `${f.type}:${f.text}` : f.type);
         expect(FX_TYPES).toContain(f.type);
+        expect(isSilent(f) || cueForFx(f) !== null, `${f.type}:${f.text}`).toBe(true);
       }
       cues += cuesForFarmFx(r.fx, s.farm.world.w).length;
     }
-    expect(seen.has('coin') && seen.has('pickup')).toBe(true);
+    expect([...seen]).toEqual(expect.arrayContaining(['coin', 'pickup', 'sound:dusk', 'sound:dawn']));
     expect(cues).toBeGreaterThan(10);
   });
 
-  it('maps pickups, splashes and bumps; coins in one tick merge into one brighter chime', () => {
+  it('maps farm effects with stereo position; coins in one tick merge into one brighter chime', () => {
     const fx: FarmFx[] = [
       { type: 'pickup', x: 0, y: 1, text: 'carrot' },
       { type: 'splash', x: 11, y: 1 },
       { type: 'bump', x: 5, y: 1 },
       { type: 'coin', x: 4, y: 1, amount: 2 },
       { type: 'coin', x: 4, y: 1, amount: 1 },
-      { type: 'pickup', x: 2, y: 2, text: 'egg' }, // an egg being laid: phase B
-      { type: 'splash', x: 2, y: 2, text: 'rain' }, // rain: phase B ambience
-      { type: 'drop', x: 2, y: 2 },
+      { type: 'pickup', x: 2, y: 2, text: 'egg' },
+      { type: 'splash', x: 2, y: 2, text: 'rain' },
+      { type: 'nap', x: 2, y: 2 },
     ];
     const c = cuesForFarmFx(fx, 12);
-    expect(c.map((x) => x.id)).toEqual(['farm.pickup', 'farm.splash', 'farm.bump', 'farm.coin']);
+    expect(c.map((x) => x.id)).toEqual(['farm.pickup', 'farm.splash', 'farm.bump', 'farm.egg', 'farm.coin']);
     expect(c[0].pitch).toBeLessThan(1); // carrots sound a little lower than berries
     expect(c[0].pan).toBe(-0.4);
     expect(c[1].pan).toBe(0.4);
-    expect(c[3].pitch).toBeGreaterThan(1.1); // 3 coins at once
+    expect(c[4].pitch).toBeGreaterThan(1.1); // 3 coins at once
+  });
+
+  it('replays: every sim event either has a sound or is silent on purpose, and they match the farm', () => {
+    for (const type of SIM_EVENTS) {
+      const e: SimEvent = { type, x: 2, y: 2, state: 'open' };
+      expect(SILENT_EVENTS.has(type) || cuesForSimEvents([e], 8).length === 1, type).toBe(true);
+    }
+    const ids = (events: SimEvent[]) => cuesForSimEvents(events, 8).map((c) => c.id);
+    expect(ids([{ type: 'enter', x: 1, y: 1 }, { type: 'bump', x: 1, y: 1 }, { type: 'pickup', x: 1, y: 1, kind: 'carrot' }, { type: 'deliver', x: 1, y: 1 }]))
+      .toEqual(['farm.splash', 'farm.bump', 'farm.pickup', 'farm.deliver']);
+    expect(ids([{ type: 'gate', x: 1, y: 1, state: 'closed' }, { type: 'move', x: 1, y: 1 }, { type: 'tick', x: 1, y: 1 }])).toEqual(['farm.gateShut']);
+  });
+
+  it('ambience: day birds, night crickets and rain layer the way the farm looks', () => {
+    expect(ambienceMix({ night: false, raining: false })).toEqual({ day: 1, night: 0, rain: 0 });
+    expect(ambienceMix({ night: true, raining: false })).toEqual({ day: 0, night: 1, rain: 0 });
+    expect(ambienceMix({ night: false, raining: true })).toEqual({ day: 0.3, night: 0, rain: 1 });
+    for (const id of ['day', 'night', 'rain'] as const) {
+      const r = ambienceRecipe(id);
+      expect(r).toEqual(ambienceRecipe(id)); // seeded: the same loop everywhere
+      expect(r.voices.length).toBeGreaterThan(5);
+      for (const v of r.voices) {
+        expect(v.at + v.dur).toBeLessThanOrEqual(AMBIENCE_SECONDS + AMBIENCE_OVERLAP + 1e-9);
+        expect(v.gain).toBeLessThanOrEqual(0.2);
+      }
+    }
   });
 
   it('limiter: per-cue cooldown, voice cap, deterministic with a fake clock', () => {

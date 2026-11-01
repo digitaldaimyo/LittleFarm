@@ -102,7 +102,7 @@ function StagePicker({ stage }: { stage: StageSpec }) {
       </label>
       <span className="chip">teaches {stage.learner.skill}</span>
       <span className="muted small">v{stage.version}</span>
-      <button className="btn ghost small" disabled={!(s.state.stageHistory[stage.id]?.length)} onClick={() => s.mutate((g) => { undoStage(g, stage.id); })}>Undo</button>
+      <button className="btn ghost small" disabled={!(s.state.stageHistory[stage.id]?.length)} onClick={() => { audio.play('card.remove'); s.mutate((g) => { undoStage(g, stage.id); }); }}>Undo</button>
     </div>
   );
 }
@@ -113,7 +113,9 @@ function PenView({ stage, pet }: { stage: StageSpec; pet: Pet }) {
   const trace = t?.replay && t.stage.id === stage.id ? t.replay : s.ui.penReplay;
   const showingReplay = !!trace;
   const reduced = s.state.settings.reducedMotion === 'on';
-  const replay = useReplay(trace, t?.status === 'running' && t.speed === 'fast' ? 40 : reduced ? 260 : 150);
+  // Replays you watch make the same sounds as the farm; the samples shown while training runs stay quiet.
+  const training = !!t && (t.status === 'running' || t.status === 'paused' || t.status === 'evaluating');
+  const replay = useReplay(trace, t?.status === 'running' && t.speed === 'fast' ? 40 : reduced ? 260 : 150, !training);
   // Stages are edited in place; `version` bumps on every edit, so it is the real dependency.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const preview = useMemo(() => generateWorld(stage, s.ui.previewSeed), [stage, stage.version, s.ui.previewSeed]);
@@ -298,7 +300,7 @@ function EnvironmentBinder({ stage }: { stage: StageSpec }) {
               <span className="chip">{card?.presentation.title}</span>
               {p.cardId === 'place.fixed' && <button className="btn ghost small" onClick={() => update((st) => { const x = st.environment.find((y) => y.id === p.id); if (x) { x.cardId = 'place.random'; x.args = { kind: x.args.kind, count: 1, region: 'anywhere' }; } })}>Scatter this</button>}
               {p.cardId === 'place.pet' && paramOf(p, 'mode', 'random') === 'fixed' && <button className="btn ghost small" onClick={() => update((st) => { const x = st.environment.find((y) => y.id === p.id); if (x) x.args.mode = 'random'; })}>Random start</button>}
-              <button className="icon-btn small" aria-label="Remove" onClick={() => { update((st) => { st.environment = st.environment.filter((x) => x.id !== p.id); }); s.setUi({ slot: null }); }}>✕</button>
+              <button className="icon-btn small" aria-label="Remove" onClick={() => { audio.play('card.remove'); update((st) => { st.environment = st.environment.filter((x) => x.id !== p.id); }); s.setUi({ slot: null }); }}>✕</button>
             </li>
           );
         })}

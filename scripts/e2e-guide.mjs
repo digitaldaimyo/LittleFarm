@@ -18,7 +18,7 @@ let chromium;
 try { ({ chromium } = await import('playwright')); } catch { ({ chromium } = require('playwright')); }
 
 const PORT = 4179;
-const CUE_COUNT = 16; // cues in src/audio/kit.ts
+const CUE_COUNT = 38; // cues in src/audio/kit.ts
 const URL = `http://localhost:${PORT}/`;
 const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'ignore' });
 const FROM = Number(process.argv.find((a) => a.startsWith('--from='))?.slice(7) ?? 1);
@@ -120,6 +120,9 @@ try {
   check((await page.textContent('.guide-list')).includes('Pay for results'), 'later lessons listed');
   const a1 = await au();
   check(a1.rendered === CUE_COUNT && a1.state === 'running', `sound: all ${CUE_COUNT} cues rendered, audio running (${a1.rendered}, ${a1.state})`);
+  check(a1.quiet.length === 0, `sound: no cue renders as silence ${a1.quiet.length ? JSON.stringify(a1.quiet) : ''}`);
+  const loops = a1.loops;
+  check(['day', 'night', 'rain'].every((k) => loops[k] > 0.002 && loops[k] < 0.2), `sound: ambience loops rendered at a gentle level (RMS ${JSON.stringify(loops)})`);
   const want1 = ['card.flick', 'card.snap', 'pen.place', 'train.start', 'skill.save', 'farm.pickup', 'farm.coin'];
   const missing1 = want1.filter((c) => !a1.cues.includes(c));
   check(!missing1.length && (a1.cues.includes('train.certified') || a1.cues.includes('train.notCertified')), `sound: lessons 1–3 cues played ${missing1.length ? `(missing ${missing1.join(', ')})` : ''}`);
@@ -132,7 +135,6 @@ try {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 950 }, acceptDownloads: true });
     const page = await ctx.newPage();
     watch(page);
-    const banner = async () => (await page.textContent('.tutorial').catch(() => '')).replace(/\s+/g, ' ');
     const report = async () => { await page.waitForSelector('text=Lesson report', { timeout: 180000 }); await page.waitForTimeout(300); };
     const nav = (n) => page.click(`.nav-btn:has-text("${n}")`);
     const discard = async () => { const d = page.locator('.training button:has-text("Discard")'); if (await d.count()) await d.click(); };
@@ -166,6 +168,9 @@ try {
     await nav('Teach');
     await train();
     check((await page.textContent('[data-tut="report-exploit"]')).includes('Loophole found'), 'L4: loophole run flagged “Loophole found!”');
+    await page.waitForTimeout(3000); // watch the replay of the loophole for a moment (it plays with sound)
+    const heard = await page.evaluate(() => window.__penDeckAudio.cues);
+    check(heard.includes('farm.drop') && heard.includes('farm.pickup'), 'sound: the loophole replay is heard (pick up, put down, again…)');
     await step('Treats up, success down', 'L4: asks the player to read the loophole');
     await looked();
     await page.click('[data-tut="repair-card"]');
@@ -174,6 +179,8 @@ try {
     const c4 = await compareInGuide();
     console.log('   L4 comparison:', c4.slice(0, 170));
     check(c4.includes('Treat every pickup') && c4.includes('Once per object'), 'L4: comparison shows the loophole and repaired runs');
+    const a4 = await page.evaluate(() => window.__penDeckAudio.cues);
+    check(a4.includes('card.repair'), 'sound: the repair card clinks');
     await nav('Teach');
     await page.click('[data-tut="save-skill"]');
     await lessonDone('Pay for results');
@@ -294,15 +301,20 @@ try {
     await nav('Guide');
     check((await page.locator('.guide-item.done').count()) === 9, 'all 9 Field Guide lessons done');
     const a2 = await page.evaluate(() => window.__penDeckAudio);
-    const want2 = ['train.loophole', 'train.certified', 'ui.unlock', 'skill.save'];
+    const want2 = ['train.loophole', 'train.certified', 'ui.unlock', 'skill.save', 'card.remove', 'guide.step', 'guide.offer', 'guide.done'];
     const missing2 = want2.filter((c) => !a2.cues.includes(c));
     check(!missing2.length, `sound: lessons 4–9 cues played (loophole, certified, unlock, save) ${missing2.length ? `(missing ${missing2.join(', ')})` : ''}`);
+    await nav('Farm');
+    await page.waitForTimeout(500);
+    const amb = (await page.evaluate(() => window.__penDeckAudio.ambience));
+    check(amb.day + amb.night > 0 && amb.rain === 0, `sound: farm ambience playing (day ${amb.day}, night ${amb.night}, rain ${amb.rain})`);
     // Mute with the M key, then nothing more plays.
     await page.keyboard.press('m');
     const n = (await page.evaluate(() => window.__penDeckAudio.cues.length));
     await nav('Farm');
     await page.waitForTimeout(3000);
-    check((await page.evaluate(() => window.__penDeckAudio.cues.length)) === n && (await page.getAttribute('.mute-btn', 'aria-pressed')) === 'true', 'sound: M mutes (no cues while muted)');
+    const amb2 = (await page.evaluate(() => window.__penDeckAudio.ambience));
+    check((await page.evaluate(() => window.__penDeckAudio.cues.length)) === n && (await page.getAttribute('.mute-btn', 'aria-pressed')) === 'true' && amb2.day + amb2.night === 0, 'sound: M mutes (no cues, ambience faded out)');
     await ctx.close();
   }
 

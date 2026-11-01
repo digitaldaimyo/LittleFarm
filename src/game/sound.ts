@@ -4,15 +4,20 @@
  * Playback lives in `audio/engine.ts`; recipes in `audio/kit.ts`. See docs/SOUND_PLAN.md.
  */
 import type { FarmFx } from './farm';
+import type { SimEvent, SimEventType } from '../sim/world';
 
 export type CueId =
   // Teaching
-  | 'card.flick' | 'card.snap' | 'card.reject' | 'pen.place'
+  | 'card.flick' | 'card.snap' | 'card.reject' | 'card.remove' | 'card.repair' | 'pen.place'
   | 'train.start' | 'train.certified' | 'train.notCertified' | 'train.loophole' | 'skill.save'
-  // Farm
+  // Farm (and replays)
   | 'farm.pickup' | 'farm.coin' | 'farm.splash' | 'farm.bump'
-  // Progression
-  | 'pet.adopt' | 'ui.unlock' | 'ui.shop';
+  | 'farm.drop' | 'farm.deliver' | 'farm.confused' | 'farm.fill' | 'farm.water' | 'farm.shoo' | 'farm.scare' | 'farm.peck'
+  | 'farm.egg' | 'farm.gateOpen' | 'farm.gateShut' | 'farm.firefly' | 'farm.celebrate' | 'farm.crow'
+  // World
+  | 'world.dawn' | 'world.dusk'
+  // Progression and the Field Guide
+  | 'pet.adopt' | 'ui.unlock' | 'ui.shop' | 'ui.request' | 'guide.step' | 'guide.offer' | 'guide.done';
 
 export type Bus = 'effects' | 'ui';
 
@@ -40,7 +45,29 @@ export const CUES: Record<CueId, CueDef> = {
   'farm.coin': { bus: 'effects', priority: 'A', cooldownMs: 150, durationMs: 260 },
   'farm.splash': { bus: 'effects', priority: 'A', cooldownMs: 300, durationMs: 400 },
   'farm.bump': { bus: 'effects', priority: 'A', cooldownMs: 250, durationMs: 120 },
+  'card.remove': { bus: 'ui', priority: 'B', cooldownMs: 80, durationMs: 70 },
+  'card.repair': { bus: 'ui', priority: 'B', cooldownMs: 300, durationMs: 260 },
+  'farm.drop': { bus: 'effects', priority: 'B', cooldownMs: 150, durationMs: 110 },
+  'farm.deliver': { bus: 'effects', priority: 'B', cooldownMs: 200, durationMs: 230 },
+  'farm.confused': { bus: 'effects', priority: 'B', cooldownMs: 600, durationMs: 220 },
+  'farm.fill': { bus: 'effects', priority: 'B', cooldownMs: 300, durationMs: 330 },
+  'farm.water': { bus: 'effects', priority: 'B', cooldownMs: 250, durationMs: 330 },
+  'farm.shoo': { bus: 'effects', priority: 'B', cooldownMs: 250, durationMs: 300 },
+  'farm.scare': { bus: 'effects', priority: 'B', cooldownMs: 500, durationMs: 450 },
+  'farm.peck': { bus: 'effects', priority: 'B', cooldownMs: 1500, durationMs: 330 },
+  'farm.egg': { bus: 'effects', priority: 'B', cooldownMs: 600, durationMs: 270 },
+  'farm.gateOpen': { bus: 'effects', priority: 'B', cooldownMs: 300, durationMs: 470 },
+  'farm.gateShut': { bus: 'effects', priority: 'B', cooldownMs: 300, durationMs: 200 },
+  'farm.firefly': { bus: 'effects', priority: 'B', cooldownMs: 250, durationMs: 420 },
+  'farm.celebrate': { bus: 'effects', priority: 'C', cooldownMs: 1500, durationMs: 330 },
+  'farm.crow': { bus: 'effects', priority: 'B', cooldownMs: 3000, durationMs: 470 },
+  'world.dawn': { bus: 'effects', priority: 'B', cooldownMs: 5000, durationMs: 1100 },
+  'world.dusk': { bus: 'effects', priority: 'B', cooldownMs: 5000, durationMs: 1300 },
   'pet.adopt': { bus: 'ui', priority: 'A', cooldownMs: 500, durationMs: 250 },
+  'ui.request': { bus: 'ui', priority: 'B', cooldownMs: 600, durationMs: 650 },
+  'guide.step': { bus: 'ui', priority: 'B', cooldownMs: 300, durationMs: 90 },
+  'guide.offer': { bus: 'ui', priority: 'B', cooldownMs: 800, durationMs: 300 },
+  'guide.done': { bus: 'ui', priority: 'B', cooldownMs: 800, durationMs: 550 },
   'ui.unlock': { bus: 'ui', priority: 'A', cooldownMs: 600, durationMs: 450 },
   'ui.shop': { bus: 'ui', priority: 'A', cooldownMs: 300, durationMs: 300 },
 };
@@ -54,28 +81,83 @@ export interface CueRequest {
 }
 
 /**
- * Farm effects that are silent on purpose in phase A (they get sounds in phase B), keyed by `type:text`.
- * Every FarmFx type must either map to a cue or appear here — tested.
+ * Farm effects that are silent on purpose, keyed by `type` or `type:text`. Every FarmFx must either map to a
+ * cue or appear here — tested. (`nap` repeats every tick of a nap; rain is carried by the rain ambience.)
  */
-export const SILENT_FX = new Set(['drop', 'celebrate', 'confused', 'nap', 'splash:rain', 'pickup:egg']);
+export const SILENT_FX = new Set(['nap', 'splash:rain']);
 
 const PICKUP_PITCH: Record<string, number> = { egg: 1.15, carrot: 0.9 };
+
+/** Sound-only farm markers (`type: 'sound'`), which the farm view doesn't draw. */
+const SOUND_TAGS: Record<string, CueId> = { shoo: 'farm.shoo', firefly: 'farm.firefly', crow: 'farm.crow', dawn: 'world.dawn', dusk: 'world.dusk' };
+const DROP_TAGS: Record<string, CueId> = { watered: 'farm.water', filled: 'farm.fill', 'gate open': 'farm.gateOpen', 'gate shut': 'farm.gateShut' };
+
+/** The cue for one farm effect (null = silent). Exposed for the coverage test. */
+export function cueForFx(f: FarmFx): CueId | null {
+  if (SILENT_FX.has(f.type) || (f.text && SILENT_FX.has(`${f.type}:${f.text}`))) return null;
+  switch (f.type) {
+    case 'coin': return 'farm.coin';
+    case 'pickup': return f.text === 'egg' ? 'farm.egg' : 'farm.pickup';
+    case 'splash': return 'farm.splash';
+    case 'bump': return 'farm.bump';
+    case 'drop': return (f.text && DROP_TAGS[f.text]) || 'farm.drop';
+    case 'celebrate': return f.text === 'shoo!' ? 'farm.scare' : 'farm.celebrate';
+    case 'confused': return f.text === 'pecked' ? 'farm.peck' : 'farm.confused';
+    case 'sound': return (f.text && SOUND_TAGS[f.text]) || null;
+    default: return null;
+  }
+}
 
 /** Turn one farm tick's effects into cues. Coins in the same tick merge into one brighter chime. */
 export function cuesForFarmFx(fx: FarmFx[], width: number): CueRequest[] {
   const out: CueRequest[] = [];
-  const pan = (x: number) => (width > 1 ? Math.round(((x / (width - 1)) * 2 - 1) * 0.4 * 100) / 100 : 0);
   let coins = 0;
   let coinX = 0;
   for (const f of fx) {
-    if (SILENT_FX.has(f.type) || (f.text && SILENT_FX.has(`${f.type}:${f.text}`))) continue;
-    if (f.type === 'coin') { coins += f.amount ?? 1; coinX = f.x; continue; }
-    if (f.type === 'pickup') out.push({ id: 'farm.pickup', pitch: PICKUP_PITCH[f.text ?? ''] ?? 1, pan: pan(f.x) });
-    else if (f.type === 'splash') out.push({ id: 'farm.splash', pan: pan(f.x) });
-    else if (f.type === 'bump') out.push({ id: 'farm.bump', pan: pan(f.x) });
+    const id = cueForFx(f);
+    if (!id) continue;
+    if (id === 'farm.coin') { coins += f.amount ?? 1; coinX = f.x; continue; }
+    const pitch = id === 'farm.pickup' ? PICKUP_PITCH[f.text ?? ''] ?? 1 : undefined;
+    out.push({ id, ...(pitch !== undefined ? { pitch } : {}), pan: panFor(f.x, width) });
   }
-  if (coins > 0) out.push({ id: 'farm.coin', pitch: coins >= 3 ? 1.12 : coins === 2 ? 1.06 : 1, pan: pan(coinX) });
+  if (coins > 0) out.push({ id: 'farm.coin', pitch: coins >= 3 ? 1.12 : coins === 2 ? 1.06 : 1, pan: panFor(coinX, width) });
   return out;
+}
+
+function panFor(x: number, width: number): number {
+  return width > 1 ? Math.round(((x / (width - 1)) * 2 - 1) * 0.4 * 100) / 100 : 0;
+}
+
+/** Sim events that are silent in replays (too frequent, or not something you'd hear). Tested for coverage. */
+export const SILENT_EVENTS = new Set<SimEventType>(['tick', 'move', 'stay', 'reach', 'enterArea', 'leaveArea']);
+
+/** Cues for one replay frame: the same sounds as the farm, so a splash in a replay *is* a splash. */
+export function cuesForSimEvents(events: SimEvent[], width: number): CueRequest[] {
+  const out: CueRequest[] = [];
+  for (const e of events) {
+    if (SILENT_EVENTS.has(e.type)) continue;
+    const id: CueId | null =
+      e.type === 'bump' ? 'farm.bump'
+      : e.type === 'enter' ? 'farm.splash'
+      : e.type === 'pickup' ? 'farm.pickup'
+      : e.type === 'drop' ? 'farm.drop'
+      : e.type === 'deliver' ? 'farm.deliver'
+      : e.type === 'fumble' ? 'farm.confused'
+      : e.type === 'fill' ? 'farm.fill'
+      : e.type === 'water' ? 'farm.water'
+      : e.type === 'shoo' ? 'farm.shoo'
+      : e.type === 'scare' ? 'farm.scare'
+      : e.type === 'peck' ? 'farm.peck'
+      : e.type === 'gate' ? (e.state === 'open' ? 'farm.gateOpen' : 'farm.gateShut')
+      : null;
+    if (id) out.push({ id, ...(id === 'farm.pickup' ? { pitch: PICKUP_PITCH[e.kind ?? ''] ?? 1 } : {}), pan: panFor(e.x, width) });
+  }
+  return out;
+}
+
+/** Which ambience layers should sound, and how loud (0–1 before volume settings). */
+export function ambienceMix(scene: { night: boolean; raining: boolean }): { day: number; night: number; rain: number } {
+  return { day: scene.night ? 0 : scene.raining ? 0.3 : 1, night: scene.night ? (scene.raining ? 0.5 : 1) : 0, rain: scene.raining ? 1 : 0 };
 }
 
 /**
@@ -134,7 +216,7 @@ export function sanitizeAudio(a: unknown): AudioSettings {
 }
 
 /** Final gain for a cue on a bus (0 when sound is off). */
-export function cueGain(enabled: boolean, a: AudioSettings, bus: Bus, offScreen = false): number {
+export function cueGain(enabled: boolean, a: AudioSettings, bus: Bus | 'ambience', offScreen = false): number {
   if (!enabled) return 0;
-  return a.master * (bus === 'ui' ? a.ui : a.effects) * (offScreen ? 0.5 : 1);
+  return a.master * (bus === 'ui' ? a.ui : bus === 'ambience' ? a.ambience : a.effects) * (offScreen ? 0.5 : 1);
 }
