@@ -57,6 +57,23 @@ function senseFn(n: SpecNode, target: string): (w: World) => number {
         const d = Math.abs(dx) + Math.abs(dy);
         return dir * 3 + (d <= 1 ? 0 : d <= 3 ? 1 : 2);
       };
+    case 'sense.nearestDry':
+      return (w) => {
+        let t = null as null | { x: number; y: number };
+        let bd = Infinity;
+        for (const o of w.objects) {
+          if (o.kind !== kind || o.wet || o.carried || o.delivered) continue;
+          const d = Math.abs(o.x - w.pet.x) + Math.abs(o.y - w.pet.y);
+          if (d < bd) { bd = d; t = o; }
+        }
+        if (!t) return 4 * 3 + 2;
+        const dx = t.x - w.pet.x, dy = t.y - w.pet.y;
+        return ((Math.sign(dx) + 1) * 3 + (Math.sign(dy) + 1)) * 3 + (bd <= 1 ? 0 : bd <= 3 ? 1 : 2);
+      };
+    case 'sense.water':
+      return (w) => ((w.pet.water ?? 0) > 0 ? 1 : 0);
+    case 'sense.night':
+      return (w) => (w.night ? 1 : 0);
     case 'sense.distance':
       return (w) => {
         const t = nearest(w, kind);
@@ -119,9 +136,9 @@ export function compileEncoder(senses: SpecNode[], target: string): SenseEncoder
 }
 
 /** Ability cards → ordered primitive action set. Order is fixed so presets keep the legacy 4-action layout. */
-export const ABILITY_ACTIONS: Record<string, Action[]> = { move: MOVES, stay: ['wait'], pickup: ['pick'], drop: ['drop'] };
-export const ABILITY_LABELS: Record<string, string> = { move: 'Move', stay: 'Stay', pickup: 'Pick up', drop: 'Put down' };
-export const ABILITY_ORDER = ['move', 'stay', 'pickup', 'drop'];
+export const ABILITY_ACTIONS: Record<string, Action[]> = { move: MOVES, stay: ['wait'], pickup: ['pick'], drop: ['drop'], water: ['water'] };
+export const ABILITY_LABELS: Record<string, string> = { move: 'Move', stay: 'Stay', pickup: 'Pick up', drop: 'Put down', water: 'Water' };
+export const ABILITY_ORDER = ['move', 'stay', 'pickup', 'drop', 'water'];
 
 export function actionsFor(abilities: string[]): Action[] {
   const out: Action[] = [];
@@ -139,6 +156,9 @@ export function legalActionIdx(w: World, actions: Action[]): number[] {
       if (w.pet.carrying === null && objectsAt(w, w.pet.x, w.pet.y).some((o) => def(o.kind).carryable)) out.push(i);
     } else if (a === 'drop') {
       if (w.pet.carrying !== null) out.push(i);
+    } else if (a === 'water') {
+      const here = objectsAt(w, w.pet.x, w.pet.y);
+      if (here.some((o) => def(o.kind).traits.includes('WaterSource')) || ((w.pet.water ?? 0) > 0 && here.some((o) => def(o.kind).traits.includes('Plot') && !o.wet))) out.push(i);
     } else out.push(i);
   });
   return out.length ? out : actions.map((_, i) => i);

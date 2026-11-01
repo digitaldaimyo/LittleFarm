@@ -320,3 +320,12 @@ button.node { padding: 2px 9px; font-weight: 600; }
 .g-sense { border-color: #E3A9C6; background: #FBE9F2; color: #7A2A55; }
 .senses { padding: 4px 0; }
 .budget { display: grid; grid-template-columns: 1fr; gap: 4px; }
+
+.night { fill: #14213D; transition: opacity 1.2s; }
+.wet-ring { fill: rgba(70, 120, 170, .18); stroke: rgba(70, 120, 170, .55); stroke-width: 1.5; }
+.drop { fill: #4A90C8; stroke: #fff; stroke-width: .6; }
+.fx-water { fill: #1E6FA8; font-size: 12px !important; }
+.firefly { animation: flicker 1.6s ease-in-out infinite; }
+@keyframes flicker { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+.clock { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--val-tint); color: var(--val-ink); }
+.clock.night { background: #1F2B48; color: #F3E9B5; }

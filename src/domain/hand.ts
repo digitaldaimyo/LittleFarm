@@ -2,7 +2,11 @@ import type { CardDef, StageSpec, TypeExpr } from './types';
 import type { Registry } from './registry';
 import { kindOfCard } from './registry';
 import { fits } from './typecheck';
+import { effectiveOutput } from './validate';
 import { placedKinds } from './spec';
+
+/** Unlock ids sold in the shop (kept here to avoid a domain → game import). */
+const SHOP_UNLOCKS = new Set(['trees', 'fences', 'bushes', 'bed', 'patch2']);
 
 export interface HandContext {
   socket: TypeExpr;
@@ -50,7 +54,7 @@ export function buildHand(reg: Registry, ctx: HandContext): Hand {
   const placed = placedKinds(ctx.stage);
   const all: HandCard[] = [];
   for (const card of reg.cards.values()) {
-    if (!fits(ctx.socket, card.output)) continue;
+    if (!fits(ctx.socket, effectiveOutput(reg, card, ctx.stage.learner.focus))) continue;
     if (ctx.placing && card.presentation.group === 'reference') continue;
     let status: HandCard['status'] = 'available';
     let reason: string | undefined;
@@ -58,7 +62,7 @@ export function buildHand(reg: Registry, ctx: HandContext): Hand {
     const obj = kind ? reg.objects.get(kind) : undefined;
     if (card.unlock && !ctx.unlocks.has(card.unlock)) {
       status = 'locked';
-      reason = `Unlock “${card.presentation.title}” in the farm shop.`;
+      reason = SHOP_UNLOCKS.has(card.unlock) ? `Unlock “${card.presentation.title}” in the farm shop.` : `Unlocks as your farm grows (${card.unlock === 'carrots' ? 'certify Fetch' : 'keep playing'}).`;
     } else if (obj && ctx.placing && !obj.penPlaceable) {
       continue; // farm-only fixtures never appear in pen hands
     } else if (obj && !ctx.placing && !placed.has(obj.id)) {

@@ -19,10 +19,23 @@ export const GROW_TICKS: Record<Plot['crop'], number> = { berry: 28, carrot: 44 
 export const CROP_VALUE = { berry: 1, carrot: 3, berryDelivered: 2 };
 export const TIRED = 25;
 
+/** Day/night clock: one farm day = 1200 ticks (~5½ minutes at 1×); the last 30% is night. */
+export const DAY_TICKS = 1200;
+export const NIGHT_FROM = 0.7;
+export function dayInfo(tick: number): { day: number; phase: number; night: boolean; label: string } {
+  const phase = (tick % DAY_TICKS) / DAY_TICKS;
+  const night = phase >= NIGHT_FROM;
+  const label = night ? 'night' : phase < 0.3 ? 'morning' : phase < 0.55 ? 'afternoon' : 'evening';
+  return { day: Math.floor(tick / DAY_TICKS) + 1, phase, night, label };
+}
+export const WELL_POS = { x: 3, y: 1 };
+const FIREFLIES_PER_NIGHT = 4;
+
 export function createFarm(): FarmState {
   const w = emptyWorld(FARM_W, FARM_H);
   addObject(w, 'home', 1, 1);
   addObject(w, 'bin', 2, 3);
+  addObject(w, 'well', WELL_POS.x, WELL_POS.y);
   for (const [x, y] of [[5, 2], [6, 2], [5, 3], [6, 3], [7, 3], [6, 4], [5, 4]]) addObject(w, 'pond', x, y);
   for (const [x, y] of [[0, 8], [11, 0], [4, 0], [11, 8], [0, 4]]) addObject(w, 'tree', x, y);
   for (const [x, y] of [[8, 6], [3, 5], [9, 3]]) addObject(w, 'rock', x, y);
@@ -84,9 +97,11 @@ function regrow(s: GameState): void {
       p.objId = null;
       p.timer = 0;
     }
-    p.timer++;
+    const plotObj = objectsAt(w, p.x, p.y).find((o) => o.kind === 'bush' || o.kind === 'patch');
+    p.timer += plotObj?.wet ? 2 : 1; // watered plots grow twice as fast
     if (p.timer >= GROW_TICKS[p.crop] && !objectsAt(w, p.x, p.y).some((o) => o.kind === p.crop)) {
       p.objId = addObject(w, p.crop, p.x, p.y).id;
+      if (plotObj) plotObj.wet = false; // the soil dries out with each harvest
     }
   }
 }
@@ -99,7 +114,32 @@ export function farmContext(s: GameState, pet: Pet, recentFail: boolean): ExecCo
     carrot: !!nearest(w, 'carrot'),
     carrying: w.pet.carrying !== null,
     recentFail,
+    night: !!w.night,
+    firefly: !!nearest(w, 'firefly'),
   };
+}
+
+/** Night falls → fireflies appear on open tiles; dawn → the uncaught ones drift away. */
+function updateClock(s: GameState, rt: FarmRuntime, fx: FarmFx[]): void {
+  const w = s.farm.world;
+  const { night, day } = dayInfo(s.farm.tick);
+  if (night === !!w.night) return;
+  w.night = night;
+  if (night) {
+    const free: [number, number][] = [];
+    for (let y = 0; y < w.h; y++) for (let x = 0; x < w.w; x++) {
+      if (objectsAt(w, x, y).length || (w.pet.x === x && w.pet.y === y)) continue;
+      free.push([x, y]);
+    }
+    for (let i = 0; i < FIREFLIES_PER_NIGHT && free.length; i++) {
+      const [x, y] = free.splice(rt.rng.int(free.length), 1)[0];
+      addObject(w, 'firefly', x, y);
+    }
+    fx.push({ type: 'nap', x: w.pet.x, y: w.pet.y, text: 'night' });
+    addJournalOnce(s, null, 'first-night', `Night fell on the farm for the first time (day ${day}). Fireflies blinked over the grass.`);
+  } else {
+    w.objects = w.objects.filter((o) => o.kind !== 'firefly');
+  }
 }
 
 export function eligibleBehaviors(pet: Pet, ctx: ExecContext): BehaviorId[] {
@@ -107,6 +147,7 @@ export function eligibleBehaviors(pet: Pet, ctx: ExecContext): BehaviorId[] {
   const nav = navPolicyFor(pet, pet.assignment.navigator);
   if (nav && ctx.berry && !ctx.carrying) out.push('forage');
   if (activeRevision(getSkill(pet, 'Fetch')) && nav && (ctx.carrot || ctx.carrying)) out.push('deliver');
+  if (nav && ctx.firefly && !ctx.carrying) out.push('catch');
   if (!ctx.energyLow) out.push('wander');
   return out;
 }
@@ -132,6 +173,10 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
           return st;
         },
       };
+    }
+    case 'catch': {
+      // Fireflies are caught by walking into them (see handleEvents).
+      return new NavRun(nav, 'firefly', tmo, rt.rng);
     }
     case 'deliver': {
       const fetch = activeRevision(getSkill(pet, 'Fetch'));
@@ -182,7 +227,7 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
   rt.ctx = ctx;
   const w = s.farm.world;
   const tmo = navTimeout(w.w, w.h, pet.traits.persistence);
-  const timeouts: Record<BehaviorId, number> = { forage: tmo + 3, deliver: tmo * 3, rest: 30, wander: 6, manual: 1e9, skill: 60 };
+  const timeouts: Record<BehaviorId, number> = { forage: tmo + 3, deliver: tmo * 3, rest: 30, wander: 6, manual: 1e9, skill: 60, catch: tmo };
   const custom = pet.assignment.skillName ? activeRevision(getSkill(pet, pet.assignment.skillName)) : null;
   if (custom) timeouts.skill = Math.round((custom.maxTicks ?? 40) * (1 + pet.traits.persistence));
   const navigator = pet.assignment.navigator;
@@ -190,6 +235,7 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
     behaviorId: b,
     args: b === 'forage' ? { target: 'berry', navigator }
       : b === 'deliver' ? { item: ctx.carrying ? 'carried item' : 'carrot', into: 'bin', navigator }
+      : b === 'catch' ? { target: 'firefly', navigator }
       : b === 'skill' ? { skill: pet.assignment.skillName ?? '', target: pet.assignment.target || custom?.focus || 'berry' }
       : {},
     intention: why,
@@ -262,6 +308,19 @@ function handleEvents(s: GameState, pet: Pet, events: SimEvent[], rt: FarmRuntim
       fx.push({ type: 'splash', x: e.x, y: e.y });
       if (pet.stats.dips === 1) addJournal(s, pet.id, 'first-dip', `${pet.name} walked straight through the pond on the way to work and had to shake dry. Approach takes the shortest path — even a wet one.`, true);
       else if (pet.stats.dips === 5) addJournal(s, pet.id, 'dips-5', `${pet.name} has splashed through the pond 5 times now. An Avoid lesson might keep them dry.`, false);
+    } else if (e.type === 'reach' && e.kind === 'firefly') {
+      const o = w.objects.find((x) => x.id === e.objId);
+      if (o) o.delivered = true;
+      s.resources.fireflies = (s.resources.fireflies ?? 0) + 1;
+      pet.stats.fireflies = (pet.stats.fireflies ?? 0) + 1;
+      earn(s, pet, 1, e.x, e.y, fx);
+      addJournalOnce(s, pet.id, 'first-firefly', `${pet.name} caught a firefly by moonlight and let it glow in the jar.`);
+    } else if (e.type === 'water') {
+      pet.stats.waterings = (pet.stats.waterings ?? 0) + 1;
+      fx.push({ type: 'drop', x: e.x, y: e.y, text: 'watered' });
+      addJournalOnce(s, pet.id, 'first-water', `${pet.name} watered the ${e.kind === 'bush' ? 'berry bush' : 'carrot patch'} — it will grow back twice as fast.`);
+    } else if (e.type === 'fill') {
+      fx.push({ type: 'drop', x: e.x, y: e.y, text: 'filled' });
     } else if (e.type === 'bump') {
       fx.push({ type: 'bump', x: e.x, y: e.y });
     } else if (e.type === 'pickup' && e.kind === 'berry') {
@@ -302,6 +361,7 @@ export function farmTick(s: GameState, rt: FarmRuntime): TickResult {
   const f = s.farm;
   f.tick++;
   regrow(s);
+  updateClock(s, rt, fx);
   const pet = petById(s, f.dutyPetId);
   for (const p of s.pets) {
     if (p.id !== f.dutyPetId) p.energy = Math.min(100, p.energy + 0.5); // off-duty pets nap at home
@@ -345,8 +405,9 @@ export function farmTick(s: GameState, rt: FarmRuntime): TickResult {
   }
   const resting = rt.inv?.behaviorId === 'rest';
   const bed = s.purchases.includes('bed') ? 2 : 1;
-  if (resting) pet.energy = Math.min(100, pet.energy + 1.5 * bed);
-  else if (st !== 'wait' && rt.inv?.behaviorId !== 'manual') pet.energy = Math.max(0, pet.energy - 0.12);
+  const nightK = f.world.night ? 1.5 : 1; // night work is tiring, night naps are deep
+  if (resting) pet.energy = Math.min(100, pet.energy + 1.5 * bed * nightK);
+  else if (st !== 'wait' && rt.inv?.behaviorId !== 'manual') pet.energy = Math.max(0, pet.energy - 0.12 * nightK);
   else if (rt.inv?.behaviorId === 'manual' && st !== 'wait') pet.energy = Math.max(0, pet.energy - 0.05);
   if (f.production.length && f.tick - f.production[0].tick > 2400) f.production = f.production.filter((p) => f.tick - p.tick <= 2400);
   f.rngState = rt.rng.state;

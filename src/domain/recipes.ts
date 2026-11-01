@@ -75,6 +75,36 @@ function keepClear(): StageSpec {
   };
 }
 
+/** Example player-style skill: fill up at the well, then water every dry patch. */
+function waterGarden(): StageSpec {
+  const n = maker('wg');
+  return {
+    id: 'stage-water', name: 'Water the garden', recipeId: 'water-garden', version: 1,
+    blurb: 'A custom skill: fill up at the well, then water both patches.',
+    size: { w: 8, h: 8 },
+    environment: [
+      n('place.pet', { mode: 'random', x: 0, y: 0 }),
+      n('place.random', { kind: k(n, 'well'), count: 1, region: 'anywhere' }),
+      n('place.random', { kind: k(n, 'patch'), count: 2, region: 'anywhere' }),
+      n('place.random', { kind: k(n, 'rock'), count: 2, region: 'anywhere' }),
+    ],
+    abilities: ['move', 'water'],
+    rules: [
+      n('rule', { label: 'Splash!', when: n('ev.water', { actor: pet(n), what: n('ref.target') }), then: [n('eff.reward', { amount: 4 })], limit: n('lim.perObject') }),
+      n('rule', { label: 'Filled up', when: n('ev.fill', { actor: pet(n) }), if: [n('cond.not', { inner: n('cond.watered', { what: n('ref.target'), count: 2 }) })], then: [n('eff.reward', { amount: 0.5 })], limit: n('lim.once') }),
+      n('rule', { label: 'All watered', when: n('ev.tick'), if: [n('cond.watered', { what: n('ref.target'), count: 2 })], then: [n('eff.reward', { amount: 6 }), n('eff.end', { outcome: 'success' })], limit: n('lim.once') }),
+      n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.03 })] }),
+    ],
+    success: n('cond.watered', { what: n('ref.target'), count: 2 }),
+    fail: null,
+    seed: 707, maxTicks: 60,
+    // Deliberately lean: walls are already masked as illegal moves, so a Walls sense would only slow learning here.
+    learner: { skill: 'Water the garden', template: 'sense', focus: 'patch', episodes: 10000,
+      senses: [n('sense.nearest', { what: k(n, 'well') }), n('sense.nearestDry', { what: n('ref.target') }), n('sense.water')] },
+    evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.7 },
+  };
+}
+
 export interface Recipe {
   id: string;
   name: string;
@@ -192,6 +222,7 @@ export const RECIPES: Recipe[] = [
   { id: 'avoid-pond', name: 'Avoid the pond', blurb: 'Avoid: reach the goal while staying dry.', skill: 'Avoid', unlock: 'avoid', build: avoid },
   { id: 'wait-for-it', name: 'Wait for it', blurb: 'Your own skill: go to the target and stay put.', skill: 'Wait for it', unlock: 'custom', optional: true, build: waitForIt },
   { id: 'keep-clear', name: 'Keep clear', blurb: 'Your own skill: stay away from the pond until time is up.', skill: 'Keep clear', unlock: 'custom', optional: true, build: keepClear },
+  { id: 'water-garden', name: 'Water the garden', blurb: 'Your own skill: fill up at the well, water the dry patches.', skill: 'Water the garden', unlock: 'custom', optional: true, build: waterGarden },
   { id: 'pay-per-pickup', name: 'Treat for every pickup', blurb: 'Experiment: a reward with a loophole.', skill: 'Fetch', unlock: 'fetch', optional: true, build: payPerPickup },
 ];
 

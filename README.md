@@ -45,7 +45,11 @@ Then write its rules with the same cards, using *the target* to mean "whatever t
 
 Try the optional **Treat for every pickup** recipe to watch a pet discover a reward loophole, then fix it with a repair card.
 
-The farm keeps running while you're in other screens. Use **Steer** to guide a pet by hand (tap tiles, or use the arrow keys, P to pick up and D to put down).
+**Watering and day/night.** The farm has a **well**. A pet with the *Water* ability fills up there (3 splashes), then waters a dry bush or carrot patch, and **watered plots regrow twice as fast** until their next crop appears. Teach it with the *Water the garden* example skill, then run it on the farm with **Run a skill** aimed at berry bushes or carrot patches.
+
+A farm day lasts about 5½ minutes at 1×, and the last 30% is **night**. At night the farm darkens, pets on Auto prefer to nap (night naps are deeper, night work is more tiring), and **fireflies** appear. Pets catch them by walking into them (+1 coin each), and the uncaught ones leave at dawn. In pens, the **Time of day** card sets day, night or a coin flip each try. *Is night* (a condition) and *Day or night* (a sense) let you teach skills that behave differently after dark.
+
+The farm keeps running while you're in other screens. Use **Steer** to guide a pet by hand (tap tiles, or use the arrow keys, P to pick up, D to put down and W to water).
 
 ## Performance
 
@@ -54,7 +58,7 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 ## Limitations (honest list)
 
 - Only one pet works on the farm at a time (the "on duty" pet); others nap and recover.
-- No sound. No day/night cycle (crops regrow on a timer).
+- No sound. Night is gentle: fireflies only, no crows or other creatures yet (Milestone 2).
 - Thumbs up/down feedback applies to movement skills (Approach/Avoid), not to the Fetch controller.
 - Templates are immutable named revisions you can instantiate. "Exposed parameters" are stored but have no editing UI yet.
 - Avoid is the hardest skill: about 82% mean held-out success, with occasional runs at 75%. Use *Refine* to train more.

@@ -6,7 +6,7 @@ import { OBJECT_BY_ID } from '../domain/packs/farm';
  * One step = one action by the pet = one tick. Every tick returns an event list
  * that drives rewards, diagnostics, animation and the journal.
  */
-export type Action = 'N' | 'E' | 'S' | 'W' | 'pick' | 'drop' | 'wait';
+export type Action = 'N' | 'E' | 'S' | 'W' | 'pick' | 'drop' | 'wait' | 'water';
 export const MOVES: Action[] = ['N', 'E', 'S', 'W'];
 export const DIRS: Record<string, [number, number]> = { N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0] };
 
@@ -17,6 +17,8 @@ export interface Obj {
   y: number;
   carried: boolean;
   delivered: boolean;
+  /** Plots: watered (grows faster until the next crop appears). */
+  wet?: boolean;
 }
 
 export interface PetBody {
@@ -26,7 +28,11 @@ export interface PetBody {
   facing: 'N' | 'E' | 'S' | 'W';
   /** Consecutive ticks spent deliberately staying put (the 'wait' action). Optional for old saves. */
   still?: number;
+  /** Splashes of water carried (0–3). */
+  water?: number;
 }
+
+export const WATER_CAPACITY = 3;
 
 export interface World {
   w: number;
@@ -36,9 +42,11 @@ export interface World {
   pet: PetBody;
   nextId: number;
   delivered: Record<string, number>;
+  /** Night-time (set from the pen's Time of day card or the farm clock). */
+  night?: boolean;
 }
 
-export type SimEventType = 'tick' | 'move' | 'bump' | 'reach' | 'enter' | 'pickup' | 'drop' | 'deliver' | 'fumble' | 'stay';
+export type SimEventType = 'tick' | 'move' | 'bump' | 'reach' | 'enter' | 'pickup' | 'drop' | 'deliver' | 'fumble' | 'stay' | 'fill' | 'water';
 
 export interface SimEvent {
   type: SimEventType;
@@ -106,6 +114,7 @@ export function legalActions(_w: World, abilities: string[]): Action[] {
   if (abilities.includes('move')) out.push(...MOVES);
   if (abilities.includes('pickup')) out.push('pick');
   if (abilities.includes('drop')) out.push('drop');
+  if (abilities.includes('water')) out.push('water');
   if (out.length === 0) out.push('wait');
   return out;
 }
@@ -161,6 +170,17 @@ export function step(w: World, action: Action): SimEvent[] {
       target.carried = true;
       p.carrying = target.id;
       events.push({ type: 'pickup', x: p.x, y: p.y, kind: target.kind, objId: target.id });
+    } else events.push({ type: 'fumble', x: p.x, y: p.y });
+  } else if (action === 'water') {
+    const here = objectsAt(w, p.x, p.y);
+    const plot = here.find((o) => def(o.kind).traits.includes('Plot') && !o.wet);
+    if (here.some((o) => def(o.kind).traits.includes('WaterSource'))) {
+      p.water = WATER_CAPACITY;
+      events.push({ type: 'fill', x: p.x, y: p.y });
+    } else if ((p.water ?? 0) > 0 && plot) {
+      plot.wet = true;
+      p.water = (p.water ?? 0) - 1;
+      events.push({ type: 'water', x: p.x, y: p.y, kind: plot.kind, objId: plot.id });
     } else events.push({ type: 'fumble', x: p.x, y: p.y });
   } else if (action === 'drop') {
     const c = p.carrying !== null ? w.objects.find((o) => o.id === p.carrying) : undefined;

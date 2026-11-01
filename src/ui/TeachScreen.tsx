@@ -230,6 +230,11 @@ function EnvironmentBinder({ stage }: { stage: StageSpec }) {
       <div className="hand-row wrap">
         {all.map((h) => <HandCardView key={h.card.id} h={h} selected={s.ui.placing === h.card.id} onPick={() => s.setUi({ placing: s.ui.placing === h.card.id ? null : h.card.id, slot: null })} />)}
         <button className={`card g-obj ${s.ui.placing === 'place.pet' ? 'sel' : ''}`} onClick={() => s.setUi({ placing: s.ui.placing === 'place.pet' ? null : 'place.pet', slot: null })}><span className="card-title">Pet start</span><span className="card-sub">placement</span></button>
+        <button className="card g-obj" onClick={() => {
+          let id = stage.environment.find((p) => p.cardId === 'place.time')?.id;
+          if (!id) { const t = node('place.time', { mode: 'night' }); id = t.id; update((st) => { st.environment.push(t); }); }
+          s.setUi({ placing: null, slot: { parentId: id, socket: 'kind', index: null } });
+        }}><span className="card-title">Time of day</span><span className="card-sub">{(() => { const t = stage.environment.find((p) => p.cardId === 'place.time'); return t ? paramOf(t, 'mode', 'day') : 'day (default)'; })()}</span></button>
       </div>
       <h4>In this pen</h4>
       <ul className="placements">
@@ -240,7 +245,7 @@ function EnvironmentBinder({ stage }: { stage: StageSpec }) {
             <li key={p.id} className={s.ui.slot?.parentId === p.id ? 'sel' : ''}>
               {kind && <ObjectIcon kind={kind} size={22} />}
               <button className="link" onClick={() => s.setUi({ slot: { parentId: p.id, socket: 'kind', index: null } })}>
-                {p.cardId === 'place.pet' ? `Pet starts at ${paramOf(p, 'mode', 'random') === 'random' ? 'a random spot' : `(${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`}` : p.cardId === 'place.random' ? `${paramOf(p, 'count', 1)} × ${REGISTRY.objects.get(kind ?? '')?.name ?? '?'} scattered (${paramOf(p, 'region', 'anywhere')})` : `${REGISTRY.objects.get(kind ?? '')?.name ?? '?'} at (${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`}
+                {p.cardId === 'place.time' ? `Time of day: ${paramOf(p, 'mode', 'day') === 'random' ? 'day or night (random each try)' : paramOf(p, 'mode', 'day')}` : p.cardId === 'place.pet' ? `Pet starts at ${paramOf(p, 'mode', 'random') === 'random' ? 'a random spot' : `(${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`}` : p.cardId === 'place.random' ? `${paramOf(p, 'count', 1)} × ${REGISTRY.objects.get(kind ?? '')?.name ?? '?'} scattered (${paramOf(p, 'region', 'anywhere')})` : `${REGISTRY.objects.get(kind ?? '')?.name ?? '?'} at (${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`}
               </button>
               <span className="chip">{card?.presentation.title}</span>
               <button className="icon-btn small" aria-label="Remove" onClick={() => { update((st) => { st.environment = st.environment.filter((x) => x.id !== p.id); }); s.setUi({ slot: null }); }}>✕</button>

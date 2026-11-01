@@ -134,6 +134,26 @@ export function ObjectGlyph({ kind }: { kind: string }) {
           <path d="M7 15 h26 M7 21 h26 M7 27 h26" stroke="#6F5C3C" strokeWidth="2" />
         </g>
       );
+    case 'well':
+      return (
+        <g>
+          <ellipse cx="20" cy="27" rx="13" ry="8" fill="#8C8C84" />
+          <ellipse cx="20" cy="25" rx="10" ry="5.5" fill="#3E6E9E" />
+          <path d="M9 12 v14 M31 12 v14" stroke="#7F5427" strokeWidth="2.5" />
+          <path d="M6 13 L20 5 L34 13 Z" fill="#B0574A" />
+          <path d="M20 13 v8" stroke="#5B4636" strokeWidth="1.2" />
+          <rect x="17" y="19" width="6" height="4" rx="1" fill="#9A6A3A" />
+        </g>
+      );
+    case 'firefly':
+      return (
+        <g className="firefly">
+          <circle cx="20" cy="20" r="11" fill="#FFF3A0" opacity="0.35" />
+          <circle cx="20" cy="20" r="5" fill="#FFE45C" />
+          <ellipse cx="15" cy="15" rx="4" ry="2.5" fill="#fff" opacity="0.7" />
+          <ellipse cx="25" cy="15" rx="4" ry="2.5" fill="#fff" opacity="0.7" />
+        </g>
+      );
     case 'pet':
       return <circle cx="20" cy="20" r="12" fill="#E8B878" />;
     default:

@@ -41,6 +41,18 @@ const MIGRATIONS: Record<number, Migration> = {
     g.version = 2;
     return g;
   },
+  /** v2 → v3: the farm gets a well (watering) and a clock-driven night flag. */
+  2: (g) => {
+    const w = g.farm?.world;
+    if (isObj(w) && Array.isArray(w.objects) && !w.objects.some((o: any) => o?.kind === 'well')) {
+      const taken = (x: number, y: number) => w.objects.some((o: any) => o?.x === x && o?.y === y && !o.carried && !o.delivered) || (w.pet?.x === x && w.pet?.y === y);
+      let spot: [number, number] | null = taken(3, 1) ? null : [3, 1];
+      for (let y = 0; !spot && y < w.h; y++) for (let x = 0; !spot && x < w.w; x++) if (!taken(x, y)) spot = [x, y];
+      if (spot) w.objects.push({ id: w.nextId++, kind: 'well', x: spot[0], y: spot[1], carried: false, delivered: false });
+    }
+    g.version = 3;
+    return g;
+  },
 };
 
 function isObj(v: unknown): v is Record<string, any> {
@@ -83,7 +95,8 @@ export function parseGame(text: string): LoadResult {
     ['resources', isObj], ['progress', isObj], ['farm', isObj], ['settings', isObj],
   ];
   for (const [k, ok] of required) if (!ok(g[k])) return { ok: false, diagnostics: [...diagnostics, `Save field “${k}” is malformed.`] };
-  for (const key of ['coins', 'berries', 'carrots']) {
+  for (const key of ['coins', 'berries', 'carrots', 'fireflies']) {
+    if (key === 'fireflies' && g.resources[key] === undefined) continue;
     const n = Number(g.resources[key]);
     g.resources[key] = Number.isFinite(n) && n >= 0 ? n : 0;
   }

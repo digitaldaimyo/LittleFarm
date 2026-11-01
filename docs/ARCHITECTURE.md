@@ -34,6 +34,14 @@ Game rules never import React. The UI edits the **canonical spec** (`StageSpec`,
 
 The same simulator runs pens, evaluation and the farm. Fixed seed + fixed actions gives identical traces (tested).
 
+### Watering and night (sim)
+- `World.night`, `PetBody.water` (0–3) and `Obj.wet` are optional fields, so older worlds stay valid.
+- The `water` action is contextual. On a `WaterSource` (well) it fills up and emits `fill`. With water on a dry `Plot` it soaks the plot and emits `water` with `it` bound to the plot. Otherwise it emits `fumble`. Legality masking permits it only where it would do something.
+- `place.time` (Time of day: day/night/random) sets `world.night` per generated layout. On the farm, `updateClock` sets it from `dayInfo(tick)` and spawns or removes fireflies at dusk and dawn. Reaching a firefly catches it (farm rule).
+- New cards: `ev.fill`, `ev.water(it)`, `cond.watered(kind, n)`, `cond.hasWater`, `cond.night`, and the senses `sense.nearestDry(kind<Plot>)` (27), `sense.water` (2) and `sense.night` (2).
+- `ref.target` now takes on the traits of the kind it is aimed at (`effectiveOutput`), so "the target" fits `Kind<Plot>` sockets when a skill is aimed at a patch.
+- Saves are v3. The v2 → v3 migration adds a well to existing farms.
+
 ## Learning
 
 ### Templates, senses and abilities (Milestone 1)

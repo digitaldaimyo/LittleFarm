@@ -5,8 +5,8 @@ import { PetSprite, type PetMood } from './art';
 import { activePet, activeRevision, customSkills, getSkill, isCertified, petById } from '../game/pets';
 import { OBJECT_BY_ID } from '../domain/packs/farm';
 
-const FARM_TARGETS = ['berry', 'carrot', 'bin', 'home', 'pond', 'bush', 'patch', 'rock', 'tree'];
-import { queueManual, queueManualPath, recentProduction, TIRED } from '../game/farm';
+const FARM_TARGETS = ['berry', 'carrot', 'firefly', 'bin', 'home', 'well', 'pond', 'bush', 'patch', 'rock', 'tree'];
+import { DAY_TICKS, dayInfo, queueManual, queueManualPath, recentProduction, TIRED } from '../game/farm';
 import { nextUnlock } from '../game/progression';
 import { BEHAVIOR_LABEL } from '../learning/executive';
 import type { JobId, NavigatorName, Pet } from '../game/types';
@@ -33,7 +33,7 @@ function jobCards(pet: Pet, unlocks: string[]): JobCard[] {
   const hasNav = !!activeRevision(getSkill(pet, 'Approach')) || !!activeRevision(getSkill(pet, 'Avoid'));
   const hasFetch = !!activeRevision(getSkill(pet, 'Fetch'));
   return [
-    { id: 'auto', title: 'Auto', blurb: `${pet.name} decides using their executive.` },
+    { id: 'auto', title: 'Auto', blurb: `${pet.name} decides using their executive — napping at night, unless there are fireflies to catch.` },
     { id: 'forage', title: BEHAVIOR_LABEL.forage, blurb: 'Approach a ripe berry, then gather it. +1 coin.', needs: 'Approach', locked: hasNav ? undefined : 'Needs a saved Approach skill' },
     { id: 'deliver', title: BEHAVIOR_LABEL.deliver, blurb: 'Fetch a carrot to the bin. +3 coins.', needs: 'Fetch', locked: !unlocks.includes('carrots') ? 'Unlocks with a certified Fetch' : hasFetch ? undefined : 'Needs a saved Fetch skill' },
     { id: 'rest', title: 'Nap', blurb: 'Rest to refill energy.' },
@@ -52,10 +52,13 @@ export function FarmScreen() {
   const manual = pet?.assignment.mode === 'manual';
   const next = nextUnlock(g);
   const perMin = recentProduction(f, 214); // ≈ 60s at 1×
+  const clock = dayInfo(f.tick);
+  // Smooth dusk (60–70% of the day) and dawn (first 5%).
+  const darkness = clock.night ? 1 : clock.phase > 0.6 ? (clock.phase - 0.6) / 0.1 : clock.phase < 0.05 && f.tick >= DAY_TICKS ? 1 - clock.phase / 0.05 : 0;
 
   useEffect(() => {
     if (!manual) return;
-    const keys: Record<string, Action> = { ArrowUp: 'N', ArrowRight: 'E', ArrowDown: 'S', ArrowLeft: 'W', ' ': 'pick', p: 'pick', d: 'drop' };
+    const keys: Record<string, Action> = { ArrowUp: 'N', ArrowRight: 'E', ArrowDown: 'S', ArrowLeft: 'W', ' ': 'pick', p: 'pick', d: 'drop', w: 'water' };
     const h = (e: KeyboardEvent) => {
       const a = keys[e.key];
       if (!a || (e.target as HTMLElement)?.tagName === 'INPUT') return;
@@ -96,7 +99,7 @@ export function FarmScreen() {
       <section className="stage-col">
         <div className="farm-frame">
           <WorldView
-            world={f.world} palette={pet.palette} mood={mood} ground="farm"
+            world={f.world} palette={pet.palette} mood={mood} ground="farm" darkness={darkness}
             label={`Farm. ${pet.name} is at column ${f.world.pet.x}, row ${f.world.pet.y}.`}
             fx={s.ui.fx}
             onTile={manual ? (x, y) => { if (!queueManualPath(g, store.runtime, x, y)) store.toast('Can’t get there.', 'warn'); } : undefined}
@@ -110,7 +113,8 @@ export function FarmScreen() {
               <button key={v} className={g.settings.farmSpeed === v ? 'on' : ''} aria-pressed={g.settings.farmSpeed === v} onClick={() => store.mutate((st) => { st.settings.farmSpeed = v; })}>{v}×</button>
             ))}
           </div>
-          <span className="muted small">Day tick {f.tick} · {perMin} coins in the last minute</span>
+          <span className={`clock ${clock.night ? 'night' : ''}`} aria-label={`Day ${clock.day}, ${clock.label}`}>{clock.night ? '☾' : '☀'} Day {clock.day} · {clock.label}</span>
+          <span className="muted small">{perMin} coins in the last minute</span>
         </div>
         {manual && (
           <div className="manual-pad" aria-label="Steering controls">
@@ -123,8 +127,9 @@ export function FarmScreen() {
             <div>
               <button className="wide" onClick={() => queueManual(store.runtime, 'pick')}>Pick up (P)</button>
               <button className="wide" onClick={() => queueManual(store.runtime, 'drop')}>Put down (D)</button>
+              <button className="wide" onClick={() => queueManual(store.runtime, 'water')}>Water (W)</button>
             </div>
-            <p className="muted small">Tap a tile to walk there. Berries go straight into the basket; carrots must be dropped in the bin.</p>
+            <p className="muted small">Tap a tile to walk there. Berries go straight into the basket; carrots must be dropped in the bin. Water at the well to fill up, then on a bush or patch — watered plots regrow twice as fast. Walk into fireflies at night to catch them.</p>
           </div>
         )}
       </section>
@@ -217,6 +222,7 @@ export function FarmScreen() {
             <span><b>{g.resources.coins}</b> coins</span>
             <span><b>{g.resources.berries}</b> berries</span>
             <span><b>{g.resources.carrots}</b> carrots</span>
+            {(g.resources.fireflies ?? 0) > 0 && <span><b>{g.resources.fireflies}</b> fireflies</span>}
           </div>
           {next ? (
             <div className="unlock">

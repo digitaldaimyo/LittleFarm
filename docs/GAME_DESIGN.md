@@ -21,8 +21,11 @@ A novice reaches a training run in 4 taps from the farm (Teach → Curriculum �
 | Forage a berry (Approach) | 1 |
 | Deliver a carrot (Fetch) | 3 |
 | Deliver a berry to the bin | 2 |
+| Catch a firefly (night only, walk into it) | 1 |
 
-Berry bushes regrow in 28 ticks and carrots in 44. A pond sits between the bushes and the bin, so a pet using Approach often splashes through and loses 3 ticks shaking dry. That's a visible reason to learn Avoid.
+Berry bushes regrow in 28 ticks and carrots in 44. **Watered** plots grow twice as fast, and the soil dries out when the next crop appears. Watering takes a learned skill: fill up at the well, then find dry plots.
+
+**Day/night:** a farm day is 1200 ticks, and the last 30% is night. Night darkens the farm and spawns 4 fireflies on open tiles, which leave at dawn. On Auto, the rules executive catches fireflies when it can and otherwise naps. The learned executive's context includes night and fireflies. At night, work costs 1.5× energy and naps restore 1.5×. A pond sits between the bushes and the bin, so a pet using Approach often splashes through and loses 3 ticks shaking dry. That's a visible reason to learn Avoid.
 
 **Energy:** lessons cost 15 (Avoid costs 20). Farm work costs 0.12 per tick, and napping restores 1.5 per tick (3 with the Comfy bed). Off-duty pets recover 0.5 per tick. Pets are never punished: a pet with no energy simply naps.
 
@@ -52,4 +55,5 @@ Entries are grounded templates filled from real events: adoption, skill learned 
 ## Content
 - Two-plus pet palettes (Meadow, Plum, Sky, Moss) and seven name suggestions.
 - Objects: berry, carrot, target, bin, pond, rock, tree, fence, plus farm-only home, berry bush and carrot patch.
-- Recipes: *Go to the berry*, *Bring it home*, *Avoid the pond*, *Treat for every pickup* (experiment), and custom-skill examples *Wait for it* and *Keep clear*.
+- Objects added with watering and day/night: well, firefly. Berry bushes, carrot patches and home can now go in pens.
+- Recipes: *Go to the berry*, *Bring it home*, *Avoid the pond*, *Treat for every pickup* (experiment), and custom-skill examples *Wait for it*, *Keep clear* and *Water the garden*.

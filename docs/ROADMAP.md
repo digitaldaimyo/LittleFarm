@@ -148,8 +148,8 @@ Each item is independent and small, so they ship one at a time.
 
 | Feature | Why it creates teachable problems | Size |
 |---|---|---|
-| **Watering:** crops grow 2× faster when watered; a well and a watering can (carryable); new `water` ability | Multi-step fetch-and-use, without new learner types | S |
-| **Day / night** (one cycle ≈ 6 farm minutes): crows by day, fireflies by night; pets prefer sleeping at night | Time becomes a sense (`sense.timeOfDay`) and a plan condition | S |
+| ✅ **Watering:** crops grow 2× faster when watered; a well; new `water` ability. *Shipped without a carryable can: the pet carries 3 splashes itself, which keeps it a single sense skill.* | Multi-step fetch-and-use, without new learner types | S |
+| ✅ **Day / night** (one cycle ≈ 5½ farm minutes at 1×): fireflies by night (crows wait for M2); pets prefer sleeping at night. *Shipped with `sense.night`, `cond.night` and a Time of day pen card.* | Time becomes a sense and a plan condition | S |
 | **Farm zones and expansion:** buy an orchard and a coop; the map grows from 12×9 to 16×12 | Transfer pressure on learned skills; areas become meaningful | M |
 | **Gates:** open/closed; the pet can learn to `nudge` them | Opens up "close the gate after the chickens" plans | S |
 | **Gentle weather:** rain waters crops and the pond grows by a tile | Robustness: Avoid has to handle changing layouts | S |

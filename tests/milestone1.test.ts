@@ -30,11 +30,12 @@ function train(stage: StageSpec) {
 
 describe('M1: v1 saves keep working', () => {
   const r = parseGame(fixture);
-  it('migrates v1 → v2', () => {
+  it('migrates v1 → current (v2 templates, v3 well)', () => {
     expect(r.ok).toBe(true);
     expect(r.diagnostics.some((d) => d.includes('v2'))).toBe(true);
     const g = r.game!;
-    expect(g.version).toBe(2);
+    expect(g.version).toBe(3);
+    expect(g.farm.world.objects.filter((o) => o.kind === 'well').length).toBe(1);
     expect(g.stages.every((s) => s.learner.template)).toBe(true);
     expect(g.pets[0].skills.map((k) => k.template)).toEqual(['sense', 'fetch']);
   });

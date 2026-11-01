@@ -6,7 +6,7 @@ import { Rng } from '../sim/rng';
  *   - a deterministic rules baseline
  *   - a locally trained contextual bandit (tabular, ε-greedy, running means)
  */
-export type BehaviorId = 'forage' | 'deliver' | 'rest' | 'wander' | 'manual' | 'skill';
+export type BehaviorId = 'forage' | 'deliver' | 'rest' | 'wander' | 'manual' | 'skill' | 'catch';
 
 export interface Invocation {
   behaviorId: BehaviorId;
@@ -22,6 +22,9 @@ export interface ExecContext {
   carrot: boolean;
   carrying: boolean;
   recentFail: boolean;
+  /** Added with day/night: optional so older code paths still type-check. */
+  night?: boolean;
+  firefly?: boolean;
 }
 
 export interface ExecutiveTable {
@@ -30,15 +33,17 @@ export interface ExecutiveTable {
 }
 
 export function contextKey(c: ExecContext): string {
-  return `${+c.energyLow}${+c.berry}${+c.carrot}${+c.carrying}${+c.recentFail}`;
+  return `${+c.energyLow}${+c.berry}${+c.carrot}${+c.carrying}${+c.recentFail}${+!!c.night}${+!!c.firefly}`;
 }
 
 export function describeContext(c: ExecContext): string {
   const p: string[] = [];
+  p.push(c.night ? 'night' : 'day');
   p.push(c.energyLow ? 'tired' : 'rested');
   if (c.carrying) p.push('carrying something');
   if (c.berry) p.push('berries ripe');
   if (c.carrot) p.push('carrots ready');
+  if (c.firefly) p.push('fireflies out');
   if (c.recentFail) p.push('just had a setback');
   return p.join(', ');
 }
@@ -46,6 +51,8 @@ export function describeContext(c: ExecContext): string {
 export function rulesSelect(c: ExecContext, eligible: BehaviorId[]): BehaviorId {
   const has = (b: BehaviorId) => eligible.includes(b);
   if (c.energyLow && has('rest')) return 'rest';
+  if (c.night && c.firefly && has('catch')) return 'catch';
+  if (c.night && !c.carrying && has('rest')) return 'rest'; // pets prefer sleeping at night
   if (c.carrying && has('deliver')) return 'deliver';
   if (c.carrot && has('deliver')) return 'deliver';
   if (c.berry && has('forage')) return 'forage';
@@ -82,4 +89,5 @@ export const BEHAVIOR_LABEL: Record<BehaviorId, string> = {
   wander: 'Wander',
   manual: 'Follow your lead',
   skill: 'Run a skill',
+  catch: 'Catch fireflies',
 };

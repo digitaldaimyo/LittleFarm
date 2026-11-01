@@ -126,6 +126,15 @@ export function compileCondition(n: SpecNode): Cond {
       const t = paramOf(n, 'ticks', 5);
       return ({ w }) => (w.pet.still ?? 0) >= t;
     }
+    case 'cond.watered': {
+      const k = kindArg(n, 'what');
+      const c = paramOf(n, 'count', 1);
+      return ({ w }) => w.objects.filter((o) => o.kind === k && o.wet && onGround(o)).length >= c;
+    }
+    case 'cond.hasWater':
+      return ({ w }) => (w.pet.water ?? 0) > 0;
+    case 'cond.night':
+      return ({ w }) => !!w.night;
     case 'cond.and': {
       const fs = listArg(n, 'all').map(compileCondition);
       return (c) => fs.every((f) => f(c));
@@ -169,6 +178,8 @@ function compileEvent(n: SpecNode): (e: SimEvent) => boolean {
     case 'ev.tick': return (e) => e.type === 'tick';
     case 'ev.bump': return (e) => e.type === 'bump';
     case 'ev.stay': return (e) => e.type === 'stay';
+    case 'ev.fill': return (e) => e.type === 'fill';
+    case 'ev.water': return (e) => e.type === 'water' && e.kind === k;
     default:
       throw new Error(`Cannot compile event ${n.cardId}`);
   }
@@ -239,6 +250,9 @@ export function generateWorld(spec: StageSpec, seed: number): World {
       w.pet.y = y;
     }
     occupied.add(key(w.pet.x, w.pet.y));
+    const timeNode = spec.environment.find((p) => p.cardId === 'place.time');
+    const tmode = timeNode ? paramOf(timeNode, 'mode', 'day') : 'day';
+    w.night = tmode === 'night' || (tmode === 'random' && rng.next() < 0.5);
     for (const p of spec.environment) {
       if (p.cardId !== 'place.random') continue;
       const k = resolveKind(p.args.kind, spec.learner.focus);

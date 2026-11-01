@@ -1,7 +1,7 @@
-import type { Diagnostic, SpecNode, StageSpec, TypeExpr } from './types';
+import type { CardDef, Diagnostic, SpecNode, StageSpec, TypeExpr } from './types';
 import type { Registry } from './registry';
 import { REGISTRY, kindOfCard } from './registry';
-import { fits, nominal, typeToString } from './typecheck';
+import { fits, generic, nominal, typeToString } from './typecheck';
 import { isNode, paramOf, placedKinds, walk } from './spec';
 
 interface Ctx {
@@ -9,6 +9,17 @@ interface Ctx {
   itBound: boolean;
   placed: Set<string> | null; // null → don't check references (e.g. environment)
   out: Diagnostic[];
+  /** What “the target” means in this stage (its traits decide which sockets it fits). */
+  target?: string;
+}
+
+/** The type a card produces here; “the target” takes on the traits of whatever the skill is aimed at. */
+export function effectiveOutput(reg: Registry, card: CardDef, target?: string): TypeExpr {
+  if (card.id === 'ref.target' && target) {
+    const o = reg.objects.get(target);
+    if (o) return generic('Kind', ...o.traits);
+  }
+  return card.output;
 }
 
 function title(reg: Registry, cardId: string) {
@@ -21,8 +32,9 @@ export function validateNode(n: SpecNode, expected: TypeExpr, ctx: Ctx): void {
     ctx.out.push({ severity: 'error', code: 'unknown-card', nodeId: n.id, message: `Unknown card “${n.cardId}”. It may come from a newer pack; it was kept but cannot run.` });
     return;
   }
-  if (!fits(expected, card.output)) {
-    ctx.out.push({ severity: 'error', code: 'type-mismatch', nodeId: n.id, message: `“${card.presentation.title}” makes a ${typeToString(card.output)}, but this slot needs a ${typeToString(expected)}.` });
+  const outT = effectiveOutput(ctx.reg, card, ctx.target);
+  if (!fits(expected, outT)) {
+    ctx.out.push({ severity: 'error', code: 'type-mismatch', nodeId: n.id, message: card.id === 'ref.target' ? `“The target” is aimed at ${ctx.reg.objects.get(ctx.target ?? '')?.name ?? 'something'}, which doesn't fit a ${typeToString(expected)} slot.` : `“${card.presentation.title}” makes a ${typeToString(outT)}, but this slot needs a ${typeToString(expected)}.` });
   }
   if (card.id === 'ref.it' && !ctx.itBound) {
     ctx.out.push({ severity: 'error', code: 'scope', nodeId: n.id, message: '“It” only means something inside a rule whose WHEN event is about an object (reach, pick up, put down, deliver).' });
@@ -91,7 +103,7 @@ function limitOf(rule: SpecNode): string {
 export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlocks?: Set<string>): Diagnostic[] {
   const out: Diagnostic[] = [];
   const placed = placedKinds(stage);
-  const envCtx: Ctx = { reg, itBound: false, placed: null, out };
+  const envCtx: Ctx = { reg, itBound: false, placed: null, out, target: stage.learner.focus };
   if (stage.size.w < 4 || stage.size.h < 4 || stage.size.w > 16 || stage.size.h > 16) out.push({ severity: 'error', code: 'bad-size', message: 'Pens must be between 4×4 and 16×16 tiles.' });
   for (const p of stage.environment) {
     validateNode(p, nominal('Placement'), envCtx);
@@ -107,7 +119,7 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
       if ((p.cardId === 'place.fixed' || paramOf(p, 'mode', 'random') === 'fixed') && (x >= stage.size.w || y >= stage.size.h)) out.push({ severity: 'error', code: 'out-of-bounds', nodeId: p.id, message: 'That tile is outside the pen.' });
     }
   }
-  const ruleCtx: Ctx = { reg, itBound: false, placed, out };
+  const ruleCtx: Ctx = { reg, itBound: false, placed, out, target: stage.learner.focus };
   for (const r of stage.rules) {
     if (r.cardId !== 'rule') {
       out.push({ severity: 'error', code: 'type-mismatch', nodeId: r.id, message: 'Only Rule cards go on the rule mat.' });
@@ -126,7 +138,7 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
     const senses = L.senses ?? [];
     if (L.senses && senses.length === 0) out.push({ severity: 'error', code: 'no-senses', message: 'Pick at least one Sense — otherwise the pet is learning blindfolded.' });
     if (senses.length > 5) out.push({ severity: 'error', code: 'too-many-senses', message: 'At most 5 senses per skill.' });
-    const senseCtx: Ctx = { reg, itBound: false, placed: null, out };
+    const senseCtx: Ctx = { reg, itBound: false, placed: null, out, target: L.focus };
     let size = 1;
     for (const sn of senses) {
       validateNode(sn, nominal('Sense'), senseCtx);
@@ -162,9 +174,9 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
     if (ev.cardId === 'ev.pickup' && reward > 0 && lim !== 'lim.once' && lim !== 'lim.perObject') pickPay = true;
     if (ev.cardId === 'ev.drop' && reward > 0 && lim !== 'lim.once' && lim !== 'lim.perObject') dropPay = true;
     const fetchT = (L.template ?? (L.skill === 'Fetch' ? 'fetch' : 'sense')) === 'fetch';
-    const needs: Record<string, string> = { 'ev.pickup': 'pickup', 'ev.drop': 'drop', 'ev.deliver': 'drop', 'ev.stay': 'stay' };
+    const needs: Record<string, string> = { 'ev.pickup': 'pickup', 'ev.drop': 'drop', 'ev.deliver': 'drop', 'ev.stay': 'stay', 'ev.fill': 'water', 'ev.water': 'water' };
     const need = needs[ev.cardId];
-    if (need && !fetchT && !stage.abilities.includes(need)) out.push({ severity: 'info', code: 'unusable-event', nodeId: r.id, message: `“${label}” needs the ${need === 'pickup' ? 'Pick up' : need === 'drop' ? 'Put down' : 'Stay'} ability, which ${L.skill} doesn’t have — it will never fire.` });
+    if (need && !fetchT && !stage.abilities.includes(need)) out.push({ severity: 'info', code: 'unusable-event', nodeId: r.id, message: `“${label}” needs the ${need === 'pickup' ? 'Pick up' : need === 'drop' ? 'Put down' : need === 'water' ? 'Water' : 'Stay'} ability, which ${L.skill} doesn’t have — it will never fire.` });
     const conds = r.args.if;
     const hasCloser = (Array.isArray(conds) ? conds : []).some((c) => isNode(c) && c.cardId === 'cond.closer');
     if (hasCloser && reward > 0 && !stage.rules.some((o) => rewardTotal(o) < 0)) out.push({ severity: 'warning', code: 'shaping-loop', nodeId: r.id, message: `“${label}” pays for getting closer but nothing costs moving away — wiggling back and forth may pay.`, repair: { label: 'Add a step nudge', action: 'add-tick-penalty' } });
