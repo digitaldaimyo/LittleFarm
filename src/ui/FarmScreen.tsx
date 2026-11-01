@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PlanMat } from './PlanMat';
+import { Tips } from './Tips';
+import { farmTips } from '../game/coach';
 import { describeRequest } from '../game/requests';
 import { store, useStore } from './store';
 import { WorldView } from './WorldView';
@@ -181,6 +183,7 @@ export function FarmScreen() {
               <div className="activity small">
                 <strong>{g.pets.find((p) => p.id === f.duty2PetId)?.name}:</strong> {BEHAVIOR_LABEL[f.current2.behaviorId]} <span className="muted">— {f.current2.intention}</span>
                 <div className="muted">Pets never chase the same thing; a second pet pays off when it does different work.</div>
+                <Tips tips={farmTips(g)} />
               </div>
             )}
           </div>
@@ -202,7 +205,7 @@ export function FarmScreen() {
               <span className="small">Move with</span>
               <div className="seg" role="radiogroup" aria-label="Navigation skill">
                 {(['Approach', 'Avoid'] as NavigatorName[]).map((n) => (
-                  <button key={n} role="radio" aria-checked={pet.assignment.navigator === n} className={pet.assignment.navigator === n ? 'on' : ''} disabled={n === 'Avoid' && !canAvoid} onClick={() => setNav(n)} title={n === 'Avoid' && !canAvoid ? 'Teach Avoid first' : undefined}>{n}</button>
+                  <button key={n} data-tut={`nav-${n.toLowerCase()}`} role="radio" aria-checked={pet.assignment.navigator === n} className={pet.assignment.navigator === n ? 'on' : ''} disabled={n === 'Avoid' && !canAvoid} onClick={() => setNav(n)} title={n === 'Avoid' && !canAvoid ? 'Teach Avoid first' : undefined}>{n}</button>
                 ))}
               </div>
             </div>

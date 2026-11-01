@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { isGuideStage } from '../game/tutorial';
+import { Tips } from './Tips';
+import { reportTips } from '../game/coach';
 import { BehaviorSummaryView } from './Summary';
 import { curiosities } from '../learning/summary';
 import { store, useStore } from './store';
@@ -179,12 +181,13 @@ export function TrainingPanel() {
         )}
         <div className="small muted">Held-out seeds {r.evalSeeds[0]}…{r.evalSeeds.at(-1)} (n={r.evalSeeds.length}) are never used in training. Lesson took {(t.ms / 1000).toFixed(1)}s of compute.</div>
 
+        <Tips tips={reportTips(t.stage, r, p?.episode ?? t.stage.learner.episodes)} />
         {r.exploits.map((x) => (
-          <div key={x.ruleId} className="diag warn">
+          <div key={x.ruleId} className="diag warn" data-tut="report-exploit">
             <strong>Loophole found!</strong> {x.diagnostic.message}
             <div className="row gap">
               {x.replay && <button className="btn ghost" onClick={() => { t.replay = x.replay!; store.emit(); }}>Watch the replay</button>}
-              {x.diagnostic.repair && <button className="btn" onClick={() => repair(x.ruleId, x.diagnostic.repair!.action)}>Repair card: {x.diagnostic.repair.label}</button>}
+              {x.diagnostic.repair && <button className="btn" data-tut="repair-card" onClick={() => repair(x.ruleId, x.diagnostic.repair!.action)}>Repair card: {x.diagnostic.repair.label}</button>}
             </div>
           </div>
         ))}

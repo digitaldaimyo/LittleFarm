@@ -86,7 +86,7 @@ export function TeachScreen() {
 function tutorialWants(g: ReturnType<typeof useStore>['state'], b: Binder): boolean {
   const id = currentStep(g)?.id;
   if (!id) return false;
-  return ({ 'place-berry': 'environment', 'unpin': 'environment', 'treat-rule': 'rules', 'success': 'rules', 'long': 'pet' } as Record<string, Binder>)[id] === b;
+  return ({ 'place-berry': 'environment', 'unpin': 'environment', 'treat-rule': 'rules', 'success': 'rules', 'long': 'pet', 'stay': 'pet', 'patience': 'pet', 'extra': 'pet', 'rules': 'rules' } as Record<string, Binder>)[id] === b;
 }
 
 function StagePicker({ stage }: { stage: StageSpec }) {
@@ -341,7 +341,7 @@ function RulesBinder({ stage }: { stage: StageSpec }) {
       ));
   return (
     <div className="binder-body">
-      {building ? <details className="more"><summary>Stuck? Use the suggested recipe</summary>{suggestions}</details> : suggestions}
+      <div data-tut="suggested">{building ? <details className="more"><summary>Stuck? Use the suggested recipe</summary>{suggestions}</details> : suggestions}</div>
       <h4>Rule mat</h4>
       {stage.rules.length === 0 && <p className="small muted">No rules yet.</p>}
       {stage.rules.map((r) => <RuleRow key={r.id} stage={stage} r={r} errs={errs} />)}
@@ -599,7 +599,7 @@ function SenseEditor({ stage, update, custom }: { stage: StageSpec; update: (fn:
   return (
     <>
       <h4>Senses <span className="muted small">— what {custom ? 'it' : 'this skill'} pays attention to</span></h4>
-      <div className="many senses">
+      <div className="many senses" data-tut="senses">
         {senses.map((n, i) => <NodeChip key={n.id} stage={stage} n={n} slot={{ parentId: '#senses', socket: 'senses', index: i }} errors={errs} />)}
         {senses.length < MAX_SENSES && <SlotChip stage={stage} slot={{ parentId: '#senses', socket: 'senses', index: null }} label="+ sense" errors={errs} />}
       </div>
@@ -609,7 +609,7 @@ function SenseEditor({ stage, update, custom }: { stage: StageSpec; update: (fn:
       </div>
       <p className="small muted">More senses = smarter but slower to learn. Each sense multiplies the situations your pet must practise.</p>
       <h4>Abilities</h4>
-      <div className="row gap wrap" role="group" aria-label="Abilities">
+      <div className="row gap wrap" role="group" aria-label="Abilities" data-tut="abilities">
         {ABILITY_ORDER.map((a) => {
           const on = stage.abilities.includes(a);
           return <button key={a} className={`chip-btn ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => update((st) => { st.abilities = on ? st.abilities.filter((x) => x !== a) : ABILITY_ORDER.filter((x) => x === a || st.abilities.includes(x)); })}>{on ? '✓ ' : ''}{ABILITY_LABELS[a]}</button>;

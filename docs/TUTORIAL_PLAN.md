@@ -2,7 +2,15 @@
 
 **Goal:** turn the tutorial from "here are the buttons" into "here's how a good trainer thinks". By the end, a player should be able to set up a training pen for a behaviour *they* want, predict roughly whether it will work, read the evidence when it doesn't, and fix it.
 
-Status: **Phase A shipped** (Chapter 1 revised, Field Guide engine and screen, lessons 2–3, notebook, glossary). Phases B–C are still to do.
+Status: **Phases A and B shipped** (Chapter 1 revised, Field Guide engine and screen, lessons 2–6, notebook, glossary, coaching tips). Phase C is still to do.
+
+### Phase B: what shipped, and what we learned
+- **Lesson 4, Pay for results** (offered when Fetch unlocks). The pickup experiment: **0% deliveries at ~100 treats per try**; after the "once per object" repair card, **~90% at ~11 treats per try**. The comparison card shows success *and* treats side by side.
+- **Lesson 5, Practise where it works** (offered when Avoid unlocks and a pet has splashed through the pond). "Test my Approach here" (a button in the lesson banner, no training) vs Avoid trained in the pond pen: measured **40–60% vs 75–85%** on 5/5 seeds. It ends by switching the farm's "Move with" to Avoid.
+- **Lesson 6, Invent a skill** (offered when your own skills unlock). The player adds the Stay ability and the Patience sense, uses the suggested rules, trains, then adds an unneeded sense and retrains.
+  - **Surprise:** the planned extra sense, "Hazards nearby", costs *nothing* in a pen without ponds, because a sense that never changes never multiplies the situations. The lesson uses "How far is → Rock" instead (25,920 situations): 70–95% → 20–65% across seeds (mean −35 points).
+  - Its pen uses training seed 202, where the gap is clearest (90% vs 20%). The text says "usually", since pets' curiosity varies.
+- **Coaching tips** (`game/coach.ts`): pinned pen, loophole, below random, too little practice, poor transfer, too many situations, routine not beating random choices, and two pets on the same job. Each links to its lesson (hidden while you're in that lesson) and can be dismissed for good. The "too little practice" tip is suppressed when a loophole or pinning explains the score, because it misfired on the loophole experiment in testing.
 
 ### Phase A: what shipped, and what changed from the plan
 - **Decisions taken:** contrast lessons, free Field Guide training, lessons offered in context, neutral voice, first treat rule built card by card (the suggested recipe sits behind "Stuck?").

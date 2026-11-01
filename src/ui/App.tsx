@@ -79,6 +79,7 @@ export function App() {
             {step.why && <div className="tut-why">Why: {step.why}</div>}
           </div>
           {step.screen && s.ui.screen !== step.screen && <button className="btn small" onClick={() => s.setUi({ screen: step.screen! })}>Go to {SCREEN_LABEL[step.screen] ?? step.screen}</button>}
+          {step.action && <button className="btn small primary" onClick={() => s.mutate((x) => step.action!.run(x))}>{step.action.label}</button>}
           {step.ack && step.highlight !== 'guide-compare' && <button className="btn small primary" onClick={() => s.mutate((x) => ackStep(x))}>I’ve looked</button>}
           <button className="btn ghost small" onClick={() => s.mutate((x) => pauseChapter(x))}>{step.chapter.id === 'first' ? 'Skip for now' : 'Pause lesson'}</button>
         </div>

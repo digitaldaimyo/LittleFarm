@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { store, useStore } from './store';
-import { CHAPTERS, currentStep, guide, guideComparison, startChapter, skipChapter, pauseChapter, ackStep } from '../game/tutorial';
+import { CHAPTERS, chapterById, currentStep, guide, guideComparison, startChapter, skipChapter, pauseChapter, ackStep } from '../game/tutorial';
 
 type Tab = 'lessons' | 'notebook' | 'glossary';
 
@@ -54,7 +54,7 @@ export function GuideScreen() {
               );
             })}
           </ol>
-          <p className="small muted">More lessons — paying for results, practising where skills will be used, inventing skills, reading your pet, routines and farm plans — are on their way.</p>
+          <p className="small muted">More lessons — reading your pet, routines and farm plans — are on their way.</p>
         </div>
       )}
       {tab === 'notebook' && <Notebook />}
@@ -70,22 +70,25 @@ function pct(x: number) {
 function Comparison({ chapter }: { chapter: string }) {
   const s = useStore();
   const rows = guideComparison(s.state, chapter);
+  const showTreats = rows.some((r) => r.run.treats !== undefined) && chapter === 'results';
+  const note = chapterById(chapter)?.compare?.note;
   return (
     <div className="panel compare-card" data-tut="guide-compare">
       <h3>Your two runs</h3>
       <div className="compare" role="table" aria-label="Comparison of your runs">
-        <div className="cmp-row head small muted" role="row"><span role="columnheader" /><span role="columnheader">new layouts</span><span role="columnheader" className="num">score</span><span role="columnheader" className="num">random</span></div>
+        <div className="cmp-row head small muted" role="row"><span role="columnheader" /><span role="columnheader">success on new layouts</span><span role="columnheader" className="num">score</span><span role="columnheader" className="num">{showTreats ? 'treats' : 'random'}</span></div>
         {rows.map((r) => (
           <div key={r.label} className="cmp-row" role="row">
             <span role="cell" className="cmp-name">{r.label}<span className="muted small"> bigger pens {pct(r.run.transfer)}</span></span>
             <span role="cell" className="cmp-bar"><i className="after" style={{ width: `${r.run.after * 100}%` }} /></span>
             <span role="cell" className="num">{pct(r.run.after)}</span>
-            <span role="cell" className="num muted">{pct(r.run.random)}</span>
+            <span role="cell" className="num muted">{showTreats ? (r.run.treats ?? 0).toFixed(1) : pct(r.run.random)}</span>
           </div>
         ))}
       </div>
       {chapter === 'practice' && <p className="small">Same pen, same rules — only the amount of practice changed. A lesson that looks broken at a few hundred tries often just needs more.</p>}
       {chapter === 'scatter' && <p className="small">The pinned pet practised one layout perfectly — and that’s exactly why it stumbles on new ones. Scatter anything whose position changes in real life.</p>}
+      {note && <p className="small">{note}</p>}
       <button className="btn primary" onClick={() => s.mutate((x) => ackStep(x))}>Got it</button>
     </div>
   );
@@ -102,7 +105,7 @@ export function Notebook() {
         <li><b>Treats.</b> Pay for the result and end the try there. A tiny “hurry up” nudge helps a little (92% → 96%); a nudge alone with no treat for finishing teaches almost nothing (12%).</li>
         <li><b>Careful with paying for actions.</b> A treat every pickup or every shoo gets exploited (~30 per try, the job forgotten). Add <em>once per object</em>. Paying for “getting closer” quietly misleads (96% → 87%).</li>
         <li><b>Success.</b> The condition you judge by. It must mean the job is done — not just that treats were earned.</li>
-        <li><b>Senses</b> (your own skills): the fewest that decide the move. Extra senses multiply the situations to practise (watering fell from 60% to 10% with one unneeded sense).</li>
+        <li><b>Senses</b> (your own skills): the fewest that decide the move. Extra senses multiply the situations to practise (watering fell from 60% to 10% with one unneeded sense; Wait for it from ~90% to ~40% with “How far is rock”). A sense that never changes in the pen (hazards with no pond) costs nothing — and teaches nothing.</li>
         <li><b>Practice.</b> Below ~700 tries most lessons look broken (300 tries: ~35%; 1,500: ~95%). Use <em>Refine</em> to keep going.</li>
         <li><b>Judge.</b> Compare with Random (and “Random choices” for routines), check Bigger pens, then open the summary and “What does Pip do?”. If treats rise but success doesn’t, look for a loophole.</li>
         <li><b>Deploy and watch.</b> Run it on the farm, preview plans, and retrain when the farm changes.</li>

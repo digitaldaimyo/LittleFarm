@@ -397,6 +397,10 @@ export function recipeStage(id: string): StageSpec {
 
 /** Suggested one-tap rule sets offered in the Rules binder. */
 export function suggestedRules(stage: StageSpec): { label: string; rules: SpecNode[]; success: SpecNode }[] {
+  if (stage.learner.skill === 'Wait for it' && stage.recipeId === 'guide') {
+    const w = cloneStage(waitForIt(), true);
+    return [{ label: 'Wait for it rules', rules: w.rules, success: w.success! }];
+  }
   const n = maker(`sg${newId('')}`);
   const f = stage.learner.focus;
   const out: { label: string; rules: SpecNode[]; success: SpecNode }[] = [];

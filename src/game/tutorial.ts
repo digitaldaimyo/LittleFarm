@@ -4,6 +4,8 @@ import { activePet, getSkill } from './pets';
 import { isNode, node, placedKinds } from '../domain/spec';
 import { buildTutorialStage, recipeStage } from '../domain/recipes';
 import { addJournal } from './journal';
+import { evaluate } from '../learning/episodes';
+import { heldOutSeeds, policySpecFor } from '../learning/report';
 
 /**
  * The Field Guide: Chapter 1 (the first lesson, always on for new games) plus short lessons that are
@@ -24,6 +26,8 @@ export interface GuideStep {
   done: (s: GameState) => boolean;
   /** Steps finished by pressing "Got it" (sets flag `guide:<chapter>:<step>`). */
   ack?: boolean;
+  /** A button in the lesson banner that does something for the player (e.g. run a test). */
+  action?: { label: string; run: (s: GameState) => void };
 }
 
 export interface Chapter {
@@ -36,6 +40,8 @@ export interface Chapter {
   /** Prepare the lesson (e.g. create its practice pen). */
   start?: (s: GameState) => void;
   steps: GuideStep[];
+  /** Side-by-side comparison shown in the Guide: which runs, labelled how. */
+  compare?: { stage: string; rows: { variant: string; label: string }[]; note: string };
 }
 
 export interface GuideRun {
@@ -47,6 +53,10 @@ export interface GuideRun {
   transfer: number;
   /** Was the target pinned (fixed placement) in this run? */
   pinned: boolean;
+  /** Mean treats per try (to contrast reward with success). */
+  treats?: number;
+  /** Which side of the lesson's contrast this run is (see guideVariant). */
+  variant?: string;
   at: number;
 }
 
@@ -60,9 +70,14 @@ const flag = (s: GameState, k: string) => !!s.progress.flags[k];
 const ackFlag = (chapter: string, step: string) => `guide:${chapter}:${step}`;
 const runs = (s: GameState, stageId: string) => s.progress.guideRuns?.[stageId] ?? [];
 const stage = (s: GameState, id: string) => s.stages.find((x) => x.id === id);
+const hasVariant = (s: GameState, stageId: string, v: string) => runs(s, stageId).some((r) => r.variant === v);
+const lastVariantRun = (s: GameState, stageId: string, v: string) => [...runs(s, stageId)].reverse().find((r) => r.variant === v);
 const TUT = 'stage-tutorial';
 export const PRACTICE_STAGE = 'stage-guide-practice';
 export const PINNED_STAGE = 'stage-guide-pinned';
+export const LOOPHOLE_STAGE = 'stage-guide-loophole';
+export const AVOID_STAGE = 'stage-guide-ponds';
+export const INVENT_STAGE = 'stage-guide-invent';
 
 function ruleCards(st: StageSpec | undefined): SpecNode[] {
   return st?.rules.filter((r) => r.cardId === 'rule') ?? [];
@@ -159,6 +174,80 @@ export const CHAPTERS: Chapter[] = [
       { id: 'retrain', title: 'Train the scattered version', text: 'Train again and compare.', screen: 'teach', highlight: 'train-btn', done: (s) => runs(s, PINNED_STAGE).some((r) => !r.pinned) },
       { id: 'compare', title: 'Compare pinned vs scattered', text: 'Check the comparison in the Guide.', why: 'Scatter anything whose position will change in real life. Pin only what really stays put (like the farm’s bin or well) — and even then, varying it a little makes skills sturdier.', screen: 'guide', highlight: 'guide-compare', ack: true, done: (s) => flag(s, ackFlag('scatter', 'compare')) },
     ],
+  },
+  {
+    id: 'results', title: 'Pay for results, not effort', blurb: 'How a reward with a loophole teaches the wrong thing — and how to repair it.', minutes: 5,
+    offered: (s) => s.progress.unlocks.includes('fetch') && s.pets.some((p) => !!getSkill(p, 'Approach')),
+    start: (s) => {
+      const st = recipeStage('pay-per-pickup');
+      st.id = LOOPHOLE_STAGE;
+      st.name = 'Field guide: a treat for every pickup';
+      st.recipeId = 'guide';
+      st.extensions = { guide: true };
+      upsertStage(s, st);
+      s.activeStageId = LOOPHOLE_STAGE;
+      delete s.progress.guideRuns?.[LOOPHOLE_STAGE];
+    },
+    steps: [
+      { id: 'loophole', title: 'Experiment: a treat for every pickup', text: 'This is the Fetch lesson (carry the berry to the bin) with one extra rule: a treat every time your pet picks the berry up. Sounds encouraging… train it.', screen: 'teach', highlight: 'train-btn', done: (s) => hasVariant(s, LOOPHOLE_STAGE, 'loophole') },
+      { id: 'read', title: 'Treats up, success down', text: 'Your pet earns lots of treats but rarely delivers. Read “Loophole found!” and open “What it actually did” — where did the treats come from?', why: 'Your pet does exactly what the treats pay for. Picking up and putting down again and again paid better than the delivery — so that’s what it learned.', screen: 'teach', highlight: 'report-exploit', ack: true, done: (s) => flag(s, ackFlag('results', 'read')) },
+      { id: 'repair', title: 'Use the repair card', text: 'Press “Repair card: Pay only once per object”.', why: 'Limits close loopholes without removing the encouragement: the first pickup still pays, the hundredth doesn’t.', screen: 'teach', highlight: 'repair-card', done: (s) => { const st = stage(s, LOOPHOLE_STAGE); return !!st && st.rules.some((r) => isNode(r.args.when) && r.args.when.cardId === 'ev.pickup' && isNode(r.args.limit) && r.args.limit.cardId === 'lim.perObject'); } },
+      { id: 'retrain', title: 'Train the repaired lesson', text: 'Train again with the repaired rule.', screen: 'teach', highlight: 'train-btn', done: (s) => hasVariant(s, LOOPHOLE_STAGE, 'repaired') },
+      { id: 'compare', title: 'Compare', text: 'Check the comparison in the Guide: success and treats, before and after the repair.', screen: 'guide', highlight: 'guide-compare', ack: true, done: (s) => flag(s, ackFlag('results', 'compare')) },
+      { id: 'save', title: 'Keep the working Fetch', text: 'Back in Teach, save the repaired run — it’s a perfectly good Fetch skill.', screen: 'teach', highlight: 'save-skill', done: (s) => s.pets.some((p) => !!getSkill(p, 'Fetch')?.revisions.some((r) => r.stageId === LOOPHOLE_STAGE)) },
+    ],
+    compare: { stage: LOOPHOLE_STAGE, rows: [{ variant: 'loophole', label: 'Treat every pickup' }, { variant: 'repaired', label: 'Once per object' }], note: 'More treats is not more success. When treats rise but success doesn’t, look for a rule that pays for repeating something — and pay for the result instead.' },
+  },
+  {
+    id: 'where', title: 'Practise where it works', blurb: 'Why a skill learned in an easy pen stumbles in the real world.', minutes: 5,
+    offered: (s) => s.progress.unlocks.includes('avoid') && s.pets.some((p) => p.stats.dips > 0 && !!getSkill(p, 'Approach')),
+    start: (s) => {
+      const st = recipeStage('avoid-pond');
+      st.id = AVOID_STAGE;
+      st.name = 'Field guide: the pond pen';
+      st.recipeId = 'guide';
+      st.extensions = { guide: true };
+      upsertStage(s, st);
+      s.activeStageId = AVOID_STAGE;
+      delete s.progress.guideRuns?.[AVOID_STAGE];
+    },
+    steps: [
+      { id: 'baseline', title: 'Test your Approach with ponds', text: 'Your Approach practised in pens without ponds. This pen has some. Press “Test my Approach here” — no training, just a test on 20 layouts.', why: 'This is what happened on the farm: the shortest way to the berry sometimes goes through the pond.', screen: 'teach', action: { label: 'Test my Approach here', run: (s) => testApproachHere(s) }, done: (s) => hasVariant(s, AVOID_STAGE, 'approach') },
+      { id: 'train', title: 'Train Avoid in the pond pen', text: 'This lesson already has ponds, a FAIL condition (stepping in ends the try) and a “Splash!” nudge. Train it.', why: 'Practise with the obstacles the job will meet. Some variety, not maximum difficulty: pets practised with no rocks scored 70% in cluttered pens, a few rocks 86%, lots of rocks 80%.', screen: 'teach', highlight: 'train-btn', done: (s) => hasVariant(s, AVOID_STAGE, 'avoid') },
+      { id: 'compare', title: 'Compare', text: 'Check the comparison in the Guide.', screen: 'guide', highlight: 'guide-compare', ack: true, done: (s) => flag(s, ackFlag('where', 'compare')) },
+      { id: 'save', title: 'Save Avoid', text: 'In Teach, save the Avoid skill.', screen: 'teach', highlight: 'save-skill', done: (s) => s.pets.some((p) => !!getSkill(p, 'Avoid')?.revisions.some((r) => r.stageId === AVOID_STAGE)) },
+      { id: 'use', title: 'Use it on the farm', text: 'On the Farm, set “Move with” to Avoid. Your jobs keep working — they just walk around the pond now.', why: 'Skills are reused, not retrained: Forage and Fetch move with whichever movement skill you pick. The same goes for anything new on the farm — when the farm changes (fences, gates, rain puddles), practise with it.', screen: 'farm', highlight: 'nav-avoid', done: (s) => s.pets.some((p) => p.assignment.navigator === 'Avoid') },
+    ],
+    compare: { stage: AVOID_STAGE, rows: [{ variant: 'approach', label: 'Approach (practised without ponds)' }, { variant: 'avoid', label: 'Avoid (practised with ponds)' }], note: 'A skill is only as good as the pens it practised in. Build the pen like the place the skill will be used.' },
+  },
+  {
+    id: 'invent', title: 'Invent a skill', blurb: 'Choose what your pet senses and can do — and why fewer senses often learn better.', minutes: 6,
+    offered: (s) => s.progress.unlocks.includes('custom'),
+    start: (s) => {
+      const st = recipeStage('wait-for-it');
+      st.id = INVENT_STAGE;
+      st.name = 'Field guide: Wait for it';
+      st.recipeId = 'guide';
+      st.seed = 202; // a training seed where the extra-sense contrast is clear (measured: 90% lean vs 20% with “How far is rock”)
+      st.extensions = { guide: true };
+      st.abilities = ['move'];
+      st.learner.senses = [node('sense.nearest', { what: node('ref.target') }), node('sense.blocked'), node('sense.heading')];
+      st.rules = [];
+      st.success = null;
+      upsertStage(s, st);
+      s.activeStageId = INVENT_STAGE;
+      delete s.progress.guideRuns?.[INVENT_STAGE];
+    },
+    steps: [
+      { id: 'stay', title: 'Give it the Stay ability', text: 'This skill should walk to the target and sit still for 5 steps. In the Pet binder, turn on the “Stay” ability.', why: 'Abilities are what a skill may do. Without Stay, “wait” isn’t even possible.', screen: 'teach', highlight: 'abilities', done: (s) => !!stage(s, INVENT_STAGE)?.abilities.includes('stay') },
+      { id: 'patience', title: 'Add the Patience sense', text: 'Under Senses, press “+ sense” and pick “Patience”. Watch the situations meter.', why: 'Senses are what a skill pays attention to. To know when it has waited long enough, your pet must be able to sense how long it has waited.', screen: 'teach', highlight: 'senses', done: (s) => !!stage(s, INVENT_STAGE)?.learner.senses?.some((n) => n.cardId === 'sense.still') },
+      { id: 'rules', title: 'Add the rules', text: 'In Rules, tap the suggested “Wait for it” rules: a small treat for staying on the target, a big one after 5 steps, and SUCCESS = “at the target and stayed 5+”.', screen: 'teach', highlight: 'suggested', done: (s) => { const st = stage(s, INVENT_STAGE); return !!st?.success && st.rules.some((r) => isNode(r.args.when) && r.args.when.cardId === 'ev.stay'); } },
+      { id: 'train', title: 'Train it', text: 'Train your new skill.', screen: 'teach', highlight: 'train-btn', done: (s) => runs(s, INVENT_STAGE).length > 0 },
+      { id: 'extra', title: 'Experiment: one sense too many', text: 'Add a sense this job doesn’t need: “How far is…” → Rock. Then train again with the same practice — it usually does noticeably worse.', why: 'Each sense multiplies the situations your pet must practise. (A sense that never changes in the pen — like “Hazards nearby” with no pond — costs nothing.)', screen: 'teach', highlight: 'senses', done: (s) => { const r = runs(s, INVENT_STAGE); return r.length > 1 && (r.at(-1)!.variant ?? '') !== (r[0].variant ?? ''); } },
+      { id: 'compare', title: 'Compare', text: 'Check the comparison in the Guide.', screen: 'guide', highlight: 'guide-compare', ack: true, done: (s) => flag(s, ackFlag('invent', 'compare')) },
+      { id: 'save', title: 'Keep the lean version', text: 'In Teach, remove the extra sense (✕ on its card), train once more, and save “Wait for it”. Then try it on the farm with “Run a skill”.', screen: 'teach', highlight: 'save-skill', done: (s) => s.pets.some((p) => !!getSkill(p, 'Wait for it')?.revisions.some((r) => r.stageId === INVENT_STAGE && !r.learner?.senses.some((n) => n.cardId === 'sense.distance'))) },
+    ],
+    compare: { stage: INVENT_STAGE, rows: [{ variant: 'first', label: 'Lean senses' }, { variant: 'latest', label: 'With the extra sense' }], note: 'Choose the fewest senses that decide the next move. Every extra one multiplies the practice your pet needs — and with the same practice, it learns worse.' },
   },
 ];
 
@@ -258,11 +347,23 @@ export function isGuideStage(st: StageSpec): boolean {
 }
 
 /** Remember a finished training run in a Field Guide pen, so lessons can compare runs. */
-export function recordGuideRun(s: GameState, st: StageSpec, episodes: number, after: number, random: number, transfer: number, scattered?: number): void {
+/** Which side of a lesson's contrast a run is on. */
+export function guideVariant(st: StageSpec): string | undefined {
+  if (st.id === LOOPHOLE_STAGE) {
+    const pay = st.rules.find((r) => isNode(r.args.when) && r.args.when.cardId === 'ev.pickup');
+    return pay && isNode(pay.args.limit) && (pay.args.limit.cardId === 'lim.perObject' || pay.args.limit.cardId === 'lim.once') ? 'repaired' : 'loophole';
+  }
+  if (st.id === AVOID_STAGE) return 'avoid';
+  if (st.id === INVENT_STAGE) return `senses:${(st.learner.senses ?? []).map((n) => n.cardId).join(',')}`;
+  return undefined;
+}
+
+export function recordGuideRun(s: GameState, st: StageSpec, episodes: number, after: number, random: number, transfer: number, scattered?: number, treats?: number, variant?: string): void {
   if (!isGuideStage(st)) return;
   const all = (s.progress.guideRuns ??= {});
   const list = (all[st.id] ??= []);
-  list.push({ episodes, after, random, transfer, pinned: isPinned(st), at: Date.now(), ...(scattered !== undefined ? { scattered } : {}) });
+  const v = variant ?? guideVariant(st);
+  list.push({ episodes, after, random, transfer, pinned: isPinned(st), at: Date.now(), ...(scattered !== undefined ? { scattered } : {}), ...(treats !== undefined ? { treats } : {}), ...(v ? { variant: v } : {}) });
   if (list.length > 8) list.shift();
 }
 
@@ -279,5 +380,26 @@ export function guideComparison(s: GameState, chapter: string): { label: string;
     // Judge both on layouts where the berry moves: the pinned run's honest score is its "scattered" one.
     return [pinned && { label: 'Pinned pen', run: { ...pinned, after: pinned.scattered ?? pinned.after } }, scattered && { label: 'Scattered pen', run: scattered }].filter(Boolean) as { label: string; run: GuideRun }[];
   }
-  return [];
+  const ch = chapterById(chapter);
+  if (!ch?.compare) return [];
+  const r = runs(s, ch.compare.stage);
+  if (chapter === 'invent') {
+    // First run = lean; latest run with different senses = the experiment.
+    const first = r[0], latest = [...r].reverse().find((x) => x.variant !== first?.variant);
+    return [first && { label: 'Lean senses', run: first }, latest && { label: 'With the extra sense', run: latest }].filter(Boolean) as { label: string; run: GuideRun }[];
+  }
+  return ch.compare.rows.map((row) => { const run = lastVariantRun(s, ch.compare!.stage, row.variant); return run && { label: row.label, run }; }).filter(Boolean) as { label: string; run: GuideRun }[];
+}
+
+/** Lesson 5 action: test the pet's current Approach in the pond pen (no training). */
+export function testApproachHere(s: GameState): void {
+  const p = activePet(s);
+  const st = stage(s, AVOID_STAGE);
+  const rev = p && getSkill(p, 'Approach')?.revisions.find((r) => r.rev === getSkill(p, 'Approach')!.activeRev);
+  if (!p || !st || !rev) return;
+  const seeds = heldOutSeeds(st);
+  const r = evaluate(st, policySpecFor(st, rev.policy, null, undefined, rev.learner), seeds, 'evaluation', p.traits, 1);
+  const random = evaluate(st, { kind: 'random' }, seeds, 'baseline', p.traits, 0);
+  recordGuideRun(s, st, 0, r.successRate, random.successRate, r.successRate, undefined, r.meanReward, 'approach');
+  addJournal(s, p.id, 'guide-approach-ponds', `${p.name}'s Approach was tested in a pen with ponds: ${r.successes}/${r.episodes} reached the berry dry.`);
 }
