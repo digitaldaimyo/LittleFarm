@@ -338,3 +338,12 @@ button.node { padding: 2px 9px; font-weight: 600; }
 .option-row.err { border-color: var(--err-edge); }
 .option-row select { min-height: 34px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--paper); padding: 0 6px; }
 .g-option { border-color: #B9C98A; background: #F2F6E3; color: #4A5A1A; }
+
+.plan-mat { display: flex; flex-direction: column; gap: 8px; }
+.plan-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.plan-row.now { border-color: var(--leaf); box-shadow: 0 0 0 2px var(--leaf-glow, rgba(46,122,76,.18)); }
+.plan-row select { min-height: 30px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--paper); }
+.preview { background: var(--ground); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.fires { margin: 0; padding-left: 18px; }
+.g-job { border-color: #A9B9DC; background: #E8EEFA; color: #23407A; }
+.chip.by-plan { background: #E8EEFA; color: #23407A; }

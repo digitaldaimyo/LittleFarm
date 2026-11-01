@@ -53,6 +53,8 @@ A farm day lasts about 5½ minutes at 1×, and the last 30% is **night**. At nig
 
 **Routines.** Once a pet has a certified Approach and two saved skills, **+ New routine…** combines them. Options are *Use skill* cards (any saved movement or own skill, aimed at anything, with an optional *only when…* condition) and *Do action* cards. The routine **watches** up to 4 conditions and learns which option to use in which situation. Options always call each skill's *current* revision, so improving *Herd* improves every routine that uses it, and the game flags routines certified with an older revision. The Curriculum has *Bring it home (routine)* (Fetch rebuilt from cards) and *Morning chores* (pick the right skills from your deck). Run any routine on the farm with **Run a skill**.
 
+**Farm plans.** On the Farm screen, **Farm plan** (or *Edit farm plan…*) opens a mat of **IF / DO** rows written with the same cards, for example "IF a crow is within 3 of me DO run Guard", "IF energy below 30 DO nap", "IF 2+ eggs in the coop DO deliver". Rows are tried top to bottom. A row is skipped when its job can't do anything right now. **Preview 300 ticks** dry-runs the plan on a copy of the farm and shows coins, energy, naps, pond dips, how often each row ran, and whether rows fight each other. Since the farm is deterministic, that preview is exactly what will happen if you apply the plan then. The **starter plan** is the built-in Auto rules, written out so you can edit them. *Learn among matches* lets the pet pick among the rows that apply. An **anti-dithering guard** steps in if rows start flip-flopping.
+
 The farm keeps running while you're in other screens. Use **Steer** to guide a pet by hand (tap tiles, or use the arrow keys, P to pick up, D to put down, W to water and X to shoo).
 
 ## Performance
@@ -66,7 +68,7 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 - Thumbs up/down feedback applies to movement skills (Approach/Avoid), not to the Fetch controller.
 - Templates are immutable named revisions you can instantiate. "Exposed parameters" are stored but have no editing UI yet.
 - Avoid is the hardest skill: about 82% mean held-out success, with occasional runs at 75%. Use *Refine* to train more.
-- Your own skills and routines run on the farm one at a time ("Run a skill"). Farm plans that switch between them automatically are Milestone 4 in `docs/ROADMAP.md`. Routines can't use Fetch or other routines as options yet.
+- Only the on-duty pet follows a plan; other pets nap. Routines can't use Fetch or other routines as options yet. Plan previews always start from a fresh decision (the current job is dropped when you apply a plan).
 - No local language model (the spec's optional Level D). The executive is a rules baseline plus a small learned bandit.
 - Static reward checks and the preflight random-rollout comparison are heuristics, not proofs that a reward can't be exploited.
 

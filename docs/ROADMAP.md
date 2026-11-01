@@ -133,7 +133,15 @@ Examples:
 
 ---
 
-## Milestone 4: Farm routines (planning, not just training)
+## Milestone 4: Farm routines (planning, not just training) — ✅ shipped
+
+> **Status:** done. Differences from the plan below:
+> - Rows are `plan.row` cards: **IF** any number of conditions, **DO** one **job** card (Forage, Deliver, Catch fireflies, Nap, Wander, **Go to…**, **Run skill**). Order is priority. A row is skipped when its job can't do anything right now, the same eligibility rule as the built-in executive. There's no explicit OTHERWISE keyword: a row with no conditions acts as one.
+> - New farm conditions: **Energy below N** and **Carrying something**.
+> - The **starter plan** is the built-in rules executive written as 9 rows, and it reproduces it tick for tick.
+> - The "learned executive as helper" ships as **Learn among matches**: a bandit picks among the rows that currently apply and remembers what paid.
+> - The oscillation guard isn't a flat minimum commitment (that would have changed well-behaved plans, including the starter plan). It switches on only when rows flip-flop (≥6 row changes within 40 ticks). Then, for 160 ticks, the pet sticks with the previous row if it still applies, or pauses briefly before switching. On the starter plan it never triggers.
+> - Plans live on each pet (`pet.plan`). The editor reuses the lesson card/sleeve editor through a stand-in lesson whose rule list *is* the plan.
 
 **Player-facing:** a **Farm plan** mat on the Farm screen, using the same card language:
 
@@ -153,9 +161,9 @@ The player *plans* which taught behavior runs when. The learned executive become
 - **Plan diagnostics:** "row 3 never fires", "two rows fight each other (switched 40 times in a minute)", "this skill isn't certified".
 
 **Gate**
-- [ ] A player-written plan reproduces today's built-in rules executive exactly (regression test).
-- [ ] The dry-run preview matches the real farm over the same ticks (determinism).
-- [ ] An oscillation guard (minimum commitment per invocation) prevents plan thrashing; tested.
+- [x] The starter plan reproduces the built-in rules executive exactly: identical farm state every tick over 2½ farm days with Approach, Fetch, carrots, chickens, crows and nights (tested).
+- [x] A 300-tick dry run equals the real farm over the same ticks (coins, energy, tick, pet position; tested from a mid-game state).
+- [x] The guard roughly halves switching on a deliberately fighting plan ("at the bin → go home; otherwise → go to the bin"): 42.8 → 21.8 switches per minute (tested: < half).
 
 ---
 

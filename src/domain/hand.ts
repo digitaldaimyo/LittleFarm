@@ -37,7 +37,7 @@ export interface Hand {
 }
 
 const GROUP_BASE: Record<string, number> = {
-  kind: 5, actor: 9, sense: 6, event: 5, condition: 4, effect: 5, limit: 4, quantity: 3, reference: 2, placement: 4, rule: 4,
+  kind: 5, actor: 9, sense: 6, job: 8, event: 5, condition: 4, effect: 5, limit: 4, quantity: 3, reference: 2, placement: 4, rule: 4,
 };
 
 const STARTER_FAVORS: Record<string, number> = {

@@ -56,6 +56,12 @@ The same simulator runs pens, evaluation and the farm. Fixed seed + fixed action
 - `Trainer` runs Fetch and routines through one SMDP Double-Q option loop (α 0.3, γ 0.9). When no option is legal, the routine idles a tick without a learning update. Reports add `randomOptions` (random legal option at each boundary).
 - Saved routine revisions keep `uses: {skill, rev}[]` and a copy of their lesson (`stage`). `routineRunFor` runs them on the farm, and `staleUses` reports sub-skills that changed since certification.
 
+### Farm plans (Milestone 4)
+- `pet.plan = { rows: SpecNode[] (plan.row), chooser: 'first' | 'learned', guard, table? }`, and `assignment.mode = 'plan'`.
+- `game/plan.ts`: `compilePlan` turns rows into `{ holds(world), job: {behaviorId, args} }`. Job cards map to behaviors (`job.goto` → `goto`, a `NavRun` to the aimed kind; `job.skill` → `skill`). `jobPossible` mirrors `eligibleBehaviors`. `choosePlanRow` returns the first applicable row (or a bandit pick), with the anti-dithering guard (`isThrashing`, `guardUntil`, `lastHold`).
+- `chooseInvocation` (farm) handles plan mode after the "too sleepy" safety check. Invocations carry `chosenBy: 'plan'` and `args.row`. `world.petEnergy` is set each tick so `cond.energyBelow` works.
+- `applyPlan` resets the runtime (no half-finished job, fresh plan memory, RNG from `farm.rngState`). `previewPlan` deep-clones the game, applies the plan and runs `farmTick`, so it is the real future under determinism.
+
 ## Learning
 
 ### Templates, senses and abilities (Milestone 1)

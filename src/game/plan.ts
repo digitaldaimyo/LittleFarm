@@ -175,9 +175,12 @@ export function planWarnings(p: Pet, plan: FarmPlan): { rowId?: string; message:
       else if (!k) out.push({ rowId: r.id, message: `Row ${r.index + 1}: ${p.name} hasn’t learned “${r.job.args.skill}”.` });
       else if (!isCertified(k)) out.push({ rowId: r.id, message: `Row ${r.index + 1}: “${k.name}” isn’t certified yet — it may not work well.` });
     }
-    if (['forage', 'catch', 'goto', 'deliver'].includes(r.job.behaviorId) && !navPolicyFor(p, 'Approach')) out.push({ rowId: r.id, message: `Row ${r.index + 1} needs a movement skill (Approach or Avoid).` });
-    if (r.job.behaviorId === 'deliver' && !activeRevision(getSkill(p, 'Fetch'))) out.push({ rowId: r.id, message: `Row ${r.index + 1} needs Fetch.` });
   });
+  const needNav = rows.filter((r) => ['forage', 'catch', 'goto', 'deliver'].includes(r.job.behaviorId) && !navPolicyFor(p, 'Approach'));
+  const needFetch = rows.filter((r) => r.job.behaviorId === 'deliver' && !activeRevision(getSkill(p, 'Fetch')));
+  const list = (rs: CompiledRow[]) => `${rs.length > 1 ? 'Rows' : 'Row'} ${rs.map((r) => r.index + 1).join(', ')}`;
+  if (needNav.length) out.push({ message: `${list(needNav)} need${needNav.length > 1 ? '' : 's'} a movement skill (Approach or Avoid) — skipped until ${p.name} learns one.` });
+  if (needFetch.length) out.push({ message: `${list(needFetch)} need${needFetch.length > 1 ? '' : 's'} Fetch — skipped until ${p.name} learns it.` });
   const firstAlways = plan.rows.findIndex((r) => r.cardId === 'plan.row' && !(Array.isArray(r.args.if) && r.args.if.length) && isNode(r.args.do) && r.args.do.cardId === 'job.nap');
   if (firstAlways >= 0 && firstAlways < plan.rows.length - 1) out.push({ message: `Rows below row ${firstAlways + 1} (an unconditional nap) can never run.` });
   return out;

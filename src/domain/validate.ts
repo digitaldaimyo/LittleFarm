@@ -234,3 +234,11 @@ export function nodesWithErrors(d: Diagnostic[]): Set<string> {
 }
 
 export { walk, title };
+
+/** Validate free-standing nodes (e.g. farm-plan rows) against a type, with a known set of kinds and areas. */
+export function validateNodes(nodes: SpecNode[], type: TypeExpr, opts: { placed: Set<string>; areas: Set<string>; reg?: Registry }): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  const ctx: Ctx = { reg: opts.reg ?? REGISTRY, itBound: false, placed: opts.placed, out, target: 'berry', areas: opts.areas };
+  for (const n of nodes) validateNode(n, type, ctx);
+  return out;
+}

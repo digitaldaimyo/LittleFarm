@@ -47,6 +47,9 @@ Unlocks add **vocabulary** (new cards and skills) and **problems** (carrots need
 ## Reward hacking as discovery
 The *Treat for every pickup* recipe pays +3 per pickup with no limit. Pets reliably learn to pick up and put down the berry over and over: about 30 pickups per try and 0% deliveries, while treats per try climb as success falls. The report says **Loophole found!**, shows a replay of the worst try, explains which rule paid, and offers the repair card *Pay only once per object*. After the repair, retraining delivers most of the time (the test suite requires at least +40 points). Nothing is ever lost: the stage has Undo, and saving an uncertified revision never replaces a certified active one.
 
+## Farm plans
+Training answers "can my pet do X?". Plans answer "when should it do X?". The plan mat uses the same cards as lessons, so a player who learned to write *WHEN… THEN* rules can write *IF… DO* rows. The starter plan exposes the hidden Auto rules as an editable example. The preview makes planning iterative and safe: try a plan, see the coins, energy, naps and dips it would produce, fix fighting rows, then apply it. Diagnostics explain rather than block: rows that never ran, rows that fight, skills that aren't learned or certified yet.
+
 ## Routines
 A routine is the player's planning tool inside the pen: a deck of options (their own skills and basic actions) plus a few things to watch. Training learns *which skill to use when*. The report always shows **Random choices** (same deck, random picks) so players can see whether the routine actually learned to choose, or whether the skills alone do all the work. *Morning chores* shows this: an untrained routine with distractors at the top of the deck gets 0%, random choices about 57%, and the learned routine about 83%.
 

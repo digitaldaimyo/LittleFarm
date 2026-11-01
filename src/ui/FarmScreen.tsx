@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { PlanMat } from './PlanMat';
 import { store, useStore } from './store';
 import { WorldView } from './WorldView';
 import { PetSprite, type PetMood } from './art';
@@ -6,7 +7,7 @@ import { activePet, activeRevision, customSkills, getSkill, isCertified, petById
 import { OBJECT_BY_ID } from '../domain/packs/farm';
 
 const FARM_TARGETS = ['berry', 'carrot', 'egg', 'chicken', 'crow', 'firefly', 'bin', 'home', 'well', 'pond', 'bush', 'patch', 'rock', 'tree'];
-import { DAY_TICKS, dayInfo, queueManual, queueManualPath, recentProduction, TIRED } from '../game/farm';
+import { DAY_TICKS, applyPlan, dayInfo, queueManual, queueManualPath, recentProduction, TIRED } from '../game/farm';
 import { nextUnlock } from '../game/progression';
 import { BEHAVIOR_LABEL } from '../learning/executive';
 import type { JobId, NavigatorName, Pet } from '../game/types';
@@ -22,7 +23,7 @@ function moodFor(pet: Pet, fxTypes: string[], behavior: string | undefined, stun
 }
 
 interface JobCard {
-  id: 'auto' | JobId | 'manual';
+  id: 'auto' | JobId | 'manual' | 'plan';
   title: string;
   blurb: string;
   needs?: string;
@@ -34,6 +35,7 @@ function jobCards(pet: Pet, unlocks: string[]): JobCard[] {
   const hasFetch = !!activeRevision(getSkill(pet, 'Fetch'));
   return [
     { id: 'auto', title: 'Auto', blurb: `${pet.name} decides using their executive — napping at night, unless there are fireflies to catch.` },
+    { id: 'plan', title: 'Farm plan', blurb: 'Your own IF/DO rows decide which skill runs when. Preview before applying.' },
     { id: 'forage', title: BEHAVIOR_LABEL.forage, blurb: 'Approach a ripe berry, then gather it. +1 coin.', needs: 'Approach', locked: hasNav ? undefined : 'Needs a saved Approach skill' },
     { id: 'deliver', title: BEHAVIOR_LABEL.deliver, blurb: 'Fetch carrots (+3) and eggs (+2) to the bin.', needs: 'Fetch', locked: hasFetch ? undefined : 'Needs a saved Fetch skill' },
     { id: 'rest', title: 'Nap', blurb: 'Rest to refill energy.' },
@@ -51,6 +53,7 @@ export function FarmScreen() {
   const mood = pet ? moodFor(pet, fxTypes, f.current?.behaviorId, f.stun) : 'idle';
   const manual = pet?.assignment.mode === 'manual';
   const next = nextUnlock(g);
+  const [showPlan, setShowPlan] = useState(false);
   const perMin = recentProduction(f, 214); // ≈ 60s at 1×
   const clock = dayInfo(f.tick);
   // Smooth dusk (60–70% of the day) and dawn (first 5%).
@@ -74,6 +77,7 @@ export function FarmScreen() {
   const setJob = (id: JobCard['id']) => {
     store.mutate((st) => {
       const p = st.pets.find((x) => x.id === pet.id)!;
+      if (id === 'plan') { applyPlan(st, store.runtime, p.id); st.progress.flags.assignedJob = true; return; }
       if (id === 'auto') p.assignment.mode = 'auto';
       else if (id === 'manual') p.assignment.mode = 'manual';
       else {
@@ -156,7 +160,7 @@ export function FarmScreen() {
                 <>
                   <strong>{BEHAVIOR_LABEL[f.current.behaviorId]}</strong>
                   {f.current.args.navigator && f.current.behaviorId !== 'rest' && <span className="chip">moves with {f.current.args.navigator}</span>}
-                  <span className={`chip by-${f.current.chosenBy}`}>{f.current.chosenBy === 'player' ? 'your call' : f.current.chosenBy === 'rules' ? 'rule-based choice' : 'learned choice'}</span>
+                  <span className={`chip by-${f.current.chosenBy}`}>{f.current.chosenBy === 'player' ? 'your call' : f.current.chosenBy === 'rules' ? 'rule-based choice' : f.current.chosenBy === 'plan' ? 'farm plan' : 'learned choice'}</span>
                   <div className="muted small">{f.current.intention}</div>
                 </>
               ) : <span className="muted">Thinking…</span>}
@@ -217,6 +221,11 @@ export function FarmScreen() {
             </details>
           )}
         </div>
+
+        {(selected === 'plan' || showPlan) && <PlanMat pet={pet} />}
+        {selected !== 'plan' && !showPlan && (
+          <button className="btn ghost" onClick={() => setShowPlan(true)}>Edit farm plan…</button>
+        )}
 
         <div className="panel">
           <div className="resources">

@@ -11,7 +11,7 @@ import { snapshotStage } from '../game/state';
 
 const GROUP_CLASS: Record<string, string> = {
   kind: 'g-obj', actor: 'g-obj', reference: 'g-obj', event: 'g-event', condition: 'g-cond', effect: 'g-val',
-  limit: 'g-lim', quantity: 'g-prop', placement: 'g-obj', rule: 'g-rule', sense: 'g-sense', option: 'g-option',
+  limit: 'g-lim', quantity: 'g-prop', placement: 'g-obj', rule: 'g-rule', sense: 'g-sense', option: 'g-option', job: 'g-job',
 };
 
 export function cardOf(n: SpecNode): CardDef | undefined {
