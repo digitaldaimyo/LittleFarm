@@ -1,4 +1,6 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { cloneWorld } from '../sim/world';
+import { probeField, probePath } from '../learning/probe';
 import type { SpecNode, StageSpec } from '../domain/types';
 import { REGISTRY } from '../domain/registry';
 import { RECIPES, instantiateRecipe, suggestedRules } from '../domain/recipes';
@@ -13,7 +15,7 @@ import { HandCardView, ManySlot, NodeChip, Sleeve, SlotChip, cardOf, withSnapsho
 import { TrainingPanel, traceBadge } from './TrainingPanel';
 import { useReplay } from './replay';
 import { startTraining } from './training';
-import { activePet, activeRevision, getSkill, isCertified, isPreset, staleUses, subskillsFor } from '../game/pets';
+import { activePet, activeRevision, getSkill, isCertified, isPreset, sensePolicyOf, staleUses, subskillsFor } from '../game/pets';
 import { MAX_OPTIONS, MAX_WATCH } from '../learning/routine';
 import { ABILITY_LABELS, ABILITY_ORDER, MAX_SENSES, STATE_MAX, STATE_WARN, presetSenses, stateSpaceSize } from '../learning/senses';
 import { templateOf } from '../learning/skilldef';
@@ -116,12 +118,26 @@ function PenView({ stage, pet }: { stage: StageSpec; pet: Pet }) {
     const fixed = new Set(stage.environment.filter((p) => p.cardId === 'place.fixed').map((p) => `${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)}`));
     return new Set(preview.objects.filter((o) => !fixed.has(`${o.x},${o.y}`)).map((o) => o.id));
   }, [preview, stage]);
-  const world = showingReplay && replay.world ? replay.world : preview;
+  // "What does Pip do when…?" — probe the saved skill for this lesson on the current layout.
+  const [probing, setProbing] = useState(false);
+  const [probeAt, setProbeAt] = useState<{ x: number; y: number } | null>(null);
+  const probeRev = templateOf(stage) === 'sense' ? activeRevision(getSkill(pet, stage.learner.skill)) : null;
+  const probePolicy = probeRev ? sensePolicyOf(probeRev) : null;
+  const probeWorld = useMemo(() => {
+    if (!probing) return null;
+    const w = cloneWorld(preview);
+    if (probeAt) { w.pet.x = probeAt.x; w.pet.y = probeAt.y; }
+    return w;
+  }, [probing, preview, probeAt]);
+  const probeCells = useMemo(() => (probeWorld && probePolicy ? probeField(probePolicy, probeWorld, stage.learner.focus) : []), [probeWorld, probePolicy, stage.learner.focus]);
+  const probeTrail = useMemo(() => (probeWorld && probePolicy && probeAt ? probePath(probePolicy, probeWorld, stage.learner.focus, Math.min(40, stage.maxTicks)) : undefined), [probeWorld, probePolicy, probeAt, stage.learner.focus, stage.maxTicks]);
+  const world = showingReplay && replay.world ? replay.world : probeWorld ?? preview;
   const last = showingReplay ? trace!.frames[replay.frame - 1] : undefined;
   const mood = showingReplay ? (replay.frame >= replay.frames && trace!.success ? 'celebrate' : last?.hits?.length ? 'celebrate' : 'move') : 'idle';
 
   const onTile = (x: number, y: number) => {
     if (showingReplay) return;
+    if (probing) { setProbeAt({ x, y }); return; }
     const placing = s.ui.placing;
     if (placing === 'zone.rect') {
       // Two taps paint a rectangle: first corner, then the opposite corner.
@@ -162,7 +178,8 @@ function PenView({ stage, pet }: { stage: StageSpec; pet: Pet }) {
   return (
     <div className="pen-wrap">
       <div className="pen">
-        <WorldView world={world} palette={pet.palette} mood={mood} ghostIds={showingReplay ? undefined : ghosts} trail={showingReplay ? replay.trail : undefined}
+        <WorldView world={world} palette={pet.palette} mood={mood} ghostIds={showingReplay || probing ? undefined : ghosts} trail={showingReplay ? replay.trail : probeTrail}
+          arrows={probing && !showingReplay ? probeCells : undefined}
           label={showingReplay ? `Replay: ${traceBadge(trace)}` : `Pen preview, layout ${s.ui.previewSeed}`}
           onTile={showingReplay ? undefined : onTile}
           highlight={s.ui.zoneStart}
@@ -180,8 +197,11 @@ function PenView({ stage, pet }: { stage: StageSpec; pet: Pet }) {
           </>
         ) : (
           <>
-            <span className="small">{s.ui.placing === 'zone.rect' ? (s.ui.zoneStart ? 'Now tap the opposite corner' : 'Tap one corner of the area') : s.ui.placing ? `Tap a tile to place ${cardOf(node(s.ui.placing))?.presentation.title ?? 'it'}` : 'Dashed = scattered (moves every try)'}</span>
-            <button className="btn ghost small" onClick={() => s.setUi({ previewSeed: s.ui.previewSeed + 1 })}>Roll layout</button>
+            <span className="small">{probing ? `Arrows = ${stage.learner.skill} r${probeRev?.rev}'s move on each tile, dots = another action (shoo, stay…). Bigger = surer, grey = never practised exactly. Tap a tile to start ${pet.name} there.` : s.ui.placing === 'zone.rect' ? (s.ui.zoneStart ? 'Now tap the opposite corner' : 'Tap one corner of the area') : s.ui.placing ? `Tap a tile to place ${cardOf(node(s.ui.placing))?.presentation.title ?? 'it'}` : 'Dashed = scattered (moves every try)'}</span>
+            <span className="row gap">
+              {probePolicy && <button className="btn ghost small" aria-pressed={probing} onClick={() => { setProbing(!probing); setProbeAt(null); }}>{probing ? 'Stop probing' : `What does ${pet.name} do?`}</button>}
+              <button className="btn ghost small" onClick={() => s.setUi({ previewSeed: s.ui.previewSeed + 1 })}>Roll layout</button>
+            </span>
           </>
         )}
       </div>

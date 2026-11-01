@@ -105,6 +105,7 @@ export function FarmScreen() {
         <div className="farm-frame">
           <WorldView
             world={f.world} palette={pet.palette} mood={mood} ground="farm" darkness={darkness}
+            palette2={f.duty2PetId ? g.pets.find((p) => p.id === f.duty2PetId)?.palette ?? null : null}
             label={`Farm. ${pet.name} is at column ${f.world.pet.x}, row ${f.world.pet.y}.`}
             fx={s.ui.fx}
             onTile={manual ? (x, y) => { if (!queueManualPath(g, store.runtime, x, y)) store.toast('Can’t get there.', 'warn'); } : undefined}
@@ -149,6 +150,14 @@ export function FarmScreen() {
             <div className="row between">
               <strong className="pet-name">{pet.name}</strong>
               {g.pets.length > 1 && (
+                <label className="small">Also on duty:{' '}
+                  <select value={f.duty2PetId ?? ''} onChange={(e) => store.mutate((st) => { st.farm.duty2PetId = e.target.value || null; st.farm.current2 = null; if (store.runtime.second) store.runtime.second = undefined; })}>
+                    <option value="">nobody</option>
+                    {g.pets.filter((p) => p.id !== f.dutyPetId).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </label>
+              )}
+              {g.pets.length > 1 && (
                 <label className="small">On duty:{' '}
                   <select value={f.dutyPetId ?? ''} onChange={(e) => store.mutate((st) => { st.farm.dutyPetId = e.target.value; st.activePetId = e.target.value; store.runtime.exec = null; store.runtime.inv = null; })}>
                     {g.pets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -168,6 +177,12 @@ export function FarmScreen() {
                 </>
               ) : <span className="muted">Thinking…</span>}
             </div>
+            {f.duty2PetId && f.current2 && (
+              <div className="activity small">
+                <strong>{g.pets.find((p) => p.id === f.duty2PetId)?.name}:</strong> {BEHAVIOR_LABEL[f.current2.behaviorId]} <span className="muted">— {f.current2.intention}</span>
+                <div className="muted">Pets never chase the same thing; a second pet pays off when it does different work.</div>
+              </div>
+            )}
           </div>
         </div>
 

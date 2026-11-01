@@ -57,6 +57,8 @@ A farm day lasts about 5½ minutes at 1×, and the last 30% is **night**. At nig
 
 **A bigger, livelier farm.** The *Orchard expansion* (shop) grows the farm to 16×12, with a fenced orchard behind a **gate**. Closed gates block pets and chickens, and a pet with the **Nudge** ability opens or shuts one from next to it (plans have a *Mind the gate* job). From day 2, gentle **rain** showers water every plot, swell the pond by a tile and keep crows away. Each dawn, neighbours pin up to three small **requests** ("Deliver 2 eggs by nightfall", "No crow pecks today") that pay coins and sometimes gifts. Missing one costs nothing.
 
+**Seeing what your pet learned.** Every lesson report (and every skill on the Pets screen) has **What it actually did**: a heatmap of where the pet spends its time around its target, its action mix, how tries ended, and which rules paid the treats. In the pen, **What does Pip do?** draws the learned choice on every tile (bigger arrow = surer, grey = never practised exactly). Tap a tile to watch the path from there. After each lesson the journal notes **curiosities**, such as "most treats came from one rule" or "spent 60% of the time standing still". **Export skill card** / **Import skill card…** share a single skill between saves or pets. Two pets can work at once (**Also on duty**): they never chase the same thing, and they earn the most when they do different jobs.
+
 The farm keeps running while you're in other screens. Use **Steer** to guide a pet by hand (tap tiles, or use the arrow keys, P to pick up, D to put down, W to water, X to shoo and G to nudge a gate).
 
 ## Performance
@@ -70,7 +72,7 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 - Thumbs up/down feedback applies to movement skills (Approach/Avoid), not to the Fetch controller.
 - Templates are immutable named revisions you can instantiate. "Exposed parameters" are stored but have no editing UI yet.
 - Avoid is the hardest skill: about 82% mean held-out success, with occasional runs at 75%. Use *Refine* to train more.
-- Only the on-duty pet follows a plan; other pets nap. Routines can't use Fetch or other routines as options yet. Plan previews always start from a fresh decision (the current job is dropped when you apply a plan).
+- Up to two pets work the farm at once; others nap. Routines can't use Fetch or other routines as options yet. Plan previews always start from a fresh decision (the current job is dropped when you apply a plan).
 - No local language model (the spec's optional Level D). The executive is a rules baseline plus a small learned bandit.
 - Static reward checks and the preflight random-rollout comparison are heuristics, not proofs that a reward can't be exploited.
 

@@ -1,4 +1,6 @@
 import { useEffect } from 'react';
+import { BehaviorSummaryView } from './Summary';
+import { curiosities } from '../learning/summary';
 import { store, useStore } from './store';
 import { LineChart } from './Chart';
 import { SPEEDS, type TrainSpeed } from '../learning/session';
@@ -178,6 +180,12 @@ export function TrainingPanel() {
           </div>
         ))}
 
+        {r.after.summary && (
+          <details open={(r.exploits.length > 0) || curiosities(t.stage, r.after.summary, pet?.name ?? 'Your pet').length > 0}>
+            <summary>What {pet?.name} actually did (all {r.after.episodes} held-out tries)</summary>
+            <BehaviorSummaryView s={r.after.summary} target={t.stage.learner.focus} curiosities={curiosities(t.stage, r.after.summary, pet?.name ?? 'Your pet')} />
+          </details>
+        )}
         <details>
           <summary>Reward ledger (which rule paid, how often)</summary>
           <table className="ledger">

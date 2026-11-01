@@ -68,6 +68,12 @@ The same simulator runs pens, evaluation and the farm. Fixed seed + fixed action
 - `game/expand.ts → expandFarm` grows the world in place. Existing objects keep their coordinates, and orchard plots carry `unlock: 'orchard'`.
 - `game/requests.ts`: `postRequests` at dawn (and at the first tick), `trackRequests` on every farm event list, `nightfallRequests` at dusk. Eligibility depends on what the farm has (chickens, Fetch, carrots, a watering skill, crows).
 
+### Discovery tools and a second pet (Milestone 6)
+- `learning/summary.ts`: `summarize(stage, traces, ledger)` re-simulates every held-out trace to build a `BehaviorSummary` (heatmap of offsets from the nearest target, action mix, endings, reward shares). `evaluate(... 'evaluation')` attaches it, and `saveRevision` stores it. `curiosities(stage, summary, name)` turns it into journal notes.
+- `learning/probe.ts`: `probeTile`/`probeField` read Q-values (with the same backoff as acting) and report action, softmax confidence and whether a coarser view was used. `probePath` follows the greedy policy.
+- `game/skillcard.ts`: `exportSkillCard` / `importSkillCard` (validated JSON, `format: 'pen-deck-skill'`). Custom sense skills now keep a copy of their lesson on each revision, too.
+- Two pets: `farm.duty2PetId`, `world.pet2`, `farm.current2/stun2/queue2/rngState2`, `runtime.second`. `farmTick` runs `petTurn` for the first pet (creatures move and the clock advances), then `secondTurn`, which swaps the second pet into the primary slots and calls the same `petTurn` with `step(..., { advance: false })`. `withOtherPet` adds a transient solid `buddy` object at the other pet's tile and sets `hidden` on its claimed object (`runtime.claim`, the nearest target of its current job). `onGround` ignores hidden objects. Both are removed after the turn.
+
 ## Learning
 
 ### Templates, senses and abilities (Milestone 1)

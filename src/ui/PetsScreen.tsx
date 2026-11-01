@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { BehaviorSummaryView } from './Summary';
+import { exportSkillCard, importSkillCard } from '../game/skillcard';
 import { useStore, store } from './store';
 import { PetSprite } from './art';
 import { activePet, activeRevision, isCertified, rollbackSkill, staleUses, subskillsFor } from '../game/pets';
@@ -50,7 +52,7 @@ export function PetsScreen() {
       </section>
       <aside className="side-col">
         <div className="panel">
-          <h3>Repertoire</h3>
+          <div className="row between"><h3>Repertoire</h3><ImportCard pet={pet} /></div>
           {pet.skills.length === 0 && <p className="muted small">Nothing learned yet — head to Teach.</p>}
           {pet.skills.map((k) => <SkillHistory key={k.id} pet={pet} k={k} />)}
         </div>
@@ -65,7 +67,7 @@ function SkillHistory({ pet, k }: { pet: Pet; k: Skill }) {
   const compare = () => {
     if (k.revisions.length < 2) return;
     // Presets compare on their standard lesson; your own skills on the lesson of their latest revision.
-    const own = k.revisions.at(-1)?.stage ?? s.state.stages.find((x) => x.id === k.revisions.at(-1)?.stageId);
+    const own = k.revisions.at(-1)?.stage ?? s.state.stages.find((x) => x.id === k.revisions.at(-1)?.stageId) ?? s.state.stages.find((x) => x.learner.skill === k.name);
     const stage = k.custom ? own : recipeStage(k.name === 'Approach' ? 'go-to-berry' : k.name === 'Avoid' ? 'avoid-pond' : 'bring-it-home');
     if (!stage) { setCmp('The lesson this skill was trained in was deleted, so there’s nothing to compare on.'); return; }
     const seeds = heldOutSeeds(stage);
@@ -103,9 +105,55 @@ function SkillHistory({ pet, k }: { pet: Pet; k: Skill }) {
       </table>
       {(k.revisions.length > 1 || staleUses(pet, activeRevision(k)).length > 0) && <button className="btn ghost small" onClick={compare}>Compare revisions now</button>}
       {cmp && <div className="small">{cmp}</div>}
+      {!activeRevision(k)?.summary && (
+        <button className="btn ghost small" onClick={() => {
+          const r = activeRevision(k)!;
+          const own = r.stage ?? s.state.stages.find((x) => x.id === r.stageId) ?? s.state.stages.find((x) => x.learner.skill === k.name);
+          const stage = k.custom ? own : recipeStage(k.name === 'Approach' ? 'go-to-berry' : k.name === 'Avoid' ? 'avoid-pond' : 'bring-it-home');
+          if (!stage) return store.toast('The lesson this skill was trained in is gone, so there’s nothing to re-test on.', 'warn');
+          const navRev = k.name === 'Fetch' ? activeRevision(pet.skills.find((x) => x.name === (k.navigator ?? 'Approach')) ?? null) : null;
+          const e = evaluate(stage, policySpecFor(stage, r.policy, navRev?.policy ?? null, navRev?.learner, r.learner, subskillsFor(pet), pet.traits), heldOutSeeds(stage), 'evaluation', pet.traits, 0);
+          store.mutate((g) => { const rr = g.pets.find((p) => p.id === pet.id)!.skills.find((x) => x.id === k.id)!.revisions.find((x) => x.rev === r.rev)!; rr.summary = e.summary; });
+        }}>What does it actually do? (work it out now)</button>
+      )}
+      {activeRevision(k)?.summary && (
+        <details className="small"><summary>What it actually does (r{k.activeRev}, held-out tries)</summary>
+          <BehaviorSummaryView s={activeRevision(k)!.summary!} target={activeRevision(k)!.focus ?? activeRevision(k)!.stage?.learner.focus ?? 'target'} />
+        </details>
+      )}
+      <div className="row gap wrap">
+        <button className="btn ghost small" onClick={() => {
+          const card = exportSkillCard(pet, k.name);
+          if (!card) return;
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(new Blob([JSON.stringify(card)], { type: 'application/json' }));
+          a.download = `${k.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-r${k.activeRev}.skill.json`;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        }}>Export skill card</button>
+      </div>
       <details className="small"><summary>Provenance</summary>
         {(() => { const r = activeRevision(k); return r ? <ul><li>Trainer: {r.provenance.trainer}</li><li>State: {r.provenance.features}</li><li>Training seeds: {r.provenance.trainSeeds}</li><li>Eval seeds: {r.provenance.evalSeeds[0]}…{r.provenance.evalSeeds.at(-1)}</li>{r.provenance.navigator && <li>Trained with {r.provenance.navigator.skill} r{r.provenance.navigator.rev}; uses whichever revision is active now</li>}<li>{r.provenance.simTicks.toLocaleString()} sim ticks, {(r.provenance.durationMs / 1000).toFixed(1)}s compute</li></ul> : null; })()}
       </details>
     </div>
+  );
+}
+
+function ImportCard({ pet }: { pet: Pet }) {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <button className="btn ghost small" onClick={() => ref.current?.click()}>Import skill card…</button>
+      <input ref={ref} type="file" accept=".json,application/json" hidden onChange={async (e) => {
+        const f = e.target.files?.[0];
+        e.target.value = '';
+        if (!f) return;
+        const text = await f.text();
+        let result = { ok: false, reason: '' } as ReturnType<typeof importSkillCard>;
+        store.mutate((g) => { result = importSkillCard(g, g.pets.find((p) => p.id === pet.id)!, text); });
+        if (result.ok) store.toast(`${pet.name} learned “${result.name}” from the card.${result.notes.length ? ' ' + result.notes.join(' ') : ''}`, 'good');
+        else store.toast(`Couldn’t import: ${result.reason}`, 'warn');
+      }} />
+    </>
   );
 }

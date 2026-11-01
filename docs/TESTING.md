@@ -14,6 +14,7 @@
 | `tests/milestone3.test.ts` | **Gate 1:** Fetch rebuilt as a routine learns a byte-identical Q-table and equal held-out success; **gates 2–3:** *Morning chores* from 4 player-made skills beats random steps by ≥ 30 and random choices by ≥ 20 points, and degrades by > 20 points when Herd is swapped for a weak revision (no retraining); `uses` recorded and `staleUses` detects a newer Herd; a saved routine runs on the farm (Fetch routine delivers carrots); validation (no options, > 4 watched, self-reference) and missing-skill refusal |
 | `tests/milestone4.test.ts` | **Gate 1:** starter plan ≡ built-in rules (identical farm snapshot every tick for 3000 ticks, guard never triggers); **gate 2:** 300-tick preview equals the real farm from a mid-game state; **gate 3:** on a fighting plan the guard steps in and cuts switches/min by more than half; plans that run a missing skill warn and still earn from the other rows (vs a nap-only plan earning 0); the learned chooser fills its value table and earns |
 | `tests/milestone5.test.ts` | Gates block pets and chickens, Nudge opens/closes and never shuts on the pet; *Open the gate* learnable (≥ 30 points over random); orchard expansion grows the farm to 16×12 with a gated orchard a trained pet harvests; a "Mind the gate" plan row shuts the gate (preview agrees); rain from day 2 waters plots, adds exactly one pond tile, keeps crows away and dries up; Weather card; requests posted, tracked, paid (with journal); a full day judges at nightfall and posts at dawn |
+| `tests/milestone6.test.ts` | Summaries cover all held-out episodes (heat sums to 1, endings match, time concentrates near the target, reward shares); curiosities flag the pickup loophole and stay quiet for plain Approach; probe gives an arrow on every free tile and its greedy path reaches the berry; skill card export → import into another pet acts identically, renames on clash, round-trips through saves; cards with garbage, bad policy rows, oversize tables or unknown cards are rejected; two pets never share a tile or a claim, earn > 1.3× with different jobs, are deterministic and survive save/load |
 | `tests/farm.test.ts` | Trained pet produces coins where an untrained pet produces none; independent repertoires and rollback; full first-hour flow (adopt → pen → train → save → deploy → earn → Fetch unlocked, tutorial complete); Fetch delivers carrots on the farm; 3000-tick runs keep producing (no permanent stuck loops) with both executives |
 
 ## Benchmark protocol (`npm run bench`)
@@ -45,6 +46,14 @@ Per-run rows are printed by the script. In the browser, *Normal* speed adds smal
 - Avoid sometimes lands at 75% (below the 80% bar) on a single run. *Refine* (train more) usually certifies it.
 - Evaluation uses n = 20, so ±10 percentage points between runs is normal noise. The UI always shows the sample size.
 - Before the action-legality fix, a Fetch controller could tie between "pick up" and a no-op "drop" and loop. Options that can't apply in the current state are now masked. The fix is covered by the multi-seed benchmark and the long-run farm test.
+
+## Two pets (Milestone 6), 1,500 ticks, 4 berry bushes + carrots
+
+| Setup | Coins | Berries | Carrots |
+|---|---|---|---|
+| Pip alone, foraging | 178 | 168 | 0 |
+| Pip + Mochi, both foraging | 183 | 170 | 0 |
+| Pip foraging + Mochi delivering carrots | 387 | 166 | 65 |
 
 ## Performance (Milestone 5 gate)
 Headless Chromium, 390×844 phone viewport, DPR 2, expanded 16×12 farm, 2 pets (1 on duty), 6 chickens/crows, raining, farm at 4× speed, 5 s per measurement:

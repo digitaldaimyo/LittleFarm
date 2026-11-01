@@ -13,6 +13,7 @@ import type { SenseSkillDef } from '../learning/policies';
 import { store } from './store';
 import { trainingCost } from '../game/state';
 import { addJournal } from '../game/journal';
+import { curiosities } from '../learning/summary';
 
 export interface TrainingSessionState {
   petId: string;
@@ -80,6 +81,7 @@ function onMessage(m: FromWorker) {
         const r = m.report.after;
         addJournal(s, pet.id, 'training', `${pet.name} practised “${t.stage.name}” ${m.progress.episode} times. On ${r.episodes} new layouts: ${r.successes} successes (before: ${m.report.before.successes}).`);
         for (const e of m.report.exploits) addJournal(s, pet.id, 'exploit', `${pet.name} discovered a loophole in “${t.stage.name}”: ${e.diagnostic.message}`, true);
+        if (m.report.after.summary) for (const c of curiosities(t.stage, m.report.after.summary, pet.name)) addJournal(s, pet.id, 'curiosity', `Curious: ${c}`, false);
       }
     });
     return;

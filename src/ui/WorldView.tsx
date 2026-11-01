@@ -21,9 +21,15 @@ export interface WorldViewProps {
   ground?: 'pen' | 'farm';
   /** 0 = full day, 1 = deep night. */
   darkness?: number;
+  /** Probe overlay: the policy's choice on each tile. */
+  arrows?: { x: number; y: number; action: string; confidence: number; guessed: boolean }[];
+  /** A second pet on duty. */
+  palette2?: PaletteId | null;
 }
 
-export function WorldView({ world, palette, mood = 'idle', label, onTile, tileLabel, ghostIds, trail, fx, highlight, className, ground = 'pen', darkness }: WorldViewProps) {
+const ARROW_ROT: Record<string, number> = { N: 0, E: 90, S: 180, W: 270 };
+
+export function WorldView({ world, palette, mood = 'idle', label, onTile, tileLabel, ghostIds, trail, fx, highlight, className, ground = 'pen', darkness, arrows, palette2 }: WorldViewProps) {
   const dark = darkness ?? (world.night ? 1 : 0);
   const W = world.w * C, H = world.h * C;
   const tiles = [];
@@ -65,6 +71,20 @@ export function WorldView({ world, palette, mood = 'idle', label, onTile, tileLa
           <g transform={o.kind === 'pond' ? undefined : 'translate(4 4) scale(0.8)'}><ObjectGlyph kind={o.kind === 'gate' && o.open ? 'gate-open' : o.kind} /></g>
           {ghostIds?.has(o.id) && <rect x="2" y="2" width={C - 4} height={C - 4} rx="7" className="ghost-ring" />}
           {o.wet && <g aria-hidden="true"><rect x="3" y="3" width={C - 6} height={C - 6} rx="7" className="wet-ring" /><path d="M31 5 q3 5 0 7 q-3 -2 0 -7z" className="drop" /></g>}
+        </g>
+      ))}
+      {palette2 && world.pet2 && (
+        <g className="pet-pos" style={{ transform: `translate(${world.pet2.x * C}px, ${world.pet2.y * C}px)` }} pointerEvents="none">
+          <g transform="translate(0 -2)"><PetSprite palette={palette2} mood="move" size={C} carrying={world.pet2.carrying !== null ? world.objects.find((o) => o.id === world.pet2!.carrying)?.kind ?? null : null} /></g>
+        </g>
+      )}
+      {arrows?.map((a) => (
+        <g key={`ar${a.x},${a.y}`} transform={`translate(${a.x * C + C / 2} ${a.y * C + C / 2})`} pointerEvents="none" aria-hidden="true">
+          {a.action in ARROW_ROT ? (
+            <path d="M0 -12 L7 0 L2.5 0 L2.5 10 L-2.5 10 L-2.5 0 L-7 0 Z" transform={`rotate(${ARROW_ROT[a.action]}) scale(${0.45 + 0.55 * a.confidence})`} className={`probe-arrow ${a.guessed ? 'guessed' : ''}`} />
+          ) : (
+            <circle r={4 + 6 * a.confidence} className={`probe-arrow ${a.guessed ? 'guessed' : ''}`} />
+          )}
         </g>
       ))}
       {palette && (

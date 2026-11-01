@@ -52,6 +52,9 @@ The *Treat for every pickup* recipe pays +3 per pickup with no limit. Pets relia
 - **Rain:** from day 2, about one daytime shower a day lasting 180–400 ticks. Every bush and patch counts as watered, one pond tile appears next to the pond (removed when it dries), and crows stay away.
 - **Requests:** at most 3 open at a time. Rewards: eggs 3, carrots 4, berries 1, fireflies 2 and watering 1 coin each; no-pecks and coop 6 coins flat. A 35% chance of a Tree or Fence card gift (until both are owned).
 
+## Discovery (Milestone 6)
+The more freedom players have, the more surprising their pets become, so the game shows what a pet does, not just whether it succeeded. Summaries answer "where does it go, and what pays it?". The probe answers "what would it do *here*?". Curiosities point at the gap between the rules and the behaviour without calling it a mistake. Skill cards let players trade skills, and those skills keep their own history and evaluation. A second pet on duty turns farm planning into division of labour: two foragers fight over the same bushes, but a forager and a deliverer double the income.
+
 ## Farm plans
 Training answers "can my pet do X?". Plans answer "when should it do X?". The plan mat uses the same cards as lessons, so a player who learned to write *WHEN… THEN* rules can write *IF… DO* rows. The starter plan exposes the hidden Auto rules as an editable example. The preview makes planning iterative and safe: try a plan, see the coins, energy, naps and dips it would produce, fix fighting rows, then apply it. Diagnostics explain rather than block: rows that never ran, rows that fight, skills that aren't learned or certified yet.
 

@@ -203,6 +203,7 @@ export function saveRevision(s: GameState, pet: Pet, input: SaveRevisionInput): 
     ...(input.report.after.summary ? { summary: input.report.after.summary } : {}),
     ...(routine ? { uses: input.uses ?? [], stage: structuredClone(input.stage), focus: input.stage.learner.focus, maxTicks: input.stage.maxTicks } : {}),
     ...(sense ? {
+      ...(isPreset(name) ? {} : { stage: structuredClone(input.stage) }),
       learner: senseDefFor(input.stage),
       focus: input.stage.learner.focus,
       success: input.stage.success ? structuredClone(input.stage.success) : null,

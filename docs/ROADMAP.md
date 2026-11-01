@@ -190,7 +190,14 @@ Keep it cozy: no death and no losses beyond time. Crows peck crops (slower regro
 
 ---
 
-## Milestone 6: Discovery tools (seeing what your pet actually learned)
+## Milestone 6: Discovery tools (seeing what your pet actually learned) — ✅ shipped
+
+> **Status:** done. Each item has tests (`tests/milestone6.test.ts`):
+> - **Behaviour summary**, computed from *all* held-out episodes (not just the replays) and stored on each revision: a 13×13 heatmap of where the pet is relative to its target, action mix, endings (done / ran out of time / failed), steps per try, and which rules the treats came from. Shown in the lesson report and on the Pets screen. Older revisions can work it out on demand.
+> - **Probe** ("What does Pip do?" in the pen): the learned choice on every free tile as an arrow (moves) or dot (other actions), sized by softmax confidence, greyed where the exact situation was never practised. Tapping a tile traces the pet's greedy path from there. Works for movement and your own skills; routines and Fetch show their summary instead.
+> - **Curiosities:** after each lesson, the journal notes gentle surprises: most treats from a non-finishing rule (the loophole recipe triggers it), > 50% standing still, hovering beside rather than on the target, succeeding only near the time limit, or a strong one-direction habit. Hints, never errors.
+> - **Skill cards:** export one skill's active revision (policy, senses/options, lesson copy and summary) as JSON, and import it into any pet. Validation is like a save: format, policy shape (≤ 100,000 states, numeric rows), known cards only. Name clashes get "(2)", and routines warn about sub-skills the pet lacks. No code.
+> - **Two pets on duty:** a second pet acts after the first within the same tick. Each sees the other as a solid obstacle, and whatever the other is heading for (its claim) is hidden, so they never share a tile or a target (tested over 1,500 ticks). The single-pet path is unchanged: the starter-plan ≡ built-in rules test still passes tick for tick. **Finding:** a second pet only pays off when it does *different* work. Two foragers earn 183 vs 178 coins for one (berry regrowth is the bottleneck), while forager + carrot deliverer earn 387.
 
 The more freedom players have, the more they need to understand surprising results.
 
