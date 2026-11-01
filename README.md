@@ -163,4 +163,5 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 | `docs/ROADMAP.md` | The expansion roadmap (all six milestones shipped), later work, and what could come next |
 | `docs/TUTORIAL_PLAN.md` | The Field Guide's design, the evidence behind each lesson, and what shipped |
 | `docs/TEACHING_PLAN.md` | Polishing rules, conditions and pens: the plan, and what phases A–C shipped |
+| `docs/FARM_LIFE_PLAN.md` | Plan for farm life: storage and selling at the house, replanting, your own layout, a pet roster (not started) |
 | `docs/SOUND_PLAN.md` | Sound effects, ambience, music and settings: the plan, and what phases A–C shipped |

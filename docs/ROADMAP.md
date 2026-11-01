@@ -238,6 +238,9 @@ The milestones shipped in the recommended order: M1 → M5 (watering + day/night
   - your cards with blanks and names, lesson cards, memory in farm plans.
 - **Fixes found along the way:** the random baseline never used Shoo or Stay (learned results unchanged); lesson 9 could get stuck on busy farms; a starting lesson's report covered the next one.
 
+## Next: farm life (planned)
+Baskets and sheds as storage, coins only at the house, replanting with seed costs, a few crop types, your own farm layout, and managing pets by tapping them (and the house for the roster). See `docs/FARM_LIFE_PLAN.md`.
+
 ## What could come next
 Not committed; listed roughly smallest first.
 - **Approach near fences:** the known transfer gap (M5 note above). Measured since: practising with *Obstacles: some* gains 7–9 points in cluttered pens (TESTING.md). A Field Guide follow-up on "practise with what the farm has now" would teach it.
