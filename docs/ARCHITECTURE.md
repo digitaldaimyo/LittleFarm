@@ -8,6 +8,7 @@ src/
   game/         pets & skills, farm runtime, plans, requests, expansion, progression/shop,
                 Field Guide (tutorial), coaching tips, skill cards, journal, game state
   persistence/  versioned save format + IndexedDB storage (localStorage fallback)
+  audio/        sound kit (synthesis recipes) and the Web Audio engine (browser only)
   ui/           React presentation only (store, screens, cards/sleeves, charts, replay)
 tests/          vitest suites (+ fixtures/ with a real v1 save)
 scripts/        bench.ts (npm run bench), tutorial-evidence.ts (npm run evidence),
@@ -84,6 +85,12 @@ The same simulator runs pens, evaluation and the farm. Fixed seed + fixed action
 - Guide stages and the tutorial pen are free (`trainingCost` 0). Reports add a *Scattered layouts* row whenever a pen pins its target or start.
 - `game/coach.ts`: pure functions from (stage, report, game) to tips with lesson links, dismissible for good via `progress.flags`.
 - UI: `App.tsx` draws the lesson banner and injects a style rule that outlines `[data-tut="…"]` and scrolls it into view; `GuideScreen.tsx` holds the lesson list, comparisons, notebook and glossary.
+
+### Sound
+- `game/sound.ts` (pure): cue ids and their bus, priority, cooldown and length; `cuesForFarmFx` maps one tick's `FarmFx` to cues (coins merge, stereo position from x, phase-B effects listed in `SILENT_FX`); `CueLimiter` (per-cue cooldown, voice cap, thinner low-priority cues at high farm speeds, fake-clock testable); `AudioSettings` defaults, `sanitizeAudio`, `cueGain`.
+- `audio/kit.ts`: one synthesis recipe per cue (oscillators and filtered noise with envelopes, glides, vibrato). `audio/engine.ts`: creates the AudioContext on the first user gesture with sound on, renders every recipe once with `OfflineAudioContext`, plays buffers through a compressor with ±3% pitch variety and stereo panning, and suspends while the tab is hidden. It never fetches anything.
+- Cues come from the farm loop (`store.startFarm` → `audio.playFarm`, Farm screen only unless "Farm sounds on other screens"), unlocks (`store.mutate` notices a new unlock), training (`ui/training.ts`: start; certified / not / loophole on the report) and UI handlers (cards, pen placement, save, adopt, shop). `ui/sound.ts` toggles sound (header button, M key).
+- Settings: `settings.sound` and `settings.audio` (volumes and options). Additive, no save version bump: `parseGame` fills and clamps them, and older saves start with sound on because the old `sound: false` was never a player's choice.
 
 ## Learning
 

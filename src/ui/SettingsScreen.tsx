@@ -4,6 +4,9 @@ import { parseGame, serializeGame } from '../persistence/save';
 import { newGame } from '../game/state';
 import { clearLocal } from '../persistence/storage';
 import { startChapter } from '../game/tutorial';
+import { audio } from '../audio/engine';
+import { toggleSound } from './sound';
+import type { AudioSettings } from '../game/sound';
 
 export function SettingsScreen() {
   const s = useStore();
@@ -38,8 +41,8 @@ export function SettingsScreen() {
             <option value="watch">Watch (slow, ~30–60 s)</option><option value="normal">Normal</option><option value="fast">Fast (as fast as your CPU allows)</option>
           </select>
         </label>
-        <p className="small muted">Sound: this version is silent.</p>
       </div>
+      <SoundSettings />
       <div className="panel">
         <h3>Field Guide</h3>
         <p className="small">Lessons on how to set up training that works — replay any of them, any time.</p>
@@ -71,4 +74,38 @@ export async function resetGame() {
   await clearLocal();
   store.load(newGame());
   store.setUi({ modal: 'adopt', screen: 'farm' });
+}
+
+function SoundSettings() {
+  const s = useStore();
+  const g = s.state;
+  const a = g.settings.audio;
+  const set = (patch: Partial<AudioSettings>, test?: Parameters<typeof audio.play>[0]) => {
+    s.mutate((x) => { x.settings.audio = { ...x.settings.audio, ...patch }; });
+    audio.configure(store.state.settings.sound, store.state.settings.audio);
+    if (test) audio.play(test);
+  };
+  const slider = (k: 'master' | 'effects' | 'ui', label: string, help: string, test: Parameters<typeof audio.play>[0]) => (
+    <label className="trait">
+      <span><b>{label}</b> <span className="num">{Math.round(a[k] * 100)}%</span></span>
+      <input type="range" min={0} max={1} step={0.05} value={a[k]} disabled={!g.settings.sound} aria-label={`${label} volume`}
+        onChange={(e) => set({ [k]: Number(e.target.value) } as Partial<AudioSettings>)}
+        onPointerUp={() => audio.play(test)} onKeyUp={() => audio.play(test)} />
+      <span className="small muted">{help}</span>
+    </label>
+  );
+  return (
+    <div className="panel" data-tut="sound-settings">
+      <h3>Sound</h3>
+      <div className="row gap wrap">
+        <button className={`btn ${g.settings.sound ? '' : 'primary'}`} aria-pressed={g.settings.sound} onClick={toggleSound}>{g.settings.sound ? '🔈 Sound on' : '🔇 Sound off'}</button>
+        <span className="small muted">Mute any time with 🔈 at the top or the <kbd>M</kbd> key. Every sound repeats something you can see, so nothing is lost on mute.</span>
+      </div>
+      {slider('master', 'Master', 'Everything at once.', 'farm.coin')}
+      {slider('effects', 'Farm and pen', 'Pickups, coins, splashes, bumps.', 'farm.splash')}
+      {slider('ui', 'Cards and jingles', 'Cards snapping, training results, unlocks.', 'train.certified')}
+      <label className="small"><input type="checkbox" checked={a.offScreen} disabled={!g.settings.sound} onChange={(e) => set({ offScreen: e.target.checked })} /> Farm sounds on other screens (quieter)</label>
+      <p className="small muted">All sounds are made on your device as you play; nothing is downloaded. Background sounds and music are coming in a later update.</p>
+    </div>
+  );
 }

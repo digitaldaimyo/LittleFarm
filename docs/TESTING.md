@@ -1,7 +1,7 @@
 # Testing and benchmarks
 
 ## Automated suites (`npm test`)
-96 tests in 15 files. CI-style check before every push: `npm run typecheck && npm run lint && npm test && npm run build`.
+105 tests in 16 files. CI-style check before every push: `npm run typecheck && npm run lint && npm test && npm run build`.
 
 | File | Covers |
 |---|---|
@@ -19,6 +19,7 @@
 | `tests/milestone6.test.ts` | Summaries cover all held-out episodes (heat sums to 1, endings match, time concentrates near the target, reward shares); curiosities flag the pickup loophole and stay quiet for plain Approach; probe gives an arrow on every free tile and its greedy path reaches the berry; skill card export → import into another pet acts identically, renames on clash, round-trips through saves; cards with garbage, bad policy rows, oversize tables or unknown cards are rejected; two pets never share a tile or a claim, earn > 1.3× with different jobs, are deterministic and survive save/load |
 | `tests/guide.test.ts` | Field Guide: lessons offered after the previous is done or skipped and free to train; *practice* (300 vs 1,500 tries, > 30 points apart, comparison card); *scatter* (pinned pen ≥ 90% on its own layout but < 40% on the report's scattered row; scattered pen > 40 points better); replaying the first lesson resets its pen; an old finished tutorial maps to Chapter 1 done; **phase B:** *results* (loophole run has more treats and > 50 points less success than the repaired run, comparison shows both), *where* (Avoid > tested Approach by 15+ points, lesson finishes when "Move with" is Avoid), *invent* (lean senses > extra-sense run by 30+ points); coaching tips point at the right lessons (practice, pinned, situations, loophole) and spot two pets on the same job; **phase C:** *read* follows summary/probe/journal/card actions, *routines* (2 watched conditions scores below random choices, + "at the bin" beats random choices by 40+ points), *plans* (the lesson row never fires until moved above "Otherwise wander", proven by previews; on a busy farm with Fetch and carrots it must go higher still, and the lesson ends only once the experiment row is deleted and the plan applied); every request has a hint; the orchard gate request is judged at nightfall |
 | `tests/editor.test.ts` | Card editor regression (the hand stayed closed for slots *inside* a sense card, so “How far is…” couldn't be aimed at Rock): the sense editor keeps its hand open for nested slots and fills them; the hand recommends Patience and How far is… without opening “More cards” |
+| `tests/sound.test.ts` | Every farm effect type maps to a cue or is silent on purpose (also checked against a real 1,500-tick farm run); pickups/splashes/bumps map with stereo position; coins in one tick merge into one brighter chime; the limiter's cooldowns and voice cap are deterministic with a fake clock and keep 4× speed sparse; every cue has a recipe within its declared length and gentle levels; new games have sound on; older saves (sound never offered) start with it on, a chosen “off” is kept, volumes are clamped |
 | `tests/farm.test.ts` | Trained pet produces coins where an untrained pet produces none; independent repertoires and rollback; full first-hour flow (adopt → pen → train → save → deploy → earn → Fetch unlocked, tutorial complete); Fetch delivers carrots on the farm; 3000-tick runs keep producing (no permanent stuck loops) with both executives |
 
 ## Benchmark protocol (`npm run bench`)
@@ -71,12 +72,16 @@ Headless Chromium, 390×844 phone viewport, DPR 2, expanded 16×12 farm, 2 pets 
 | 4× (mid-range phone stand-in) | 60 | 53% | 9% | 0 |
 | 6× | 60 | 69% | 12% | 0 |
 
+**With sound (phase A),** same setup, same session, sound on vs muted: 1× 15% vs 15% busy; 4× 63% vs 59%; 6× 81% vs 84%; 60 fps at 1× and 4× either way (57 fps at 6× either way). The difference is within run-to-run noise. This container measured higher absolute numbers than the original Milestone 5 run (59% vs 53% at 4× with sound muted), so compare rows from the same session.
+
 This is emulation, not a real device. Most of the cost is style and paint from CSS animations (rain, pet bobbing); *Reduce motion* turns those off.
 
 ## Browser test (`npm run e2e`)
 Plays the whole Field Guide in headless Chromium with real clicks (run `npm run build` first; about 45 s). It starts its own preview server on port 4179.
 - **Part 1, lessons 1–3, from a new game:** builds the first rule and SUCCESS card by card, trains, saves, forages to 5 coins, then the practice and scatter lessons (comparison cards, the Scattered layouts row, "▶ a miss").
 - **Part 2, lessons 4–9, from a prepared save:** `scripts/e2e-save.ts` builds the save a player would have after lessons 1–3 (a certified Approach, 20 coins earned, so Fetch, Avoid and own skills are unlocked, and two pond splashes). The test imports it through Settings and plays: the pickup loophole and its repair card (4); "Test my Approach here" vs Avoid, then "Move with: Avoid" (5); Stay + Patience, the suggested rules, "How far is… → Rock" (the playtest bug) and removing it again (6); summaries, the probe, the journal and a skill-card download (7); a routine watching 2 conditions, then "Is at → Bin" (8); a shadowed plan row moved up until the preview shows it runs, deleted again, and the plan applied (9). Every lesson must end marked done.
+- **Sound:** no AudioContext before the first click, one after it (the adopt chirp); all 16 cues render and audio is running; the one-time "Sound is on" note appears with the first sound; key moments trigger their cues (card flick/snap, pen place, train start, certified or not, save, pickup, coin; loophole, unlock). Cues are counted through a test hook (`window.__penDeckAudio`), not by listening. Pressing M mutes: no cues for 3 s of farm time and the header button shows muted.
+- Step checks wait up to 3 s for the banner, since some steps advance a moment after the click (`<details>` toggle events are asynchronous; this made one lesson-7 check flaky).
 - Throughout: no page errors and no request leaves the page's origin. On a failure it saves a screenshot and prints its path.
 - `npm run e2e -- --from=4` runs part 2 only.
 

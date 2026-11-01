@@ -1,3 +1,4 @@
+import { audio } from '../audio/engine';
 import type { StageSpec } from '../domain/types';
 import type { FromWorker, ToWorker, TrainSpeed } from '../learning/session';
 import { TrainingLoop } from '../learning/session';
@@ -74,6 +75,7 @@ function onMessage(m: FromWorker) {
     t.ms = m.ms;
     t.replay = m.report.after.traces[0] ?? null;
     finishWorker();
+    audio.play(m.report.exploits.length ? 'train.loophole' : m.report.passed ? 'train.certified' : 'train.notCertified');
     store.mutate((s) => {
       const pet = s.pets.find((p) => p.id === t.petId);
       if (pet) {
@@ -176,6 +178,7 @@ export function startTraining(pet: Pet, stage: StageSpec, opts: { resume: boolea
     runInline();
   }
   store.emit();
+  audio.play('train.start');
   return null;
 }
 

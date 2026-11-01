@@ -8,6 +8,7 @@ import type { SlotRef } from './store';
 import { store, useStore } from './store';
 import { createNode, instantiateTemplate, saveTemplate, setSlot, slotInfo, templatesFor } from './edit';
 import { snapshotStage } from '../game/state';
+import { audio } from '../audio/engine';
 
 const GROUP_CLASS: Record<string, string> = {
   kind: 'g-obj', actor: 'g-obj', reference: 'g-obj', event: 'g-event', condition: 'g-cond', effect: 'g-val',
@@ -39,7 +40,7 @@ export function SlotChip({ stage, slot, label, errors }: { stage: StageSpec; slo
   const sel = same(s.ui.slot, slot);
   if (!n) {
     return (
-      <button className={`slot empty ${sel ? 'sel' : ''}`} onClick={() => s.setUi({ slot: slot, placing: null })} aria-label={`Empty slot: ${label}. Choose a card.`} aria-pressed={sel}>
+      <button className={`slot empty ${sel ? 'sel' : ''}`} onClick={() => { audio.play('card.flick'); s.setUi({ slot: slot, placing: null }); }} aria-label={`Empty slot: ${label}. Choose a card.`} aria-pressed={sel}>
         {label}
       </button>
     );
@@ -54,7 +55,7 @@ export function NodeChip({ stage, n, slot, errors }: { stage: StageSpec; n: Spec
   if (!card) return <span className="chip bad">unknown card “{n.cardId}”</span>;
   const cls = `node ${GROUP_CLASS[card.presentation.group] ?? ''} ${sel ? 'sel' : ''} ${errors.has(n.id) ? 'err' : ''}`;
   const phrase = card.presentation.phrase;
-  const select = (e: React.MouseEvent) => { e.stopPropagation(); s.setUi({ slot, placing: null }); };
+  const select = (e: React.MouseEvent) => { e.stopPropagation(); audio.play('card.flick'); s.setUi({ slot, placing: null }); };
   if (card.presentation.group === 'kind' || card.presentation.group === 'actor') {
     return (
       <button className={cls} onClick={select} aria-pressed={sel} title={card.presentation.hint}>
@@ -146,7 +147,7 @@ export function Sleeve({ stage, onChange }: { stage: StageSpec; onChange: (fn: (
       {n && (
         <div className="row gap">
           {(!info.socket.required || info.socket.many || slot.parentId === '#fail' || slot.parentId === '#success') && (
-            <button className="btn ghost" onClick={() => { onChange((st) => { setSlot(st, slot, null); }); s.setUi({ slot: null }); }}>Remove</button>
+            <button className="btn ghost" onClick={() => { audio.play('card.flick'); onChange((st) => { setSlot(st, slot, null); }); s.setUi({ slot: null }); }}>Remove</button>
           )}
           <button className="btn ghost" onClick={() => {
             const name = prompt('Template name', card?.presentation.title ?? 'Template');
@@ -157,6 +158,7 @@ export function Sleeve({ stage, onChange }: { stage: StageSpec; onChange: (fn: (
       )}
       <Hand stage={stage} slot={slot} onPick={(node) => {
         let next: SlotRef | null = null;
+        audio.play('card.snap');
         onChange((st) => { next = setSlot(st, slot, node); });
         store.mutate((g) => { g.recentCards = [node.cardId, ...g.recentCards.filter((x) => x !== node.cardId)].slice(0, 12); }, { save: false });
         // Move focus to the first empty required child, else keep the filled slot selected.

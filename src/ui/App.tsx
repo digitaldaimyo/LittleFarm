@@ -10,6 +10,8 @@ import { ackStep, currentStep, guide, pauseChapter } from '../game/tutorial';
 import { GuideScreen } from './GuideScreen';
 import { activePet } from '../game/pets';
 import { warmTrainingWorker } from './training';
+import { audio } from '../audio/engine';
+import { toggleSound } from './sound';
 
 const NAV: { id: Screen; label: string }[] = [
   { id: 'farm', label: 'Farm' },
@@ -52,6 +54,9 @@ export function App() {
     return () => clearTimeout(t);
   }, [stepKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Keep the sound engine in step with the settings.
+  useEffect(() => { audio.configure(g.settings.sound, g.settings.audio); }, [g.settings.sound, g.settings.audio]);
+
   useEffect(() => {
     if (g.pets.length === 0 && !s.ui.modal) s.setUi({ modal: 'adopt' });
   }, [g.pets.length, s, s.ui.modal]);
@@ -67,6 +72,7 @@ export function App() {
         </nav>
         <div className="top-res" aria-label="Resources">
           <span title="Coins"><b>{g.resources.coins}</b> coins</span>
+          <button className="icon-btn small mute-btn" aria-pressed={!g.settings.sound} aria-label={g.settings.sound ? 'Mute sound (M)' : 'Turn sound on (M)'} title={g.settings.sound ? 'Mute sound (M)' : 'Turn sound on (M)'} onClick={toggleSound}>{g.settings.sound ? '🔈' : '🔇'}</button>
           {pet && <span className="small muted hide-sm">{pet.name} · {Math.round(pet.energy)}⚡</span>}
         </div>
       </header>
@@ -115,6 +121,20 @@ export function App() {
 export function boot() {
   store.startFarm();
   warmTrainingWorker();
+  // Browsers only start audio after a user gesture: create/resume it on the first one.
+  const gesture = () => audio.unlock();
+  window.addEventListener('pointerdown', gesture, true);
+  window.addEventListener('keydown', gesture, true);
+  document.addEventListener('visibilitychange', () => audio.visibility(document.hidden));
+  window.addEventListener('keydown', (e) => {
+    const tag = (e.target as HTMLElement | null)?.tagName ?? '';
+    if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey && !e.altKey && !['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) toggleSound();
+  });
+  audio.onFirstSound = () => setTimeout(() => {
+    if (store.state.settings.audio.hintShown) return;
+    store.mutate((g) => { g.settings.audio.hintShown = true; });
+    store.toast('Sound is on. Mute with 🔈 or M; more in Settings.', 'info');
+  }, 0);
   window.addEventListener('beforeunload', () => void store.saveNow());
   document.addEventListener('visibilitychange', () => { if (document.hidden) void store.saveNow(); });
 }

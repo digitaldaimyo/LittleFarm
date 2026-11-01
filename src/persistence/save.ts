@@ -1,3 +1,4 @@
+import { sanitizeAudio } from '../game/sound';
 import type { GameState } from '../game/types';
 import { SAVE_VERSION } from '../game/types';
 import { newGame } from '../game/state';
@@ -105,6 +106,11 @@ export function parseGame(text: string): LoadResult {
     ['resources', isObj], ['progress', isObj], ['farm', isObj], ['settings', isObj],
   ];
   for (const [k, ok] of required) if (!ok(g[k])) return { ok: false, diagnostics: [...diagnostics, `Save field “${k}” is malformed.`] };
+  // Sound settings (added after save v4; additive, so no version bump). Older saves stored `sound: false` only
+  // because the option was never shown, so they start with sound on, like new games.
+  if (!isObj(g.settings.audio)) g.settings.sound = true;
+  g.settings.sound = g.settings.sound !== false;
+  g.settings.audio = sanitizeAudio(g.settings.audio);
   for (const key of ['coins', 'berries', 'carrots', 'fireflies', 'eggs']) {
     if ((key === 'fireflies' || key === 'eggs') && g.resources[key] === undefined) continue;
     const n = Number(g.resources[key]);

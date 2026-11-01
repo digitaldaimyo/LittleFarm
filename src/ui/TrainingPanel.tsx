@@ -1,3 +1,4 @@
+import { audio } from '../audio/engine';
 import { useEffect } from 'react';
 import { isGuideStage } from '../game/tutorial';
 import { Tips } from './Tips';
@@ -58,6 +59,7 @@ export function TrainingPanel() {
 
   const save = () => {
     if (!pet || !t.report || !t.policy) return;
+    audio.play('skill.save');
     store.mutate((g) => {
       const pp = g.pets.find((x) => x.id === pet.id)!;
       const rev = saveRevision(g, pp, { stage: t.stage, policy: t.policy!, report: t.report!, episodes: p?.episode ?? 0, durationMs: t.ms, simTicks: p?.simTicks ?? 0, resumedFrom: t.resumedFrom ?? undefined, navigator: t.navigator ?? undefined, uses: t.uses });
@@ -218,7 +220,7 @@ export function TrainingPanel() {
         </div>
         <div className="row gap wrap actions">
           <button className="btn primary" data-tut="save-skill" disabled={t.saved} onClick={save}>{t.saved ? `Saved r${nextRev - 1}` : r.passed ? `Save skill as r${nextRev}` : `Save anyway as r${nextRev}`}</button>
-          <button className="btn" onClick={() => { const err = pet && startTraining(pet, store.state.stages.find((x) => x.id === t.stage.id) ?? t.stage, { resume: !!getSkill(pet, t.stage.learner.skill) }); if (err) store.toast(err, 'warn'); }}>Train more</button>
+          <button className="btn" onClick={() => { const err = pet && startTraining(pet, store.state.stages.find((x) => x.id === t.stage.id) ?? t.stage, { resume: !!getSkill(pet, t.stage.learner.skill) }); if (err) { audio.play('card.reject'); store.toast(err, 'warn'); } }}>Train more</button>
           <button className="btn ghost" onClick={closeTraining}>{t.saved ? 'Close' : 'Discard'}</button>
         </div>
       </div>

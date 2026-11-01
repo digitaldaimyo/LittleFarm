@@ -7,6 +7,7 @@ import { saveLocal } from '../persistence/storage';
 import { UNLOCKS } from '../game/progression';
 import type { TrainingSessionState } from './training';
 import type { EpisodeTrace } from '../learning/episodes';
+import { audio } from '../audio/engine';
 
 export type Screen = 'farm' | 'teach' | 'pets' | 'journal' | 'settings' | 'guide';
 export type Binder = 'environment' | 'rules' | 'pet' | 'curriculum' | 'behaviors' | 'inspect';
@@ -89,7 +90,9 @@ class GameStore {
     const g0 = guide(this.state);
     const before = `${g0.active}:${g0.step}`;
     const offered0 = new Set(Object.entries(g0.status).filter(([, v]) => v === 'offered').map(([k]) => k));
+    const unlocks0 = this.state.progress.unlocks.length;
     fn(this.state);
+    if (this.state.progress.unlocks.length > unlocks0) audio.play('ui.unlock');
     advanceTutorial(this.state);
     const g1 = guide(this.state);
     if (g1.active && `${g1.active}:${g1.step}` !== before && before.startsWith(`${g1.active}:`)) this.toast('Nice — next step.', 'good');
@@ -143,7 +146,9 @@ class GameStore {
         const r = farmTick(this.state, this.runtime);
         changed = true;
         for (const f of r.fx) this.ui.fx.push({ ...f, id: ++this.toastId, at: now });
+        audio.playFarm(r.fx, this.state.farm.world.w, this.state.settings.farmSpeed, this.ui.screen === 'farm');
         for (const u of r.unlocked) this.toast(`Unlocked: ${UNLOCKS.find((x) => x.id === u)?.label ?? u}!`, 'good');
+        if (r.unlocked.length) audio.play('ui.unlock');
       }
       if (changed) {
         this.ui.fx = this.ui.fx.filter((f) => now - f.at < 1400);

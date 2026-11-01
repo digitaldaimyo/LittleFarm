@@ -20,7 +20,7 @@ Other scripts:
 | `npm run build` | Typecheck + production build into `dist/` (static files; host anywhere or open with `npm run preview`) |
 | `npm run typecheck` | TypeScript only |
 | `npm run lint` | ESLint |
-| `npm test` | Vitest suite: 96 tests in 15 files (sim, registry, learning, saves, farm, training loop, every milestone gate, the Field Guide, the card editor) |
+| `npm test` | Vitest suite: 105 tests in 16 files (sim, registry, learning, saves, farm, training loop, every milestone gate, the Field Guide, the card editor, sound cues) |
 | `npm run bench` | Trains every starter skill under 5 seeds and prints held-out results, hardware and timings |
 | `npm run evidence` | Reproduces the measurements behind the Field Guide and the Trainer's notebook |
 | `npm run e2e` | Browser test that plays all nine Field Guide lessons with real clicks, about 45 s (run `npm run build` first; needs Playwright with Chromium). `npm run e2e -- --from=4` runs lessons 4–9 only |
@@ -65,6 +65,8 @@ A farm day lasts about 5½ minutes at 1×, and the last 30% is **night**. At nig
 
 **Seeing what your pet learned.** Every lesson report (and every skill on the Pets screen) has **What it actually did**: a heatmap of where the pet spends its time around its target, its action mix, how tries ended, and which rules paid the treats. In the pen, **What does Pip do?** draws the learned choice on every tile (bigger arrow = surer, grey = never practised exactly). Tap a tile to watch the path from there. After each lesson the journal notes **curiosities**, such as "most treats came from one rule" or "spent 60% of the time standing still". **Export skill card** / **Import skill card…** share a single skill between saves or pets. Two pets can work at once (**Also on duty**): they never chase the same thing, and they earn the most when they do different jobs.
 
+**Sound.** Gentle sound effects mark the moments worth noticing: a card snapping into place, training starting, a certified skill (or a "Loophole found!" wobble), pickups, coins, a splash in the pond, a bump into a wall, unlocks and the shop. Every sound is synthesized on your device (no audio files), and each one repeats something you can see. Mute with 🔈 in the top bar or the **M** key; Settings has volumes for farm and pen sounds and for cards and jingles. Background sounds (birds, crickets, rain) and optional music are planned (`docs/SOUND_PLAN.md`).
+
 The farm keeps running while you're in other screens. Use **Steer** to guide a pet by hand (tap tiles, or use the arrow keys, P to pick up, D to put down, W to water, X to shoo and G to nudge a gate).
 
 ## Performance
@@ -73,7 +75,7 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 
 ## Limitations (honest list)
 
-- No sound. Crows only visit by day and at most one at a time. Guarding crops means running a skill you taught (there's no built-in guard job yet).
+- Sound covers the core moments only (phase A of `docs/SOUND_PLAN.md`): creatures, the well, gates, replays, background sounds and music are still silent. Crows only visit by day and at most one at a time. Guarding crops means running a skill you taught (there's no built-in guard job yet).
 - Thumbs up/down feedback applies to movement skills (Approach/Avoid), not to the Fetch controller.
 - Templates are immutable named revisions you can instantiate. "Exposed parameters" are stored but have no editing UI yet.
 - Avoid is the hardest preset: about 82% mean held-out success, with occasional runs at 75%. Use *Refine* to train more.
@@ -91,4 +93,4 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 | `docs/TESTING.md` | Test suites, benchmark results, performance, browser checks |
 | `docs/ROADMAP.md` | The expansion roadmap (all six milestones shipped) and what could come next |
 | `docs/TUTORIAL_PLAN.md` | The Field Guide's design, the evidence behind each lesson, and what shipped |
-| `docs/SOUND_PLAN.md` | Plan for sound effects, ambience, music and sound settings (not started) |
+| `docs/SOUND_PLAN.md` | Sound effects, ambience, music and sound settings: the plan, and what phase A shipped |

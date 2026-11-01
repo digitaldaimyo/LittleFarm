@@ -1,3 +1,4 @@
+import { DEFAULT_AUDIO } from './sound';
 import type { StageSpec } from '../domain/types';
 import { buildTutorialStage } from '../domain/recipes';
 import { createFarm } from './farm';
@@ -11,7 +12,7 @@ export function newGame(): GameState {
     version: SAVE_VERSION,
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    settings: { reducedMotion: 'system', sound: false, farmSpeed: 1, trainSpeed: 'normal', showExpert: false },
+    settings: { reducedMotion: 'system', sound: true, audio: { ...DEFAULT_AUDIO }, farmSpeed: 1, trainSpeed: 'normal', showExpert: false },
     progress: { tutorialStep: 0, tutorialDone: false, unlocks: [], totalCoins: 0, flags: {}, guide: { status: { first: 'active' }, active: 'first', step: 0 } },
     resources: { coins: 0, berries: 0, carrots: 0 },
     pets: [],

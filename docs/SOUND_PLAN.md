@@ -2,7 +2,19 @@
 
 **Goal:** add sound where it makes Pen Deck more charming *or* easier to read, without breaking what the game promises: fully offline, no outside requests, cozy, and readable with the sound off.
 
-Status: **plan, not started.** Section 8 lists the decisions to take before phase A.
+Status: **phase A shipped.** Decisions (section 8) all went with the recommendations: synthesis for everything; background sounds in phase B and an opt-in generative music box in phase C; sound on by default for new and existing games; pet voices in phase C; training ticks opt-in.
+
+### Phase A: what shipped, and what changed from the plan
+- **16 cues**, all synthesized: card flick / snap / reject, pen place, train start, certified, not certified, loophole, save, farm pickup / coin / splash / bump, adopt, unlock, shop. Rendered once (16 short buffers) on the first gesture with sound on.
+- **Changes from the plan:**
+  - No separate "training finished" chime: every finished lesson already ends in certified, not certified or loophole, so a fourth sound would only overlap them.
+  - Locked cards are disabled buttons, so "doesn't fit" can't play on them. The reject tick plays when training is refused and when the shop can't sell something.
+  - The flick plays when a slot opens; the snap when a card lands in it.
+  - The farm's egg-laying "pickup" and the rain "splash" effects stay silent until phase B. They're listed in `SILENT_FX`, and a test fails if a new effect type is neither mapped nor listed.
+- **Settings:** a Sound section with on/off, Master, "Farm and pen", "Cards and jingles", and "Farm sounds on other screens". There's a 🔈 button in the top bar and the M key. Ambience and music volumes are stored with defaults but not shown until those phases ship.
+- **Saves:** `settings.audio` was added without a version bump. Older saves start with sound on.
+- **Measured:** sound on vs muted made no measurable difference to frame rate or main-thread time (TESTING.md). The browser test checks that audio starts only after the first click, that all cues render, that the key cues play, and that M mutes.
+
 
 ---
 

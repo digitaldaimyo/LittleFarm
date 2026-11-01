@@ -80,6 +80,9 @@ Players invent behaviors by combining **senses**, **abilities** and **rules**. A
 ## Mastery and curriculum
 Lessons are promoted when held-out success meets the stage minimum (Approach/Avoid 80%, Fetch 65%, n=20 unseen layouts). The Curriculum binder shows **mastery** (at save time), **retention** (re-test with current skills), and **transfer** (10 bigger, unseen pens) separately. You can clone a stage without sharing node identity.
 
+## Sound
+Sound adds clarity first and charm second, and it is always redundant: every cue repeats something visible, so muted play loses nothing. It is sparse (no footsteps, no sound per training try), cozy (soft attacks, no harsh failure sounds: a miss sounds curious, not punished) and consistent (one sound, one meaning, everywhere). Everything is synthesized on the device. Phase A covers the teaching loop (cards, pen, training results, loopholes, saving) and the core farm moments (pickups, coins, splashes, bumps), plus adopting, unlocks and the shop. Plan and later phases: `docs/SOUND_PLAN.md`.
+
 ## Journal
 Entries are grounded templates filled from real events: adoption, skill learned (with actual success counts), certification, first berry, first delivery, first pond dip and repeat dips, loopholes found, revisits, purchases and unlocks, plus later farm events (first eggs, gates, rain, requests done or missed) and **curiosities** noticed in a lesson's behaviour summary. A *Scrapbook* filter shows milestones. No made-up psychology.
 

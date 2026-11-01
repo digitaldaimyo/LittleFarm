@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { cloneWorld } from '../sim/world';
 import { probeField, probePath } from '../learning/probe';
+import { audio } from '../audio/engine';
 import type { SpecNode, StageSpec } from '../domain/types';
 import { REGISTRY } from '../domain/registry';
 import { RECIPES, instantiateRecipe, suggestedRules } from '../domain/recipes';
@@ -151,11 +152,13 @@ function PenView({ stage, pet }: { stage: StageSpec; pet: Pet }) {
       if (!name || names.has(name)) { s.setUi({ zoneStart: null }); if (name) store.toast(`There is already an area called “${name}”.`, 'warn'); return; }
       const z = node('zone.rect', { name, where: s.ui.placeMode === 'random' ? 'random' : 'fixed', x: Math.min(a.x, x), y: Math.min(a.y, y), w: Math.abs(a.x - x) + 1, h: Math.abs(a.y - y) + 1 });
       withSnapshot(stage.id, (st) => { st.environment.push(z); });
+      audio.play('pen.place');
       s.setUi({ zoneStart: null, placing: null, slot: { parentId: z.id, socket: 'kind', index: null } });
       store.toast(s.ui.placeMode === 'random' ? `Area “${name}” painted — it keeps its size but moves to a random spot each try.` : `Area “${name}” painted.`, 'good');
       return;
     }
     if (placing) {
+      audio.play('pen.place');
       withSnapshot(stage.id, (st) => {
         if (placing === 'place.pet') {
           st.environment = st.environment.filter((p) => p.cardId !== 'place.pet');
@@ -242,10 +245,10 @@ function TrainBar({ stage, pet, blocked }: { stage: StageSpec; pet: Pet; blocked
       <div className="row gap wrap">
         <button className="btn" disabled={busy || blocked} onClick={preflight}>Preflight test</button>
         <button data-tut="train-btn" className="btn primary" disabled={busy || blocked || !can.ok || needsNav}
-          onClick={() => { const err = startTraining(pet, stage, { resume: false }); if (err) store.toast(err, 'warn'); }}>
+          onClick={() => { const err = startTraining(pet, stage, { resume: false }); if (err) { audio.play('card.reject'); store.toast(err, 'warn'); } }}>
           {existing ? `Train fresh` : `Train ${stage.learner.skill}`}
         </button>
-        {existing && <button className="btn" disabled={busy || blocked || !can.ok || needsNav} onClick={() => { const err = startTraining(pet, stage, { resume: true }); if (err) store.toast(err, 'warn'); }}>Refine r{existing.activeRev}</button>}
+        {existing && <button className="btn" disabled={busy || blocked || !can.ok || needsNav} onClick={() => { const err = startTraining(pet, stage, { resume: true }); if (err) { audio.play('card.reject'); store.toast(err, 'warn'); } }}>Refine r{existing.activeRev}</button>}
       </div>
       {blocked && <div className="small warn-text">Fix the errors below before training.</div>}
       {!can.ok && <div className="small warn-text">{can.reason}</div>}

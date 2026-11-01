@@ -18,6 +18,7 @@ let chromium;
 try { ({ chromium } = await import('playwright')); } catch { ({ chromium } = require('playwright')); }
 
 const PORT = 4179;
+const CUE_COUNT = 16; // cues in src/audio/kit.ts
 const URL = `http://localhost:${PORT}/`;
 const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'ignore' });
 const FROM = Number(process.argv.find((a) => a.startsWith('--from='))?.slice(7) ?? 1);
@@ -46,11 +47,17 @@ try {
 
   // Chapter 1
   await page.goto(URL);
+  const au = () => page.evaluate(() => window.__penDeckAudio);
+  check((await au()).contexts === 0, 'sound: no AudioContext before the first click');
   await page.click('text=Adopt Pip');
+  await page.waitForTimeout(300);
+  const a0 = await au();
+  check(a0.contexts === 1 && a0.cues.includes('pet.adopt'), 'sound: audio starts on the first click (adopt chirp)');
   check((await banner()).includes('Open the training pen'), 'Chapter 1 starts after adopting');
   await page.click('.nav-btn:has-text("Teach")');
   await page.click('[data-tut="env-berry"]');
   await page.click('rect.tile >> nth=20');
+  check(await page.waitForSelector('.toast:has-text("Sound is on")', { timeout: 4000 }).then(() => true, () => false), 'sound: one-time “Sound is on” note with the first sound');
   await page.click('.tab:has-text("Rules")');
   check((await banner()).includes('Decide what earns a treat'), 'asks the player to build the treat rule');
   await page.click('[data-tut="add-rule"]');
@@ -111,6 +118,11 @@ try {
   check(cmp2.includes('Pinned pen') && cmp2.includes('Scattered pen'), 'scatter comparison shows both pens');
   await page.click('[data-tut="guide-compare"] button:has-text("Got it")');
   check((await page.textContent('.guide-list')).includes('Pay for results'), 'later lessons listed');
+  const a1 = await au();
+  check(a1.rendered === CUE_COUNT && a1.state === 'running', `sound: all ${CUE_COUNT} cues rendered, audio running (${a1.rendered}, ${a1.state})`);
+  const want1 = ['card.flick', 'card.snap', 'pen.place', 'train.start', 'skill.save', 'farm.pickup', 'farm.coin'];
+  const missing1 = want1.filter((c) => !a1.cues.includes(c));
+  check(!missing1.length && (a1.cues.includes('train.certified') || a1.cues.includes('train.notCertified')), `sound: lessons 1–3 cues played ${missing1.length ? `(missing ${missing1.join(', ')})` : ''}`);
   await page.close();
   }
 
@@ -134,7 +146,8 @@ try {
       await page.click('[data-tut="guide-compare"] button:has-text("Got it")');
       return t;
     };
-    const step = async (title, what) => check((await banner()).includes(title), what);
+    // Steps can advance a moment after the click (e.g. <details> toggle events are async), so wait briefly.
+    const step = async (title, what) => check(await page.waitForFunction((t) => document.querySelector('.tutorial')?.textContent?.includes(t), title, { timeout: 3000 }).then(() => true, () => false), what);
     const lessonDone = async (title) => { await nav('Guide'); check((await page.textContent(`.guide-item:has-text("${title}")`)).includes('done'), `lesson “${title}” marked done`); };
 
     await page.goto(URL);
@@ -280,6 +293,16 @@ try {
     await lessonDone('Plan the farm');
     await nav('Guide');
     check((await page.locator('.guide-item.done').count()) === 9, 'all 9 Field Guide lessons done');
+    const a2 = await page.evaluate(() => window.__penDeckAudio);
+    const want2 = ['train.loophole', 'train.certified', 'ui.unlock', 'skill.save'];
+    const missing2 = want2.filter((c) => !a2.cues.includes(c));
+    check(!missing2.length, `sound: lessons 4–9 cues played (loophole, certified, unlock, save) ${missing2.length ? `(missing ${missing2.join(', ')})` : ''}`);
+    // Mute with the M key, then nothing more plays.
+    await page.keyboard.press('m');
+    const n = (await page.evaluate(() => window.__penDeckAudio.cues.length));
+    await nav('Farm');
+    await page.waitForTimeout(3000);
+    check((await page.evaluate(() => window.__penDeckAudio.cues.length)) === n && (await page.getAttribute('.mute-btn', 'aria-pressed')) === 'true', 'sound: M mutes (no cues while muted)');
     await ctx.close();
   }
 

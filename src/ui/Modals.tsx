@@ -1,3 +1,4 @@
+import { audio } from '../audio/engine';
 import { useState } from 'react';
 import { store, useStore } from './store';
 import { PetSprite } from './art';
@@ -28,6 +29,8 @@ export function AdoptModal({ paid }: { paid?: boolean }) {
       if (paid) { if (!buy(g, 'adopt').ok) return; }
       adoptPet(g, name, pal);
     });
+    audio.unlock(); // the first click of a new game is a user gesture: sound can start here
+    audio.play('pet.adopt');
     store.setUi({ modal: null });
     void store.saveNow();
   };
@@ -67,7 +70,7 @@ export function ShopModal() {
               <div><strong>{it.label}</strong><div className="small muted">{it.describe}</div></div>
               <button className="btn" disabled={!c.ok} title={c.ok ? undefined : c.reason} onClick={() => {
                 if (it.id === 'adopt') return setAdopting(true);
-                store.mutate((g) => { const r = buy(g, it.id); if (r.ok) store.toast(`Bought ${it.label}!`, 'good'); });
+                store.mutate((g) => { const r = buy(g, it.id); if (r.ok) { audio.play('ui.shop'); store.toast(`Bought ${it.label}!`, 'good'); } else audio.play('card.reject'); });
               }}>{owned ? 'Owned' : `${it.price} coins`}</button>
               {!c.ok && !owned && <span className="small muted">{c.reason}</span>}
             </li>
