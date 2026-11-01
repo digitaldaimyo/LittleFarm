@@ -60,6 +60,8 @@ export interface World {
   areas?: Area[];
   /** PRNG state for creatures (mulberry32), so creature motion is deterministic. */
   rng?: number;
+  /** Energy of the pet on duty (farm only), so plan conditions can read it. */
+  petEnergy?: number;
   /** Running counters (e.g. pecks). */
   counts?: Record<string, number>;
 }

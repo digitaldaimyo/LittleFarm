@@ -85,8 +85,17 @@ export interface StageMastery {
   transfer?: number;
 }
 
+export interface FarmPlan {
+  rows: SpecNode[];
+  /** 'first': the first applicable row wins. 'learned': a small bandit picks among applicable rows. */
+  chooser: 'first' | 'learned';
+  /** Anti-dithering guard (on by default). */
+  guard: boolean;
+  table?: ExecutiveTable;
+}
+
 export interface Assignment {
-  mode: 'auto' | 'job' | 'manual';
+  mode: 'auto' | 'job' | 'manual' | 'plan';
   job: JobId;
   navigator: NavigatorName;
   /** For the "Run a skill" job: which skill, aimed at what. */
@@ -121,6 +130,7 @@ export interface Pet {
   stats: PetStats;
   assignment: Assignment;
   mastery: Record<string, StageMastery>;
+  plan?: FarmPlan;
   nicknames?: Record<string, string>;
 }
 

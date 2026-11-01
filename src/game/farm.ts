@@ -7,11 +7,12 @@ import {
   BEHAVIOR_LABEL, describeContext, learnedSelect, rulesSelect, updateExecutive,
   type BehaviorId, type ExecContext, type Invocation,
 } from '../learning/executive';
-import type { FarmState, GameState, Pet, Plot } from './types';
+import type { FarmPlan, FarmState, GameState, Pet, Plot } from './types';
 import { activeRevision, getSkill, navPolicyFor, petById, routineRunFor, sensePolicyOf } from './pets';
 import { compileCondition, withTarget } from '../sim/compile';
 import { addJournal, addJournalOnce } from './journal';
 import { checkUnlocks } from './progression';
+import { GUARD_HOLD, choosePlanRow, compilePlan, newPlanRuntime, planInvocation, starterPlan, updatePlanValue, type PlanRuntime } from './plan';
 
 export const FARM_W = 12;
 export const FARM_H = 9;
@@ -78,13 +79,15 @@ export interface FarmRuntime {
   recentFail: boolean;
   /** Recovery after a failed job: a few random sniffing steps so a pet never repeats a stuck loop forever. */
   jitter: number;
+  /** Farm-plan memory: row starts (for the anti-dithering guard), fire counts, switches. */
+  plan: PlanRuntime;
   rng: Rng;
 }
 
 export function createRuntime(f: FarmState): FarmRuntime {
   const rng = new Rng(1);
   rng.state = f.rngState >>> 0;
-  return { exec: null, inv: null, ctx: null, startCoins: 0, startEnergy: 0, startTick: 0, manual: [], recentFail: false, jitter: 0, rng };
+  return { exec: null, inv: null, ctx: null, startCoins: 0, startEnergy: 0, startTick: 0, manual: [], recentFail: false, jitter: 0, plan: newPlanRuntime(), rng };
 }
 
 function plotUnlocked(s: GameState, p: Plot): boolean {
@@ -211,6 +214,8 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
         },
       };
     }
+    case 'goto':
+      return new NavRun(nav, inv.args.target ?? 'home', tmo, rt.rng);
     case 'catch': {
       // Fireflies are caught by walking into them (see handleEvents).
       return new NavRun(nav, 'firefly', tmo, rt.rng);
@@ -269,7 +274,7 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
   rt.ctx = ctx;
   const w = s.farm.world;
   const tmo = navTimeout(w.w, w.h, pet.traits.persistence);
-  const timeouts: Record<BehaviorId, number> = { forage: tmo + 3, deliver: tmo * 3, rest: 30, wander: 6, manual: 1e9, skill: 60, catch: tmo };
+  const timeouts: Record<BehaviorId, number> = { forage: tmo + 3, deliver: tmo * 3, rest: 30, wander: 6, manual: 1e9, skill: 60, catch: tmo, goto: tmo };
   const custom = pet.assignment.skillName ? activeRevision(getSkill(pet, pet.assignment.skillName)) : null;
   if (custom) timeouts.skill = Math.round((custom.maxTicks ?? 40) * (1 + pet.traits.persistence));
   const navigator = pet.assignment.navigator;
@@ -287,6 +292,29 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
   if (pet.assignment.mode === 'manual') return mk('manual', 'player', 'Following your lead');
   const eligible = eligibleBehaviors(pet, ctx);
   if (pet.energy <= 5) return mk('rest', 'rules', 'Too sleepy to work — nap first');
+  if (pet.assignment.mode === 'plan') {
+    const plan = (pet.plan ??= starterPlan());
+    const rows = compilePlan(plan);
+    const { row, guarded, learned } = choosePlanRow(s, pet, plan, rows, ctx, rt.plan, rt.rng);
+    if (guarded) rt.plan.guarded++;
+    if (!row) {
+      return guarded
+        ? { ...mk('rest', 'plan', 'Holding still for a moment — plan rows were flip-flopping'), timeout: GUARD_HOLD }
+        : mk('rest', 'plan', 'No plan row applies right now — napping');
+    }
+    const prev = rt.plan.starts.at(-1)?.row;
+    if (prev && prev !== row.id) rt.plan.switches++;
+    rt.plan.starts.push({ tick: s.farm.tick, row: row.id });
+    if (rt.plan.starts.length > 60) rt.plan.starts.shift();
+    rt.plan.fires[row.id] = (rt.plan.fires[row.id] ?? 0) + 1;
+    let t = timeouts[row.job.behaviorId];
+    if (row.job.behaviorId === 'skill') t = Math.round((activeRevision(getSkill(pet, row.job.args.skill ?? ''))?.maxTicks ?? 40) * (1 + pet.traits.persistence));
+    const why = `Plan row ${row.index + 1}: ${row.label}${guarded ? ' (sticking with it — rows were flip-flopping)' : learned ? ' (learned pick)' : ''}`;
+    const inv = planInvocation(row, t, why);
+    if (row.job.behaviorId === 'deliver') inv.args.item = ctx.carrying ? 'carried item' : 'carrot or egg';
+    if (learned) inv.args.learned = '1';
+    return inv;
+  }
   if (pet.assignment.mode === 'job' && pet.assignment.job === 'skill') {
     if (custom && !ctx.energyLow) return mk('skill', 'player', `You asked for: ${pet.assignment.skillName} → ${pet.assignment.target || custom.focus}`);
     return mk('rest', 'rules', custom ? 'Tired — resting before running the skill' : 'Pick a saved skill to run');
@@ -320,6 +348,12 @@ function finishInvocation(s: GameState, pet: Pet, rt: FarmRuntime, result: 'succ
     if (inv.behaviorId === 'rest') r += rt.ctx.energyLow ? 1.5 : -0.5;
     if (result === 'fail') r -= 0.3;
     updateExecutive(pet.executive.table, rt.ctx, inv.behaviorId, r);
+  }
+  if (inv.chosenBy === 'plan' && inv.args.learned && pet.plan && rt.ctx && inv.args.row) {
+    let r = coins - 0.01 * ticks;
+    if (inv.behaviorId === 'rest') r += rt.ctx.energyLow ? 1.5 : -0.5;
+    if (result === 'fail') r -= 0.3;
+    updatePlanValue(pet.plan, rt.ctx, inv.args.row, r);
   }
   const w = s.farm.world;
   if (result === 'fail' && inv.behaviorId !== 'wander') {
@@ -424,6 +458,7 @@ export function farmTick(s: GameState, rt: FarmRuntime): TickResult {
     return { fx, unlocked: checkUnlocks(s) };
   }
   pet.mood += (60 - pet.mood) * 0.002;
+  f.world.petEnergy = pet.energy;
   if (f.stun > 0) {
     f.stun--;
     f.rngState = rt.rng.state;
@@ -483,4 +518,59 @@ export function queueManualPath(s: GameState, rt: FarmRuntime, x: number, y: num
 
 export function queueManual(rt: FarmRuntime, a: Action): void {
   if (rt.manual.length < 8) rt.manual.push(a);
+}
+
+/** Switch a pet to its farm plan, starting from a clean slate (so a preview from here matches reality). */
+export function applyPlan(s: GameState, rt: FarmRuntime, petId: string): void {
+  const p = petById(s, petId);
+  if (!p) return;
+  p.plan ??= starterPlan();
+  p.assignment.mode = 'plan';
+  s.farm.dutyPetId = petId;
+  s.farm.current = null;
+  rt.exec = null;
+  rt.inv = null;
+  rt.jitter = 0;
+  rt.recentFail = false;
+  rt.manual = [];
+  rt.plan = newPlanRuntime();
+  rt.rng.state = s.farm.rngState >>> 0;
+}
+
+export interface PlanPreview {
+  ticks: number;
+  coins: number;
+  energyStart: number;
+  energyEnd: number;
+  naps: number;
+  fires: Record<string, number>;
+  switchesPerMinute: number;
+  guarded: number;
+  dips: number;
+  final: { coins: number; tick: number; petX: number; petY: number };
+}
+
+/**
+ * Dry-run a plan on a copy of the farm. The simulator is deterministic, so this is exactly
+ * what the real farm will do over the same ticks if the plan is applied now.
+ */
+export function previewPlan(s: GameState, petId: string, plan: FarmPlan, ticks = 300): PlanPreview {
+  const copy: GameState = structuredClone(s);
+  const p = petById(copy, petId)!;
+  p.plan = structuredClone(plan);
+  const rt = createRuntime(copy.farm);
+  applyPlan(copy, rt, petId);
+  const coins0 = copy.resources.coins, e0 = p.energy, dips0 = p.stats.dips;
+  let naps = 0;
+  for (let i = 0; i < ticks; i++) {
+    const before = copy.farm.current;
+    farmTick(copy, rt);
+    if (copy.farm.current && copy.farm.current !== before && copy.farm.current.behaviorId === 'rest') naps++;
+  }
+  return {
+    ticks, coins: copy.resources.coins - coins0, energyStart: e0, energyEnd: p.energy, naps,
+    fires: { ...rt.plan.fires }, switchesPerMinute: (rt.plan.switches * 214) / ticks, guarded: rt.plan.guarded,
+    dips: p.stats.dips - dips0,
+    final: { coins: copy.resources.coins, tick: copy.farm.tick, petX: copy.farm.world.pet.x, petY: copy.farm.world.pet.y },
+  };
 }

@@ -158,6 +158,12 @@ export function compileCondition(n: SpecNode): Cond {
       const a = areaArg(n, 'area');
       return ({ w }) => { const ar = w.areas?.find((x) => x.name === a); return !!ar && inArea(ar, w.pet.x, w.pet.y); };
     }
+    case 'cond.energyBelow': {
+      const v = paramOf(n, 'value', 25);
+      return ({ w }) => w.petEnergy !== undefined && w.petEnergy < v;
+    }
+    case 'cond.carryingAny':
+      return ({ w }) => w.pet.carrying !== null;
     case 'cond.hasWater':
       return ({ w }) => (w.pet.water ?? 0) > 0;
     case 'cond.night':

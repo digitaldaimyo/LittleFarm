@@ -27,7 +27,7 @@ export interface ParamDef {
 
 export type CardGroup =
   | 'kind' | 'actor' | 'event' | 'condition' | 'effect' | 'limit' | 'quantity'
-  | 'reference' | 'placement' | 'rule' | 'sense' | 'option';
+  | 'reference' | 'placement' | 'rule' | 'sense' | 'option' | 'job';
 
 export interface CardDef {
   id: string;

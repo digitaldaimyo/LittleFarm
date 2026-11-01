@@ -6,14 +6,14 @@ import { Rng } from '../sim/rng';
  *   - a deterministic rules baseline
  *   - a locally trained contextual bandit (tabular, ε-greedy, running means)
  */
-export type BehaviorId = 'forage' | 'deliver' | 'rest' | 'wander' | 'manual' | 'skill' | 'catch';
+export type BehaviorId = 'forage' | 'deliver' | 'rest' | 'wander' | 'manual' | 'skill' | 'catch' | 'goto';
 
 export interface Invocation {
   behaviorId: BehaviorId;
   args: Record<string, string>;
   intention: string;
   timeout: number;
-  chosenBy: 'player' | 'rules' | 'learned';
+  chosenBy: 'player' | 'rules' | 'learned' | 'plan';
 }
 
 export interface ExecContext {
@@ -90,4 +90,5 @@ export const BEHAVIOR_LABEL: Record<BehaviorId, string> = {
   manual: 'Follow your lead',
   skill: 'Run a skill',
   catch: 'Catch fireflies',
+  goto: 'Go to',
 };
