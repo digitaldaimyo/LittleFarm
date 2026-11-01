@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { PlanMat } from './PlanMat';
+import { describeRequest } from '../game/requests';
 import { store, useStore } from './store';
 import { WorldView } from './WorldView';
 import { PetSprite, type PetMood } from './art';
 import { activePet, activeRevision, customSkills, getSkill, isCertified, petById } from '../game/pets';
 import { OBJECT_BY_ID } from '../domain/packs/farm';
 
-const FARM_TARGETS = ['berry', 'carrot', 'egg', 'chicken', 'crow', 'firefly', 'bin', 'home', 'well', 'pond', 'bush', 'patch', 'rock', 'tree'];
+const FARM_TARGETS = ['berry', 'carrot', 'egg', 'chicken', 'crow', 'firefly', 'gate', 'bin', 'home', 'well', 'pond', 'bush', 'patch', 'rock', 'tree'];
 import { DAY_TICKS, applyPlan, dayInfo, queueManual, queueManualPath, recentProduction, TIRED } from '../game/farm';
 import { nextUnlock } from '../game/progression';
 import { BEHAVIOR_LABEL } from '../learning/executive';
@@ -61,7 +62,7 @@ export function FarmScreen() {
 
   useEffect(() => {
     if (!manual) return;
-    const keys: Record<string, Action> = { ArrowUp: 'N', ArrowRight: 'E', ArrowDown: 'S', ArrowLeft: 'W', ' ': 'pick', p: 'pick', d: 'drop', w: 'water', x: 'shoo' };
+    const keys: Record<string, Action> = { ArrowUp: 'N', ArrowRight: 'E', ArrowDown: 'S', ArrowLeft: 'W', ' ': 'pick', p: 'pick', d: 'drop', w: 'water', x: 'shoo', g: 'nudge' };
     const h = (e: KeyboardEvent) => {
       const a = keys[e.key];
       if (!a || (e.target as HTMLElement)?.tagName === 'INPUT') return;
@@ -118,6 +119,7 @@ export function FarmScreen() {
             ))}
           </div>
           <span className={`clock ${clock.night ? 'night' : ''}`} aria-label={`Day ${clock.day}, ${clock.label}`}>{clock.night ? '☾' : '☀'} Day {clock.day} · {clock.label}</span>
+          {f.world.raining && <span className="clock rain" aria-label="Raining">☂ Rain — plots watered</span>}
           <span className="muted small">{perMin} coins in the last minute</span>
         </div>
         {manual && (
@@ -133,6 +135,7 @@ export function FarmScreen() {
               <button className="wide" onClick={() => queueManual(store.runtime, 'drop')}>Put down (D)</button>
               <button className="wide" onClick={() => queueManual(store.runtime, 'water')}>Water (W)</button>
               <button className="wide" onClick={() => queueManual(store.runtime, 'shoo')}>Shoo (X)</button>
+              <button className="wide" onClick={() => queueManual(store.runtime, 'nudge')}>Nudge gate (G)</button>
             </div>
             <p className="muted small">Tap a tile to walk there. Berries go straight into the basket; carrots must be dropped in the bin. Water at the well to fill up, then on a bush or patch — watered plots regrow twice as fast. Walk into fireflies at night to catch them. Shoo pushes a next-door chicken one tile away and sends crows flying. Chickens only lay eggs inside the coop.</p>
           </div>
@@ -227,6 +230,8 @@ export function FarmScreen() {
           <button className="btn ghost" onClick={() => setShowPlan(true)}>Edit farm plan…</button>
         )}
 
+        <RequestsBoard />
+
         <div className="panel">
           <div className="resources">
             <span><b>{g.resources.coins}</b> coins</span>
@@ -255,6 +260,27 @@ export function Meter({ label, value, warn }: { label: string; value: number; wa
       <span className="small">{label}</span>
       <div className={`bar ${warn ? 'warn' : ''}`} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value)} aria-label={label}><i style={{ width: `${value}%` }} /></div>
       <span className="small num">{Math.round(value)}{warn ? ' · tired' : ''}</span>
+    </div>
+  );
+}
+
+function RequestsBoard() {
+  const s = useStore();
+  const reqs = (s.state.farm.requests ?? []).slice(-6).reverse();
+  if (!reqs.length) return null;
+  return (
+    <div className="panel">
+      <h3>Requests board</h3>
+      <ul className="requests">
+        {reqs.map((r) => (
+          <li key={r.id} className={r.status}>
+            <div className="row between"><strong>{describeRequest(r)}</strong><span className="chip">{r.status === 'done' ? '✓ done' : r.status === 'expired' ? 'missed' : `+${r.reward} coins${r.gift ? ' + gift' : ''}`}</span></div>
+            <span className="small muted">from {r.from} · day {r.day}{r.status === 'open' && r.kind !== 'noPecks' && r.kind !== 'coop' ? ` · ${Math.max(0, r.progress)}/${r.n}` : ''}</span>
+            {r.status === 'open' && r.kind !== 'noPecks' && r.kind !== 'coop' && <div className="bar" role="progressbar" aria-valuemin={0} aria-valuemax={r.n} aria-valuenow={Math.max(0, r.progress)} aria-label="Progress"><i style={{ width: `${(100 * Math.max(0, r.progress)) / r.n}%` }} /></div>}
+          </li>
+        ))}
+      </ul>
+      <p className="small muted">New requests arrive each dawn. Missing one costs nothing.</p>
     </div>
   );
 }

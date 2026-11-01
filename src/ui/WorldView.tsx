@@ -62,7 +62,7 @@ export function WorldView({ world, palette, mood = 'idle', label, onTile, tileLa
       )}
       {objs.map((o) => (
         <g key={o.id} transform={`translate(${o.x * C} ${o.y * C})`} className={ghostIds?.has(o.id) ? 'ghost' : 'obj'} pointerEvents="none">
-          <g transform={o.kind === 'pond' ? undefined : 'translate(4 4) scale(0.8)'}><ObjectGlyph kind={o.kind} /></g>
+          <g transform={o.kind === 'pond' ? undefined : 'translate(4 4) scale(0.8)'}><ObjectGlyph kind={o.kind === 'gate' && o.open ? 'gate-open' : o.kind} /></g>
           {ghostIds?.has(o.id) && <rect x="2" y="2" width={C - 4} height={C - 4} rx="7" className="ghost-ring" />}
           {o.wet && <g aria-hidden="true"><rect x="3" y="3" width={C - 6} height={C - 6} rx="7" className="wet-ring" /><path d="M31 5 q3 5 0 7 q-3 -2 0 -7z" className="drop" /></g>}
         </g>
@@ -75,6 +75,17 @@ export function WorldView({ world, palette, mood = 'idle', label, onTile, tileLa
               {Array.from({ length: world.pet.water ?? 0 }, (_, i) => <path key={i} transform={`translate(${i * 5} 0)`} d="M3 0 q3 5 0 7 q-3 -2 0 -7z" className="drop" />)}
             </g>
           )}
+        </g>
+      )}
+      {world.raining && (
+        <g pointerEvents="none" aria-hidden="true">
+          <defs>
+            <pattern id="rain" width="24" height="24" patternUnits="userSpaceOnUse">
+              <path d="M4 0 l-4 12 M16 8 l-4 12 M22 -4 l-4 12" stroke="#5B8FC4" strokeWidth="1.5" opacity="0.55" />
+            </pattern>
+          </defs>
+          <rect x="0" y="0" width={W} height={H} fill="rgba(70, 100, 140, 0.12)" />
+          <rect x="0" y="0" width={W} height={H} fill="url(#rain)" className="rain" />
         </g>
       )}
       {dark > 0 && <rect x="0" y="0" width={W} height={H} className="night" style={{ opacity: 0.5 * dark }} pointerEvents="none" />}
@@ -90,6 +101,7 @@ export function WorldView({ world, palette, mood = 'idle', label, onTile, tileLa
           {f.type === 'splash' && <text textAnchor="middle" className="fx-splash">splash!</text>}
           {f.type === 'confused' && <text textAnchor="middle" className="fx-confused">?</text>}
           {f.type === 'drop' && f.text && <text textAnchor="middle" className="fx-water">{f.text === 'filled' ? 'filled up' : 'splash'}</text>}
+          {f.text?.startsWith('gate') && <text textAnchor="middle" className="fx-coin">{f.text}</text>}
           {f.text === 'shoo!' && <text textAnchor="middle" className="fx-coin">shoo!</text>}
           {f.text === 'pecked' && <text textAnchor="middle" className="fx-splash" dy="-10">peck!</text>}
         </g>

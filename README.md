@@ -55,7 +55,9 @@ A farm day lasts about 5½ minutes at 1×, and the last 30% is **night**. At nig
 
 **Farm plans.** On the Farm screen, **Farm plan** (or *Edit farm plan…*) opens a mat of **IF / DO** rows written with the same cards, for example "IF a crow is within 3 of me DO run Guard", "IF energy below 30 DO nap", "IF 2+ eggs in the coop DO deliver". Rows are tried top to bottom. A row is skipped when its job can't do anything right now. **Preview 300 ticks** dry-runs the plan on a copy of the farm and shows coins, energy, naps, pond dips, how often each row ran, and whether rows fight each other. Since the farm is deterministic, that preview is exactly what will happen if you apply the plan then. The **starter plan** is the built-in Auto rules, written out so you can edit them. *Learn among matches* lets the pet pick among the rows that apply. An **anti-dithering guard** steps in if rows start flip-flopping.
 
-The farm keeps running while you're in other screens. Use **Steer** to guide a pet by hand (tap tiles, or use the arrow keys, P to pick up, D to put down, W to water and X to shoo).
+**A bigger, livelier farm.** The *Orchard expansion* (shop) grows the farm to 16×12, with a fenced orchard behind a **gate**. Closed gates block pets and chickens, and a pet with the **Nudge** ability opens or shuts one from next to it (plans have a *Mind the gate* job). From day 2, gentle **rain** showers water every plot, swell the pond by a tile and keep crows away. Each dawn, neighbours pin up to three small **requests** ("Deliver 2 eggs by nightfall", "No crow pecks today") that pay coins and sometimes gifts. Missing one costs nothing.
+
+The farm keeps running while you're in other screens. Use **Steer** to guide a pet by hand (tap tiles, or use the arrow keys, P to pick up, D to put down, W to water, X to shoo and G to nudge a gate).
 
 ## Performance
 

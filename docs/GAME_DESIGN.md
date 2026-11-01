@@ -47,6 +47,11 @@ Unlocks add **vocabulary** (new cards and skills) and **problems** (carrots need
 ## Reward hacking as discovery
 The *Treat for every pickup* recipe pays +3 per pickup with no limit. Pets reliably learn to pick up and put down the berry over and over: about 30 pickups per try and 0% deliveries, while treats per try climb as success falls. The report says **Loophole found!**, shows a replay of the worst try, explains which rule paid, and offers the repair card *Pay only once per object*. After the repair, retraining delivers most of the time (the test suite requires at least +40 points). Nothing is ever lost: the stage has Undo, and saving an uncertified revision never replaces a certified active one.
 
+## Expansion, gates, weather, requests (Milestone 5)
+- **Orchard expansion** (shop, 25 coins): 16×12 farm, fence along column 12 with a gate at (12,4) (starts open), orchard area (3 bushes) to the east, meadow to the south. Chickens wander through an open gate, and shutting it shuts the pet out of the orchard too: a real trade-off for plans.
+- **Rain:** from day 2, about one daytime shower a day lasting 180–400 ticks. Every bush and patch counts as watered, one pond tile appears next to the pond (removed when it dries), and crows stay away.
+- **Requests:** at most 3 open at a time. Rewards: eggs 3, carrots 4, berries 1, fireflies 2 and watering 1 coin each; no-pecks and coop 6 coins flat. A 35% chance of a Tree or Fence card gift (until both are owned).
+
 ## Farm plans
 Training answers "can my pet do X?". Plans answer "when should it do X?". The plan mat uses the same cards as lessons, so a player who learned to write *WHEN… THEN* rules can write *IF… DO* rows. The starter plan exposes the hidden Auto rules as an editable example. The preview makes planning iterative and safe: try a plan, see the coins, energy, naps and dips it would produce, fix fighting rows, then apply it. Diagnostics explain rather than block: rows that never ran, rows that fight, skills that aren't learned or certified yet.
 

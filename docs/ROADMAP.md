@@ -175,16 +175,18 @@ Each item is independent and small, so they ship one at a time.
 |---|---|---|
 | ✅ **Watering:** crops grow 2× faster when watered; a well; new `water` ability. *Shipped without a carryable can: the pet carries 3 splashes itself, which keeps it a single sense skill.* | Multi-step fetch-and-use, without new learner types | S |
 | ✅ **Day / night** (one cycle ≈ 5½ farm minutes at 1×): fireflies by night (crows wait for M2); pets prefer sleeping at night. *Shipped with `sense.night`, `cond.night` and a Time of day pen card.* | Time becomes a sense and a plan condition | S |
-| **Farm zones and expansion:** buy an orchard and a coop; the map grows from 12×9 to 16×12 | Transfer pressure on learned skills; areas become meaningful | M |
-| **Gates:** open/closed; the pet can learn to `nudge` them | Opens up "close the gate after the chickens" plans | S |
-| **Gentle weather:** rain waters crops and the pond grows by a tile | Robustness: Avoid has to handle changing layouts | S |
-| **Requests board:** neighbours post small requests ("3 eggs by nightfall", "no crow pecks today") for coins and new cards | Gives players reasons to invent behaviors, with open-ended solutions | M |
+| ✅ **Farm zones and expansion:** the *Orchard expansion* (shop, 25 coins) grows the farm from 12×9 to 16×12, with a fenced `orchard` area of 3 berry bushes behind a gate and a southern meadow. *The coop already existed (Milestone 2).* | Transfer pressure on learned skills; areas become meaningful | M |
+| ✅ **Gates:** open/closed; **Nudge** ability (from on or next to the gate; never shuts on someone); `ev.gate`, `cond.gates`, `sense.gate`; plan job **Mind the gate**; example lesson *Open the gate* | Opens up "close the gate after the chickens" plans | S |
+| ✅ **Gentle weather:** from day 2, the odd daytime shower (≈1/700 per tick, 180–400 ticks) waters every plot, swells the pond by one tile and keeps crows away. Pens get a *Weather* card, *Is raining* and a rain sense | Robustness: Avoid has to handle changing layouts | S |
+| ✅ **Requests board:** up to 3 requests from fictional neighbours each dawn, only for things the farm can do (eggs, carrots, berries, fireflies, watering, no pecks, chickens in the coop at nightfall). They pay coins, sometimes with a gift of Tree/Fence cards. Missed ones cost nothing | Gives players reasons to invent behaviors, with open-ended solutions | M |
 
 Keep it cozy: no death and no losses beyond time. Crows peck crops (slower regrowth), they never take coins.
 
 **Gate**
-- [ ] The farm stays at or above 60 fps on a mid-range phone with 2 pets and 6 creatures (profile `WorldView`; switch to canvas only if needed).
-- [ ] Each feature has a sim test and a journal template grounded in events.
+- [x] 60 fps with the expanded 16×12 farm, 2 pets (one on duty) and 6 creatures, raining, at 4× speed: phone viewport with **4× CPU throttling** (Chromium DevTools emulation, not a real device). Main thread 53% busy, script 9%, no long tasks; still 60 fps at 6× throttling (69% busy). SVG was enough, no canvas needed. *Only the on-duty pet is drawn on the farm.*
+- [x] Each feature has sim tests (`tests/milestone5.test.ts`) and event-grounded journal entries: expansion, first gate open/shut, first rain and its end, first requests, request done/missed.
+
+> **Found while testing:** the learned Approach is shaky right next to the new fence, e.g. wall to the east with the target close by to the north-east, a situation that barely appears in 8×8 practice pens. The stuck-recovery gets the pet through (the gate job succeeds within ~100 ticks), but it's a real transfer gap, and a good reason for players to retrain in pens with fences.
 
 ---
 

@@ -347,3 +347,11 @@ button.node { padding: 2px 9px; font-weight: 600; }
 .fires { margin: 0; padding-left: 18px; }
 .g-job { border-color: #A9B9DC; background: #E8EEFA; color: #23407A; }
 .chip.by-plan { background: #E8EEFA; color: #23407A; }
+
+.rain { animation: rainfall .6s linear infinite; }
+@keyframes rainfall { from { transform: translate(0, -24px); } to { transform: translate(-8px, 0); } }
+.clock.rain { background: #DCE8F5; color: #24527A; }
+.requests { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.requests li { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+.requests li.done { background: var(--leaf-tint); border-color: var(--leaf-edge); }
+.requests li.expired { opacity: .6; }

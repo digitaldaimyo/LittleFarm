@@ -62,6 +62,12 @@ The same simulator runs pens, evaluation and the farm. Fixed seed + fixed action
 - `chooseInvocation` (farm) handles plan mode after the "too sleepy" safety check. Invocations carry `chosenBy: 'plan'` and `args.row`. `world.petEnergy` is set each tick so `cond.energyBelow` works.
 - `applyPlan` resets the runtime (no half-finished job, fresh plan memory, RNG from `farm.rngState`). `previewPlan` deep-clones the game, applies the plan and runs `farmTick`, so it is the real future under determinism.
 
+### Gates, weather, expansion, requests (Milestone 5)
+- `Obj.open` (gates). `blocks(o)` = solid object or a closed gate; `isSolidAt` uses it, so senses, legality, BFS and chickens all respect gates. The `nudge` action toggles `nudgeableGate(world)` (on or next to the pet; an open gate isn't shut on a pet or creature) and emits `gate` with `state`. Layout generation treats a closed gate as reachable from a neighbouring tile.
+- `World.raining` comes from `place.weather` in pens (rain wets all plots at generation) or from `updateWeather` on the farm (`farm.rainUntil`, `farm.puddles`).
+- `game/expand.ts → expandFarm` grows the world in place. Existing objects keep their coordinates, and orchard plots carry `unlock: 'orchard'`.
+- `game/requests.ts`: `postRequests` at dawn (and at the first tick), `trackRequests` on every farm event list, `nightfallRequests` at dusk. Eligibility depends on what the farm has (chickens, Fetch, carrots, a watering skill, crows).
+
 ## Learning
 
 ### Templates, senses and abilities (Milestone 1)

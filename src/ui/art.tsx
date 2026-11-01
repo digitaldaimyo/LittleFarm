@@ -189,6 +189,24 @@ export function ObjectGlyph({ kind }: { kind: string }) {
           <path d="M6 19 l-2 3 M34 19 l2 3" stroke="#E2C15C" strokeWidth="2" />
         </g>
       );
+    case 'gate':
+      return (
+        <g stroke="#7F5427" strokeWidth="1.4">
+          <rect x="4" y="8" width="5" height="28" rx="1.5" fill="#B08E5C" />
+          <rect x="31" y="8" width="5" height="28" rx="1.5" fill="#B08E5C" />
+          <rect x="9" y="12" width="22" height="5" fill="#D9B07A" />
+          <rect x="9" y="26" width="22" height="5" fill="#D9B07A" />
+          <path d="M10 30 L30 13" stroke="#B08E5C" strokeWidth="3" />
+        </g>
+      );
+    case 'gate-open':
+      return (
+        <g stroke="#7F5427" strokeWidth="1.4">
+          <rect x="4" y="8" width="5" height="28" rx="1.5" fill="#B08E5C" />
+          <rect x="31" y="8" width="5" height="28" rx="1.5" fill="#B08E5C" />
+          <path d="M9 12 l8 4 v14 l-8 -4z" fill="#D9B07A" />
+        </g>
+      );
     case 'firefly':
       return (
         <g className="firefly">
