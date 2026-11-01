@@ -33,6 +33,8 @@ for (const seed of SEEDS) {
     ['Avoid', { ...recipeStage('avoid-pond'), seed }, undefined],
     ['Fetch', { ...recipeStage('bring-it-home'), seed }, a.q],
     ['Loophole', { ...recipeStage('pay-per-pickup'), seed }, a.q],
+    ['Wait*', { ...recipeStage('wait-for-it'), seed }, undefined],
+    ['Clear*', { ...recipeStage('keep-clear'), seed }, undefined],
   ];
   for (const [name, stage, nav] of jobs) {
     const res = name === 'Approach' ? a : train(stage, nav);
@@ -42,4 +44,5 @@ for (const seed of SEEDS) {
   }
 }
 console.log('\nMean held-out success across seeds:');
+console.log('(* = player-style skill built only from cards: custom senses, abilities and rules)');
 for (const [k, v] of Object.entries(rows)) console.log(`  ${k.padEnd(9)} ${fmt(v.reduce((a, b) => a + b, 0) / v.length)}  (min ${fmt(Math.min(...v))})`);

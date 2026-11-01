@@ -33,12 +33,13 @@ export interface Hand {
 }
 
 const GROUP_BASE: Record<string, number> = {
-  kind: 5, actor: 9, event: 5, condition: 4, effect: 5, limit: 4, quantity: 3, reference: 2, placement: 4, rule: 4,
+  kind: 5, actor: 9, sense: 6, event: 5, condition: 4, effect: 5, limit: 4, quantity: 3, reference: 2, placement: 4, rule: 4,
 };
 
 const STARTER_FAVORS: Record<string, number> = {
   'ev.reach': 4, 'eff.reward': 4, 'eff.end': 3, 'ev.tick': 2, 'eff.penalty': 2, 'cond.at': 4, 'lim.perObject': 3, 'lim.once': 2,
   'ev.deliver': 2, 'cond.delivered': 2, 'ev.enter': 1, 'ev.pickup': 1,
+  'ref.target': 3, 'sense.nearest': 3, 'sense.blocked': 2, 'sense.still': 1, 'ev.stay': 1,
 };
 
 /**
@@ -50,6 +51,7 @@ export function buildHand(reg: Registry, ctx: HandContext): Hand {
   const all: HandCard[] = [];
   for (const card of reg.cards.values()) {
     if (!fits(ctx.socket, card.output)) continue;
+    if (ctx.placing && card.presentation.group === 'reference') continue;
     let status: HandCard['status'] = 'available';
     let reason: string | undefined;
     const kind = kindOfCard(card.id);

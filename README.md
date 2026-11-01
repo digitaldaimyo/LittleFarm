@@ -36,6 +36,13 @@ Requires Node 18+ (developed on Node 22). Needs no secrets or environment variab
 7. **Farm → Forage berries.** The pet uses the Approach it just learned. Berries sell for 1 coin.
 8. **Earn 5 coins** to unlock **Fetch** lessons (*Bring it home*), which reuse your saved Approach as their movement option. A certified Fetch unlocks carrot patches (3 coins per delivery). At 12 coins, **Avoid** lessons unlock, so your pet can stop splashing through the pond.
 
+**Invent your own skills.** Once a pet has a certified Approach, *Your own skills* unlocks. In **Teach → Pet → + New skill…** you name a skill and choose:
+- its **senses**, i.e. what it pays attention to: *Where is…*, *How far is…*, *Standing on…*, *Walls nearby*, *Hazards nearby*, *Last heading*, *Carrying?*, *Patience*. A meter shows how many situations it must learn.
+- its **abilities**: Move, Stay, Pick up, Put down.
+- whether success ends the try or is **judged when time is up**.
+
+Then write its rules with the same cards, using *the target* to mean "whatever this skill is aimed at". The Curriculum has two examples, *Wait for it* and *Keep clear*. On the farm, **Run a skill** runs any of your skills aimed at anything (berry, bin, home, pond…), with no retraining.
+
 Try the optional **Treat for every pickup** recipe to watch a pet discover a reward loophole, then fix it with a repair card.
 
 The farm keeps running while you're in other screens. Use **Steer** to guide a pet by hand (tap tiles, or use the arrow keys, P to pick up and D to put down).
@@ -51,6 +58,7 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 - Thumbs up/down feedback applies to movement skills (Approach/Avoid), not to the Fetch controller.
 - Templates are immutable named revisions you can instantiate. "Exposed parameters" are stored but have no editing UI yet.
 - Avoid is the hardest skill: about 82% mean held-out success, with occasional runs at 75%. Use *Refine* to train more.
+- Your own skills can be run on the farm one at a time ("Run a skill"). Using them inside Fetch-style routines or farm plans is Milestones 3–4 in `docs/ROADMAP.md`.
 - No local language model (the spec's optional Level D). The executive is a rules baseline plus a small learned bandit.
 - Static reward checks and the preflight random-rollout comparison are heuristics, not proofs that a reward can't be exploited.
 

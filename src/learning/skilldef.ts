@@ -13,3 +13,9 @@ export function senseDefFor(stage: StageSpec): SenseSkillDef {
   const actions = actionsFor(stage.abilities);
   return { senses, actions: actions.length ? actions : MOVES };
 }
+
+/** Do two sense definitions produce the same policy shape and meaning? */
+export function sameSenseDef(a: SenseSkillDef | undefined, b: SenseSkillDef): boolean {
+  const key = (d: SenseSkillDef) => JSON.stringify([d.senses.map((n) => [n.cardId, (n.args.what as { cardId?: string } | undefined)?.cardId ?? null]), d.actions]);
+  return key(a ?? { senses: presetSenses(), actions: MOVES }) === key(b);
+}

@@ -22,11 +22,12 @@ export interface ExploitFinding {
   replay?: EpisodeTrace;
 }
 
-export function policySpecFor(stage: StageSpec, q: SerializedQ | null, navigator: SerializedQ | null, navigatorDef?: SenseSkillDef): PolicySpec {
+export function policySpecFor(stage: StageSpec, q: SerializedQ | null, navigator: SerializedQ | null, navigatorDef?: SenseSkillDef, selfDef?: SenseSkillDef): PolicySpec {
   if (templateOf(stage) === 'fetch') {
     return { kind: 'fetch', ctrl: FetchController.from(q) ?? new FetchController(), nav: SensePolicy.from(navigator, navigatorDef) };
   }
-  const def = senseDefFor(stage);
+  // A saved revision is always evaluated with the senses it was trained with.
+  const def = selfDef ?? senseDefFor(stage);
   return { kind: 'sense', policy: SensePolicy.from(q, def), def };
 }
 

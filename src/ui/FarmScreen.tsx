@@ -2,7 +2,10 @@ import { useEffect } from 'react';
 import { store, useStore } from './store';
 import { WorldView } from './WorldView';
 import { PetSprite, type PetMood } from './art';
-import { activePet, activeRevision, getSkill, isCertified, petById } from '../game/pets';
+import { activePet, activeRevision, customSkills, getSkill, isCertified, petById } from '../game/pets';
+import { OBJECT_BY_ID } from '../domain/packs/farm';
+
+const FARM_TARGETS = ['berry', 'carrot', 'bin', 'home', 'pond', 'bush', 'patch', 'rock', 'tree'];
 import { queueManual, queueManualPath, recentProduction, TIRED } from '../game/farm';
 import { nextUnlock } from '../game/progression';
 import { BEHAVIOR_LABEL } from '../learning/executive';
@@ -34,6 +37,7 @@ function jobCards(pet: Pet, unlocks: string[]): JobCard[] {
     { id: 'forage', title: BEHAVIOR_LABEL.forage, blurb: 'Approach a ripe berry, then gather it. +1 coin.', needs: 'Approach', locked: hasNav ? undefined : 'Needs a saved Approach skill' },
     { id: 'deliver', title: BEHAVIOR_LABEL.deliver, blurb: 'Fetch a carrot to the bin. +3 coins.', needs: 'Fetch', locked: !unlocks.includes('carrots') ? 'Unlocks with a certified Fetch' : hasFetch ? undefined : 'Needs a saved Fetch skill' },
     { id: 'rest', title: 'Nap', blurb: 'Rest to refill energy.' },
+    { id: 'skill', title: 'Run a skill', blurb: 'Run one of your own skills, aimed at anything on the farm.', locked: customSkills(pet).length ? undefined : unlocks.includes('custom') ? 'Invent a skill in the pen first (Pet binder → New skill)' : 'Unlocks with a certified Approach' },
     { id: 'manual', title: 'Steer', blurb: 'Guide them yourself: tap tiles or use arrow keys.' },
   ];
 }
@@ -69,7 +73,15 @@ export function FarmScreen() {
       const p = st.pets.find((x) => x.id === pet.id)!;
       if (id === 'auto') p.assignment.mode = 'auto';
       else if (id === 'manual') p.assignment.mode = 'manual';
-      else { p.assignment.mode = 'job'; p.assignment.job = id; }
+      else {
+        p.assignment.mode = 'job';
+        p.assignment.job = id;
+        if (id === 'skill' && !customSkills(p).some((k) => k.name === p.assignment.skillName)) {
+          const k = customSkills(p)[0];
+          p.assignment.skillName = k?.name;
+          p.assignment.target = activeRevision(k ?? null)?.focus;
+        }
+      }
       store.runtime.exec = null; store.runtime.inv = null; st.farm.current = null;
       if (id === 'forage' || id === 'deliver' || id === 'auto') st.progress.flags.assignedJob = true;
     });
@@ -165,6 +177,21 @@ export function FarmScreen() {
                   <button key={n} role="radio" aria-checked={pet.assignment.navigator === n} className={pet.assignment.navigator === n ? 'on' : ''} disabled={n === 'Avoid' && !canAvoid} onClick={() => setNav(n)} title={n === 'Avoid' && !canAvoid ? 'Teach Avoid first' : undefined}>{n}</button>
                 ))}
               </div>
+            </div>
+          )}
+          {selected === 'skill' && (
+            <div className="sleeve-inline">
+              <label className="small">Skill{' '}
+                <select value={pet.assignment.skillName ?? ''} onChange={(e) => store.mutate((st) => { const p = st.pets.find((x) => x.id === pet.id)!; p.assignment.skillName = e.target.value; p.assignment.target = activeRevision(getSkill(p, e.target.value))?.focus; store.runtime.exec = null; store.runtime.inv = null; })}>
+                  {customSkills(pet).map((k) => <option key={k.id} value={k.name}>{k.nickname ?? k.name} (r{k.activeRev})</option>)}
+                </select>
+              </label>
+              <label className="small">aimed at{' '}
+                <select value={pet.assignment.target ?? ''} onChange={(e) => store.mutate((st) => { st.pets.find((x) => x.id === pet.id)!.assignment.target = e.target.value; store.runtime.exec = null; store.runtime.inv = null; })}>
+                  {FARM_TARGETS.map((k) => <option key={k} value={k}>{OBJECT_BY_ID[k]?.name ?? k}</option>)}
+                </select>
+              </label>
+              <span className="small muted">Ends when the skill’s own SUCCESS holds (or time runs out), then repeats.</span>
             </div>
           )}
           {selected === 'auto' && (

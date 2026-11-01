@@ -7,8 +7,10 @@ import { getSkill, saveRevision } from '../game/pets';
 import type { EpisodeTrace, EvalResult } from '../learning/episodes';
 import { applyRepair } from '../domain/repairs';
 import { snapshotStage } from '../game/state';
-import { cloneWorld, step, MOVES } from '../sim/world';
-import { navObserve } from '../learning/features';
+import { cloneWorld, step } from '../sim/world';
+import { compileEncoder } from '../learning/senses';
+import { senseDefFor, templateOf } from '../learning/skilldef';
+import type { StageSpec } from '../domain/types';
 import { feedbackKey, CAUTION_LABEL, FEEDBACK_LABEL } from '../learning/trainer';
 
 const TRACE_NAMES: Record<string, string> = {
@@ -23,13 +25,15 @@ function pct(x: number) {
   return `${Math.round(x * 100)}%`;
 }
 
-function feedbackKeys(t: EpisodeTrace, focus: string): string[] {
+/** (state, action) keys along a replayed try, using the same encoder the trainer uses. */
+function feedbackKeys(t: EpisodeTrace, stage: StageSpec): string[] {
+  const def = senseDefFor(stage);
+  const enc = compileEncoder(def.senses, stage.learner.focus);
   const w = cloneWorld(t.initial);
   const keys: string[] = [];
   for (const f of t.frames) {
-    const o = navObserve(w, focus);
-    const a = MOVES.indexOf(f.a);
-    if (o && a >= 0) keys.push(feedbackKey(o.index, a));
+    const a = def.actions.indexOf(f.a);
+    if (a >= 0) keys.push(feedbackKey(enc.index(enc.encode(w)), a));
     step(w, f.a);
   }
   return keys;
@@ -62,7 +66,7 @@ export function TrainingPanel() {
   const giveFeedback = (sign: 1 | -1) => {
     const tr = t.replay;
     if (!tr || !pet) return;
-    const keys = feedbackKeys(tr, t.stage.learner.focus);
+    const keys = feedbackKeys(tr, t.stage);
     store.mutate((g) => {
       const pp = g.pets.find((x) => x.id === pet.id)!;
       const fb = (pp.feedback[t.stage.id] ??= {});
@@ -144,7 +148,7 @@ export function TrainingPanel() {
       x.evalN = e.count / r.after.episodes;
       ledger.set(e.ruleId, x);
     }
-    const isNav = t.stage.learner.skill !== 'Fetch';
+    const isNav = templateOf(t.stage) === 'sense';
     return (
       <div className="report">
         <div className={`verdict ${r.passed ? 'good' : 'warn'}`}>

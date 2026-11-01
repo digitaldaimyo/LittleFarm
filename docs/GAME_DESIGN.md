@@ -29,6 +29,7 @@ Berry bushes regrow in 28 ticks and carrots in 44. A pond sits between the bushe
 ## Progression
 | Unlock | How |
 |---|---|
+| Your own skills | A certified Approach |
 | Fetch lessons | Certified Approach + 5 coins earned |
 | Carrot patches | A certified Fetch |
 | Avoid lessons | 12 coins earned (after Fetch) |
@@ -39,6 +40,9 @@ Unlocks add **vocabulary** (new cards and skills) and **problems** (carrots need
 ## Reward hacking as discovery
 The *Treat for every pickup* recipe pays +3 per pickup with no limit. Pets reliably learn to pick up and put down the berry over and over: about 30 pickups per try and 0% deliveries, while treats per try climb as success falls. The report says **Loophole found!**, shows a replay of the worst try, explains which rule paid, and offers the repair card *Pay only once per object*. After the repair, retraining delivers most of the time (the test suite requires at least +40 points). Nothing is ever lost: the stage has Undo, and saving an uncertified revision never replaces a certified active one.
 
+## Your own skills
+Players invent behaviors by combining **senses**, **abilities** and **rules**. A small catalog of senses with visible costs (the "situations to learn" meter) is the core trade-off: more attention means a smarter pet that needs more practice. Two example lessons (*Wait for it*, *Keep clear*) show "do a thing and hold it" and "keep doing something until time's up". A custom skill keeps its own revision history, signature and provenance. On the farm, **Run a skill** points it at any object. A skill trained to wait on a target will happily wait on the bin.
+
 ## Mastery and curriculum
 Lessons are promoted when held-out success meets the stage minimum (Approach/Avoid 80%, Fetch 65%, n=20 unseen layouts). The Curriculum binder shows **mastery** (at save time), **retention** (re-test with current skills), and **transfer** (10 bigger, unseen pens) separately. You can clone a stage without sharing node identity.
 
@@ -48,4 +52,4 @@ Entries are grounded templates filled from real events: adoption, skill learned 
 ## Content
 - Two-plus pet palettes (Meadow, Plum, Sky, Moss) and seven name suggestions.
 - Objects: berry, carrot, target, bin, pond, rock, tree, fence, plus farm-only home, berry bush and carrot patch.
-- Recipes: *Go to the berry*, *Bring it home*, *Avoid the pond*, *Treat for every pickup* (experiment).
+- Recipes: *Go to the berry*, *Bring it home*, *Avoid the pond*, *Treat for every pickup* (experiment), and custom-skill examples *Wait for it* and *Keep clear*.

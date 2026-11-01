@@ -7,6 +7,8 @@ import type { SerializedQ } from '../learning/qtable';
 import type { EpisodeTrace } from '../learning/episodes';
 import type { NavigatorName, Pet } from '../game/types';
 import { activeRevision, getSkill, navPolicyFor } from '../game/pets';
+import { sameSenseDef, senseDefFor, templateOf } from '../learning/skilldef';
+import type { SenseSkillDef } from '../learning/policies';
 import { store } from './store';
 import { trainingCost } from '../game/state';
 import { addJournal } from '../game/journal';
@@ -102,11 +104,16 @@ export function startTraining(pet: Pet, stage: StageSpec, opts: { resume: boolea
   const current = activeRevision(skill);
   let navigator: TrainingSessionState['navigator'] = null;
   let navPolicy: SerializedQ | null = null;
+  let navigatorDef: SenseSkillDef | undefined;
   if (stage.learner.skill === 'Fetch') {
     const nav = navPolicyFor(pet, stage.learner.navigator ?? 'Approach');
     if (!nav) return `Fetch reuses a movement skill. Teach ${pet.name} Approach first.`;
     navigator = { skill: nav.skill.name as NavigatorName, rev: nav.rev.rev };
     navPolicy = nav.rev.policy;
+    navigatorDef = nav.rev.learner;
+  }
+  if (opts.resume && current && templateOf(stage) === 'sense' && !sameSenseDef(current.learner, senseDefFor(stage))) {
+    return `${pet.name}'s ${stage.learner.skill} r${current.rev} was trained with different senses or abilities. Use “Train fresh” to start a new version.`;
   }
   const cost = trainingCost(stage);
   const prevSession = store.ui.training;
@@ -119,6 +126,7 @@ export function startTraining(pet: Pet, stage: StageSpec, opts: { resume: boolea
     feedback: pet.feedback[stage.id] ?? {},
     initial: unsaved ?? resumeFrom?.policy ?? null,
     navigator: navPolicy,
+    navigatorDef,
     seedOffset: resumeFrom || unsaved ? pet.stats.episodes + 17 : 0,
   };
   store.mutate((s) => {

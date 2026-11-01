@@ -13,7 +13,9 @@ import { HandCardView, ManySlot, NodeChip, Sleeve, SlotChip, cardOf, withSnapsho
 import { TrainingPanel, traceBadge } from './TrainingPanel';
 import { useReplay } from './replay';
 import { startTraining } from './training';
-import { activePet, activeRevision, getSkill, isCertified } from '../game/pets';
+import { activePet, activeRevision, getSkill, isCertified, isPreset } from '../game/pets';
+import { ABILITY_LABELS, ABILITY_ORDER, MAX_SENSES, STATE_MAX, STATE_WARN, presetSenses, stateSpaceSize } from '../learning/senses';
+import { templateOf } from '../learning/skilldef';
 import { canTrain, trainingCost, undoStage } from '../game/state';
 import { evaluate, DEFAULT_TRAITS } from '../learning/episodes';
 import { policySpecFor, heldOutSeeds } from '../learning/report';
@@ -177,11 +179,16 @@ function TrainBar({ stage, pet, blocked }: { stage: StageSpec; pet: Pet; blocked
   const t = s.ui.training;
   const busy = !!t && (t.status === 'running' || t.status === 'paused' || t.status === 'evaluating');
   const can = canTrain(pet, stage);
-  const needsNav = stage.learner.skill === 'Fetch' && !activeRevision(getSkill(pet, 'Approach')) && !activeRevision(getSkill(pet, 'Avoid'));
+  const needsNav = templateOf(stage) === 'fetch' && !activeRevision(getSkill(pet, 'Approach')) && !activeRevision(getSkill(pet, 'Avoid'));
   const preflight = () => {
     const seeds = heldOutSeeds(stage).slice(0, 10);
-    const demo = evaluate(stage, { kind: 'scripted' }, seeds, 'scripted', pet.traits, 1);
     const rnd = evaluate(stage, { kind: 'random' }, seeds, 'baseline', pet.traits, 1);
+    if (!isPreset(stage.learner.skill)) {
+      store.toast(`Preflight: there’s no scripted demo for your own skills. Random wandering succeeds ${rnd.successes}/${rnd.episodes} and earns ${rnd.meanReward.toFixed(1)} treats per try${rnd.successes === rnd.episodes ? ' — the task may be too easy to need learning' : ''}. Watch how it differs once ${pet.name} has practised.`, 'info');
+      s.setUi({ penReplay: rnd.traces[0] ?? null });
+      return;
+    }
+    const demo = evaluate(stage, { kind: 'scripted' }, seeds, 'scripted', pet.traits, 1);
     const msg = `Preflight: a scripted demonstrator (not ${pet.name}) succeeded ${demo.successes}/${demo.episodes} — the goal is reachable. Random wandering: ${rnd.successes}/${rnd.episodes}, ${rnd.meanReward.toFixed(1)} treats per try vs ${demo.meanReward.toFixed(1)} for the demo.${rnd.meanReward > demo.meanReward ? ' ⚠ Wandering earns more than finishing — check your rules!' : ''}`;
     store.toast(msg, rnd.meanReward > demo.meanReward || demo.successRate < 0.9 ? 'warn' : 'info');
     s.setUi({ penReplay: demo.traces[0] ?? null });
@@ -346,27 +353,67 @@ function Diagnostics({ stage }: { stage: StageSpec }) {
 
 function PetBinder({ stage, pet }: { stage: StageSpec; pet: Pet }) {
   const s = useStore();
-  const kinds = [...placedKinds(stage)].filter((k) => !REGISTRY.objects.get(k)?.solid && !REGISTRY.objects.get(k)?.hazard);
+  const kinds = [...placedKinds(stage)].filter((k) => !REGISTRY.objects.get(k)?.solid);
   const update = (fn: (st: StageSpec) => void) => withSnapshot(stage.id, fn);
-  const skills: StageSpec['learner']['skill'][] = ['Approach', 'Avoid', 'Fetch'];
+  const skills: string[] = ['Approach', 'Avoid', 'Fetch'];
+  const custom = !isPreset(stage.learner.skill);
+  const template = templateOf(stage);
+  const canInvent = s.state.progress.unlocks.includes('custom');
   const lockedSkill = (k: string) => (k === 'Fetch' && !s.state.progress.unlocks.includes('fetch') ? 'Unlocks after earning 5 coins with a certified Approach' : k === 'Avoid' && !s.state.progress.unlocks.includes('avoid') ? 'Unlocks after earning 12 coins' : null);
+  const newSkill = () => {
+    const name = prompt('Name your new skill (e.g. “Guard the bin”, “Wait for it”)', '');
+    if (!name?.trim()) return;
+    const clean = name.trim().slice(0, 24);
+    if (isPreset(clean)) return store.toast(`“${clean}” is a built-in skill — pick another name.`, 'warn');
+    store.mutate((g) => {
+      const st = cloneStage(stage, true, newId('stage'));
+      st.name = clean;
+      st.version = 1;
+      st.recipeId = 'custom';
+      st.learner = { skill: clean, template: 'sense', focus: stage.learner.focus, episodes: 2000, senses: [node('sense.nearest', { what: node('ref.target') }), node('sense.blocked'), node('sense.heading')] };
+      st.abilities = ['move', 'stay'];
+      st.outcome = 'reach';
+      st.rules = [];
+      st.success = null;
+      st.fail = null;
+      st.maxTicks = 50;
+      st.evaluation.minimumSuccessRate = 0.7;
+      g.stages.push(st);
+      g.activeStageId = st.id;
+    });
+    store.setUi({ binder: 'pet', slot: null });
+    store.toast(`New skill “${clean}”. Choose what it senses and can do, then write its rules.`, 'good');
+  };
   return (
     <div className="binder-body">
-      <h4>This lesson teaches</h4>
-      <div className="seg" role="radiogroup" aria-label="Skill">
-        {skills.map((k) => <button key={k} role="radio" aria-checked={stage.learner.skill === k} className={stage.learner.skill === k ? 'on' : ''} disabled={!!lockedSkill(k)} title={lockedSkill(k) ?? undefined} onClick={() => update((st) => {
-          st.learner.skill = k;
-          st.abilities = k === 'Fetch' ? ['move', 'pickup', 'drop'] : ['move'];
-          if (k === 'Fetch') { st.learner.destination ??= 'bin'; st.learner.navigator ??= 'Approach'; st.maxTicks = Math.max(st.maxTicks, 80); st.learner.episodes = 400; st.evaluation.minimumSuccessRate = 0.65; }
-          else { st.learner.episodes = k === 'Avoid' ? 8000 : 1500; st.evaluation.minimumSuccessRate = 0.8; }
-        })}>{k}</button>)}
+      <div className="row between">
+        <h4>This lesson teaches</h4>
+        <button className="btn ghost small" disabled={!canInvent} title={canInvent ? undefined : 'Unlocks once your pet has a certified Approach'} onClick={newSkill}>+ New skill…</button>
       </div>
-      <label className="param-edit">Aimed at
+      {custom ? (
+        <label className="param-edit">Skill name
+          <input value={stage.learner.skill} maxLength={24} onChange={(e) => { const v = e.target.value; if (isPreset(v.trim())) return; update((st) => { st.learner.skill = v; st.name = v || st.name; }); }} />
+          <span className="small muted">Your own skill. Pets keep a separate history for every name.</span>
+        </label>
+      ) : (
+        <div className="seg" role="radiogroup" aria-label="Skill">
+          {skills.map((k) => <button key={k} role="radio" aria-checked={stage.learner.skill === k} className={stage.learner.skill === k ? 'on' : ''} disabled={!!lockedSkill(k)} title={lockedSkill(k) ?? undefined} onClick={() => update((st) => {
+            st.learner.skill = k;
+            st.learner.template = k === 'Fetch' ? 'fetch' : 'sense';
+            st.abilities = k === 'Fetch' ? ['move', 'pickup', 'drop'] : ['move'];
+            if (k !== 'Fetch') st.learner.senses = presetSenses();
+            if (k === 'Fetch') { st.learner.destination ??= 'bin'; st.learner.navigator ??= 'Approach'; st.maxTicks = Math.max(st.maxTicks, 80); st.learner.episodes = 400; st.evaluation.minimumSuccessRate = 0.65; }
+            else { st.learner.episodes = k === 'Avoid' ? 8000 : 1500; st.evaluation.minimumSuccessRate = 0.8; }
+          })}>{k}</button>)}
+        </div>
+      )}
+      <label className="param-edit">Aimed at <span className="small muted">(“the target” in cards — re-aim it later without retraining)</span>
         <select value={stage.learner.focus} onChange={(e) => update((st) => { st.learner.focus = e.target.value; })}>
           {[...new Set([stage.learner.focus, ...kinds])].map((k) => <option key={k} value={k}>{REGISTRY.objects.get(k)?.name ?? k}</option>)}
         </select>
       </label>
-      {stage.learner.skill === 'Fetch' && (
+      {template === 'sense' && <SenseEditor stage={stage} update={update} custom={custom} />}
+      {template === 'fetch' && (
         <>
           <label className="param-edit">Deliver into
             <select value={stage.learner.destination ?? 'bin'} onChange={(e) => update((st) => { st.learner.destination = e.target.value; })}>
@@ -382,8 +429,12 @@ function PetBinder({ stage, pet }: { stage: StageSpec; pet: Pet }) {
         </>
       )}
       <label className="param-edit">Practice tries
-        <input type="range" min={stage.learner.skill === 'Fetch' ? 100 : 300} max={stage.learner.skill === 'Avoid' ? 12000 : 4000} step={100} value={stage.learner.episodes} onChange={(e) => update((st) => { st.learner.episodes = Number(e.target.value); })} />
+        <input type="range" min={template === 'fetch' ? 100 : 300} max={template === 'fetch' ? 4000 : 12000} step={100} value={stage.learner.episodes} onChange={(e) => update((st) => { st.learner.episodes = Number(e.target.value); })} />
         <span className="num">{stage.learner.episodes}</span>
+      </label>
+      <label className="param-edit">Time per try
+        <input type="range" min={10} max={120} step={5} value={stage.maxTicks} onChange={(e) => update((st) => { st.maxTicks = Number(e.target.value); })} />
+        <span className="num">{stage.maxTicks} steps</span>
       </label>
       <h4>{pet.name}’s temperament</h4>
       <p className="small muted">Stable tendencies, separate from learned skills. Each slider changes real learning parameters.</p>
@@ -391,6 +442,41 @@ function PetBinder({ stage, pet }: { stage: StageSpec; pet: Pet }) {
       <Trait pet={pet} k="persistence" label="Persistence" help="How long they keep trying before giving up: movement time limit scales 1×–2×." />
       <Trait pet={pet} k="caution" label="Caution" help="During lessons, stepping into hazards costs up to 3 extra treats (shown in the ledger)." />
     </div>
+  );
+}
+
+function SenseEditor({ stage, update, custom }: { stage: StageSpec; update: (fn: (st: StageSpec) => void) => void; custom: boolean }) {
+  const s = useStore();
+  const senses = stage.learner.senses ?? presetSenses();
+  const size = stateSpaceSize(senses);
+  const errs = nodesWithErrors(validateStage(stage, REGISTRY, new Set(s.state.progress.unlocks)));
+  const pctBudget = Math.min(100, (100 * Math.log10(Math.max(1, size))) / Math.log10(STATE_MAX));
+  return (
+    <>
+      <h4>Senses <span className="muted small">— what {custom ? 'it' : 'this skill'} pays attention to</span></h4>
+      <div className="many senses">
+        {senses.map((n, i) => <NodeChip key={n.id} stage={stage} n={n} slot={{ parentId: '#senses', socket: 'senses', index: i }} errors={errs} />)}
+        {senses.length < MAX_SENSES && <SlotChip stage={stage} slot={{ parentId: '#senses', socket: 'senses', index: null }} label="+ sense" errors={errs} />}
+      </div>
+      <div className="budget" aria-label={`${size} situations to learn`}>
+        <div className={`bar ${size > STATE_WARN ? 'warn' : ''}`} role="meter" aria-valuemin={0} aria-valuemax={STATE_MAX} aria-valuenow={size}><i style={{ width: `${pctBudget}%` }} /></div>
+        <span className="small"><b className="num">{size.toLocaleString()}</b> situations to learn {size > STATE_MAX ? '— too many!' : size > STATE_WARN ? '— needs lots of practice' : ''}</span>
+      </div>
+      <p className="small muted">More senses = smarter but slower to learn. Each sense multiplies the situations your pet must practise.</p>
+      <h4>Abilities</h4>
+      <div className="row gap wrap" role="group" aria-label="Abilities">
+        {ABILITY_ORDER.map((a) => {
+          const on = stage.abilities.includes(a);
+          return <button key={a} className={`chip-btn ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => update((st) => { st.abilities = on ? st.abilities.filter((x) => x !== a) : ABILITY_ORDER.filter((x) => x === a || st.abilities.includes(x)); })}>{on ? '✓ ' : ''}{ABILITY_LABELS[a]}</button>;
+        })}
+      </div>
+      <h4>Judging success</h4>
+      <div className="seg" role="radiogroup" aria-label="Outcome">
+        <button role="radio" aria-checked={stage.outcome !== 'survive'} className={stage.outcome !== 'survive' ? 'on' : ''} onClick={() => update((st) => { st.outcome = 'reach'; })}>Done when SUCCESS happens</button>
+        <button role="radio" aria-checked={stage.outcome === 'survive'} className={stage.outcome === 'survive' ? 'on' : ''} onClick={() => update((st) => { st.outcome = 'survive'; })}>Judge when time is up</button>
+      </div>
+      {s.ui.slot?.parentId === '#senses' && <Sleeve stage={stage} onChange={update} />}
+    </>
   );
 }
 
@@ -411,8 +497,8 @@ function CurriculumBinder({ stage, pet }: { stage: StageSpec; pet: Pet }) {
     const skill = getSkill(pet, st.learner.skill);
     const rev = activeRevision(skill);
     if (!rev) return store.toast(`${pet.name} has no ${st.learner.skill} skill yet.`, 'warn');
-    const nav = st.learner.skill === 'Fetch' ? activeRevision(getSkill(pet, st.learner.navigator ?? 'Approach'))?.policy ?? null : null;
-    const r = evaluate(st, policySpecFor(st, rev.policy, nav), heldOutSeeds(st), 'evaluation', pet.traits ?? DEFAULT_TRAITS);
+    const navRev = templateOf(st) === 'fetch' ? activeRevision(getSkill(pet, st.learner.navigator ?? 'Approach')) : null;
+    const r = evaluate(st, policySpecFor(st, rev.policy, navRev?.policy ?? null, navRev?.learner, rev.learner), heldOutSeeds(st), 'evaluation', pet.traits ?? DEFAULT_TRAITS);
     store.mutate((g) => {
       const p = g.pets.find((x) => x.id === pet.id)!;
       const m = p.mastery[st.id];
@@ -471,7 +557,7 @@ function BehaviorsBinder({ pet }: { pet: Pet }) {
         const r = activeRevision(k);
         return (
           <div key={k.id} className="behavior-card">
-            <div className="row between"><strong>{k.nickname ?? k.name}</strong><span className={`chip ${isCertified(k) ? 'good' : ''}`}>r{k.activeRev}{isCertified(k) ? ' · certified' : ''}</span></div>
+            <div className="row between"><strong>{k.nickname ?? k.name}{k.custom && <span className="chip">your own</span>}</strong><span className={`chip ${isCertified(k) ? 'good' : ''}`}>r{k.activeRev}{isCertified(k) ? ' · certified' : ''}</span></div>
             <code className="small">{k.signature}</code>
             <div className="small muted">Starts when: {k.initiation} Ends: {k.termination}</div>
             {r && <div className="small">Held-out success {Math.round(r.eval.successRate * 100)}% (n={r.eval.episodes}) · trained on “{r.stageName}”{r.provenance.navigator ? ` · uses ${r.provenance.navigator.skill} (currently r${getSkill(pet, r.provenance.navigator.skill)?.activeRev ?? '?'})` : ''}</div>}

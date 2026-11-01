@@ -23,7 +23,14 @@ We get there in small steps. Each milestone ships a playable game, keeps every c
 
 ---
 
-## Milestone 1: Custom skills and senses (the foundation)
+## Milestone 1: Custom skills and senses (the foundation) — ✅ shipped
+
+> **Status:** done. Differences from the plan below:
+> - The timer sense shipped as **Patience** (`sense.still`), alongside `ev.stay`, `cond.stayedFor`, `cond.farFrom` and `cond.and`. `eff.endAfter` wasn't needed: the same thing is written as a rule with `cond.stayedFor` + End try.
+> - Added **"the target"** (`ref.target`): a Kind card that means whatever the skill is aimed at. It lets a skill be re-aimed without retraining.
+> - Added **"Judge when time is up"** lessons (`outcome: 'survive'`) so "keep doing X" skills are expressible.
+> - Pulled a small piece of M4 forward: a farm job, **Run a skill**, that runs any of your own skills aimed at any farm object.
+> - Skills stay keyed by name (unique per pet) rather than id. Custom names can't reuse a preset's name.
 
 **Player-facing:** "New skill…" in the Pet binder. You name it, pick a learner template, choose up to 3 **Sense** cards and the **Abilities** it may use, then write rules as today. Approach, Avoid and Fetch become one-tap presets built from the same parts.
 
@@ -56,9 +63,9 @@ Example skills that become possible:
 - A skill's **parameters** (e.g. the kind its `sense.nearest` points at) can be re-bound at call time, the way Approach(berry) is reused as Approach(carrot) today.
 
 **Gate**
-- [ ] Existing benchmark within ±5 points on all presets. Save migration test: a v1 save loads and its skills still act identically.
-- [ ] New benchmark rows: *Wait for it* and *Keep clear* beat random on held-out layouts by ≥ 30 points.
-- [ ] A "surprise" test: a player-built skill using only cards (no code) learns something not in the starter set.
+- [x] Existing benchmark within ±5 points on all presets: identical numbers. Save migration test: a v1 fixture save loads and its skills act move-for-move identically (`tests/milestone1.test.ts`).
+- [x] New benchmark rows: *Wait for it* (88% mean vs 0% random) and *Keep clear* (85% vs 10%).
+- [x] "Surprise" test: *Shadow the bin* (end next to the bin, not on it, and stay), written only with cards in the test, beats random by ≥ 30 points.
 
 **Cut line if time is short:** drop `sense.timer` and ship `stay` + `cond.stayedFor` only.
 

@@ -64,11 +64,14 @@ function SkillHistory({ pet, k }: { pet: Pet; k: Skill }) {
   const [cmp, setCmp] = useState<string | null>(null);
   const compare = () => {
     if (k.revisions.length < 2) return;
-    const stage = recipeStage(k.name === 'Approach' ? 'go-to-berry' : k.name === 'Avoid' ? 'avoid-pond' : 'bring-it-home');
+    // Presets compare on their standard lesson; your own skills on the lesson of their latest revision.
+    const own = s.state.stages.find((x) => x.id === k.revisions.at(-1)?.stageId);
+    const stage = k.custom ? own : recipeStage(k.name === 'Approach' ? 'go-to-berry' : k.name === 'Avoid' ? 'avoid-pond' : 'bring-it-home');
+    if (!stage) { setCmp('The lesson this skill was trained in was deleted, so there’s nothing to compare on.'); return; }
     const seeds = heldOutSeeds(stage);
-    const nav = k.name === 'Fetch' ? activeRevision(pet.skills.find((x) => x.name === (k.navigator ?? 'Approach')) ?? null)?.policy ?? null : null;
+    const navRev = k.name === 'Fetch' ? activeRevision(pet.skills.find((x) => x.name === (k.navigator ?? 'Approach')) ?? null) : null;
     const rows = k.revisions.slice(-4).map((r) => {
-      const e = evaluate(stage, policySpecFor(stage, r.policy, nav), seeds, 'evaluation', pet.traits, 0);
+      const e = evaluate(stage, policySpecFor(stage, r.policy, navRev?.policy ?? null, navRev?.learner, r.learner), seeds, 'evaluation', pet.traits, 0);
       return `r${r.rev}: ${e.successes}/${e.episodes}`;
     });
     setCmp(`Same ${seeds.length} held-out layouts of the standard “${stage.name}” lesson → ${rows.join(' · ')}`);
@@ -76,9 +79,10 @@ function SkillHistory({ pet, k }: { pet: Pet; k: Skill }) {
   return (
     <div className="behavior-card">
       <div className="row between">
-        <strong>{k.name}</strong>
+        <strong>{k.name}{k.custom && <span className="chip">your own</span>}</strong>
         <span className={`chip ${isCertified(k) ? 'good' : ''}`}>active r{k.activeRev}</span>
       </div>
+      {k.custom && <code className="small">{k.signature}</code>}
       <label className="small">Nickname <input value={k.nickname ?? ''} placeholder={k.name} maxLength={24} onChange={(e) => s.mutate((g) => { const kk = g.pets.find((p) => p.id === pet.id)!.skills.find((x) => x.id === k.id)!; kk.nickname = e.target.value || undefined; })} /></label>
       <table className="ledger">
         <thead><tr><th>Rev</th><th>Lesson</th><th>Tries</th><th>Held-out</th><th>Before</th><th>Transfer</th><th /></tr></thead>

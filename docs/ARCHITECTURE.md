@@ -36,7 +36,22 @@ The same simulator runs pens, evaluation and the farm. Fixed seed + fixed action
 
 ## Learning
 
-**Level A, movement skills (Approach, Avoid):** tabular Double Q-learning over a factored, layout-independent observation: direction to the nearest focus object (9) × distance bucket (3) × blocked neighbours (16) × hazard neighbours (16) × last heading (4). That's 27,648 states, stored sparsely. Moving into walls is illegal and masked. Rarely visited states back off to coarser views (ignore hazards, then walls). Settings: ε-greedy, decaying to a floor set by *Curiosity*; α = 0.25, γ = 0.95. Avoid is the same learner trained in pens with ponds and a fail condition, so it learns to read the hazard bits.
+### Templates, senses and abilities (Milestone 1)
+A lesson's `LearnerSpec` has a **template**:
+- `sense`: a tabular learner over player-chosen **Sense cards**. Approach and Avoid are presets of it.
+- `fetch`: the option controller.
+
+`learning/senses.ts` compiles sense cards into a mixed-radix `SenseEncoder`. The radix of each card is declared on its `CardDef`. The preset `[Where is the target (27), Walls (16), Hazards (16), Last heading (4)]` reproduces the v1 index exactly, so v1 policies load unchanged (tested move-for-move against a fixture).
+
+**Abilities** (`move`, `stay`, `pickup`, `drop`) map to an ordered action list. Physically impossible actions (walking into walls, dropping with empty paws) are always masked. Backoff for rarely seen states zeroes droppable senses in a fixed order: hazards, walls, patience, carrying, standing-on.
+
+Validation enforces 1–5 senses and a **state budget**: it warns above 50k situations and errors above 100k.
+
+`ref.target` is a Kind card resolved at compile time (`withTarget`) to the skill's focus. Every saved revision stores its own `{ senses, actions }`, focus, SUCCESS condition and outcome mode. Evaluation, comparison and the farm always use the revision's own definition, never the current lesson's. *Refine* refuses when the senses changed. `outcome: 'survive'` lessons judge SUCCESS when time runs out (and only if FAIL never held).
+
+Saves are v2. The v1 → v2 migration adds templates and explicit preset senses.
+
+**Level A, movement skills (Approach, Avoid; presets of the `sense` template):** tabular Double Q-learning over a factored, layout-independent observation: direction to the nearest focus object (9) × distance bucket (3) × blocked neighbours (16) × hazard neighbours (16) × last heading (4). That's 27,648 states, stored sparsely. Moving into walls is illegal and masked. Rarely visited states back off to coarser views (ignore hazards, then walls). Settings: ε-greedy, decaying to a floor set by *Curiosity*; α = 0.25, γ = 0.95. Avoid is the same learner trained in pens with ponds and a fail condition, so it learns to read the hazard bits.
 
 **Level B, reusable options:** every saved skill has a typed signature, initiation and termination text, a timeout (scaled by *Persistence*), an evaluator (the held-out report), a revision number and provenance. `Fetch(item, into)` is a learned SMDP controller (16 states: carrying × on item × at bin × item visible; options goItem / goDest / pick / drop, with illegal options masked). Its movement options call the pet's **currently active** Approach or Avoid revision. Swapping the Approach revision changes Fetch behaviour without retraining Fetch (tested).
 

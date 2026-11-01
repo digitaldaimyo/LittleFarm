@@ -315,3 +315,8 @@ button.node { padding: 2px 9px; font-weight: 600; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
 .tutorial .grow { flex: 1 1 260px; }
+
+.chip-btn.on { background: var(--leaf-tint); border-color: var(--leaf); color: var(--leaf-ink); font-weight: 600; }
+.g-sense { border-color: #E3A9C6; background: #FBE9F2; color: #7A2A55; }
+.senses { padding: 4px 0; }
+.budget { display: grid; grid-template-columns: 1fr; gap: 4px; }
