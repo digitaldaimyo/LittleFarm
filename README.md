@@ -91,3 +91,4 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 | `docs/TESTING.md` | Test suites, benchmark results, performance, browser checks |
 | `docs/ROADMAP.md` | The expansion roadmap (all six milestones shipped) and what could come next |
 | `docs/TUTORIAL_PLAN.md` | The Field Guide's design, the evidence behind each lesson, and what shipped |
+| `docs/SOUND_PLAN.md` | Plan for sound effects, ambience, music and sound settings (not started) |

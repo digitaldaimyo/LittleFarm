@@ -232,4 +232,4 @@ Not committed; listed roughly smallest first.
 - **Routines over Fetch and other routines:** allow nesting (with a depth limit and a cycle check) so *Morning chores* can include deliveries.
 - **A built-in Guard job** for plans, or a recipe for one, since guarding crops currently needs a player-made skill.
 - **Exposed template parameters:** templates store `exposed` fields but there's no editing UI yet.
-- **Sound** (optional, offline, procedurally generated).
+- **Sound:** planned in `docs/SOUND_PLAN.md` (procedural effects, ambience, optional generative music, sound settings).
