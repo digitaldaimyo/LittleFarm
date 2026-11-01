@@ -3,7 +3,7 @@ import { REGISTRY } from '../domain/registry';
 import { node } from '../domain/spec';
 import { resolveKind } from '../sim/compile';
 import type { Action, World } from '../sim/world';
-import { DIRS, MOVES, def, inArea, isHazardAt, isSolidAt, nearest, objectsAt, type Area } from '../sim/world';
+import { DIRS, MOVES, def, inArea, isHazardAt, isSolidAt, nearest, nudgeableGate, objectsAt, type Area } from '../sim/world';
 
 /**
  * Compiles player-chosen Sense cards into a mixed-radix state encoder.
@@ -102,6 +102,10 @@ function senseFn(n: SpecNode, target: string): (w: World) => number {
         return ((Math.sign(dx) + 1) * 3 + (Math.sign(dy) + 1)) * 3 + (d <= 1 ? 0 : d <= 3 ? 1 : 2);
       };
     }
+    case 'sense.gate':
+      return (w) => { const g = nearest(w, 'gate'); return !g ? 0 : g.open ? 1 : 2; };
+    case 'sense.rain':
+      return (w) => (w.raining ? 1 : 0);
     case 'sense.water':
       return (w) => ((w.pet.water ?? 0) > 0 ? 1 : 0);
     case 'sense.night':
@@ -183,9 +187,9 @@ export function compileEncoder(senses: SpecNode[], target: string): SenseEncoder
 }
 
 /** Ability cards → ordered primitive action set. Order is fixed so presets keep the legacy 4-action layout. */
-export const ABILITY_ACTIONS: Record<string, Action[]> = { move: MOVES, stay: ['wait'], pickup: ['pick'], drop: ['drop'], water: ['water'], shoo: ['shoo'] };
-export const ABILITY_LABELS: Record<string, string> = { move: 'Move', stay: 'Stay', pickup: 'Pick up', drop: 'Put down', water: 'Water', shoo: 'Shoo' };
-export const ABILITY_ORDER = ['move', 'stay', 'pickup', 'drop', 'water', 'shoo'];
+export const ABILITY_ACTIONS: Record<string, Action[]> = { move: MOVES, stay: ['wait'], pickup: ['pick'], drop: ['drop'], water: ['water'], shoo: ['shoo'], nudge: ['nudge'] };
+export const ABILITY_LABELS: Record<string, string> = { move: 'Move', stay: 'Stay', pickup: 'Pick up', drop: 'Put down', water: 'Water', shoo: 'Shoo', nudge: 'Nudge gate' };
+export const ABILITY_ORDER = ['move', 'stay', 'pickup', 'drop', 'water', 'shoo', 'nudge'];
 
 export function actionsFor(abilities: string[]): Action[] {
   const out: Action[] = [];
@@ -203,6 +207,8 @@ export function legalActionIdx(w: World, actions: Action[]): number[] {
       if (w.pet.carrying === null && objectsAt(w, w.pet.x, w.pet.y).some((o) => def(o.kind).carryable)) out.push(i);
     } else if (a === 'drop') {
       if (w.pet.carrying !== null) out.push(i);
+    } else if (a === 'nudge') {
+      if (nudgeableGate(w)) out.push(i);
     } else if (a === 'shoo') {
       if (w.objects.some((o) => !o.carried && !o.delivered && def(o.kind).mover && Math.abs(o.x - w.pet.x) + Math.abs(o.y - w.pet.y) <= 1)) out.push(i);
     } else if (a === 'water') {

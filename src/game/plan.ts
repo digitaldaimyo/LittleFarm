@@ -49,7 +49,7 @@ export interface CompiledRow {
 
 const JOB_BEHAVIOR: Record<string, BehaviorId> = {
   'job.forage': 'forage', 'job.deliver': 'deliver', 'job.catch': 'catch', 'job.nap': 'rest',
-  'job.wander': 'wander', 'job.goto': 'goto', 'job.skill': 'skill',
+  'job.wander': 'wander', 'job.goto': 'goto', 'job.skill': 'skill', 'job.gate': 'gate',
 };
 
 export function compilePlan(plan: FarmPlan): CompiledRow[] {
@@ -60,7 +60,8 @@ export function compilePlan(plan: FarmPlan): CompiledRow[] {
     const args: Record<string, string> = { row: r.id };
     if (j) {
       const nav = paramOf(j, 'navigator', 'Approach');
-      if (['forage', 'deliver', 'catch', 'goto'].includes(behaviorId)) args.navigator = nav;
+      if (['forage', 'deliver', 'catch', 'goto', 'gate'].includes(behaviorId)) args.navigator = nav;
+      if (behaviorId === 'gate') args.state = paramOf(j, 'state', 'closed');
       if (behaviorId === 'forage') args.target = 'berry';
       if (behaviorId === 'catch') args.target = 'firefly';
       if (behaviorId === 'deliver') args.into = 'bin';
@@ -86,6 +87,7 @@ export function jobPossible(p: Pet, w: World, ctx: ExecContext, job: CompiledRow
     case 'catch': return !!nav && !!ctx.firefly && !ctx.carrying;
     case 'goto': return !!nav && !!nearest(w, job.args.target) && !atFocus(w, job.args.target);
     case 'skill': return !!activeRevision(getSkill(p, job.args.skill ?? ''));
+    case 'gate': return w.objects.some((o) => o.kind === 'gate' && !o.carried && !o.delivered && !!o.open !== (job.args.state === 'open'));
     default: return false;
   }
 }

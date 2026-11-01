@@ -1,5 +1,6 @@
 import type { Action, SimEvent, World } from '../sim/world';
-import { addObject, bfsPath, emptyWorld, inArea, nearest, objectsAt, onGround, step } from '../sim/world';
+import { addObject, bfsPath, emptyWorld, inArea, nearest, nudgeableGate, objectsAt, onGround, step } from '../sim/world';
+import { nightfallRequests, postRequests, trackRequests } from './requests';
 import { Rng } from '../sim/rng';
 import { FetchController, FetchRun, NavRun, SkillRun, isDone, randomMove, type ExecStep } from '../learning/policies';
 import { navTimeout } from '../learning/episodes';
@@ -126,6 +127,41 @@ export function farmContext(s: GameState, pet: Pet, recentFail: boolean): ExecCo
   };
 }
 
+/** Gentle weather: from day 2, the odd daytime shower waters every plot and swells the pond by a tile. */
+function updateWeather(s: GameState, rt: FarmRuntime, fx: FarmFx[]): void {
+  const f = s.farm;
+  const w = f.world;
+  const { night, day } = dayInfo(f.tick);
+  if (w.raining && f.rainUntil !== undefined && f.tick >= f.rainUntil) {
+    w.raining = false;
+    const gone = new Set(f.puddles ?? []);
+    w.objects = w.objects.filter((o) => !gone.has(o.id));
+    f.puddles = [];
+    f.rainUntil = undefined;
+    addJournalOnce(s, null, 'first-rain-end', 'The rain stopped. The extra puddle by the pond soaked away.');
+  } else if (!w.raining && !night && day >= 2 && rt.rng.next() < 1 / 700) {
+    w.raining = true;
+    f.rainUntil = f.tick + 180 + rt.rng.int(220);
+    w.objects = w.objects.filter((o) => o.kind !== 'crow'); // crows shelter from the rain
+    const ponds = w.objects.filter((o) => o.kind === 'pond' && onGround(o));
+    const spots: [number, number][] = [];
+    for (const p of ponds) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const x = p.x + dx, y = p.y + dy;
+      if (x < 0 || y < 0 || x >= w.w || y >= w.h || objectsAt(w, x, y).length || (w.pet.x === x && w.pet.y === y)) continue;
+      if ((w.areas ?? []).some((a) => inArea(a, x, y))) continue;
+      spots.push([x, y]);
+    }
+    f.puddles = [];
+    if (spots.length) {
+      const [x, y] = spots[rt.rng.int(spots.length)];
+      f.puddles.push(addObject(w, 'pond', x, y).id);
+    }
+    fx.push({ type: 'splash', x: w.pet.x, y: w.pet.y, text: 'rain' });
+    addJournalOnce(s, null, 'first-rain', 'It started to rain! Every bush and patch got a free watering, and the pond swelled by a tile.');
+  }
+  if (w.raining) for (const o of w.objects) if ((o.kind === 'bush' || o.kind === 'patch') && !o.wet) o.wet = true;
+}
+
 /** Chickens lay in the coop; crows visit by day once you can teach your own skills. */
 function updateCreatures(s: GameState, rt: FarmRuntime, fx: FarmFx[]): void {
   const w = s.farm.world;
@@ -147,7 +183,7 @@ function updateCreatures(s: GameState, rt: FarmRuntime, fx: FarmFx[]): void {
   const crows = w.objects.filter((o) => o.kind === 'crow' && onGround(o));
   if (w.night) {
     if (crows.length) w.objects = w.objects.filter((o) => o.kind !== 'crow');
-  } else if (!crows.length && s.progress.unlocks.includes('custom') && s.farm.tick >= DAY_TICKS && rt.rng.next() < 1 / 250) {
+  } else if (!crows.length && !w.raining && s.progress.unlocks.includes('custom') && s.farm.tick >= DAY_TICKS && rt.rng.next() < 1 / 250) {
     const edge: [number, number][] = [];
     for (let x = 0; x < w.w; x++) for (const y of [0, w.h - 1]) if (free(x, y)) edge.push([x, y]);
     for (let y = 1; y < w.h - 1; y++) for (const x of [0, w.w - 1]) if (free(x, y)) edge.push([x, y]);
@@ -163,8 +199,11 @@ function updateCreatures(s: GameState, rt: FarmRuntime, fx: FarmFx[]): void {
 function updateClock(s: GameState, rt: FarmRuntime, fx: FarmFx[]): void {
   const w = s.farm.world;
   const { night, day } = dayInfo(s.farm.tick);
+  if (!s.farm.requests && s.pets.length) postRequests(s, rt.rng, day); // first board of the game
   if (night === !!w.night) return;
   w.night = night;
+  if (night) nightfallRequests(s);
+  else postRequests(s, rt.rng, day);
   if (night) {
     const free: [number, number][] = [];
     for (let y = 0; y < w.h; y++) for (let x = 0; x < w.w; x++) {
@@ -216,6 +255,22 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
     }
     case 'goto':
       return new NavRun(nav, inv.args.target ?? 'home', tmo, rt.rng);
+    case 'gate': {
+      // Walk next to the nearest gate in the wrong state, then nudge it.
+      const want = inv.args.state === 'open';
+      let t = 0;
+      return {
+        next(world) {
+          const g = world.objects.filter((o) => o.kind === 'gate' && onGround(o) && !!o.open !== want)
+            .sort((a, b) => (Math.abs(a.x - world.pet.x) + Math.abs(a.y - world.pet.y)) - (Math.abs(b.x - world.pet.x) + Math.abs(b.y - world.pet.y)))[0];
+          if (!g) return { done: 'success', reason: 'gate set' };
+          if (t++ >= inv.timeout) return { done: 'fail', reason: 'timeout' };
+          if (Math.abs(g.x - world.pet.x) + Math.abs(g.y - world.pet.y) <= 1 && nudgeableGate(world) === g) return 'nudge';
+          if (Math.abs(g.x - world.pet.x) + Math.abs(g.y - world.pet.y) === 0) return randomMove(world, rt.rng); // step out to shut it
+          return nav ? nav.act(world, 'gate') : randomMove(world, rt.rng);
+        },
+      };
+    }
     case 'catch': {
       // Fireflies are caught by walking into them (see handleEvents).
       return new NavRun(nav, 'firefly', tmo, rt.rng);
@@ -274,7 +329,7 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
   rt.ctx = ctx;
   const w = s.farm.world;
   const tmo = navTimeout(w.w, w.h, pet.traits.persistence);
-  const timeouts: Record<BehaviorId, number> = { forage: tmo + 3, deliver: tmo * 3, rest: 30, wander: 6, manual: 1e9, skill: 60, catch: tmo, goto: tmo };
+  const timeouts: Record<BehaviorId, number> = { forage: tmo + 3, deliver: tmo * 3, rest: 30, wander: 6, manual: 1e9, skill: 60, catch: tmo, goto: tmo, gate: tmo + 2 };
   const custom = pet.assignment.skillName ? activeRevision(getSkill(pet, pet.assignment.skillName)) : null;
   if (custom) timeouts.skill = Math.round((custom.maxTicks ?? 40) * (1 + pet.traits.persistence));
   const navigator = pet.assignment.navigator;
@@ -376,6 +431,7 @@ function earn(s: GameState, pet: Pet, amount: number, x: number, y: number, fx: 
 
 function handleEvents(s: GameState, pet: Pet, events: SimEvent[], rt: FarmRuntime, fx: FarmFx[]): void {
   const w = s.farm.world;
+  trackRequests(s, events);
   for (const e of events) {
     if (e.type === 'enter') {
       s.farm.stun = 3;
@@ -404,6 +460,9 @@ function handleEvents(s: GameState, pet: Pet, events: SimEvent[], rt: FarmRuntim
       addJournalOnce(s, null, 'first-peck', `A crow pecked a ${e.kind} and flew off with it. It will regrow — but a guard would help.`);
     } else if (e.type === 'enterArea' && e.kind === 'chicken' && e.area === 'coop' && events.some((x) => x.type === 'shoo' && x.objId === e.objId)) {
       addJournalOnce(s, pet.id, 'first-herd', `${pet.name} shooed a chicken back into the coop.`);
+    } else if (e.type === 'gate') {
+      fx.push({ type: 'drop', x: e.x, y: e.y, text: e.state === 'open' ? 'gate open' : 'gate shut' });
+      addJournalOnce(s, pet.id, `first-gate-${e.state}`, e.state === 'open' ? `${pet.name} nudged the orchard gate open.` : `${pet.name} nudged the gate shut — nothing’s wandering through now.`);
     } else if (e.type === 'fill') {
       fx.push({ type: 'drop', x: e.x, y: e.y, text: 'filled' });
     } else if (e.type === 'bump') {
@@ -448,6 +507,7 @@ export function farmTick(s: GameState, rt: FarmRuntime): TickResult {
   f.tick++;
   regrow(s);
   updateClock(s, rt, fx);
+  updateWeather(s, rt, fx);
   updateCreatures(s, rt, fx);
   const pet = petById(s, f.dutyPetId);
   for (const p of s.pets) {

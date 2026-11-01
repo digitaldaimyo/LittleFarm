@@ -6,7 +6,7 @@ import { OBJECT_BY_ID } from '../domain/packs/farm';
  * One step = one action by the pet = one tick. Every tick returns an event list
  * that drives rewards, diagnostics, animation and the journal.
  */
-export type Action = 'N' | 'E' | 'S' | 'W' | 'pick' | 'drop' | 'wait' | 'water' | 'shoo';
+export type Action = 'N' | 'E' | 'S' | 'W' | 'pick' | 'drop' | 'wait' | 'water' | 'shoo' | 'nudge';
 export const MOVES: Action[] = ['N', 'E', 'S', 'W'];
 export const DIRS: Record<string, [number, number]> = { N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0] };
 
@@ -19,6 +19,8 @@ export interface Obj {
   delivered: boolean;
   /** Plots: watered (grows faster until the next crop appears). */
   wet?: boolean;
+  /** Gates: open (walkable) or closed (solid). Undefined = closed. */
+  open?: boolean;
 }
 
 export interface PetBody {
@@ -60,13 +62,15 @@ export interface World {
   areas?: Area[];
   /** PRNG state for creatures (mulberry32), so creature motion is deterministic. */
   rng?: number;
+  /** Raining (farm weather, or the Weather card in pens). */
+  raining?: boolean;
   /** Energy of the pet on duty (farm only), so plan conditions can read it. */
   petEnergy?: number;
   /** Running counters (e.g. pecks). */
   counts?: Record<string, number>;
 }
 
-export type SimEventType = 'tick' | 'move' | 'bump' | 'reach' | 'enter' | 'pickup' | 'drop' | 'deliver' | 'fumble' | 'stay' | 'fill' | 'water' | 'shoo' | 'scare' | 'peck' | 'enterArea' | 'leaveArea';
+export type SimEventType = 'tick' | 'move' | 'bump' | 'reach' | 'enter' | 'pickup' | 'drop' | 'deliver' | 'fumble' | 'stay' | 'fill' | 'water' | 'shoo' | 'scare' | 'peck' | 'enterArea' | 'leaveArea' | 'gate';
 
 export interface SimEvent {
   type: SimEventType;
@@ -76,6 +80,8 @@ export interface SimEvent {
   objId?: number;
   into?: string;
   area?: string;
+  /** Gates: the state after a nudge. */
+  state?: 'open' | 'closed';
 }
 
 export function def(kind: string): ObjectDef {
@@ -120,10 +126,26 @@ export function inBounds(w: World, x: number, y: number): boolean {
   return x >= 0 && y >= 0 && x < w.w && y < w.h;
 }
 
+export function blocks(o: Obj): boolean {
+  return def(o.kind).solid || (o.kind === 'gate' && !o.open);
+}
+
 export function isSolidAt(w: World, x: number, y: number): boolean {
   if (!inBounds(w, x, y)) return true;
-  for (const o of w.objects) if (o.x === x && o.y === y && onGround(o) && def(o.kind).solid) return true;
+  for (const o of w.objects) if (o.x === x && o.y === y && onGround(o) && blocks(o)) return true;
   return false;
+}
+
+/** The gate a pet could nudge from where it stands (on it or next to it), if any. */
+export function nudgeableGate(w: World): Obj | null {
+  const p = w.pet;
+  const gates = w.objects.filter((o) => o.kind === 'gate' && onGround(o) && Math.abs(o.x - p.x) + Math.abs(o.y - p.y) <= 1).sort((a, b) => a.id - b.id);
+  for (const g of gates) {
+    // An open gate can only be shut if nobody is standing in it.
+    if (g.open && ((p.x === g.x && p.y === g.y) || w.objects.some((o) => o !== g && onGround(o) && o.x === g.x && o.y === g.y && def(o.kind).mover))) continue;
+    return g;
+  }
+  return null;
 }
 
 export function isHazardAt(w: World, x: number, y: number): boolean {
@@ -138,6 +160,7 @@ export function legalActions(_w: World, abilities: string[]): Action[] {
   if (abilities.includes('pickup')) out.push('pick');
   if (abilities.includes('drop')) out.push('drop');
   if (abilities.includes('water')) out.push('water');
+  if (abilities.includes('nudge')) out.push('nudge');
   if (out.length === 0) out.push('wait');
   return out;
 }
@@ -204,6 +227,12 @@ export function step(w: World, action: Action): SimEvent[] {
       plot.wet = true;
       p.water = (p.water ?? 0) - 1;
       events.push({ type: 'water', x: p.x, y: p.y, kind: plot.kind, objId: plot.id });
+    } else events.push({ type: 'fumble', x: p.x, y: p.y });
+  } else if (action === 'nudge') {
+    const g = nudgeableGate(w);
+    if (g) {
+      g.open = !g.open;
+      events.push({ type: 'gate', x: g.x, y: g.y, kind: 'gate', objId: g.id, state: g.open ? 'open' : 'closed' });
     } else events.push({ type: 'fumble', x: p.x, y: p.y });
   } else if (action === 'shoo') {
     const near = w.objects.filter((o) => onGround(o) && def(o.kind).mover && Math.abs(o.x - p.x) + Math.abs(o.y - p.y) <= 1).sort((a, b) => a.id - b.id);

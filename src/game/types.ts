@@ -1,5 +1,6 @@
 import type { LearnerTemplate, SkillName, SpecNode, StageSpec, Template } from '../domain/types';
 import type { SenseSkillDef } from '../learning/policies';
+import type { FarmRequest } from './requests';
 import type { SerializedQ } from '../learning/qtable';
 import type { Traits } from '../learning/episodes';
 import type { ExecutiveTable, Invocation } from '../learning/executive';
@@ -154,6 +155,11 @@ export interface FarmState {
   current: Invocation | null;
   production: { tick: number; coins: number }[];
   manualMode: boolean;
+  /** Neighbours' requests board. */
+  requests?: FarmRequest[];
+  /** Current shower: raining until this tick; the temporary pond tiles it made. */
+  rainUntil?: number;
+  puddles?: number[];
 }
 
 export interface JournalEntry {

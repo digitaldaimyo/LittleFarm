@@ -225,6 +225,32 @@ function morningChores(): StageSpec {
   };
 }
 
+/** Example player-style skill: walk to a (closed) gate and nudge it open. */
+function openGate(): StageSpec {
+  const n = maker('og');
+  return {
+    id: 'stage-gate', name: 'Open the gate', recipeId: 'open-gate', version: 1,
+    blurb: 'A custom skill: find the gate and nudge it open from next to it.',
+    size: { w: 8, h: 8 },
+    environment: [
+      n('place.pet', { mode: 'random', x: 0, y: 0 }),
+      n('place.random', { kind: k(n, 'gate'), count: 1, region: 'anywhere' }),
+      n('place.random', { kind: k(n, 'rock'), count: 2, region: 'anywhere' }),
+    ],
+    abilities: ['move', 'nudge'],
+    rules: [
+      n('rule', { label: 'Gate open!', when: n('ev.gate', { actor: pet(n), state: 'open' }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'success' })], limit: n('lim.once') }),
+      n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.05 })] }),
+    ],
+    success: n('cond.gates', { state: 'open' }),
+    fail: null,
+    seed: 1212, maxTicks: 40,
+    learner: { skill: 'Open the gate', template: 'sense', focus: 'gate', episodes: 3000,
+      senses: [n('sense.nearest', { what: n('ref.target') }), n('sense.blocked')] },
+    evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.7 },
+  };
+}
+
 export interface Recipe {
   id: string;
   name: string;
@@ -345,6 +371,7 @@ export const RECIPES: Recipe[] = [
   { id: 'water-garden', name: 'Water the garden', blurb: 'Your own skill: fill up at the well, water the dry patches.', skill: 'Water the garden', unlock: 'custom', optional: true, build: waterGarden },
   { id: 'herd-chicken', name: 'Herd a chicken', blurb: 'Your own skill: shoo a chicken into the coop.', skill: 'Herd', unlock: 'custom', optional: true, build: herdChicken },
   { id: 'shoo-loophole', name: 'Treat for every shoo', blurb: 'Experiment: a herding reward with a loophole.', skill: 'Herd (loophole)', unlock: 'custom', optional: true, build: shooLoophole },
+  { id: 'open-gate', name: 'Open the gate', blurb: 'Your own skill: find a gate and nudge it open.', skill: 'Open the gate', unlock: 'custom', optional: true, build: openGate },
   { id: 'fetch-routine', name: 'Bring it home (routine)', blurb: 'Fetch, rebuilt from cards as a routine.', skill: 'Fetch routine', unlock: 'routines', optional: true, build: fetchAsRoutine },
   { id: 'morning-chores', name: 'Morning chores', blurb: 'A routine: pick the right skills from your deck (needs Herd, Water the garden, Keep clear, Wait for it).', skill: 'Morning chores', unlock: 'routines', optional: true, build: morningChores },
   { id: 'pay-per-pickup', name: 'Treat for every pickup', blurb: 'Experiment: a reward with a loophole.', skill: 'Fetch', unlock: 'fetch', optional: true, build: payPerPickup },

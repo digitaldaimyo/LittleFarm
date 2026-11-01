@@ -3,7 +3,7 @@ import { isNode, paramOf } from '../domain/spec';
 import { kindOfCard } from '../domain/registry';
 import { Rng, hashSeed } from './rng';
 import type { Obj, SimEvent, World } from './world';
-import { addObject, bfsDistance, def, distTo, emptyWorld, inArea, inBounds, nearest, objectsAt, onGround } from './world';
+import { addObject, bfsDistance, blocks, def, distTo, emptyWorld, inArea, inBounds, isSolidAt, nearest, objectsAt, onGround } from './world';
 
 export interface RuleHit {
   ruleId: string;
@@ -164,6 +164,15 @@ export function compileCondition(n: SpecNode): Cond {
     }
     case 'cond.carryingAny':
       return ({ w }) => w.pet.carrying !== null;
+    case 'cond.gates': {
+      const want = paramOf(n, 'state', 'closed');
+      return ({ w }) => {
+        const gates = w.objects.filter((o) => o.kind === 'gate' && onGround(o));
+        return want === 'closed' ? gates.every((o) => !o.open) : gates.some((o) => !!o.open);
+      };
+    }
+    case 'cond.raining':
+      return ({ w }) => !!w.raining;
     case 'cond.hasWater':
       return ({ w }) => (w.pet.water ?? 0) > 0;
     case 'cond.night':
@@ -212,6 +221,7 @@ function compileEvent(n: SpecNode): (e: SimEvent) => boolean {
     case 'ev.bump': return (e) => e.type === 'bump';
     case 'ev.stay': return (e) => e.type === 'stay';
     case 'ev.fill': return (e) => e.type === 'fill';
+    case 'ev.gate': { const st = paramOf(n, 'state', 'closed'); return (e) => e.type === 'gate' && e.state === st; }
     case 'ev.shoo': return (e) => (e.type === 'shoo' || e.type === 'scare') && e.kind === k;
     case 'ev.peck': return (e) => e.type === 'peck' && e.kind === k;
     case 'ev.entersArea': { const a = areaArg(n, 'area'); return (e) => e.type === 'enterArea' && e.kind === k && e.area === a; }
@@ -300,6 +310,9 @@ export function generateWorld(spec: StageSpec, seed: number): World {
     const timeNode = spec.environment.find((p) => p.cardId === 'place.time');
     const tmode = timeNode ? paramOf(timeNode, 'mode', 'day') : 'day';
     w.night = tmode === 'night' || (tmode === 'random' && rng.next() < 0.5);
+    const weatherNode = spec.environment.find((p) => p.cardId === 'place.weather');
+    const wmode = weatherNode ? paramOf(weatherNode, 'mode', 'dry') : 'dry';
+    w.raining = wmode === 'rain' || (wmode === 'random' && rng.next() < 0.5);
     for (const p of spec.environment) {
       if (p.cardId !== 'place.random') continue;
       const k = resolveKind(p.args.kind, spec.learner.focus);
@@ -315,11 +328,14 @@ export function generateWorld(spec: StageSpec, seed: number): World {
         occupied.add(key(x, y));
       }
     }
+    if (w.raining) for (const o of w.objects) if (def(o.kind).traits.includes('Plot')) o.wet = true;
     last = w;
     // Every goal-ish object must be reachable by a dry path, so no layout is impossible.
     const ok = w.objects.every((o) => {
       const d = def(o.kind);
       if (d.solid || d.hazard) return true;
+      // Closed gates block, so they only need to be reachable from a neighbouring tile.
+      if (blocks(o)) return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => !isSolidAt(w, o.x + dx, o.y + dy) && bfsDistance(w, w.pet.x, w.pet.y, o.x + dx, o.y + dy, true) >= 0);
       return bfsDistance(w, w.pet.x, w.pet.y, o.x, o.y, true) >= 0;
     });
     if (ok) return w;
