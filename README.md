@@ -1,0 +1,57 @@
+# Pen Deck
+
+A cozy, single-player pet-training farm game. You adopt a pet and teach it real skills in a training pen. You build each lesson out of typed cards and sleeves, and then put the pet to work on your farm. The learning is genuine: pets are trained with **local reinforcement learning (tabular Double Q-learning)** in a Web Worker on your CPU. Every number in the game comes from episodes the pet actually ran.
+
+- **Offline only.** No accounts, servers, telemetry, hosted models or paid APIs. Fonts are system fonts and art is procedural SVG. After the first load, a service worker lets the game run with no network.
+- **Real learning.** Untrained pets wander at random. Trained pets beat the random baseline on layouts held out from training. Scripted demos are always labelled as scripted, never as your pet.
+- **Persistent and individual.** Each pet keeps its own versioned skill revisions, temperament, stats and journal. Training one pet never trains another.
+
+## Quick start
+
+```bash
+npm install
+npm run dev        # http://localhost:5173
+```
+
+Other scripts:
+
+| Command | What it does |
+|---|---|
+| `npm run build` | Typecheck + production build into `dist/` (static files; host anywhere or open with `npm run preview`) |
+| `npm run typecheck` | TypeScript only |
+| `npm run lint` | ESLint |
+| `npm test` | Vitest suite (sim, registry, learning, saves, farm, training loop) |
+| `npm run bench` | Trains every starter skill under 5 seeds and prints held-out results, hardware and timings |
+
+Requires Node 18+ (developed on Node 22). Needs no secrets or environment variables.
+
+## How to play (first hour)
+
+1. **Adopt** a pet and choose its name and colours.
+2. **Teach → Environment:** pick the *Berry* card and tap the pen. *Scatter* puts it somewhere new on every try, which teaches a skill that works anywhere.
+3. **Rules:** tap the suggested recipe *Treat for reaching the berry*. This adds rules (WHEN pet reaches berry THEN +10 treats, end try; a small nudge every step) and a SUCCESS condition.
+4. **Train Approach.** Watch the success line climb. Pause, cancel and speed controls are always available.
+5. **Read the report.** Before vs random vs after vs transfer, measured on 20 layouts the pet never trained on. Replay any of them.
+6. **Save skill.** It becomes revision r1 in the pet's repertoire.
+7. **Farm → Forage berries.** The pet uses the Approach it just learned. Berries sell for 1 coin.
+8. **Earn 5 coins** to unlock **Fetch** lessons (*Bring it home*), which reuse your saved Approach as their movement option. A certified Fetch unlocks carrot patches (3 coins per delivery). At 12 coins, **Avoid** lessons unlock, so your pet can stop splashing through the pond.
+
+Try the optional **Treat for every pickup** recipe to watch a pet discover a reward loophole, then fix it with a repair card.
+
+The farm keeps running while you're in other screens. Use **Steer** to guide a pet by hand (tap tiles, or use the arrow keys, P to pick up and D to put down).
+
+## Performance
+
+Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid about 0.6 s of compute (see `docs/TESTING.md`). The *Normal* speed deliberately spreads that over a few seconds so you can watch. *Watch* is slower (~30–60 s, with replays). *Fast* runs flat out. The farm ticks at about 3.5 ticks/s at 1×, with 2× and 4× options.
+
+## Limitations (honest list)
+
+- Only one pet works on the farm at a time (the "on duty" pet); others nap and recover.
+- No sound. No day/night cycle (crops regrow on a timer).
+- Thumbs up/down feedback applies to movement skills (Approach/Avoid), not to the Fetch controller.
+- Templates are immutable named revisions you can instantiate. "Exposed parameters" are stored but have no editing UI yet.
+- Avoid is the hardest skill: about 82% mean held-out success, with occasional runs at 75%. Use *Refine* to train more.
+- No local language model (the spec's optional Level D). The executive is a rules baseline plus a small learned bandit.
+- Static reward checks and the preflight random-rollout comparison are heuristics, not proofs that a reward can't be exploited.
+
+See `docs/ARCHITECTURE.md`, `docs/GAME_DESIGN.md` and `docs/TESTING.md`.

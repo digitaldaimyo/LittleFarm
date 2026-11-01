@@ -52,7 +52,8 @@ export function TrainingPanel() {
     store.mutate((g) => {
       const pp = g.pets.find((x) => x.id === pet.id)!;
       const rev = saveRevision(g, pp, { stage: t.stage, policy: t.policy!, report: t.report!, episodes: p?.episode ?? 0, durationMs: t.ms, simTicks: p?.simTicks ?? 0, resumedFrom: t.resumedFrom ?? undefined, navigator: t.navigator ?? undefined });
-      store.toast(`Saved ${t.stage.learner.skill} r${rev.rev}${rev.eval.passed ? ' — certified!' : ''}`, 'good');
+      const k = getSkill(pp, t.stage.learner.skill)!;
+      store.toast(k.activeRev === rev.rev ? `Saved ${t.stage.learner.skill} r${rev.rev}${rev.eval.passed ? ' — certified!' : ''}` : `Saved r${rev.rev}, but certified r${k.activeRev} stays active. Switch in Pets if you want.`, k.activeRev === rev.rev ? 'good' : 'info');
     });
     t.saved = true;
     store.emit();
@@ -190,7 +191,7 @@ export function TrainingPanel() {
           )}
         </div>
         <div className="row gap wrap actions">
-          <button className="btn primary" disabled={t.saved} onClick={save}>{t.saved ? `Saved r${nextRev - 1}` : `Save skill as r${nextRev}`}</button>
+          <button className="btn primary" disabled={t.saved} onClick={save}>{t.saved ? `Saved r${nextRev - 1}` : r.passed ? `Save skill as r${nextRev}` : `Save anyway as r${nextRev}`}</button>
           <button className="btn" onClick={() => { const err = pet && startTraining(pet, store.state.stages.find((x) => x.id === t.stage.id) ?? t.stage, { resume: !!getSkill(pet, t.stage.learner.skill) }); if (err) store.toast(err, 'warn'); }}>Train more</button>
           <button className="btn ghost" onClick={closeTraining}>{t.saved ? 'Close' : 'Discard'}</button>
         </div>

@@ -17,3 +17,7 @@ async function main() {
 }
 
 void main();
+
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => void navigator.serviceWorker.register('./sw.js').catch(() => undefined));
+}

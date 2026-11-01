@@ -1,0 +1,38 @@
+# Testing and benchmarks
+
+## Automated suites (`npm test`)
+| File | Covers |
+|---|---|
+| `tests/sim.test.ts` | Determinism (same seed + actions → identical state/event/reward trace); collision, carrying, delivery; reachable layout generation; limits stopping a pickup/drop loop |
+| `tests/registry.test.ts` | Starter recipes valid; generic trait constraints; type mismatch, trait mismatch, missing reference and `it`-scope errors with messages; exploit warning + repair; deterministic compatible → available → relevant hand with locked reasons |
+| `tests/learning.test.ts` | Eval seeds held out from training seeds; learned Approach ≥ 80% and beats random by 20+ points, plus transfer; deterministic training; Fetch reuses Approach and degrades when Approach is swapped for a weak revision (no Fetch retraining); loophole detected with replay, and the repair raises success by 40+ points |
+| `tests/session.test.ts` | Worker protocol loop: pause holds progress, resume, speed change, completion with report; cancel |
+| `tests/save.test.ts` | Export/import round-trip of pets, policies, stages, templates, farm, progress and unknown fields; restored policies act identically; unknown cards reported not dropped; garbage and newer versions rejected |
+| `tests/farm.test.ts` | Trained pet produces coins where an untrained pet produces none; independent repertoires and rollback; full first-hour flow (adopt → pen → train → save → deploy → earn → Fetch unlocked, tutorial complete); Fetch delivers carrots on the farm; 3000-tick runs keep producing (no permanent stuck loops) with both executives |
+
+## Benchmark protocol (`npm run bench`)
+For each of 5 training seeds (101, 202, 303, 404, 505), the benchmark trains each starter skill from scratch with default temperament and the recipe's episode budget. It then evaluates on **20 held-out layouts** (seeds 900001 + 7k) and **10 transfer layouts** (pens 3 tiles larger with extra rocks/ponds, seeds 950001 + 7k). Baselines are random legal actions and the untrained policy. Fetch and the loophole recipe use the Approach trained under the same seed.
+
+### Observed results
+Hardware: Intel Xeon @ 2.10 GHz, 4 threads, Node 22 (a cloud container, no GPU).
+
+| Skill | Tries | Random | Learned (mean) | Learned (min) | Transfer (range) | Train time |
+|---|---|---|---|---|---|---|
+| Approach | 1500 | 40% | **93%** | 90% | 80–100% | 65–125 ms |
+| Avoid | 8000 | 30% | **82%** | 75% | 80–100% | 510–590 ms |
+| Fetch (reuses Approach) | 400 | 0% | **91%** | 85% | 70–100% | 30–65 ms |
+| Treat for every pickup | 400 | 0% | 0% (loophole flagged 5/5) | — | — | 40–60 ms |
+
+Per-run rows are printed by the script. In the browser, *Normal* speed adds small delays so training is watchable (Approach takes a few seconds). *Fast* is close to the raw numbers above.
+
+### Known failures and caveats
+- Avoid sometimes lands at 75% (below the 80% bar) on a single run. *Refine* (train more) usually certifies it.
+- Evaluation uses n = 20, so ±10 percentage points between runs is normal noise. The UI always shows the sample size.
+- Before the action-legality fix, a Fetch controller could tie between "pick up" and a no-op "drop" and loop. Options that can't apply in the current state are now masked. The fix is covered by the multi-seed benchmark and the long-run farm test.
+
+## Manual checks done
+In headless Chromium (Playwright), at desktop 1280×900 and phone 390×844:
+- Full tutorial to first farm delivery, Fetch lesson, loophole discovery with replay and repair, carrot deliveries, Steer by keyboard, Pets, Journal, export, and import.
+- No console errors. **Zero network requests to any other origin.**
+- After one online load, the page reloads and a full lesson trains with the network disabled.
+- No horizontal scroll on phone width.

@@ -8,6 +8,7 @@ import { SettingsScreen } from './SettingsScreen';
 import { AdoptModal, ConfirmReset, ShopModal } from './Modals';
 import { currentStep, TUTORIAL } from '../game/tutorial';
 import { activePet } from '../game/pets';
+import { warmTrainingWorker } from './training';
 
 const NAV: { id: Screen; label: string }[] = [
   { id: 'farm', label: 'Farm' },
@@ -83,6 +84,7 @@ export function App() {
 
 export function boot() {
   store.startFarm();
+  warmTrainingWorker();
   window.addEventListener('beforeunload', () => void store.saveNow());
   document.addEventListener('visibilitychange', () => { if (document.hidden) void store.saveNow(); });
 }

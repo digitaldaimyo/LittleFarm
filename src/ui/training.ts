@@ -30,6 +30,20 @@ export interface TrainingSessionState {
 }
 
 let worker: Worker | null = null;
+
+function createTrainingWorker(): Worker {
+  return new Worker(new URL('../learning/trainer.worker.ts', import.meta.url), { type: 'module' });
+}
+
+/** Load the worker script once at startup so it's cached for offline play. */
+export function warmTrainingWorker(): void {
+  try {
+    const w = createTrainingWorker();
+    setTimeout(() => w.terminate(), 3000);
+  } catch {
+    /* workers unavailable — inline fallback will be used */
+  }
+}
 let inline: TrainingLoop | null = null;
 
 function send(m: ToWorker) {
@@ -116,16 +130,25 @@ export function startTraining(pet: Pet, stage: StageSpec, opts: { resume: boolea
     petId: pet.id, stage: cfg.stage, status: 'running', speed, progress: null, report: null, policy: null,
     resumedFrom: resumeFrom?.rev ?? null, navigator, ms: 0, replay: null, saved: false, startedAt: Date.now(),
   };
+  const runInline = () => {
+    // Fallback: same loop on the main thread, chunked with timeouts so the UI stays responsive.
+    worker?.terminate();
+    worker = null;
+    inline = new TrainingLoop(cfg, store.ui.training?.speed ?? speed, onMessage);
+    void inline.run();
+  };
   try {
-    worker = new Worker(new URL('../learning/trainer.worker.ts', import.meta.url), { type: 'module' });
-    worker.onmessage = (e: MessageEvent<FromWorker>) => onMessage(e.data);
-    worker.onerror = (e) => onMessage({ type: 'error', message: e.message || 'Training worker failed.' });
+    worker = createTrainingWorker();
+    let heard = false;
+    worker.onmessage = (e: MessageEvent<FromWorker>) => { heard = true; onMessage(e.data); };
+    worker.onerror = (e) => {
+      e.preventDefault?.();
+      if (!heard) runInline();
+      else onMessage({ type: 'error', message: e.message || 'Training worker failed.' });
+    };
     worker.postMessage({ type: 'start', cfg, speed } satisfies ToWorker);
   } catch {
-    // Fallback: same loop on the main thread, chunked with timeouts so the UI stays responsive.
-    worker = null;
-    inline = new TrainingLoop(cfg, speed, onMessage);
-    void inline.run();
+    runInline();
   }
   store.emit();
   return null;

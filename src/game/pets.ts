@@ -124,7 +124,10 @@ export function saveRevision(s: GameState, pet: Pet, input: SaveRevisionInput): 
     },
   };
   skill.revisions.push(rev);
-  skill.activeRev = rev.rev;
+  // Never silently replace a certified behavior with an uncertified one; the player can switch in Pets.
+  const prevActive = activeRevision(skill);
+  const keepPrev = !rev.eval.passed && !!prevActive?.eval.passed;
+  if (!keepPrev) skill.activeRev = rev.rev;
   pet.mastery[input.stage.id] = {
     rate: rev.eval.successRate, episodes: rev.eval.episodes, rev: rev.rev, skill: name, at: Date.now(), transfer: rev.eval.transferRate,
   };
@@ -133,7 +136,7 @@ export function saveRevision(s: GameState, pet: Pet, input: SaveRevisionInput): 
   if (rev.rev === 1) {
     addJournal(s, pet.id, `skill-${name}`, `${pet.name} learned ${name}! After ${input.episodes} practice tries, they succeeded ${wins} of ${r.episodes} times on layouts they had never seen (untrained: ${Math.round(input.report.before.successRate * r.episodes)} of ${r.episodes}).`, true);
   } else {
-    addJournal(s, pet.id, `skill-${name}-rev`, `${pet.name} saved ${name} revision ${rev.rev}: ${pct(r.successRate)} on held-out layouts.`);
+    addJournal(s, pet.id, `skill-${name}-rev`, `${pet.name} saved ${name} revision ${rev.rev}: ${pct(r.successRate)} on held-out layouts.${keepPrev ? ` Revision ${prevActive!.rev} stays active because it is certified.` : ''}`);
   }
   if (rev.eval.passed) addJournalOnce(s, pet.id, `mastered-${name}`, `${name} certified for ${pet.name}: ${wins}/${r.episodes} on unseen layouts (needed ${pct(input.stage.evaluation.minimumSuccessRate)}).`);
   return rev;

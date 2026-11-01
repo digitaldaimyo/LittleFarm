@@ -314,3 +314,4 @@ button.node { padding: 2px 9px; font-weight: 600; }
   .cmp-row { grid-template-columns: 96px 1fr 44px 32px; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
+.tutorial .grow { flex: 1 1 260px; }
