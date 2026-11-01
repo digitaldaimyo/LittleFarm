@@ -232,4 +232,5 @@ Not committed; listed roughly smallest first.
 - **Routines over Fetch and other routines:** allow nesting (with a depth limit and a cycle check) so *Morning chores* can include deliveries.
 - **A built-in Guard job** for plans, or a recipe for one, since guarding crops currently needs a player-made skill.
 - **Exposed template parameters:** templates store `exposed` fields but there's no editing UI yet.
+- **Teaching polish:** planned in `docs/TEACHING_PLAN.md` (memory conditions like "has shooed", honest End try, Any of, SUCCESS lists, a context-aware hand, better pens, play-it-yourself, templates). Sound phase C is on hold for this.
 - **Sound:** phases A (core cues, settings, mute) and B (the whole farm, replays, background sounds) shipped. Phase C (optional generative music, pet voices, probe plucks, training ticks) is planned in `docs/SOUND_PLAN.md`.
