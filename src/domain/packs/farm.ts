@@ -1,0 +1,167 @@
+import type { CardDef, ObjectDef } from '../types';
+import { generic, nominal } from '../typecheck';
+
+export const FARM_PACK_ID = 'farm';
+export const FARM_PACK_VERSION = 1;
+
+export const FARM_OBJECTS: ObjectDef[] = [
+  { id: 'berry', name: 'Berry', plural: 'berries', traits: ['Carryable', 'Crop', 'Edible'], solid: false, hazard: false, carryable: true, container: false, penPlaceable: true, hint: 'A sweet, light berry. Easy to carry.' },
+  { id: 'carrot', name: 'Carrot', plural: 'carrots', traits: ['Carryable', 'Crop'], solid: false, hazard: false, carryable: true, container: false, penPlaceable: true, unlock: 'carrots', hint: 'Crunchy and valuable. Must be carried to the bin.' },
+  { id: 'target', name: 'Target', plural: 'targets', traits: ['Marker'], solid: false, hazard: false, carryable: false, container: false, penPlaceable: true, hint: 'A training marker to walk to.' },
+  { id: 'bin', name: 'Bin', plural: 'bins', traits: ['Container'], solid: false, hazard: false, carryable: false, container: true, penPlaceable: true, hint: 'Drop crops here to deliver them.' },
+  { id: 'pond', name: 'Pond', plural: 'pond tiles', traits: ['Hazard', 'Water'], solid: false, hazard: true, carryable: false, container: false, penPlaceable: true, hint: 'Splashy! Walking in costs time.' },
+  { id: 'rock', name: 'Rock', plural: 'rocks', traits: ['Solid'], solid: true, hazard: false, carryable: false, container: false, penPlaceable: true, hint: 'Blocks the way.' },
+  { id: 'tree', name: 'Tree', plural: 'trees', traits: ['Solid'], solid: true, hazard: false, carryable: false, container: false, penPlaceable: true, unlock: 'trees', hint: 'Blocks the way. Shady.' },
+  { id: 'fence', name: 'Fence', plural: 'fences', traits: ['Solid'], solid: true, hazard: false, carryable: false, container: false, penPlaceable: true, unlock: 'fences', hint: 'Blocks the way. Good for mazes.' },
+  { id: 'home', name: 'Home', plural: 'homes', traits: ['Rest'], solid: false, hazard: false, carryable: false, container: false, penPlaceable: false, hint: 'Where pets nap.' },
+  { id: 'bush', name: 'Berry bush', plural: 'berry bushes', traits: ['Plot'], solid: false, hazard: false, carryable: false, container: false, penPlaceable: false, hint: 'Regrows berries.' },
+  { id: 'patch', name: 'Carrot patch', plural: 'carrot patches', traits: ['Plot'], solid: false, hazard: false, carryable: false, container: false, penPlaceable: false, hint: 'Regrows carrots.' },
+];
+
+export const OBJECT_BY_ID: Record<string, ObjectDef> = Object.fromEntries(FARM_OBJECTS.map((o) => [o.id, o]));
+
+const A = generic('Actor', 'Mobile', 'CanCarry');
+const KIND = nominal('Kind');
+const N = (o: Partial<CardDef> & Pick<CardDef, 'id' | 'output' | 'evaluator' | 'presentation'>): CardDef => ({
+  pack: FARM_PACK_ID,
+  version: FARM_PACK_VERSION,
+  sockets: [],
+  ...o,
+});
+
+const kindCards: CardDef[] = FARM_OBJECTS.map((o) =>
+  N({
+    id: `kind:${o.id}`,
+    output: generic('Kind', ...o.traits),
+    evaluator: 'kind',
+    unlock: o.unlock,
+    presentation: { title: o.name, group: 'kind', sheet: 'Things', hint: o.hint, icon: o.id },
+  }),
+);
+
+export const FARM_CARDS: CardDef[] = [
+  ...kindCards,
+  N({ id: 'actor.pet', output: A, evaluator: 'actor', presentation: { title: 'Your pet', group: 'actor', sheet: 'Who', hint: 'The pet being trained.', icon: 'pet' } }),
+  N({ id: 'ref.it', output: generic('Object', 'Bound'), evaluator: 'ref.it', presentation: { title: 'It', group: 'reference', sheet: 'Who', hint: 'The exact object the event happened to.', phrase: 'it' } }),
+
+  // Placement (Environment binder)
+  N({ id: 'place.random', output: nominal('Placement'), evaluator: 'place.random',
+    sockets: [{ id: 'kind', label: 'Thing', type: KIND, required: true }],
+    params: [
+      { id: 'count', label: 'How many', kind: 'number', default: 1, min: 1, max: 8, step: 1 },
+      { id: 'region', label: 'Where', kind: 'choice', default: 'anywhere', choices: [
+        { value: 'anywhere', label: 'anywhere' }, { value: 'left', label: 'left half' }, { value: 'right', label: 'right half' },
+        { value: 'top', label: 'top half' }, { value: 'bottom', label: 'bottom half' }, { value: 'center', label: 'middle' } ] },
+    ],
+    presentation: { title: 'Scatter', group: 'placement', sheet: 'Placement', hint: 'Random spot each try — teaches skills that transfer.', phrase: '{count} × {kind} {region}' } }),
+  N({ id: 'place.fixed', output: nominal('Placement'), evaluator: 'place.fixed',
+    sockets: [{ id: 'kind', label: 'Thing', type: KIND, required: true }],
+    params: [
+      { id: 'x', label: 'Column', kind: 'number', default: 0, min: 0, max: 15, step: 1 },
+      { id: 'y', label: 'Row', kind: 'number', default: 0, min: 0, max: 15, step: 1 },
+    ],
+    presentation: { title: 'Place here', group: 'placement', sheet: 'Placement', hint: 'Always the same tile.', phrase: '{kind} at ({x},{y})' } }),
+  N({ id: 'place.pet', output: nominal('Placement'), evaluator: 'place.pet',
+    params: [
+      { id: 'mode', label: 'Start', kind: 'choice', default: 'random', choices: [{ value: 'random', label: 'random spot' }, { value: 'fixed', label: 'fixed spot' }] },
+      { id: 'x', label: 'Column', kind: 'number', default: 0, min: 0, max: 15, step: 1 },
+      { id: 'y', label: 'Row', kind: 'number', default: 0, min: 0, max: 15, step: 1 },
+    ],
+    presentation: { title: 'Pet start', group: 'placement', sheet: 'Placement', hint: 'Where the pet begins each try.', phrase: 'pet starts at {mode}' } }),
+
+  // Rule
+  N({ id: 'rule', output: nominal('Rule'), evaluator: 'rule',
+    sockets: [
+      { id: 'when', label: 'When', type: nominal('Event'), required: true },
+      { id: 'if', label: 'If', type: nominal('Condition'), required: false, many: true },
+      { id: 'then', label: 'Then', type: nominal('Effect'), required: true, many: true },
+      { id: 'limit', label: 'Limit', type: nominal('Limit'), required: false },
+    ],
+    params: [{ id: 'label', label: 'Name', kind: 'text', default: 'New rule' }],
+    presentation: { title: 'Rule', group: 'rule', sheet: 'Rules', hint: 'WHEN something happens, IF conditions hold, THEN give an effect.' } }),
+
+  // Events
+  N({ id: 'ev.reach', output: nominal('Event'), evaluator: 'ev.reach', bindsIt: true,
+    sockets: [{ id: 'actor', label: 'Who', type: A, required: true }, { id: 'what', label: 'What', type: KIND, required: true }],
+    presentation: { title: 'Reaches', group: 'event', sheet: 'Events', hint: 'Steps onto a tile holding the thing.', phrase: '{actor} reaches {what}' } }),
+  N({ id: 'ev.enter', output: nominal('Event'), evaluator: 'ev.enter', bindsIt: true,
+    sockets: [{ id: 'actor', label: 'Who', type: A, required: true }, { id: 'what', label: 'Hazard', type: generic('Kind', 'Hazard'), required: true }],
+    presentation: { title: 'Steps into', group: 'event', sheet: 'Events', hint: 'Walks into a hazard like the pond.', phrase: '{actor} steps into {what}' } }),
+  N({ id: 'ev.pickup', output: nominal('Event'), evaluator: 'ev.pickup', bindsIt: true,
+    sockets: [{ id: 'actor', label: 'Who', type: generic('Actor', 'CanCarry'), required: true }, { id: 'what', label: 'What', type: generic('Kind', 'Carryable'), required: true }],
+    presentation: { title: 'Picks up', group: 'event', sheet: 'Events', hint: 'Lifts a carryable thing.', phrase: '{actor} picks up {what}' } }),
+  N({ id: 'ev.drop', output: nominal('Event'), evaluator: 'ev.drop', bindsIt: true,
+    sockets: [{ id: 'actor', label: 'Who', type: generic('Actor', 'CanCarry'), required: true }, { id: 'what', label: 'What', type: generic('Kind', 'Carryable'), required: true }],
+    presentation: { title: 'Puts down', group: 'event', sheet: 'Events', hint: 'Sets a carried thing down anywhere.', phrase: '{actor} puts down {what}' } }),
+  N({ id: 'ev.deliver', output: nominal('Event'), evaluator: 'ev.deliver', bindsIt: true,
+    sockets: [{ id: 'what', label: 'What', type: generic('Kind', 'Carryable'), required: true }, { id: 'into', label: 'Into', type: generic('Kind', 'Container'), required: true }],
+    presentation: { title: 'Delivered', group: 'event', sheet: 'Events', hint: 'A thing is dropped into a container.', phrase: '{what} lands in {into}' } }),
+  N({ id: 'ev.tick', output: nominal('Event'), evaluator: 'ev.tick',
+    presentation: { title: 'Every step', group: 'event', sheet: 'Events', hint: 'Happens once per tick. Small penalties here say "hurry up".', phrase: 'every step' } }),
+  N({ id: 'ev.bump', output: nominal('Event'), evaluator: 'ev.bump',
+    sockets: [{ id: 'actor', label: 'Who', type: A, required: true }],
+    presentation: { title: 'Bumps', group: 'event', sheet: 'Events', hint: 'Walks into a wall, rock or edge.', phrase: '{actor} bumps into something' } }),
+
+  // Conditions
+  N({ id: 'cond.at', output: nominal('Condition'), evaluator: 'cond.at',
+    sockets: [{ id: 'actor', label: 'Who', type: A, required: true }, { id: 'what', label: 'What', type: KIND, required: true }],
+    presentation: { title: 'Is at', group: 'condition', sheet: 'Conditions', hint: 'Standing on the same tile.', phrase: '{actor} is at {what}' } }),
+  N({ id: 'cond.near', output: nominal('Condition'), evaluator: 'cond.near',
+    sockets: [{ id: 'actor', label: 'Who', type: A, required: true }, { id: 'what', label: 'What', type: KIND, required: true }],
+    params: [{ id: 'dist', label: 'Steps', kind: 'number', default: 2, min: 0, max: 10, step: 1 }],
+    presentation: { title: 'Is near', group: 'condition', sheet: 'Conditions', hint: 'Within a few steps.', phrase: '{actor} within {dist} of {what}' } }),
+  N({ id: 'cond.carrying', output: nominal('Condition'), evaluator: 'cond.carrying',
+    sockets: [{ id: 'actor', label: 'Who', type: generic('Actor', 'CanCarry'), required: true }, { id: 'what', label: 'What', type: generic('Kind', 'Carryable'), required: true }],
+    presentation: { title: 'Is carrying', group: 'condition', sheet: 'Conditions', phrase: '{actor} carries {what}' } }),
+  N({ id: 'cond.delivered', output: nominal('Condition'), evaluator: 'cond.delivered',
+    sockets: [{ id: 'what', label: 'What', type: generic('Kind', 'Carryable'), required: true }, { id: 'into', label: 'Into', type: generic('Kind', 'Container'), required: true }],
+    params: [{ id: 'count', label: 'At least', kind: 'number', default: 1, min: 1, max: 8, step: 1 }],
+    presentation: { title: 'Has delivered', group: 'condition', sheet: 'Conditions', phrase: '{count} {what} in {into}' } }),
+  N({ id: 'cond.closer', output: nominal('Condition'), evaluator: 'cond.closer',
+    sockets: [{ id: 'actor', label: 'Who', type: A, required: true }, { id: 'what', label: 'What', type: KIND, required: true }],
+    presentation: { title: 'Got closer', group: 'condition', sheet: 'Conditions', hint: 'This step reduced the distance. Progress-based rewards are hard to exploit.', phrase: '{actor} got closer to {what}' } }),
+  N({ id: 'cond.not', output: nominal('Condition'), evaluator: 'cond.not',
+    sockets: [{ id: 'inner', label: 'Condition', type: nominal('Condition'), required: true }],
+    presentation: { title: 'Not', group: 'condition', sheet: 'Conditions', phrase: 'not ({inner})' } }),
+  N({ id: 'cond.itNear', output: nominal('Condition'), evaluator: 'cond.itNear',
+    sockets: [{ id: 'object', label: 'Object', type: nominal('Object'), required: true }, { id: 'what', label: 'What', type: KIND, required: true }],
+    params: [{ id: 'dist', label: 'Steps', kind: 'number', default: 1, min: 0, max: 10, step: 1 }],
+    presentation: { title: 'Object is near', group: 'condition', sheet: 'Conditions', phrase: '{object} within {dist} of {what}' } }),
+  N({ id: 'cond.compare', output: nominal('Condition'), evaluator: 'cond.compare',
+    sockets: [{ id: 'quantity', label: 'Measure', type: nominal('Quantity'), required: true }],
+    params: [
+      { id: 'op', label: 'Is', kind: 'choice', default: '<=', choices: [{ value: '<=', label: '≤' }, { value: '>=', label: '≥' }, { value: '==', label: '=' }] },
+      { id: 'value', label: 'Value', kind: 'number', default: 1, min: 0, max: 20, step: 1 },
+    ],
+    presentation: { title: 'Compare', group: 'condition', sheet: 'Conditions', phrase: '{quantity} {op} {value}' } }),
+
+  // Quantities
+  N({ id: 'q.distance', output: nominal('Quantity'), evaluator: 'q.distance',
+    sockets: [{ id: 'actor', label: 'Who', type: A, required: true }, { id: 'what', label: 'What', type: KIND, required: true }],
+    presentation: { title: 'Distance', group: 'quantity', sheet: 'Measures', phrase: 'steps from {actor} to {what}' } }),
+  N({ id: 'q.count', output: nominal('Quantity'), evaluator: 'q.count',
+    sockets: [{ id: 'what', label: 'What', type: KIND, required: true }],
+    presentation: { title: 'Count', group: 'quantity', sheet: 'Measures', phrase: 'number of {what} lying around' } }),
+
+  // Effects
+  N({ id: 'eff.reward', output: nominal('Effect'), evaluator: 'eff.reward',
+    params: [{ id: 'amount', label: 'Treats', kind: 'number', default: 1, min: 0, max: 50, step: 0.05 }],
+    presentation: { title: 'Treat', group: 'effect', sheet: 'Effects', hint: 'Positive reward.', phrase: '+{amount} treats' } }),
+  N({ id: 'eff.penalty', output: nominal('Effect'), evaluator: 'eff.penalty',
+    params: [{ id: 'amount', label: 'Amount', kind: 'number', default: 1, min: 0, max: 50, step: 0.05 }],
+    presentation: { title: 'Nudge', group: 'effect', sheet: 'Effects', hint: 'Small negative reward ("not that").', phrase: '−{amount} treats' } }),
+  N({ id: 'eff.end', output: nominal('Effect'), evaluator: 'eff.end',
+    params: [{ id: 'outcome', label: 'Outcome', kind: 'choice', default: 'success', choices: [{ value: 'success', label: 'done ✓' }, { value: 'fail', label: 'try again ✗' }] }],
+    presentation: { title: 'End try', group: 'effect', sheet: 'Effects', hint: 'Finish this episode.', phrase: 'end try ({outcome})' } }),
+
+  // Limits
+  N({ id: 'lim.every', output: nominal('Limit'), evaluator: 'lim.every',
+    presentation: { title: 'Every time', group: 'limit', sheet: 'Limits', hint: 'No limit. Careful with repeatable events!', phrase: 'every time' } }),
+  N({ id: 'lim.once', output: nominal('Limit'), evaluator: 'lim.once',
+    presentation: { title: 'Once per try', group: 'limit', sheet: 'Limits', phrase: 'once per try' } }),
+  N({ id: 'lim.perObject', output: nominal('Limit'), evaluator: 'lim.perObject',
+    presentation: { title: 'Once per object', group: 'limit', sheet: 'Limits', hint: 'Each object can only pay once.', phrase: 'once per object' } }),
+  N({ id: 'lim.cooldown', output: nominal('Limit'), evaluator: 'lim.cooldown',
+    params: [{ id: 'ticks', label: 'Wait', kind: 'number', default: 10, min: 1, max: 60, step: 1 }],
+    presentation: { title: 'Cooldown', group: 'limit', sheet: 'Limits', phrase: 'at most every {ticks} steps' } }),
+];
