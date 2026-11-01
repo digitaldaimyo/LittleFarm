@@ -247,6 +247,17 @@ export const FARM_CARDS: CardDef[] = [
   N({ id: 'sense.still', output: nominal('Sense'), evaluator: 'sense.still', radix: 3,
     presentation: { title: 'Patience', group: 'sense', sheet: 'Senses', hint: 'How long it has stayed still (0, 1–4, 5+ steps).', phrase: 'how long it has waited' } }),
 
+  // Routine options
+  N({ id: 'opt.skill', output: nominal('Option'), evaluator: 'opt.skill',
+    sockets: [{ id: 'aim', label: 'Aimed at', type: KIND, required: false }, { id: 'when', label: 'Only when', type: nominal('Condition'), required: false }],
+    params: [{ id: 'skill', label: 'Skill', kind: 'text', default: 'Approach' }],
+    presentation: { title: 'Use skill', group: 'option', sheet: 'Options', hint: 'Run one of your saved skills (its current revision) until it finishes.', phrase: 'use {skill} → {aim} {when}' } }),
+  N({ id: 'opt.action', output: nominal('Option'), evaluator: 'opt.action',
+    sockets: [{ id: 'when', label: 'Only when', type: nominal('Condition'), required: false }],
+    params: [{ id: 'action', label: 'Action', kind: 'choice', default: 'pick', choices: [
+      { value: 'pick', label: 'pick up' }, { value: 'drop', label: 'put down' }, { value: 'water', label: 'water' }, { value: 'shoo', label: 'shoo' }, { value: 'wait', label: 'stay a moment' } ] }],
+    presentation: { title: 'Do action', group: 'option', sheet: 'Options', hint: 'One step of a basic action.', phrase: '{action} {when}' } }),
+
   // Quantities
   N({ id: 'q.distance', output: nominal('Quantity'), evaluator: 'q.distance',
     sockets: [{ id: 'actor', label: 'Who', type: A, required: true }, { id: 'what', label: 'What', type: KIND, required: true }],

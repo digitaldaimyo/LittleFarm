@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useStore, store } from './store';
 import { PetSprite } from './art';
-import { activePet, activeRevision, isCertified, rollbackSkill } from '../game/pets';
+import { activePet, activeRevision, isCertified, rollbackSkill, staleUses, subskillsFor } from '../game/pets';
 import { recipeStage } from '../domain/recipes';
 import { evaluate } from '../learning/episodes';
 import { heldOutSeeds, policySpecFor } from '../learning/report';
@@ -65,13 +65,13 @@ function SkillHistory({ pet, k }: { pet: Pet; k: Skill }) {
   const compare = () => {
     if (k.revisions.length < 2) return;
     // Presets compare on their standard lesson; your own skills on the lesson of their latest revision.
-    const own = s.state.stages.find((x) => x.id === k.revisions.at(-1)?.stageId);
+    const own = k.revisions.at(-1)?.stage ?? s.state.stages.find((x) => x.id === k.revisions.at(-1)?.stageId);
     const stage = k.custom ? own : recipeStage(k.name === 'Approach' ? 'go-to-berry' : k.name === 'Avoid' ? 'avoid-pond' : 'bring-it-home');
     if (!stage) { setCmp('The lesson this skill was trained in was deleted, so there’s nothing to compare on.'); return; }
     const seeds = heldOutSeeds(stage);
     const navRev = k.name === 'Fetch' ? activeRevision(pet.skills.find((x) => x.name === (k.navigator ?? 'Approach')) ?? null) : null;
     const rows = k.revisions.slice(-4).map((r) => {
-      const e = evaluate(stage, policySpecFor(stage, r.policy, navRev?.policy ?? null, navRev?.learner, r.learner), seeds, 'evaluation', pet.traits, 0);
+      const e = evaluate(stage, policySpecFor(stage, r.policy, navRev?.policy ?? null, navRev?.learner, r.learner, subskillsFor(pet), pet.traits), seeds, 'evaluation', pet.traits, 0);
       return `r${r.rev}: ${e.successes}/${e.episodes}`;
     });
     setCmp(`Same ${seeds.length} held-out layouts of the standard “${stage.name}” lesson → ${rows.join(' · ')}`);
@@ -83,6 +83,7 @@ function SkillHistory({ pet, k }: { pet: Pet; k: Skill }) {
         <span className={`chip ${isCertified(k) ? 'good' : ''}`}>active r{k.activeRev}</span>
       </div>
       {k.custom && <code className="small">{k.signature}</code>}
+      {staleUses(pet, activeRevision(k)).length > 0 && <div className="diag warning small">Certified with {staleUses(pet, activeRevision(k)).map((u) => `${u.skill} r${u.trained}`).join(', ')}, which {staleUses(pet, activeRevision(k)).length > 1 ? 'have' : 'has'} changed since. Press “Compare revisions now” or re-test it in Curriculum.</div>}
       <label className="small">Nickname <input value={k.nickname ?? ''} placeholder={k.name} maxLength={24} onChange={(e) => s.mutate((g) => { const kk = g.pets.find((p) => p.id === pet.id)!.skills.find((x) => x.id === k.id)!; kk.nickname = e.target.value || undefined; })} /></label>
       <table className="ledger">
         <thead><tr><th>Rev</th><th>Lesson</th><th>Tries</th><th>Held-out</th><th>Before</th><th>Transfer</th><th /></tr></thead>
@@ -100,7 +101,7 @@ function SkillHistory({ pet, k }: { pet: Pet; k: Skill }) {
           ))}
         </tbody>
       </table>
-      {k.revisions.length > 1 && <button className="btn ghost small" onClick={compare}>Compare revisions now</button>}
+      {(k.revisions.length > 1 || staleUses(pet, activeRevision(k)).length > 0) && <button className="btn ghost small" onClick={compare}>Compare revisions now</button>}
       {cmp && <div className="small">{cmp}</div>}
       <details className="small"><summary>Provenance</summary>
         {(() => { const r = activeRevision(k); return r ? <ul><li>Trainer: {r.provenance.trainer}</li><li>State: {r.provenance.features}</li><li>Training seeds: {r.provenance.trainSeeds}</li><li>Eval seeds: {r.provenance.evalSeeds[0]}…{r.provenance.evalSeeds.at(-1)}</li>{r.provenance.navigator && <li>Trained with {r.provenance.navigator.skill} r{r.provenance.navigator.rev}; uses whichever revision is active now</li>}<li>{r.provenance.simTicks.toLocaleString()} sim ticks, {(r.provenance.durationMs / 1000).toFixed(1)}s compute</li></ul> : null; })()}

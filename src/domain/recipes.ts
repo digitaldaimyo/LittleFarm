@@ -151,6 +151,80 @@ function shooLoophole(): StageSpec {
   return s;
 }
 
+/** Fetch rebuilt as a routine from cards: same options, same four watched facts. */
+function fetchAsRoutine(): StageSpec {
+  const s = fetchRecipe();
+  const n = maker('fr');
+  s.id = 'stage-fetch-routine';
+  s.name = 'Bring it home (routine)';
+  s.recipeId = 'fetch-routine';
+  s.blurb = 'Fetch, built from cards: Approach → berry, Approach → bin, pick up, put down.';
+  const carrying = () => n('cond.carrying', { actor: pet(n), what: n('ref.target') });
+  s.learner = {
+    skill: 'Fetch routine', template: 'routine', focus: 'berry', destination: 'bin', episodes: 400,
+    routine: {
+      options: [
+        n('opt.skill', { skill: 'Approach', aim: n('ref.target'), when: n('cond.not', { inner: carrying() }) }),
+        n('opt.skill', { skill: 'Approach', aim: k(n, 'bin') }),
+        n('opt.action', { action: 'pick' }),
+        n('opt.action', { action: 'drop' }),
+      ],
+      watch: [
+        carrying(),
+        n('cond.at', { actor: pet(n), what: n('ref.target') }),
+        n('cond.at', { actor: pet(n), what: k(n, 'bin') }),
+        n('cond.and', { all: [n('cond.not', { inner: carrying() }), n('cond.compare', { quantity: n('q.count', { what: n('ref.target') }), op: '>=', value: 1 })] }),
+      ],
+    },
+  };
+  return s;
+}
+
+/** A routine built from two player-made skills: herd the chicken home, water the garden, and nap when done. */
+function morningChores(): StageSpec {
+  const n = maker('mc');
+  const coop = () => n('area.named', { name: 'coop' });
+  const herded = () => n('cond.allInArea', { what: k(n, 'chicken'), area: coop() });
+  const watered = () => n('cond.watered', { what: k(n, 'patch'), count: 2 });
+  return {
+    id: 'stage-chores', name: 'Morning chores', recipeId: 'morning-chores', version: 1,
+    blurb: 'A routine: get the chicken in and both patches watered — choosing the right skills from your deck.',
+    size: { w: 9, h: 9 },
+    environment: [
+      n('place.pet', { mode: 'random', x: 0, y: 0 }),
+      n('zone.rect', { name: 'coop', where: 'random', x: 0, y: 0, w: 2, h: 2 }),
+      n('place.random', { kind: k(n, 'chicken'), count: 1, region: 'anywhere' }),
+      n('place.random', { kind: k(n, 'well'), count: 1, region: 'anywhere' }),
+      n('place.random', { kind: k(n, 'patch'), count: 2, region: 'anywhere' }),
+      n('place.random', { kind: k(n, 'pond'), count: 3, region: 'anywhere' }),
+    ],
+    abilities: ['move', 'shoo', 'water', 'stay'],
+    rules: [
+      n('rule', { label: 'Chicken home', when: n('ev.entersArea', { what: k(n, 'chicken'), area: coop() }), then: [n('eff.reward', { amount: 3 })], limit: n('lim.once') }),
+      n('rule', { label: 'Garden watered', when: n('ev.water', { actor: pet(n), what: k(n, 'patch') }), if: [watered()], then: [n('eff.reward', { amount: 3 })], limit: n('lim.once') }),
+      n('rule', { label: 'All done!', when: n('ev.tick'), if: [herded(), watered()], then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'success' })], limit: n('lim.once') }),
+      n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.02 })] }),
+    ],
+    success: n('cond.and', { all: [herded(), watered()] }),
+    fail: null,
+    seed: 1111, maxTicks: 110,
+    learner: {
+      skill: 'Morning chores', template: 'routine', focus: 'chicken', episodes: 600,
+      routine: {
+        // Your whole deck: two useful skills and two that don't help with these chores.
+        options: [
+          n('opt.skill', { skill: 'Keep clear', aim: k(n, 'pond') }),
+          n('opt.skill', { skill: 'Wait for it', aim: k(n, 'well') }),
+          n('opt.skill', { skill: 'Herd', aim: k(n, 'chicken') }),
+          n('opt.skill', { skill: 'Water the garden', aim: k(n, 'patch') }),
+        ],
+        watch: [herded(), watered()],
+      },
+    },
+    evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.6 },
+  };
+}
+
 export interface Recipe {
   id: string;
   name: string;
@@ -271,6 +345,8 @@ export const RECIPES: Recipe[] = [
   { id: 'water-garden', name: 'Water the garden', blurb: 'Your own skill: fill up at the well, water the dry patches.', skill: 'Water the garden', unlock: 'custom', optional: true, build: waterGarden },
   { id: 'herd-chicken', name: 'Herd a chicken', blurb: 'Your own skill: shoo a chicken into the coop.', skill: 'Herd', unlock: 'custom', optional: true, build: herdChicken },
   { id: 'shoo-loophole', name: 'Treat for every shoo', blurb: 'Experiment: a herding reward with a loophole.', skill: 'Herd (loophole)', unlock: 'custom', optional: true, build: shooLoophole },
+  { id: 'fetch-routine', name: 'Bring it home (routine)', blurb: 'Fetch, rebuilt from cards as a routine.', skill: 'Fetch routine', unlock: 'routines', optional: true, build: fetchAsRoutine },
+  { id: 'morning-chores', name: 'Morning chores', blurb: 'A routine: pick the right skills from your deck (needs Herd, Water the garden, Keep clear, Wait for it).', skill: 'Morning chores', unlock: 'routines', optional: true, build: morningChores },
   { id: 'pay-per-pickup', name: 'Treat for every pickup', blurb: 'Experiment: a reward with a loophole.', skill: 'Fetch', unlock: 'fetch', optional: true, build: payPerPickup },
 ];
 

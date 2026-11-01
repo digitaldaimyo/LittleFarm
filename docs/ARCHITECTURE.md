@@ -49,6 +49,13 @@ The same simulator runs pens, evaluation and the farm. Fixed seed + fixed action
 - Cards: `area.named(name)` (type `Area`; validation errors on unknown names); `ev.shoo(it)`, `ev.peck(it)`, `ev.entersArea(it)`, `ev.leavesArea(it)`; `cond.inArea(count)`, `cond.allInArea`, `cond.petInArea`; `q.pecks`; senses `sense.area` (27), `sense.outside` (nearest one outside an area, 27) and `sense.areaFrom` (direction from that one to the area, 27).
 - Farm: `updateCreatures` handles egg laying (coop only) and crow arrivals and departures. Deliver/Fetch picks the nearest carrot or egg. Saves are v4 (adds the coop area and creature PRNG).
 
+### Routines (Milestone 3)
+- Template `routine`: `learner.routine = { options: SpecNode[] (opt.skill | opt.action, ≤6), watch: SpecNode[] (Condition, ≤4) }`.
+- `learning/routine.ts → compileRoutine(stage, subskills, traits, target?)` builds the state bitmask from the watched conditions (≤16 states) and the options. Each option gets a legality test (its *only when* card plus intrinsic "can it do anything now") and a runner: `NavRun` for Approach/Avoid, `SkillRun` (until the sub-skill's own SUCCESS or its time limit) for custom skills, or one tick of an action. Every option takes at least one tick.
+- `SubSkills` are snapshots of the pet's **active** sense-skill revisions (`subskillsFor(pet)`), resolved at training, evaluation and run time. Improving a sub-skill changes every routine that uses it, with no retraining.
+- `Trainer` runs Fetch and routines through one SMDP Double-Q option loop (α 0.3, γ 0.9). When no option is legal, the routine idles a tick without a learning update. Reports add `randomOptions` (random legal option at each boundary).
+- Saved routine revisions keep `uses: {skill, rev}[]` and a copy of their lesson (`stage`). `routineRunFor` runs them on the farm, and `staleUses` reports sub-skills that changed since certification.
+
 ## Learning
 
 ### Templates, senses and abilities (Milestone 1)

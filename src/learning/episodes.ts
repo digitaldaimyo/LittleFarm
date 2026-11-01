@@ -5,6 +5,7 @@ import type { Action, World } from '../sim/world';
 import { bfsPath, cloneWorld, legalActions, nearest, objectsAt, step } from '../sim/world';
 import { FetchController, FetchRun, NavPolicy, SensePolicy, isDone, type ExecStep, type SenseSkillDef } from './policies';
 import { legalActionIdx } from './senses';
+import { RoutineRun, compileRoutine, type RoutineController, type SubSkills } from './routine';
 import { templateOf } from './skilldef';
 
 export type TraceLabel = 'training' | 'evaluation' | 'baseline' | 'scripted' | 'before' | 'transfer';
@@ -108,7 +109,8 @@ export type PolicySpec =
   | { kind: 'random' }
   | { kind: 'scripted' }
   | { kind: 'sense'; policy: SensePolicy | null; def: SenseSkillDef }
-  | { kind: 'fetch'; ctrl: FetchController; nav: NavPolicy | null };
+  | { kind: 'fetch'; ctrl: FetchController; nav: NavPolicy | null }
+  | { kind: 'routine'; ctrl: RoutineController | null; subskills: SubSkills };
 
 export function makeChooser(stage: StageSpec, p: PolicySpec, seed: number, traits: Traits): Chooser {
   const rng = new Rng(hashSeed(seed, 0xc0ffee));
@@ -131,6 +133,30 @@ export function makeChooser(stage: StageSpec, p: PolicySpec, seed: number, trait
       return p.policy.act(w, focus);
     };
   }
+  if (p.kind === 'routine') {
+    const r = compileRoutine(stage, p.subskills, traits);
+    let run: RoutineRun | null = null;
+    // ctrl null → "random choice of options" baseline: a random legal option at each boundary.
+    const ctrl = p.ctrl ?? null;
+    let cur: { next(w: World): ExecStep } | null = null;
+    return (w) => {
+      if (ctrl) {
+        run ??= new RoutineRun(r, ctrl, rng, stage.maxTicks, null);
+        return run.next(w);
+      }
+      for (let guard = 0; guard < 4; guard++) {
+        if (!cur) {
+          const legal = r.legal(w);
+          if (!legal.length) return 'wait';
+          cur = r.options[legal[rng.int(legal.length)]].makeRun(rng);
+        }
+        const st = cur.next(w);
+        if (isDone(st)) { cur = null; continue; }
+        return st;
+      }
+      return 'wait';
+    };
+  }
   let run: FetchRun | null = null;
   return (w) => {
     run ??= new FetchRun(p.ctrl, p.nav, focus, dest, navTimeout(stage.size.w, stage.size.h, traits.persistence), stage.maxTicks, rng, w.delivered[focus] ?? 0);
@@ -143,7 +169,7 @@ export function scriptedChooser(stage: StageSpec): Chooser {
   const focus = stage.learner.focus;
   const dest = stage.learner.destination ?? 'bin';
   const avoid = stage.learner.skill !== 'Approach';
-  const custom = templateOf(stage) === 'sense' && stage.learner.skill !== 'Approach' && stage.learner.skill !== 'Avoid';
+  const custom = templateOf(stage) === 'routine' || (templateOf(stage) === 'sense' && stage.learner.skill !== 'Approach' && stage.learner.skill !== 'Avoid');
   return (w) => {
     const goTo = (kind: string): Action => {
       const path = bfsPath(w, w.pet.x, w.pet.y, (x, y) => objectsAt(w, x, y).some((o) => o.kind === kind), avoid) ?? bfsPath(w, w.pet.x, w.pet.y, (x, y) => objectsAt(w, x, y).some((o) => o.kind === kind), false);

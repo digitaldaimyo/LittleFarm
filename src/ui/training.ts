@@ -6,7 +6,8 @@ import type { TrainingReport } from '../learning/report';
 import type { SerializedQ } from '../learning/qtable';
 import type { EpisodeTrace } from '../learning/episodes';
 import type { NavigatorName, Pet } from '../game/types';
-import { activeRevision, getSkill, navPolicyFor } from '../game/pets';
+import { activeRevision, getSkill, navPolicyFor, subskillsFor } from '../game/pets';
+import type { SubSkills } from '../learning/routine';
 import { sameSenseDef, senseDefFor, templateOf } from '../learning/skilldef';
 import type { SenseSkillDef } from '../learning/policies';
 import { store } from './store';
@@ -23,6 +24,8 @@ export interface TrainingSessionState {
   policy: SerializedQ | null;
   resumedFrom: number | null;
   navigator: { skill: NavigatorName; rev: number } | null;
+  /** Routines: skill revisions the options call. */
+  uses?: { skill: string; rev: number }[];
   ms: number;
   error?: string;
   /** Trace currently shown in the pen (training sample, eval or replay). */
@@ -112,6 +115,15 @@ export function startTraining(pet: Pet, stage: StageSpec, opts: { resume: boolea
     navPolicy = nav.rev.policy;
     navigatorDef = nav.rev.learner;
   }
+  let subskills: SubSkills | undefined;
+  let uses: { skill: string; rev: number }[] | undefined;
+  if (templateOf(stage) === 'routine') {
+    subskills = subskillsFor(pet);
+    const names = (stage.learner.routine?.options ?? []).filter((o) => o.cardId === 'opt.skill').map((o) => String(o.args.skill ?? ''));
+    const missing = names.filter((n) => !subskills![n]);
+    if (missing.length) return `${pet.name} hasn't saved ${missing.map((m) => `“${m}”`).join(', ')} yet (routines can use movement and your own skills, not Fetch or other routines).`;
+    uses = [...new Set(names)].map((n) => ({ skill: n, rev: subskills![n].rev }));
+  }
   if (opts.resume && current && templateOf(stage) === 'sense' && !sameSenseDef(current.learner, senseDefFor(stage))) {
     return `${pet.name}'s ${stage.learner.skill} r${current.rev} was trained with different senses or abilities. Use “Train fresh” to start a new version.`;
   }
@@ -127,6 +139,7 @@ export function startTraining(pet: Pet, stage: StageSpec, opts: { resume: boolea
     initial: unsaved ?? resumeFrom?.policy ?? null,
     navigator: navPolicy,
     navigatorDef,
+    subskills,
     seedOffset: resumeFrom || unsaved ? pet.stats.episodes + 17 : 0,
   };
   store.mutate((s) => {
@@ -136,7 +149,7 @@ export function startTraining(pet: Pet, stage: StageSpec, opts: { resume: boolea
   const speed = store.state.settings.trainSpeed;
   store.ui.training = {
     petId: pet.id, stage: cfg.stage, status: 'running', speed, progress: null, report: null, policy: null,
-    resumedFrom: resumeFrom?.rev ?? null, navigator, ms: 0, replay: null, saved: false, startedAt: Date.now(),
+    resumedFrom: resumeFrom?.rev ?? null, navigator, uses, ms: 0, replay: null, saved: false, startedAt: Date.now(),
   };
   const runInline = () => {
     // Fallback: same loop on the main thread, chunked with timeouts so the UI stays responsive.

@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import type { SpecNode, StageSpec } from '../domain/types';
 import { REGISTRY } from '../domain/registry';
 import { RECIPES, instantiateRecipe, suggestedRules } from '../domain/recipes';
-import { cloneStage, isNode, newId, node, paramOf, placedKinds } from '../domain/spec';
+import { cloneStage, findNode, isNode, newId, node, paramOf, placedKinds } from '../domain/spec';
 import { hasErrors, nodesWithErrors, validateStage } from '../domain/validate';
 import { buildHand } from '../domain/hand';
 import { applyRepair } from '../domain/repairs';
@@ -13,7 +13,8 @@ import { HandCardView, ManySlot, NodeChip, Sleeve, SlotChip, cardOf, withSnapsho
 import { TrainingPanel, traceBadge } from './TrainingPanel';
 import { useReplay } from './replay';
 import { startTraining } from './training';
-import { activePet, activeRevision, getSkill, isCertified, isPreset } from '../game/pets';
+import { activePet, activeRevision, getSkill, isCertified, isPreset, staleUses, subskillsFor } from '../game/pets';
+import { MAX_OPTIONS, MAX_WATCH } from '../learning/routine';
 import { ABILITY_LABELS, ABILITY_ORDER, MAX_SENSES, STATE_MAX, STATE_WARN, presetSenses, stateSpaceSize } from '../learning/senses';
 import { templateOf } from '../learning/skilldef';
 import { canTrain, trainingCost, undoStage } from '../game/state';
@@ -409,7 +410,10 @@ function PetBinder({ stage, pet }: { stage: StageSpec; pet: Pet }) {
     <div className="binder-body">
       <div className="row between">
         <h4>This lesson teaches</h4>
-        <button className="btn ghost small" disabled={!canInvent} title={canInvent ? undefined : 'Unlocks once your pet has a certified Approach'} onClick={newSkill}>+ New skill…</button>
+        <span className="row gap">
+          <button className="btn ghost small" disabled={!canInvent} title={canInvent ? undefined : 'Unlocks once your pet has a certified Approach'} onClick={newSkill}>+ New skill…</button>
+          <button className="btn ghost small" disabled={!s.state.progress.unlocks.includes('routines')} title={s.state.progress.unlocks.includes('routines') ? undefined : 'Unlocks with a certified Approach and 2 saved skills'} onClick={() => newRoutine(stage, pet)}>+ New routine…</button>
+        </span>
       </div>
       {custom ? (
         <label className="param-edit">Skill name
@@ -434,6 +438,7 @@ function PetBinder({ stage, pet }: { stage: StageSpec; pet: Pet }) {
         </select>
       </label>
       {template === 'sense' && <SenseEditor stage={stage} update={update} custom={custom} />}
+      {template === 'routine' && <RoutineEditor stage={stage} pet={pet} update={update} />}
       {template === 'fetch' && (
         <>
           <label className="param-edit">Deliver into
@@ -463,6 +468,93 @@ function PetBinder({ stage, pet }: { stage: StageSpec; pet: Pet }) {
       <Trait pet={pet} k="persistence" label="Persistence" help="How long they keep trying before giving up: movement time limit scales 1×–2×." />
       <Trait pet={pet} k="caution" label="Caution" help="During lessons, stepping into hazards costs up to 3 extra treats (shown in the ledger)." />
     </div>
+  );
+}
+
+function newRoutine(stage: StageSpec, pet: Pet) {
+  const name = prompt('Name your routine (e.g. “Morning chores”)', '')?.trim().slice(0, 24);
+  if (!name) return;
+  if (isPreset(name)) return store.toast(`“${name}” is a built-in skill — pick another name.`, 'warn');
+  const usable = pet.skills.filter((k) => (k.template ?? 'sense') === 'sense' && activeRevision(k));
+  store.mutate((g) => {
+    const st = cloneStage(stage, true, newId('stage'));
+    st.name = name;
+    st.version = 1;
+    st.recipeId = 'custom';
+    st.learner = {
+      skill: name, template: 'routine', focus: stage.learner.focus, episodes: 500,
+      routine: { options: usable.slice(0, 2).map((k) => node('opt.skill', { skill: k.name, aim: node('ref.target') })), watch: [] },
+    };
+    st.abilities = ['move', 'stay', 'pickup', 'drop', 'water', 'shoo'];
+    st.outcome = 'reach';
+    st.rules = [];
+    st.success = null;
+    st.fail = null;
+    st.maxTicks = 100;
+    st.evaluation.minimumSuccessRate = 0.6;
+    g.stages.push(st);
+    g.activeStageId = st.id;
+  });
+  store.setUi({ binder: 'pet', slot: null });
+  store.toast(`New routine “${name}”. Pick its options, what it watches, then write rules and a SUCCESS condition.`, 'good');
+}
+
+function RoutineEditor({ stage, pet, update }: { stage: StageSpec; pet: Pet; update: (fn: (st: StageSpec) => void) => void }) {
+  const s = useStore();
+  const R = stage.learner.routine ?? { options: [], watch: [] };
+  const errs = nodesWithErrors(validateStage(stage, REGISTRY, new Set(s.state.progress.unlocks)));
+  const usable = pet.skills.filter((k) => (k.template ?? (k.name === 'Fetch' ? 'fetch' : 'sense')) === 'sense' && activeRevision(k));
+  const kinds = [...placedKinds(stage)];
+  const setOpt = (i: number, fn: (o: SpecNode) => void) => update((st) => { const o = st.learner.routine?.options[i]; if (o) fn(o); });
+  return (
+    <>
+      <h4>Options <span className="muted small">— what the routine can choose to do</span></h4>
+      <div className="options-deck">
+        {R.options.map((o, i) => {
+          const skillName = String(o.args.skill ?? '');
+          const k = o.cardId === 'opt.skill' ? getSkill(pet, skillName) : null;
+          const aim = isNode(o.args.aim) ? o.args.aim.cardId : 'ref.target';
+          return (
+            <div key={o.id} className={`option-row ${errs.has(o.id) ? 'err' : ''}`}>
+              <select aria-label="Option" value={o.cardId === 'opt.action' ? '@action' : skillName} onChange={(e) => setOpt(i, (x) => {
+                if (e.target.value === '@action') { x.cardId = 'opt.action'; x.args = { action: 'pick', when: x.args.when }; }
+                else { x.cardId = 'opt.skill'; x.args = { skill: e.target.value, aim: isNode(x.args.aim) ? x.args.aim : node('ref.target'), when: x.args.when }; }
+              })}>
+                {usable.map((u) => <option key={u.id} value={u.name}>Use {u.nickname ?? u.name}</option>)}
+                {o.cardId === 'opt.skill' && !k && <option value={skillName}>{skillName} (not learned)</option>}
+                <option value="@action">Do an action…</option>
+              </select>
+              {o.cardId === 'opt.skill' ? (
+                <>
+                  <select aria-label="Aimed at" value={aim} onChange={(e) => setOpt(i, (x) => { x.args.aim = node(e.target.value); })}>
+                    <option value="ref.target">→ the target</option>
+                    {kinds.map((kk) => <option key={kk} value={`kind:${kk}`}>→ {REGISTRY.objects.get(kk)?.name ?? kk}</option>)}
+                  </select>
+                  <span className={`chip ${k ? '' : 'bad'}`}>{k ? `r${k.activeRev}` : 'missing'}</span>
+                </>
+              ) : (
+                <select aria-label="Action" value={String(o.args.action ?? 'pick')} onChange={(e) => setOpt(i, (x) => { x.args.action = e.target.value; })}>
+                  {REGISTRY.cards.get('opt.action')!.params![0].choices!.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              )}
+              <span className="small muted">only when</span>
+              <SlotChip stage={stage} slot={{ parentId: o.id, socket: 'when', index: null }} label="always" errors={errs} />
+              <button className="icon-btn small" aria-label="Remove option" onClick={() => { update((st) => { st.learner.routine!.options.splice(i, 1); }); s.setUi({ slot: null }); }}>✕</button>
+            </div>
+          );
+        })}
+        {R.options.length < MAX_OPTIONS && (
+          <button className="btn ghost small" onClick={() => update((st) => { (st.learner.routine ??= { options: [], watch: [] }).options.push(usable[0] ? node('opt.skill', { skill: usable[0].name, aim: node('ref.target') }) : node('opt.action', { action: 'pick' })); })}>+ Add option</button>
+        )}
+      </div>
+      <h4>Watches <span className="muted small">— what it notices when choosing</span></h4>
+      <div className="many">
+        {R.watch.map((n, i) => <NodeChip key={n.id} stage={stage} n={n} slot={{ parentId: '#watch', socket: 'watch', index: i }} errors={errs} />)}
+        {R.watch.length < MAX_WATCH && <SlotChip stage={stage} slot={{ parentId: '#watch', socket: 'watch', index: null }} label="+ condition" errors={errs} />}
+      </div>
+      <p className="small muted"><b className="num">{1 << R.watch.length}</b> situations · <b className="num">{R.options.length}</b> options. Options use each skill’s <em>current</em> revision, so improving a skill improves every routine that uses it.</p>
+      {s.ui.slot && (s.ui.slot.parentId === '#watch' || R.options.some((o) => findNode(o, s.ui.slot!.parentId)) || R.watch.some((o) => findNode(o, s.ui.slot!.parentId))) && <Sleeve stage={stage} onChange={update} />}
+    </>
   );
 }
 
@@ -519,7 +611,7 @@ function CurriculumBinder({ stage, pet }: { stage: StageSpec; pet: Pet }) {
     const rev = activeRevision(skill);
     if (!rev) return store.toast(`${pet.name} has no ${st.learner.skill} skill yet.`, 'warn');
     const navRev = templateOf(st) === 'fetch' ? activeRevision(getSkill(pet, st.learner.navigator ?? 'Approach')) : null;
-    const r = evaluate(st, policySpecFor(st, rev.policy, navRev?.policy ?? null, navRev?.learner, rev.learner), heldOutSeeds(st), 'evaluation', pet.traits ?? DEFAULT_TRAITS);
+    const r = evaluate(st, policySpecFor(st, rev.policy, navRev?.policy ?? null, navRev?.learner, rev.learner, subskillsFor(pet), pet.traits), heldOutSeeds(st), 'evaluation', pet.traits ?? DEFAULT_TRAITS);
     store.mutate((g) => {
       const p = g.pets.find((x) => x.id === pet.id)!;
       const m = p.mastery[st.id];
@@ -581,6 +673,8 @@ function BehaviorsBinder({ pet }: { pet: Pet }) {
             <div className="row between"><strong>{k.nickname ?? k.name}{k.custom && <span className="chip">your own</span>}</strong><span className={`chip ${isCertified(k) ? 'good' : ''}`}>r{k.activeRev}{isCertified(k) ? ' · certified' : ''}</span></div>
             <code className="small">{k.signature}</code>
             <div className="small muted">Starts when: {k.initiation} Ends: {k.termination}</div>
+            {k.kind === 'routine' && r?.uses && <div className="small">Uses {r.uses.map((u) => `${u.skill} r${u.rev}`).join(', ')}</div>}
+            {staleUses(pet, r).length > 0 && <div className="diag warning small">Certified with {staleUses(pet, r).map((u) => `${u.skill} r${u.trained}`).join(', ')}; now {staleUses(pet, r).map((u) => `${u.skill} ${u.now ? `r${u.now}` : 'missing'}`).join(', ')}. Behaviour may differ — re-test it in Curriculum.</div>}
             {r && <div className="small">Held-out success {Math.round(r.eval.successRate * 100)}% (n={r.eval.episodes}) · trained on “{r.stageName}”{r.provenance.navigator ? ` · uses ${r.provenance.navigator.skill} (currently r${getSkill(pet, r.provenance.navigator.skill)?.activeRev ?? '?'})` : ''}</div>}
           </div>
         );

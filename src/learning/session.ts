@@ -69,7 +69,7 @@ export class TrainingLoop {
       this.post({ type: 'evaluating' });
       await sleep(0);
       const policy = trainer.policy();
-      const report = buildReport(this.cfg.stage, this.cfg.traits, this.cfg.initial ?? null, policy, this.cfg.navigator ?? null, this.cfg.navigatorDef);
+      const report = buildReport(this.cfg.stage, this.cfg.traits, this.cfg.initial ?? null, policy, this.cfg.navigator ?? null, this.cfg.navigatorDef, this.cfg.subskills);
       void t0;
       this.post({ type: 'done', progress: trainer.progress(), policy, report, ms: Math.round(active) });
     } catch (e) {

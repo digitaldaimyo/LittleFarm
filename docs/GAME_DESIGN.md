@@ -34,6 +34,7 @@ Berry bushes regrow in 28 ticks and carrots in 44. **Watered** plots grow twice 
 | Unlock | How |
 |---|---|
 | Your own skills | A certified Approach |
+| Routines | A certified Approach and 2 saved skills |
 | Chickens, Scarecrow (shop) | After *Your own skills* |
 | Crow visits | Day 2+, after *Your own skills* |
 | Fetch lessons | Certified Approach + 5 coins earned |
@@ -45,6 +46,9 @@ Unlocks add **vocabulary** (new cards and skills) and **problems** (carrots need
 
 ## Reward hacking as discovery
 The *Treat for every pickup* recipe pays +3 per pickup with no limit. Pets reliably learn to pick up and put down the berry over and over: about 30 pickups per try and 0% deliveries, while treats per try climb as success falls. The report says **Loophole found!**, shows a replay of the worst try, explains which rule paid, and offers the repair card *Pay only once per object*. After the repair, retraining delivers most of the time (the test suite requires at least +40 points). Nothing is ever lost: the stage has Undo, and saving an uncertified revision never replaces a certified active one.
+
+## Routines
+A routine is the player's planning tool inside the pen: a deck of options (their own skills and basic actions) plus a few things to watch. Training learns *which skill to use when*. The report always shows **Random choices** (same deck, random picks) so players can see whether the routine actually learned to choose, or whether the skills alone do all the work. *Morning chores* shows this: an untrained routine with distractors at the top of the deck gets 0%, random choices about 57%, and the learned routine about 83%.
 
 ## Creatures and areas
 - **Coop** (farm area, 2×2, bottom left). **Chickens** (shop, 10 coins, after *Your own skills*) wander 25% of ticks, but only 6% inside the coop. Each one inside the coop lays an egg on a free coop tile with probability 1/90 per tick (max 4 eggs). They block movement, so pets must **Shoo** them, which pushes them one tile directly away.
@@ -64,4 +68,4 @@ Entries are grounded templates filled from real events: adoption, skill learned 
 - Two-plus pet palettes (Meadow, Plum, Sky, Moss) and seven name suggestions.
 - Objects: berry, carrot, target, bin, pond, rock, tree, fence, plus farm-only home, berry bush and carrot patch.
 - Objects added with watering and day/night: well, firefly. With Milestone 2: chicken, crow, egg, scarecrow, and the Area card. Berry bushes, carrot patches and home can now go in pens.
-- Recipes: *Go to the berry*, *Bring it home*, *Avoid the pond*, *Treat for every pickup* (experiment), and custom-skill examples *Wait for it*, *Keep clear*, *Water the garden* and *Herd a chicken*, and the experiment *Treat for every shoo*.
+- Recipes: *Go to the berry*, *Bring it home*, *Avoid the pond*, *Treat for every pickup* (experiment), and custom-skill examples *Wait for it*, *Keep clear*, *Water the garden* and *Herd a chicken*, the experiment *Treat for every shoo*, and the routines *Bring it home (routine)* and *Morning chores*.

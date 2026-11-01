@@ -332,3 +332,9 @@ button.node { padding: 2px 9px; font-weight: 600; }
 
 .area-rect { fill: rgba(240, 180, 76, .16); stroke: #C27C0E; stroke-width: 2; stroke-dasharray: 6 4; }
 .area-label { font-size: 10px; font-weight: 700; fill: #7A4800; text-transform: uppercase; letter-spacing: .05em; }
+
+.options-deck { display: flex; flex-direction: column; gap: 6px; }
+.option-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; }
+.option-row.err { border-color: var(--err-edge); }
+.option-row select { min-height: 34px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--paper); padding: 0 6px; }
+.g-option { border-color: #B9C98A; background: #F2F6E3; color: #4A5A1A; }

@@ -8,6 +8,7 @@ import { FETCH_OPTIONS, FETCH_STATES, fetchObserve, legalOptions } from './featu
 import { compileEncoder, legalActionIdx, type SenseEncoder } from './senses';
 import { FetchController, NavPolicy, OptionRun, SensePolicy, isDone, type SenseSkillDef } from './policies';
 import { senseDefFor, templateOf } from './skilldef';
+import { RoutineController, compileRoutine, type CompiledRoutine, type SubSkills } from './routine';
 import type { EpisodeTrace, Frame, LedgerEntry, Traits } from './episodes';
 import { navTimeout } from './episodes';
 
@@ -25,6 +26,8 @@ export interface TrainConfig {
   navigator?: SerializedQ | null;
   /** Senses/actions of that navigator revision (defaults to the Approach preset). */
   navigatorDef?: SenseSkillDef;
+  /** Routine template: snapshots of the saved skills its options call. */
+  subskills?: SubSkills;
   /** Offsets training seeds so "train more" sees new layouts. */
   seedOffset?: number;
 }
@@ -63,7 +66,8 @@ export class Trainer {
   readonly cfg: TrainConfig;
   readonly cs: CompiledStage;
   readonly q: DoubleQ;
-  readonly kind: 'sense' | 'fetch';
+  readonly kind: 'sense' | 'fetch' | 'routine';
+  readonly routine: CompiledRoutine | null;
   readonly senseDef: SenseSkillDef | null;
   private encoder: SenseEncoder | null;
   episode = 0;
@@ -80,16 +84,22 @@ export class Trainer {
   constructor(cfg: TrainConfig) {
     this.cfg = cfg;
     this.cs = compileStage(cfg.stage);
-    this.kind = templateOf(cfg.stage) === 'fetch' ? 'fetch' : 'sense';
+    const tpl = templateOf(cfg.stage);
+    this.kind = tpl === 'fetch' ? 'fetch' : tpl === 'routine' ? 'routine' : 'sense';
     this.senseDef = this.kind === 'sense' ? senseDefFor(cfg.stage) : null;
     this.encoder = this.senseDef ? compileEncoder(this.senseDef.senses, cfg.stage.learner.focus) : null;
-    const [nS, nA] = this.senseDef ? [this.encoder!.size, this.senseDef.actions.length] : [FETCH_STATES, FETCH_OPTIONS.length];
+    this.routine = this.kind === 'routine' ? compileRoutine(cfg.stage, cfg.subskills ?? {}, cfg.traits) : null;
+    if (this.routine?.missing.length) throw new Error(`This routine uses skills the pet hasn't saved: ${this.routine.missing.join(', ')}.`);
+    const [nS, nA] = this.senseDef ? [this.encoder!.size, this.senseDef.actions.length]
+      : this.routine ? [this.routine.nStates, this.routine.options.length]
+      : [FETCH_STATES, FETCH_OPTIONS.length];
     this.q = cfg.initial ? DoubleQ.deserialize(cfg.initial) : new DoubleQ(nS, nA);
     if (this.q.nS !== nS || this.q.nA !== nA) throw new Error('Policy shape does not match this skill.');
     this.rng = new Rng(hashSeed(cfg.stage.seed, cfg.seedOffset ?? 0, 0x7a11));
     this.nav = this.kind === 'fetch' ? SensePolicy.from(cfg.navigator, cfg.navigatorDef) : null;
     this.gamma = this.kind === 'sense' ? 0.95 : 0.9;
     this.alpha = this.kind === 'sense' ? 0.25 : 0.3;
+    if (this.routine && !this.routine.options.length) throw new Error('A routine needs at least one option.');
   }
 
   get total(): number {
@@ -173,15 +183,28 @@ export class Trainer {
         if (end) break;
       }
     } else {
+      // Option-level (SMDP) learning, shared by Fetch and player-built routines.
       const item = cs.spec.learner.focus, dest = cs.spec.learner.destination ?? 'bin';
       const tmo = navTimeout(cs.spec.size.w, cs.spec.size.h, this.cfg.traits.persistence);
-      let s = fetchObserve(w, item, dest);
+      const R0 = this.routine;
+      const observe = R0 ? (x: World) => R0.observe(x) : (x: World) => fetchObserve(x, item, dest);
+      const legalOf = R0 ? (x: World) => R0.legal(x) : (_x: World, st: number) => legalOptions(st);
+      const runOf = R0 ? (o: number) => R0.options[o].makeRun(this.rng) : (o: number) => new OptionRun(FETCH_OPTIONS[o], this.nav, item, dest, tmo, this.rng);
+      const labelOf = R0 ? (o: number) => R0.options[o].label : (o: number) => FETCH_OPTIONS[o];
+      let s = observe(w);
       let ended = false;
       while (w.tick < maxT && !ended) {
-        const lo = legalOptions(s);
+        const lo = legalOf(w, s);
+        if (!lo.length) {
+          // Nothing the routine can do right now: idle a tick (no decision to learn from).
+          const { end } = applyStep('wait');
+          if (end) ended = true;
+          s = observe(w);
+          continue;
+        }
         const o = this.rng.next() < eps ? lo[this.rng.int(lo.length)] : this.q.greedy(s, lo);
-        options.push(FETCH_OPTIONS[o]);
-        const run = new OptionRun(FETCH_OPTIONS[o], this.nav, item, dest, tmo, this.rng);
+        options.push(labelOf(o));
+        const run = runOf(o);
         let R = 0;
         while (w.tick < maxT) {
           const st = run.next(w);
@@ -192,7 +215,7 @@ export class Trainer {
         }
         R += this.fb(s, o);
         total += R;
-        const s2 = fetchObserve(w, item, dest);
+        const s2 = observe(w);
         this.q.update(s, o, R, ended ? -1 : s2, this.gamma, this.alpha, this.rng.next());
         s = s2;
       }
@@ -242,7 +265,8 @@ export class Trainer {
   }
 
   /** Runtime policy object for evaluation. */
-  runtime(): SensePolicy | FetchController {
+  runtime(): SensePolicy | FetchController | RoutineController {
+    if (this.routine) return new RoutineController(this.routine.nStates, this.routine.options.length, this.q.clone());
     return this.kind === 'sense' ? new SensePolicy(this.senseDef!, this.q.clone()) : new FetchController(this.q.clone());
   }
 }

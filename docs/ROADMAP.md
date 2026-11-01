@@ -106,7 +106,15 @@ New behaviors players can invent:
 
 ---
 
-## Milestone 3: Routine builder (composing what you taught)
+## Milestone 3: Routine builder (composing what you taught) — ✅ shipped
+
+> **Status:** done. Differences from the plan below:
+> - Options are cards: **Use skill** (any saved movement or own skill, re-aimable, optional **only when…** condition) and **Do action** (pick up, put down, water, shoo, stay). A routine can't use Fetch, another routine, or itself (yet).
+> - An option is legal when its *only when* card holds **and** it can do something right now. A skill isn't already finished (its own SUCCESS doesn't hold yet). Approach/Avoid have a target to walk to. An action is physically possible.
+> - Fetch and routines now share one option-level training loop. *Bring it home (routine)* rebuilds Fetch from cards and learns a **byte-identical** controller.
+> - Reports for routines add a fairer baseline, **Random choices** (the same skills picked at random), next to random steps.
+> - The first *Morning chores* passed the gate on paper (85% vs 0% random steps) but random choices and even the untrained routine also scored 85%: finished chores switch off, leaving nothing to choose. The shipped version uses the player's whole deck (two helpful skills plus *Keep clear* and *Wait for it*, which don't help here), so choosing really matters.
+> - Revisions record the skill revisions they were certified with (`uses`) and a copy of their lesson, so they can run on the farm ("Run a skill") and show a "certified with Herd r1; now r2" warning.
 
 **Player-facing:** a **Routine** is a skill whose options are the player's other saved skills and abilities. The player picks 2–6 options and up to 4 **condition cards** the routine pays attention to (e.g. *carrying egg*, *crow near patch*, *in coop*). They write rules and train it. Fetch becomes the built-in example: options are Approach(item), Approach(bin), pick and drop.
 
@@ -119,9 +127,9 @@ Examples:
 **UI:** a "deck" view showing which skills a routine uses, with revision badges, and a warning when a sub-skill revision changes ("Morning chores was certified with Guard r2; Guard is now r3. Re-test?").
 
 **Gate**
-- [ ] Fetch preset re-expressed as a routine gives today's numbers.
-- [ ] Changing a sub-skill revision changes routine behavior without retraining (extends the existing test).
-- [ ] A 3-option routine built only from player-made M1/M2 skills beats random by ≥ 30 points.
+- [x] Fetch re-expressed as a routine: identical Q-table to built-in Fetch (tested on 2 seeds), 91% mean across 5 seeds, same as Fetch.
+- [x] Swapping the Herd sub-skill for a weak revision drops *Morning chores* by >20 points without retraining it (tested). Changed sub-skills are flagged in the UI.
+- [x] *Morning chores* (4 options, all player-made skills): **83% mean (min 65%)** vs 0% random steps, 0% untrained, and 57% mean (30–75%) for random choice of the same skills.
 
 ---
 

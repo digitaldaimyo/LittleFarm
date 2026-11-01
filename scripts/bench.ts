@@ -10,6 +10,8 @@ import { Trainer } from '../src/learning/trainer';
 import { buildReport } from '../src/learning/report';
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import type { SerializedQ } from '../src/learning/qtable';
+import type { SubSkill, SubSkills } from '../src/learning/routine';
+import { senseDefFor } from '../src/learning/skilldef';
 
 const SEEDS = [101, 202, 303, 404, 505];
 
@@ -46,6 +48,31 @@ for (const seed of SEEDS) {
     console.log(`${name.padEnd(9)} ${String(seed).padStart(4)}  ${String(stage.learner.episodes).padStart(5)}  ${fmt(r.random.successRate)}   ${fmt(r.before.successRate)}     ${fmt(r.after.successRate)}    ${fmt(r.transfer.successRate)}   ${String(Math.round(res.ms)).padStart(7)}  ${r.exploits.length ? 'yes' : 'no'}`);
   }
 }
+// Routines: option-level controllers over saved skills (sub-skills trained fresh under each seed).
+console.log('\nroutine     seed  random-steps  random-choices  untrained  learned  transfer  train-ms');
+const rrows: Record<string, number[]> = {};
+for (const seed of SEEDS) {
+  const ap = train({ ...recipeStage('go-to-berry'), seed });
+  const sub = (id: string, name: string, preset = false): SubSkill => {
+    const st = { ...recipeStage(id), seed };
+    return { name, rev: 1, preset, policy: train(st).q, learner: senseDefFor(st), focus: st.learner.focus, success: st.success, outcome: st.outcome ?? 'reach', maxTicks: st.maxTicks };
+  };
+  const jobs: [string, StageSpec, SubSkills][] = [
+    ['FetchR', { ...recipeStage('fetch-routine'), seed }, { Approach: { name: 'Approach', rev: 1, preset: true, policy: ap.q } }],
+    ['Chores', { ...recipeStage('morning-chores'), seed }, { Herd: sub('herd-chicken', 'Herd'), 'Water the garden': sub('water-garden', 'Water the garden'), 'Keep clear': sub('keep-clear', 'Keep clear'), 'Wait for it': sub('wait-for-it', 'Wait for it') }],
+  ];
+  for (const [name, stage, subs] of jobs) {
+    const t0 = performance.now();
+    const t = new Trainer({ stage, episodes: stage.learner.episodes, traits: DEFAULT_TRAITS, subskills: subs });
+    while (!t.done) t.runChunk(500, false);
+    const ms = performance.now() - t0;
+    const r = buildReport(stage, DEFAULT_TRAITS, null, t.policy(), null, undefined, subs);
+    (rrows[name] ??= []).push(r.after.successRate);
+    console.log(`${name.padEnd(10)} ${String(seed).padStart(5)}  ${fmt(r.random.successRate)}         ${fmt(r.randomOptions?.successRate ?? 0)}         ${fmt(r.before.successRate)}    ${fmt(r.after.successRate)}    ${fmt(r.transfer.successRate)}   ${String(Math.round(ms)).padStart(7)}`);
+  }
+}
+for (const [k, v] of Object.entries(rrows)) rows[k] = v;
+
 console.log('\nMean held-out success across seeds:');
 console.log('(* = player-style skill built only from cards: custom senses, abilities and rules)');
 for (const [k, v] of Object.entries(rows)) console.log(`  ${k.padEnd(9)} ${fmt(v.reduce((a, b) => a + b, 0) / v.length)}  (min ${fmt(Math.min(...v))})`);

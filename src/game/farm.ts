@@ -8,7 +8,7 @@ import {
   type BehaviorId, type ExecContext, type Invocation,
 } from '../learning/executive';
 import type { FarmState, GameState, Pet, Plot } from './types';
-import { activeRevision, getSkill, navPolicyFor, petById, sensePolicyOf } from './pets';
+import { activeRevision, getSkill, navPolicyFor, petById, routineRunFor, sensePolicyOf } from './pets';
 import { compileCondition, withTarget } from '../sim/compile';
 import { addJournal, addJournalOnce } from './journal';
 import { checkUnlocks } from './progression';
@@ -224,6 +224,10 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
     }
     case 'skill': {
       const rev = activeRevision(getSkill(pet, inv.args.skill ?? ''));
+      if (rev?.stage && getSkill(pet, inv.args.skill ?? '')?.kind === 'routine') {
+        const run = routineRunFor(pet, rev, inv.args.target || undefined, rt.rng, inv.timeout);
+        return run ?? { next: () => ({ done: 'fail', reason: 'routine missing' }) };
+      }
       const policy = rev ? sensePolicyOf(rev) : null;
       if (!rev || !policy) return { next: () => ({ done: 'fail', reason: 'skill missing' }) };
       const target = inv.args.target || rev.focus || 'berry';

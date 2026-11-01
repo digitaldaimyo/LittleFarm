@@ -55,6 +55,7 @@ export function cloneStage(s: StageSpec, freshIds = false, newStageId?: string):
     c.success = c.success ? cloneNode(c.success, true) : null;
     c.fail = c.fail ? cloneNode(c.fail, true) : null;
     if (c.learner.senses) c.learner.senses = c.learner.senses.map((n) => cloneNode(n, true));
+    if (c.learner.routine) c.learner.routine = { options: c.learner.routine.options.map((n) => cloneNode(n, true)), watch: c.learner.routine.watch.map((n) => cloneNode(n, true)) };
   }
   if (newStageId) c.id = newStageId;
   return c;
@@ -69,7 +70,7 @@ export function findNode(root: SpecNode, id: string): SpecNode | null {
 }
 
 export function stageRoots(s: StageSpec): SpecNode[] {
-  return [...s.environment, ...s.rules, ...(s.success ? [s.success] : []), ...(s.fail ? [s.fail] : []), ...(s.learner?.senses ?? [])];
+  return [...s.environment, ...s.rules, ...(s.success ? [s.success] : []), ...(s.fail ? [s.fail] : []), ...(s.learner?.senses ?? []), ...(s.learner?.routine?.options ?? []), ...(s.learner?.routine?.watch ?? [])];
 }
 
 export function findInStage(s: StageSpec, id: string): SpecNode | null {

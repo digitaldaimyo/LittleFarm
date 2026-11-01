@@ -27,7 +27,7 @@ export interface ParamDef {
 
 export type CardGroup =
   | 'kind' | 'actor' | 'event' | 'condition' | 'effect' | 'limit' | 'quantity'
-  | 'reference' | 'placement' | 'rule' | 'sense';
+  | 'reference' | 'placement' | 'rule' | 'sense' | 'option';
 
 export interface CardDef {
   id: string;
@@ -81,8 +81,9 @@ export const PRESET_SKILLS: PresetSkill[] = ['Approach', 'Avoid', 'Fetch'];
  * Learner templates:
  *  - 'sense': tabular Q-learning over player-chosen Sense cards and Ability set (Approach/Avoid are presets of this)
  *  - 'fetch': option-level controller that reuses a saved movement skill
+ *  - 'routine': option-level controller over any saved skills + actions, watching player-chosen conditions
  */
-export type LearnerTemplate = 'sense' | 'fetch';
+export type LearnerTemplate = 'sense' | 'fetch' | 'routine';
 
 export interface LearnerSpec {
   /** Name of the reusable behavior this stage teaches (preset or player-made). */
@@ -90,6 +91,8 @@ export interface LearnerSpec {
   template?: LearnerTemplate;
   /** Sense cards (template 'sense'): what the pet pays attention to. */
   senses?: SpecNode[];
+  /** Routine template: options (Use skill / Do action cards) and up to 4 watched conditions. */
+  routine?: { options: SpecNode[]; watch: SpecNode[] };
   /** Object kind the behavior is pointed at during training (e.g. berry). */
   focus: string;
   /** Destination kind for composite skills (Fetch). */

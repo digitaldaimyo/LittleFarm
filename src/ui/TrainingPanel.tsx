@@ -55,7 +55,7 @@ export function TrainingPanel() {
     if (!pet || !t.report || !t.policy) return;
     store.mutate((g) => {
       const pp = g.pets.find((x) => x.id === pet.id)!;
-      const rev = saveRevision(g, pp, { stage: t.stage, policy: t.policy!, report: t.report!, episodes: p?.episode ?? 0, durationMs: t.ms, simTicks: p?.simTicks ?? 0, resumedFrom: t.resumedFrom ?? undefined, navigator: t.navigator ?? undefined });
+      const rev = saveRevision(g, pp, { stage: t.stage, policy: t.policy!, report: t.report!, episodes: p?.episode ?? 0, durationMs: t.ms, simTicks: p?.simTicks ?? 0, resumedFrom: t.resumedFrom ?? undefined, navigator: t.navigator ?? undefined, uses: t.uses });
       const k = getSkill(pp, t.stage.learner.skill)!;
       store.toast(k.activeRev === rev.rev ? `Saved ${t.stage.learner.skill} r${rev.rev}${rev.eval.passed ? ' — certified!' : ''}` : `Saved r${rev.rev}, but certified r${k.activeRev} stays active. Switch in Pets if you want.`, k.activeRev === rev.rev ? 'good' : 'info');
     });
@@ -93,6 +93,7 @@ export function TrainingPanel() {
           <div className="eyebrow">{t.status === 'evaluating' ? 'Testing on held-out layouts…' : running ? `${pet?.name} is learning ${t.stage.learner.skill} — real tries, real treats` : t.status === 'done' ? 'Lesson report' : t.status}</div>
           <strong>{t.stage.name}</strong>
           {t.navigator && <div className="small muted">Movement option: {t.navigator.skill} r{t.navigator.rev} (reused, not retrained)</div>}
+          {t.uses && <div className="small muted">Uses {t.uses.map((u) => `${u.skill} r${u.rev}`).join(', ')} (reused, not retrained)</div>}
           {t.resumedFrom && <div className="small muted">Continuing from r{t.resumedFrom}</div>}
         </div>
         {running && (
@@ -138,6 +139,7 @@ export function TrainingPanel() {
     const rows: [string, EvalResult, string][] = [
       ['Before', r.before, t.resumedFrom ? `r${t.resumedFrom}` : 'untrained'],
       ['Random wandering', r.random, 'baseline'],
+      ...(r.randomOptions ? [['Random choices', r.randomOptions, 'same skills, picked at random'] as [string, EvalResult, string]] : []),
       ['After', r.after, `r${nextRev}`],
       ['Transfer', r.transfer, 'bigger unseen pens'],
     ];

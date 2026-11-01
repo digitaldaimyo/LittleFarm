@@ -29,6 +29,9 @@ export const UNLOCKS: UnlockDef[] = [
   { id: 'avoid', label: 'Avoid lessons', describe: 'Teach pets to keep out of the pond.',
     when: (s) => s.progress.unlocks.includes('fetch') && s.progress.totalCoins >= 12,
     progress: (s) => ({ have: Math.min(12, s.progress.totalCoins), need: 12, unit: 'coins earned' }) },
+  { id: 'routines', label: 'Routines', describe: 'Combine your saved skills: a routine learns which one to use when.',
+    when: (s) => anyPet(s, (p) => isCertified(getSkill(p, 'Approach')) && p.skills.length >= 2),
+    progress: (s) => ({ have: Math.min(2, Math.max(0, ...s.pets.map((p) => p.skills.length))), need: 2, unit: 'saved skills (with a certified Approach)' }) },
 ];
 
 export interface ShopItem {

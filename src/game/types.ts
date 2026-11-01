@@ -50,12 +50,16 @@ export interface SkillRevision {
   success?: SpecNode | null;
   outcome?: 'reach' | 'survive';
   maxTicks?: number;
+  /** Routines: the skill revisions it was trained and certified with… */
+  uses?: { skill: string; rev: number }[];
+  /** …and a copy of its lesson (options, watched conditions, size), needed to run it anywhere. */
+  stage?: StageSpec;
 }
 
 export interface Skill {
   id: string;
   name: SkillName;
-  kind: 'nav' | 'fetch';
+  kind: 'nav' | 'fetch' | 'routine';
   /** 'sense' for movement/custom skills, 'fetch' for the Fetch controller. Absent in v1 saves. */
   template?: LearnerTemplate;
   /** Player-made (not one of the built-in presets). */

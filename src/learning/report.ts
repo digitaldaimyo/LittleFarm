@@ -3,13 +3,16 @@ import { EVAL_SEED_BASE, TRANSFER_SEED_BASE, evalSeeds } from '../domain/recipes
 import type { SerializedQ } from './qtable';
 import { FetchController, SensePolicy, type SenseSkillDef } from './policies';
 import { senseDefFor, templateOf } from './skilldef';
-import { evaluate, transferVariant, type EvalResult, type EpisodeTrace, type PolicySpec, type Traits } from './episodes';
+import { DEFAULT_TRAITS, evaluate, transferVariant, type EvalResult, type EpisodeTrace, type PolicySpec, type Traits } from './episodes';
+import { RoutineController, compileRoutine, type SubSkills } from './routine';
 
 export interface TrainingReport {
   before: EvalResult;
   after: EvalResult;
   random: EvalResult;
   transfer: EvalResult;
+  /** Routines only: the same options chosen at random (a fairer baseline than random steps). */
+  randomOptions?: EvalResult;
   exploits: ExploitFinding[];
   passed: boolean;
   evalSeeds: number[];
@@ -22,7 +25,11 @@ export interface ExploitFinding {
   replay?: EpisodeTrace;
 }
 
-export function policySpecFor(stage: StageSpec, q: SerializedQ | null, navigator: SerializedQ | null, navigatorDef?: SenseSkillDef, selfDef?: SenseSkillDef): PolicySpec {
+export function policySpecFor(stage: StageSpec, q: SerializedQ | null, navigator: SerializedQ | null, navigatorDef?: SenseSkillDef, selfDef?: SenseSkillDef, subskills?: SubSkills, traits: Traits = DEFAULT_TRAITS): PolicySpec {
+  if (templateOf(stage) === 'routine') {
+    const subs = subskills ?? {};
+    return { kind: 'routine', ctrl: RoutineController.from(q, compileRoutine(stage, subs, traits)), subskills: subs };
+  }
   if (templateOf(stage) === 'fetch') {
     return { kind: 'fetch', ctrl: FetchController.from(q) ?? new FetchController(), nav: SensePolicy.from(navigator, navigatorDef) };
   }
@@ -37,15 +44,17 @@ export function heldOutSeeds(stage: StageSpec): number[] {
   return s.length >= 10 ? s : evalSeeds(Math.max(10, stage.evaluation.episodes));
 }
 
-export function buildReport(stage: StageSpec, traits: Traits, before: SerializedQ | null, after: SerializedQ, navigator: SerializedQ | null, navigatorDef?: SenseSkillDef): TrainingReport {
+export function buildReport(stage: StageSpec, traits: Traits, before: SerializedQ | null, after: SerializedQ, navigator: SerializedQ | null, navigatorDef?: SenseSkillDef, subskills?: SubSkills): TrainingReport {
   const seeds = heldOutSeeds(stage);
-  const beforeR = evaluate(stage, policySpecFor(stage, before, navigator, navigatorDef), seeds, 'before', traits);
-  const afterR = evaluate(stage, policySpecFor(stage, after, navigator, navigatorDef), seeds, 'evaluation', traits);
+  const spec = (q: SerializedQ | null, st: StageSpec = stage) => policySpecFor(st, q, navigator, navigatorDef, undefined, subskills, traits);
+  const beforeR = evaluate(stage, spec(before), seeds, 'before', traits);
+  const afterR = evaluate(stage, spec(after), seeds, 'evaluation', traits);
+  const randomOptions = templateOf(stage) === 'routine' ? evaluate(stage, { kind: 'routine', ctrl: null, subskills: subskills ?? {} }, seeds, 'baseline', traits, 1) : undefined;
   const random = evaluate(stage, { kind: 'random' }, seeds, 'baseline', traits, 1);
   const tStage = transferVariant(stage);
-  const transfer = evaluate(tStage, policySpecFor(tStage, after, navigator, navigatorDef), evalSeeds(10, TRANSFER_SEED_BASE), 'transfer', traits, 2);
+  const transfer = evaluate(tStage, spec(after, tStage), evalSeeds(10, TRANSFER_SEED_BASE), 'transfer', traits, 2);
   return {
-    before: beforeR, after: afterR, random, transfer,
+    before: beforeR, after: afterR, random, transfer, randomOptions,
     exploits: findExploits(stage, afterR),
     passed: afterR.successRate >= stage.evaluation.minimumSuccessRate,
     evalSeeds: seeds,

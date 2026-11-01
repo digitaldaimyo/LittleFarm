@@ -29,7 +29,15 @@ const STAGE_SOCKETS: Record<string, SocketDef> = {
   '#success': { id: 'success', label: 'Success', type: nominal('Condition'), required: true },
   '#fail': { id: 'fail', label: 'Fail', type: nominal('Condition'), required: false },
   '#senses': { id: 'senses', label: 'Sense', type: nominal('Sense'), required: false, many: true },
+  '#options': { id: 'options', label: 'Option', type: nominal('Option'), required: false, many: true },
+  '#watch': { id: 'watch', label: 'Watch', type: nominal('Condition'), required: false, many: true },
 };
+
+function stageList(stage: StageSpec, parentId: string): SpecNode[] {
+  if (parentId === '#senses') return (stage.learner.senses ??= []);
+  const r = (stage.learner.routine ??= { options: [], watch: [] });
+  return parentId === '#options' ? r.options : r.watch;
+}
 
 /** Is `it` bound at this node? (inside a rule whose WHEN binds an object) */
 export function itBoundAt(stage: StageSpec, nodeId: string): boolean {
@@ -45,9 +53,9 @@ export function itBoundAt(stage: StageSpec, nodeId: string): boolean {
 }
 
 export function slotInfo(stage: StageSpec, slot: SlotRef): SlotInfo | null {
-  if (slot.parentId === '#senses') {
-    const list = stage.learner.senses ?? [];
-    return { socket: STAGE_SOCKETS['#senses'], current: slot.index !== null ? list[slot.index] ?? null : null, parent: null, itBound: false };
+  if (slot.parentId === '#senses' || slot.parentId === '#options' || slot.parentId === '#watch') {
+    const list = slot.parentId === '#senses' ? stage.learner.senses ?? [] : slot.parentId === '#options' ? stage.learner.routine?.options ?? [] : stage.learner.routine?.watch ?? [];
+    return { socket: STAGE_SOCKETS[slot.parentId], current: slot.index !== null ? list[slot.index] ?? null : null, parent: null, itBound: false };
   }
   if (slot.parentId in STAGE_SOCKETS) {
     const current = slot.parentId === '#success' ? stage.success : stage.fail ?? null;
@@ -67,8 +75,8 @@ export function slotInfo(stage: StageSpec, slot: SlotRef): SlotInfo | null {
 
 /** Put a node into a slot (or clear it with null). Returns the new slot ref pointing at it. */
 export function setSlot(stage: StageSpec, slot: SlotRef, n: SpecNode | null): SlotRef | null {
-  if (slot.parentId === '#senses') {
-    const list = (stage.learner.senses ??= []);
+  if (slot.parentId === '#senses' || slot.parentId === '#options' || slot.parentId === '#watch') {
+    const list = stageList(stage, slot.parentId);
     if (slot.index === null) { if (!n) return null; list.push(n); return { ...slot, index: list.length - 1 }; }
     if (n) list[slot.index] = n; else list.splice(slot.index, 1);
     return n ? slot : null;

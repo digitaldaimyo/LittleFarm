@@ -160,6 +160,20 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
     else if (size > 50000) out.push({ severity: 'warning', code: 'state-budget', message: `${size.toLocaleString()} situations to learn — this will need lots of practice tries.` });
     if (!stage.abilities.length) out.push({ severity: 'error', code: 'no-abilities', message: 'Give the skill at least one ability (Move, Stay…).' });
   }
+  if (template === 'routine') {
+    const R = L.routine ?? { options: [], watch: [] };
+    if (R.options.length < 1) out.push({ severity: 'error', code: 'no-options', message: 'Give the routine at least one option (Use skill / Do action) to choose from.' });
+    if (R.options.length > 6) out.push({ severity: 'error', code: 'too-many-options', message: 'At most 6 options per routine.' });
+    if (R.watch.length > 4) out.push({ severity: 'error', code: 'too-many-watch', message: 'A routine can watch at most 4 conditions (16 situations).' });
+    if (R.watch.length === 0) out.push({ severity: 'warning', code: 'no-watch', message: 'The routine watches nothing, so it can only learn one fixed order. Add a condition to watch (e.g. “chicken in coop”).' });
+    const optCtx: Ctx = { reg, itBound: false, placed, out, target: L.focus, areas };
+    for (const o of R.options) {
+      validateNode(o, nominal('Option'), optCtx);
+      if (o.cardId === 'opt.skill' && !String(o.args.skill ?? '').trim()) out.push({ severity: 'error', code: 'no-skill', nodeId: o.id, message: 'Pick which saved skill this option uses.' });
+      if (o.cardId === 'opt.skill' && String(o.args.skill) === L.skill) out.push({ severity: 'error', code: 'self-reference', nodeId: o.id, message: 'A routine can’t use itself as an option.' });
+    }
+    for (const c of R.watch) validateNode(c, nominal('Condition'), optCtx);
+  }
   if (!placed.has(L.focus)) out.push({ severity: 'error', code: 'missing-reference', message: `${L.skill} is pointed at ${reg.objects.get(L.focus)?.name ?? L.focus}, but none is placed in the pen.` });
   if (template === 'fetch' && (!L.destination || !placed.has(L.destination))) out.push({ severity: 'error', code: 'missing-reference', message: 'Fetch needs a destination (like a Bin) placed in the pen.' });
   if (template === 'fetch' && !reg.objects.get(L.focus)?.carryable) out.push({ severity: 'error', code: 'type-mismatch', message: 'Fetch can only carry Carryable things.' });
@@ -182,7 +196,7 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
     }
     if (ev.cardId === 'ev.pickup' && reward > 0 && lim !== 'lim.once' && lim !== 'lim.perObject') pickPay = true;
     if (ev.cardId === 'ev.drop' && reward > 0 && lim !== 'lim.once' && lim !== 'lim.perObject') dropPay = true;
-    const fetchT = (L.template ?? (L.skill === 'Fetch' ? 'fetch' : 'sense')) === 'fetch';
+    const fetchT = (L.template ?? (L.skill === 'Fetch' ? 'fetch' : 'sense')) !== 'sense';
     const needs: Record<string, string> = { 'ev.pickup': 'pickup', 'ev.drop': 'drop', 'ev.deliver': 'drop', 'ev.stay': 'stay', 'ev.fill': 'water', 'ev.water': 'water', 'ev.shoo': 'shoo' };
     const need = needs[ev.cardId];
     if (need && !fetchT && !stage.abilities.includes(need)) out.push({ severity: 'info', code: 'unusable-event', nodeId: r.id, message: `“${label}” needs the ${need === 'pickup' ? 'Pick up' : need === 'drop' ? 'Put down' : need === 'water' ? 'Water' : need === 'shoo' ? 'Shoo' : 'Stay'} ability, which ${L.skill} doesn’t have — it will never fire.` });

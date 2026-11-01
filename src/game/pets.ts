@@ -9,6 +9,8 @@ import { REGISTRY } from '../domain/registry';
 import { senseDefFor, templateOf } from '../learning/skilldef';
 import { ABILITY_LABELS } from '../learning/senses';
 import { SensePolicy } from '../learning/policies';
+import { RoutineController, RoutineRun, compileRoutine, type SubSkills } from '../learning/routine';
+import { compileCondition, withTarget } from '../sim/compile';
 
 export const NAME_SUGGESTIONS = ['Pip', 'Biscuit', 'Mochi', 'Clover', 'Pebble', 'Juniper', 'Toast'];
 export const PALETTES: { id: PaletteId; label: string; body: string; belly: string; ear: string; ink: string }[] = [
@@ -31,6 +33,15 @@ export function isPreset(name: string): boolean {
 
 /** Describe a player-made skill from its lesson: signature lists what it pays attention to and can do. */
 export function customMeta(stage: StageSpec): Meta {
+  if (templateOf(stage) === 'routine') {
+    const opts = (stage.learner.routine?.options ?? []).map((o) => o.cardId === 'opt.skill' ? String(o.args.skill) : `${String(o.args.action)}`).join(', ');
+    return {
+      kind: 'routine',
+      signature: `${stage.learner.skill}(routine) — chooses between: ${opts}; watches ${(stage.learner.routine?.watch ?? []).length} condition(s)`,
+      initiation: 'Can start anywhere.',
+      termination: 'Ends when its lesson’s SUCCESS condition holds, or time runs out.',
+    };
+  }
   const def = senseDefFor(stage);
   const senses = def.senses.map((n) => REGISTRY.cards.get(n.cardId)?.presentation.title ?? n.cardId).join(', ');
   const acts = stage.abilities.map((a) => ABILITY_LABELS[a] ?? a).join(', ');
@@ -98,6 +109,35 @@ export function sensePolicyOf(rev: SkillRevision): SensePolicy | null {
   return SensePolicy.from(rev.policy, rev.learner);
 }
 
+/** Snapshots of a pet's saved sense skills (active revisions) that routines may call. */
+export function subskillsFor(p: Pet): SubSkills {
+  const out: SubSkills = {};
+  for (const k of p.skills) {
+    if ((k.template ?? (k.name === 'Fetch' ? 'fetch' : 'sense')) !== 'sense') continue;
+    const r = activeRevision(k);
+    if (!r) continue;
+    out[k.name] = { name: k.name, rev: r.rev, preset: !k.custom, policy: r.policy, learner: r.learner, focus: r.focus, success: r.success, outcome: r.outcome, maxTicks: r.maxTicks };
+  }
+  return out;
+}
+
+/** Sub-skills whose active revision differs from the one a routine revision was certified with. */
+export function staleUses(p: Pet, rev: SkillRevision | null): { skill: string; trained: number; now: number | null }[] {
+  if (!rev?.uses) return [];
+  return rev.uses
+    .map((u) => ({ skill: u.skill, trained: u.rev, now: getSkill(p, u.skill)?.activeRev ?? null }))
+    .filter((u) => u.now !== u.trained);
+}
+
+/** Runtime controller for a routine revision, wired to the pet's current sub-skill revisions. */
+export function routineRunFor(p: Pet, rev: SkillRevision, target: string | undefined, rng: Rng, timeout: number): RoutineRun | null {
+  if (!rev.stage) return null;
+  const compiled = compileRoutine(rev.stage, subskillsFor(p), p.traits, target);
+  const ctrl = RoutineController.from(rev.policy, compiled);
+  const goal = rev.stage.success && rev.stage.outcome !== 'survive' ? withTarget(target ?? rev.stage.learner.focus, () => compileCondition(rev.stage!.success!)) : null;
+  return new RoutineRun(compiled, ctrl, rng, timeout, goal ? (w) => goal({ w, prev: w.pet }) : null);
+}
+
 export function customSkills(p: Pet): Skill[] {
   return p.skills.filter((k) => k.custom && activeRevision(k));
 }
@@ -115,6 +155,8 @@ export interface SaveRevisionInput {
   simTicks: number;
   resumedFrom?: number;
   navigator?: { skill: NavigatorName; rev: number };
+  /** Routines: which skill revisions the options called. */
+  uses?: { skill: string; rev: number }[];
 }
 
 /** Save an immutable new skill revision and make it active. */
@@ -129,6 +171,7 @@ export function saveRevision(s: GameState, pet: Pet, input: SaveRevisionInput): 
     Object.assign(skill, customMeta(input.stage));
   }
   const sense = templateOf(input.stage) === 'sense';
+  const routine = templateOf(input.stage) === 'routine';
   const rev: SkillRevision = {
     rev: (skill.revisions.at(-1)?.rev ?? 0) + 1,
     createdAt: Date.now(),
@@ -149,7 +192,7 @@ export function saveRevision(s: GameState, pet: Pet, input: SaveRevisionInput): 
     },
     provenance: {
       trainer: !sense ? 'Double Q-learning over options (SMDP)' : 'Tabular Double Q-learning',
-      features: !sense ? 'carrying × at item × at bin × item visible' : senseDefFor(input.stage).senses.map((n) => REGISTRY.cards.get(n.cardId)?.presentation.title ?? n.cardId).join(' × '),
+      features: routine ? `${(input.stage.learner.routine?.watch ?? []).length} watched condition(s) → ${1 << (input.stage.learner.routine?.watch ?? []).length} situations` : !sense ? 'carrying × at item × at bin × item visible' : senseDefFor(input.stage).senses.map((n) => REGISTRY.cards.get(n.cardId)?.presentation.title ?? n.cardId).join(' × '),
       trainSeeds: `hash(stage ${input.stage.seed}, i) mod 800000`,
       evalSeeds: input.report.evalSeeds,
       navigator: input.navigator,
@@ -157,6 +200,7 @@ export function saveRevision(s: GameState, pet: Pet, input: SaveRevisionInput): 
       simTicks: input.simTicks,
       resumedFrom: input.resumedFrom,
     },
+    ...(routine ? { uses: input.uses ?? [], stage: structuredClone(input.stage), focus: input.stage.learner.focus, maxTicks: input.stage.maxTicks } : {}),
     ...(sense ? {
       learner: senseDefFor(input.stage),
       focus: input.stage.learner.focus,
