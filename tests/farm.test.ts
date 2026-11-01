@@ -55,7 +55,7 @@ describe('farm', () => {
     tut.rules.push(rule);
     advanceTutorial(s);
     expect(currentStep(s)?.id).toBe('success');
-    (rule.args.then as ReturnType<typeof node>[]).push(node('eff.end', { outcome: 'success' }));
+    (rule.args.then as ReturnType<typeof node>[]).push(node('eff.end', { outcome: 'judge' }));
     tut.success = suggestedRules(tut)[0].success;
     advanceTutorial(s);
     expect(currentStep(s)?.id).toBe('train');

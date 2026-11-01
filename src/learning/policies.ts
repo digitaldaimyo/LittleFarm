@@ -1,5 +1,5 @@
 import type { Action, World } from '../sim/world';
-import { MOVES, isSolidAt, DIRS, nearest } from '../sim/world';
+import { MOVES, isSolidAt, DIRS, nearest, cloneTally, type Tally } from '../sim/world';
 import type { SpecNode } from '../domain/types';
 import { compileEncoder, legalActionIdx, presetSenses, stateSpaceSize, type SenseEncoder } from './senses';
 import { Rng } from '../sim/rng';
@@ -36,9 +36,9 @@ export class SensePolicy {
     return e;
   }
   /** Greedy legal action. Rarely-seen states back off to coarser views. */
-  act(w: World, target: string): Action {
+  act(w: World, target: string, base?: Tally): Action {
     const enc = this.encoder(target);
-    const v = enc.encode(w);
+    const v = enc.encode(w, base);
     let s = enc.index(v);
     if (this.q.visits[s] < MIN_VISITS) {
       for (const b of enc.backoffs(v)) { s = b; if (this.q.visits[s] >= MIN_VISITS) break; }
@@ -174,16 +174,19 @@ export class FetchRun {
  */
 export class SkillRun {
   ticks = 0;
+  /** What had already happened when this run started: "Has …" and "Done … yet?" count from here. */
+  private base: Tally | undefined;
   constructor(
     private policy: SensePolicy,
     private target: string,
     private timeout: number,
-    private done: ((w: World) => boolean) | null,
+    private done: ((w: World, base?: Tally) => boolean) | null,
   ) {}
   next(w: World): ExecStep {
-    if (this.ticks > 0 && this.done?.(w)) return { done: 'success', reason: 'goal reached' };
+    if (this.ticks === 0) { w.tally ??= {}; this.base = cloneTally(w.tally); } // start remembering from here
+    if (this.ticks > 0 && this.done?.(w, this.base)) return { done: 'success', reason: 'goal reached' };
     if (this.ticks >= this.timeout) return { done: 'success', reason: 'time up' };
     this.ticks++;
-    return this.policy.act(w, this.target);
+    return this.policy.act(w, this.target, this.base);
   }
 }

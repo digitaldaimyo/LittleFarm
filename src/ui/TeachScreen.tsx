@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { cloneWorld } from '../sim/world';
 import { probeField, probePath } from '../learning/probe';
 import { audio } from '../audio/engine';
+import { describe, describeRule } from '../domain/describe';
+import { rolloutChecks } from '../learning/lint';
 import type { SpecNode, StageSpec } from '../domain/types';
 import { REGISTRY } from '../domain/registry';
 import { RECIPES, instantiateRecipe, suggestedRules } from '../domain/recipes';
@@ -362,15 +364,66 @@ function RulesBinder({ stage }: { stage: StageSpec }) {
       )}
       <h4>Success & fail</h4>
       <div className="rule success-row" data-tut="success-slot">
-        <span className="kw good">SUCCESS when</span>
-        <SlotChip stage={stage} slot={{ parentId: '#success', socket: 'success', index: null }} label="condition" errors={errs} />
+        <ConditionList stage={stage} which="success" errs={errs} />
       </div>
       <div className="rule fail-row">
-        <span className="kw bad">FAIL when</span>
-        <SlotChip stage={stage} slot={{ parentId: '#fail', socket: 'fail', index: null }} label="(optional)" errors={errs} />
+        <ConditionList stage={stage} which="fail" errs={errs} />
       </div>
       {s.ui.slot && <Sleeve stage={stage} onChange={update} />}
     </div>
+  );
+}
+
+/**
+ * SUCCESS / FAIL as a list: one card, or several joined by an all/any switch (stored as All of / Any of).
+ * "+ and…" turns a single card into a list without hunting for the All of card.
+ */
+function ConditionList({ stage, which, errs }: { stage: StageSpec; which: 'success' | 'fail'; errs: Set<string> }) {
+  const s = useStore();
+  const update = (fn: (st: StageSpec) => void) => withSnapshot(stage.id, fn);
+  const root = which === 'success' ? stage.success : stage.fail;
+  const slotId = which === 'success' ? '#success' : '#fail';
+  const kw = which === 'success' ? <span className="kw good">SUCCESS when</span> : <span className="kw bad">FAIL when</span>;
+  const isList = !!root && (root.cardId === 'cond.and' || root.cardId === 'cond.any');
+  const pet = activePet(s.state);
+  const read = root ? describe(root, { petName: pet?.name ?? 'your pet', target: stage.learner.focus }) : null;
+  const setRoot = (st: StageSpec, n: SpecNode | null) => { if (which === 'success') st.success = n; else st.fail = n; };
+  const getRoot = (st: StageSpec) => (which === 'success' ? st.success : st.fail);
+  if (!isList) {
+    return (
+      <>
+        <div className="rule-line">{kw}
+          <SlotChip stage={stage} slot={{ parentId: slotId, socket: which, index: null }} label={which === 'success' ? 'condition' : '(optional)'} errors={errs} />
+          {root && <button className="btn ghost small" aria-label={`Add another ${which.toUpperCase()} condition`} onClick={() => {
+            let id = '';
+            update((st) => { const cur = getRoot(st); if (!cur) return; const list = node('cond.and', { all: [cur] }); id = list.id; setRoot(st, list); });
+            if (id) { audio.play('card.flick'); s.setUi({ slot: { parentId: id, socket: 'all', index: null } }); }
+          }}>+ and…</button>}
+        </div>
+        {read && <div className="small muted reads">Reads: {which === 'success' ? 'success' : 'fail'} when {read}.</div>}
+      </>
+    );
+  }
+  const any = root!.cardId === 'cond.any';
+  return (
+    <>
+      <div className="rule-line">{kw}
+        <span className="seg small-seg" role="radiogroup" aria-label={`${which.toUpperCase()} needs`}>
+          {(['all', 'any'] as const).map((m) => (
+            <button key={m} role="radio" aria-checked={(m === 'any') === any} className={(m === 'any') === any ? 'on' : ''} onClick={() => update((st) => {
+              const cur = getRoot(st);
+              if (!cur || (m === 'any') === (cur.cardId === 'cond.any')) return;
+              const kids = (cur.args.all ?? cur.args.any ?? []) as SpecNode[];
+              setRoot(st, node(m === 'any' ? 'cond.any' : 'cond.and', { [m]: kids }, cur.id));
+            })}>{m === 'all' ? 'all of these' : 'any of these'}</button>
+          ))}
+        </span>
+      </div>
+      <div className="rule-line"><span className="kw" />
+        <ManySlot stage={stage} parent={root!} socket={any ? 'any' : 'all'} label="condition" errors={errs} />
+      </div>
+      {read && <div className="small muted reads">Reads: {which === 'success' ? 'success' : 'fail'} when {read}.</div>}
+    </>
   );
 }
 
@@ -390,13 +443,19 @@ function RuleRow({ stage, r, errs }: { stage: StageSpec; r: SpecNode; errs: Set<
       <div className="rule-line"><span className="kw">IF</span><ManySlot stage={stage} parent={r} socket="if" label="condition" errors={errs} /></div>
       <div className="rule-line"><span className="kw">THEN</span><ManySlot stage={stage} parent={r} socket="then" label="effect" errors={errs} /></div>
       <div className="rule-line"><span className="kw">LIMIT</span><SlotChip stage={stage} slot={{ parentId: r.id, socket: 'limit', index: null }} label="every time" errors={errs} /></div>
+      <div className="small muted reads">Reads: {describeRule(r, { petName: activePet(s.state)?.name ?? 'your pet', target: stage.learner.focus })}</div>
     </div>
   );
 }
 
 function Diagnostics({ stage }: { stage: StageSpec }) {
   const s = useStore();
-  const d = validateStage(stage, REGISTRY, new Set(s.state.progress.unlocks));
+  const base = validateStage(stage, REGISTRY, new Set(s.state.progress.unlocks));
+  const valid = !base.some((x) => x.severity === 'error');
+  // Measured checks (quick random tries) once the lesson is valid; recomputed when it changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const measured = useMemo(() => (valid ? rolloutChecks(stage) : []), [stage, stage.version, valid]);
+  const d = [...base, ...measured];
   if (!d.length) return <div className="diag good small">✓ Lesson is valid. Ready to train.</div>;
   return (
     <div className="diags" aria-live="polite">

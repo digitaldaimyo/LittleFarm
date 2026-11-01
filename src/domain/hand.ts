@@ -19,6 +19,63 @@ export interface HandContext {
   itBound: boolean;
   /** Placing into the environment (pen) rather than referencing in rules. */
   placing: boolean;
+  /** Which part of the lesson the slot belongs to (ranks cards that make sense there). */
+  role?: SlotRole;
+}
+
+export type SlotRole = 'success' | 'fail' | 'when' | 'if' | 'then' | 'sense' | 'other';
+
+/** The ability an event needs (events your pet can't cause rank low; ones only it can cause rank high). */
+export const EVENT_ABILITY: Record<string, string> = {
+  'ev.shoo': 'shoo', 'ev.pickup': 'pickup', 'ev.drop': 'drop', 'ev.deliver': 'drop', 'ev.stay': 'stay', 'ev.fill': 'water', 'ev.water': 'water', 'ev.gate': 'nudge',
+  'ev.reach': 'move', 'ev.enter': 'move', 'ev.bump': 'move',
+};
+
+/** "More cards" sub-groups for conditions, so a long list reads as a few short ones. */
+const COND_GROUP: Record<string, string> = {
+  'cond.at': 'Where', 'cond.near': 'Where', 'cond.farFrom': 'Where', 'cond.itNear': 'Where', 'cond.closer': 'Where', 'cond.petInArea': 'Where', 'cond.inArea': 'Where', 'cond.allInArea': 'Where',
+  'cond.happened': 'Has happened', 'cond.just': 'Has happened', 'cond.delivered': 'Has happened', 'cond.watered': 'Has happened', 'cond.stayedFor': 'Has happened', 'cond.compare': 'Has happened',
+  'cond.carrying': 'Your pet', 'cond.carryingAny': 'Your pet', 'cond.hasWater': 'Your pet', 'cond.energyBelow': 'Your pet',
+  'cond.night': 'The world', 'cond.raining': 'The world', 'cond.gates': 'The world',
+  'cond.and': 'Combine', 'cond.any': 'Combine', 'cond.not': 'Combine',
+};
+const GROUP_ORDER = ['Combine', 'Has happened', 'Where', 'Your pet', 'The world'];
+
+/** Contextual nudges: abilities, the slot's role, and whether the pen has what a card talks about. */
+function contextScore(reg: Registry, card: CardDef, ctx: HandContext, placedTraits: Set<string>): number {
+  const abilities = new Set(ctx.stage.abilities);
+  const actsBeyondMoving = ctx.stage.abilities.some((a) => a !== 'move');
+  const template = ctx.stage.learner.template ?? 'sense';
+  let s = 0;
+  const need = EVENT_ABILITY[card.id];
+  if (need && template === 'sense') {
+    if (!abilities.has(need)) s -= 5;
+    else if (need !== 'move') s += 7; // the thing this lesson is about
+  }
+  if (card.id === 'cond.happened') s += actsBeyondMoving ? (ctx.role === 'success' ? 9 : 4) : 0;
+  if (card.id === 'cond.just' && (ctx.role === 'success' || ctx.role === 'fail')) s -= 3;
+  if (card.id === 'cond.closer' && (ctx.role === 'success' || ctx.role === 'fail')) s -= 6; // "got closer" only means something on a step
+  if (card.id === 'sense.did') s += walkAny(ctx.stage, (id) => id === 'cond.happened') ? 6 : -2;
+  if ((card.id === 'cond.and' || card.id === 'cond.any') && (ctx.role === 'success' || ctx.role === 'fail')) s += 1;
+  // Cards that need a kind of thing the pen doesn't have (e.g. "Has delivered" with nothing carryable).
+  for (const sock of card.sockets ?? []) {
+    if (!sock.required || sock.type.kind !== 'generic' || sock.type.name !== 'Kind') continue;
+    const traits = sock.type.args.map((t) => (t.kind === 'nominal' ? t.name : ''));
+    if (traits.length && !traits.every((t) => placedTraits.has(t))) { s -= 6; break; }
+  }
+  void reg;
+  return s;
+}
+
+function walkAny(stage: StageSpec, pred: (cardId: string) => boolean): boolean {
+  const visit = (v: unknown): boolean => {
+    if (Array.isArray(v)) return v.some(visit);
+    if (!v || typeof v !== 'object') return false;
+    const o = v as { cardId?: string; args?: Record<string, unknown> };
+    if (o.cardId && pred(o.cardId)) return true;
+    return !!o.args && Object.values(o.args).some(visit);
+  };
+  return visit(stage.rules) || visit(stage.success) || visit(stage.fail);
 }
 
 export interface HandCard {
@@ -52,6 +109,8 @@ const STARTER_FAVORS: Record<string, number> = {
  */
 export function buildHand(reg: Registry, ctx: HandContext): Hand {
   const placed = placedKinds(ctx.stage);
+  const placedTraits = new Set<string>();
+  for (const k of placed) for (const t of reg.objects.get(k)?.traits ?? []) placedTraits.add(t);
   const all: HandCard[] = [];
   for (const card of reg.cards.values()) {
     if (!fits(ctx.socket, effectiveOutput(reg, card, ctx.stage.learner.focus))) continue;
@@ -81,6 +140,7 @@ export function buildHand(reg: Registry, ctx: HandContext): Hand {
     const r = ctx.recent.indexOf(card.id);
     if (r >= 0) score += Math.max(0, 5 - r);
     if (ctx.favorites.includes(card.id)) score += 6;
+    if (!ctx.placing) score += contextScore(reg, card, ctx, placedTraits);
     if (status === 'locked') score -= 100;
     all.push({ card, status, reason, score });
   }
@@ -89,10 +149,13 @@ export function buildHand(reg: Registry, ctx: HandContext): Hand {
   const nRec = Math.min(7, Math.max(Math.min(3, avail.length), avail.filter((c) => c.score >= 8).length));
   const recommended = avail.slice(0, nRec);
   const recIds = new Set(recommended.map((c) => c.card.id));
+  // "More cards": short sub-groups in a fixed order, alphabetical inside (available first), so a card is
+  // always in the same place no matter how the recommendations shuffle.
+  const sheetOf = (c: HandCard) => (COND_GROUP[c.card.id] ? `${c.card.presentation.sheet} · ${COND_GROUP[c.card.id]}` : c.card.presentation.sheet);
+  const rest = all.filter((c) => !recIds.has(c.card.id));
+  const rank = (sheet: string) => { const i = GROUP_ORDER.findIndex((g) => sheet.endsWith(`· ${g}`)); return i < 0 ? 99 : i; };
+  rest.sort((a, b) => rank(sheetOf(a)) - rank(sheetOf(b)) || sheetOf(a).localeCompare(sheetOf(b)) || (a.status === b.status ? 0 : a.status === 'locked' ? 1 : -1) || a.card.presentation.title.localeCompare(b.card.presentation.title));
   const bySheet: Record<string, HandCard[]> = {};
-  for (const c of all) {
-    if (recIds.has(c.card.id)) continue;
-    (bySheet[c.card.presentation.sheet] ??= []).push(c);
-  }
+  for (const c of rest) (bySheet[sheetOf(c)] ??= []).push(c);
   return { recommended, bySheet, total: all.length };
 }

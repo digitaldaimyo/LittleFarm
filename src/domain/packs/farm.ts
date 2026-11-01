@@ -212,6 +212,17 @@ export const FARM_CARDS: CardDef[] = [
   N({ id: 'cond.not', output: nominal('Condition'), evaluator: 'cond.not',
     sockets: [{ id: 'inner', label: 'Condition', type: nominal('Condition'), required: true }],
     presentation: { title: 'Not', group: 'condition', sheet: 'Conditions', phrase: 'not ({inner})' } }),
+  N({ id: 'cond.any', output: nominal('Condition'), evaluator: 'cond.any',
+    sockets: [{ id: 'any', label: 'Any of', type: nominal('Condition'), required: true, many: true }],
+    presentation: { title: 'Any of', group: 'condition', sheet: 'Conditions', hint: 'True when at least one inner condition is true.', phrase: 'any of {any}' } }),
+  // Memory: conditions that remember what happened (this try; on the farm, since the skill started).
+  N({ id: 'cond.happened', output: nominal('Condition'), evaluator: 'cond.happened',
+    sockets: [{ id: 'event', label: 'What happened', type: nominal('Event'), required: true }],
+    params: [{ id: 'count', label: 'At least', kind: 'number', default: 1, min: 1, max: 20, step: 1 }],
+    presentation: { title: 'Has done…', group: 'condition', sheet: 'Conditions', hint: 'Remembers events: true once this has happened at least N times in this try.', phrase: 'has happened at least {count}×: {event}' } }),
+  N({ id: 'cond.just', output: nominal('Condition'), evaluator: 'cond.just',
+    sockets: [{ id: 'event', label: 'What happened', type: nominal('Event'), required: true }],
+    presentation: { title: 'Just…', group: 'condition', sheet: 'Conditions', hint: 'True on the step this happens.', phrase: 'just now: {event}' } }),
   N({ id: 'cond.itNear', output: nominal('Condition'), evaluator: 'cond.itNear',
     sockets: [{ id: 'object', label: 'Object', type: nominal('Object'), required: true }, { id: 'what', label: 'What', type: KIND, required: true }],
     params: [{ id: 'dist', label: 'Steps', kind: 'number', default: 1, min: 0, max: 10, step: 1 }],
@@ -264,6 +275,9 @@ export const FARM_CARDS: CardDef[] = [
     presentation: { title: 'Carrying?', group: 'sense', sheet: 'Senses', phrase: 'carrying something?' } }),
   N({ id: 'sense.still', output: nominal('Sense'), evaluator: 'sense.still', radix: 3,
     presentation: { title: 'Patience', group: 'sense', sheet: 'Senses', hint: 'How long it has stayed still (0, 1–4, 5+ steps).', phrase: 'how long it has waited' } }),
+  N({ id: 'sense.did', output: nominal('Sense'), evaluator: 'sense.did', radix: 2,
+    sockets: [{ id: 'event', label: 'What happened', type: nominal('Event'), required: true }],
+    presentation: { title: 'Done … yet?', group: 'sense', sheet: 'Senses', hint: 'Whether something has happened yet this try. Lets a pet tell “before” from “after”.', phrase: 'done yet: {event}' } }),
 
   // Routine options
   N({ id: 'opt.skill', output: nominal('Option'), evaluator: 'opt.skill',
@@ -326,8 +340,8 @@ export const FARM_CARDS: CardDef[] = [
     params: [{ id: 'amount', label: 'Amount', kind: 'number', default: 1, min: 0, max: 50, step: 0.05 }],
     presentation: { title: 'Nudge', group: 'effect', sheet: 'Effects', hint: 'Small negative reward ("not that").', phrase: '−{amount} treats' } }),
   N({ id: 'eff.end', output: nominal('Effect'), evaluator: 'eff.end',
-    params: [{ id: 'outcome', label: 'Outcome', kind: 'choice', default: 'success', choices: [{ value: 'success', label: 'done ✓' }, { value: 'fail', label: 'try again ✗' }] }],
-    presentation: { title: 'End try', group: 'effect', sheet: 'Effects', hint: 'Finish this episode.', phrase: 'end try ({outcome})' } }),
+    params: [{ id: 'outcome', label: 'Counts as', kind: 'choice', default: 'judge', choices: [{ value: 'judge', label: 'judged by SUCCESS' }, { value: 'success', label: 'a success ✓' }, { value: 'fail', label: 'a miss ✗' }] }],
+    presentation: { title: 'End try', group: 'effect', sheet: 'Effects', hint: 'Finish this try. By default SUCCESS decides whether it counted; you can also make it count as a success or a miss outright.', phrase: 'end try ({outcome})' } }),
 
   // Limits
   N({ id: 'lim.every', output: nominal('Limit'), evaluator: 'lim.every',

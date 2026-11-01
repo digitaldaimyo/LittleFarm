@@ -2,7 +2,23 @@
 
 **Goal:** make it easier to say what you mean when you build a lesson. More of what a player intends should be expressible, the right card should be quick to find, a lesson that can't work should explain why, and players should be able to keep building on what they've made.
 
-Status: **plan, not started.** Section 6 lists the decisions to take before phase A. Sound phase C is on hold.
+Status: **phase A shipped.** Decisions (section 6) all went with the recommendations: three honest End try outcomes with old saves migrated; *Has done…* on the farm counts from when the skill started; SUCCESS and FAIL as lists; pen sizes and play-it-yourself in phase B. Sound phase C is on hold.
+
+### Phase A: what shipped, and what we learned
+- **Your case now takes 4 taps** from an empty SUCCESS: the slot, *Has done…*, *Shoos*, *Chicken* ("Your pet" fills itself in). The hand recommends each card first. Built with fitting senses it learns **90–100% held out vs 30% random** (bigger pens 100%), on 3 seeds.
+- **What actually went wrong in your lesson was subtler than my first reproduction.** In real tries the pet wanders next to the chicken *before* it shoos, and "within 1 of Chicken" then ends the try as a success. The shoo rule never got to pay, and the lesson really taught "walk up to the chicken". The new measured check catches exactly this (`goal-rule-shadowed`: "SUCCESS ended 16 of 30 quick random tries before “Shooed!” ever fired"), and its one-tap repair makes SUCCESS "*Has done…* that event".
+- **Found and fixed on the way:**
+  - **The random baseline never used Shoo or Stay**, so Herd's "25% random" was chickens wandering home by themselves. With the fix every learned number is unchanged; Herd random is 20%, and the loophole experiment's random is 20%.
+  - **The "repeatable reward" heuristic** only knew that *Reaches* + End try pays once. It now applies to every event, so a rule that ends the try isn't flagged as a loophole.
+- **Changes from the plan:**
+  - *End try* outcomes are "judged by SUCCESS" (the default, and what every old "done ✓" becomes), "a success ✓" and "a miss ✗". Old "try again ✗" ends now count as a miss. A test checks that in random rollouts no recipe ever ends a try that way while SUCCESS holds, so recipe scores are unchanged.
+  - SUCCESS stays required (as planned for "SUCCESS checks"), even when a rule ends ✓, because skills on the farm finish by their SUCCESS.
+  - The memory sense is called **Done … yet?** (2 situations). The validator suggests it only when it matters: when a treat depends on *Has done…*, or the try continues after the event (nested in a list, or counted more than once). As the whole SUCCESS, counted once, the try ends right then and the pet doesn't need to know.
+  - **Memory is opt-in per world.** An always-on tally made all training 5–15% slower, so only lessons that use memory cards (and farm skill runs) keep one. Speed for other lessons is unchanged (measured against the previous commit).
+  - **Measured checks run automatically** (about 30 random tries, 5–30 ms) whenever a valid lesson changes, instead of only behind the Preflight button.
+- **Tests:** `tests/teaching.test.ts` (16), plus browser checks that build, warn about, repair, rebuild and train your case by clicking.
+
+
 
 ---
 

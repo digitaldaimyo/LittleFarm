@@ -137,7 +137,8 @@ try {
     watch(page);
     const report = async () => { await page.waitForSelector('text=Lesson report', { timeout: 180000 }); await page.waitForTimeout(300); };
     const nav = (n) => page.click(`.nav-btn:has-text("${n}")`);
-    const discard = async () => { const d = page.locator('.training button:has-text("Discard")'); if (await d.count()) await d.click(); };
+    // Leave a finished report: "Discard" if unsaved, "Close" once saved.
+    const discard = async () => { const d = page.locator('.training .actions button:has-text("Discard"), .training .actions button:has-text("Close")'); if (await d.count()) await d.first().click(); };
     const tab = async (n) => { await discard(); await page.click(`.tab:has-text("${n}")`); };
     const train = async () => { await discard(); await page.click('[data-tut="train-btn"]'); await report(); };
     const looked = () => page.click('.tutorial button:has-text("I’ve looked")');
@@ -300,6 +301,47 @@ try {
     await lessonDone('Plan the farm');
     await nav('Guide');
     check((await page.locator('.guide-item.done').count()) === 9, 'all 9 Field Guide lessons done');
+
+    // Teaching polish (phase A): build "end on shoo chicken" the old way, get warned, repair it, train it.
+    await nav('Teach');
+    await tab('Curriculum');
+    await page.click('.suggest:has-text("Herd a chicken")');
+    await tab('Rules');
+    await page.click('[data-tut="add-rule"]');
+    await page.click('.sleeve .card:has-text("Shoos")');
+    await page.click('.sleeve .card:has-text("Chicken")');
+    const newRule = page.locator('.binder-body .rule:not(.success-row):not(.fail-row)').last();
+    await newRule.locator('.slot:has-text("+ effect")').click();
+    await page.click('.sleeve .card:has-text("End try")');
+    check((await newRule.textContent()).includes('Reads: When Pip shoos chicken: end try (judged by SUCCESS)'), 'polish: a new rule reads back as a sentence');
+    await page.click('[data-tut="success-slot"] .node-handle');
+    await page.click('.sleeve button:has-text("Remove")');
+    await page.click('[data-tut="success-slot"] .slot');
+    await page.click('.sleeve details.more > summary');
+    await page.click('.sleeve .card:has-text("Is near")');
+    await page.click('.sleeve .card:has-text("Chicken")');
+    // The new rule is "Rule 3" (the recipe has two). Its warning is the one about the shoo.
+    const warned = await page.waitForSelector('.diag:has-text("Rule 3"):has-text("ever fired")', { timeout: 5000 }).then(() => true, () => false);
+    check(warned, 'polish: the measured check warns that SUCCESS ends tries before the shoo rule can fire');
+    await page.click('.diag:has-text("Rule 3"):has-text("ever fired") button:has-text("Repair")');
+    const reads = (await page.textContent('[data-tut="success-slot"]')).replace(/\s+/g, ' ');
+    check(reads.includes('“Pip shoos chicken” has happened'), `polish: the repair makes SUCCESS “Has done… Pip shoos chicken” (${reads.slice(0, 90)})`);
+    check(!(await page.locator('.diag:has-text("Rule 3"):has-text("ever fired")').count()), 'polish: the warning clears after the repair');
+    // And the four-tap way from an empty SUCCESS: slot, Has done…, Shoos, Chicken.
+    await page.click('[data-tut="success-slot"] .node-handle');
+    await page.click('.sleeve button:has-text("Remove")');
+    await page.click('[data-tut="success-slot"] .slot');
+    const rec = (await page.textContent('.sleeve .hand-row')).replace(/\s+/g, ' ');
+    check(rec.startsWith('Has done'), `polish: the hand recommends “Has done…” first for SUCCESS here (${rec.slice(0, 40)})`);
+    await page.click('.sleeve .hand-row >> nth=0 >> .card:has-text("Has done")');
+    check((await page.textContent('.sleeve .hand-row')).replace(/\s+/g, ' ').startsWith('Shoos'), 'polish: …then “Shoos” first for the event');
+    await page.click('.sleeve .card:has-text("Shoos")');
+    await page.click('.sleeve .card:has-text("Chicken")');
+    check((await page.textContent('[data-tut="success-slot"]')).includes('“Pip shoos chicken” has happened'), 'polish: built in 4 taps from an empty SUCCESS');
+    await train();
+    const rep = (await page.textContent('[data-tut="report-compare"]')).replace(/\s+/g, ' ');
+    const after = Number(rep.split('After')[1]?.match(/(\d{1,2})\/20/)?.[1] ?? -1), rnd = Number(rep.split('Random')[1]?.match(/(\d{1,2})\/20/)?.[1] ?? -1);
+    check(after >= 0 && after > rnd, `polish: trained, it beats random wandering (${after}/20 vs ${rnd}/20)`);
     const a2 = await page.evaluate(() => window.__penDeckAudio);
     const want2 = ['train.loophole', 'train.certified', 'ui.unlock', 'skill.save', 'card.remove', 'guide.step', 'guide.offer', 'guide.done'];
     const missing2 = want2.filter((c) => !a2.cues.includes(c));

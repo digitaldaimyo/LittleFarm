@@ -2,15 +2,18 @@ import type { SpecNode, StageSpec } from '../domain/types';
 import { isNode, paramOf } from '../domain/spec';
 import { kindOfCard } from '../domain/registry';
 import { Rng, hashSeed } from './rng';
-import type { Obj, SimEvent, World } from './world';
-import { addObject, bfsDistance, blocks, def, distTo, emptyWorld, inArea, inBounds, isSolidAt, nearest, objectsAt, onGround } from './world';
+import type { Obj, SimEvent, Tally, World } from './world';
+import { addObject, bfsDistance, blocks, def, distTo, emptyWorld, eventOfKey, inArea, inBounds, isSolidAt, nearest, objectsAt, onGround } from './world';
+
+/** How a rule's End try judges the try: by SUCCESS (default), or it counts as a success ✓ / a miss ✗ outright. */
+export type EndOutcome = 'judge' | 'success' | 'fail';
 
 export interface RuleHit {
   ruleId: string;
   label: string;
   amount: number;
   objId?: number;
-  end?: 'success' | 'fail';
+  end?: EndOutcome;
 }
 
 export interface RuleState {
@@ -22,13 +25,16 @@ export interface RuleState {
 export interface StepOutcome {
   reward: number;
   hits: RuleHit[];
-  end: 'success' | 'fail' | null;
+  /** The try ends this step: judged by SUCCESS, or decided by a rule ('success' / 'fail'). */
+  end: EndOutcome | null;
 }
 
-interface CondCtx {
+export interface CondCtx {
   w: World;
   prev: { x: number; y: number };
   it?: Obj;
+  /** "Has …" counts from here (a skill run's start on the farm); default: the start of the try. */
+  base?: Tally;
 }
 type Cond = (c: CondCtx) => boolean;
 type Quantity = (c: CondCtx) => number;
@@ -39,7 +45,7 @@ interface CompiledRule {
   match: (e: SimEvent) => boolean;
   conds: Cond[];
   reward: number;
-  end: 'success' | 'fail' | null;
+  end: EndOutcome | null;
   limit: { kind: string; ticks: number };
 }
 
@@ -74,6 +80,32 @@ const nodeArg = (n: SpecNode, key: string): SpecNode | null => {
   const v = n.args[key];
   return isNode(v) ? v : null;
 };
+const keyEvents = new Map<string, SimEvent>();
+/** How many tallied events match since `base` (or since the start of the try). */
+export function countSince(w: World, base: Tally | undefined, match: (e: SimEvent) => boolean): number {
+  let n = 0;
+  const t = w.tally;
+  if (!t) return 0;
+  for (const k in t) {
+    let e = keyEvents.get(k);
+    if (!e) { e = eventOfKey(k); keyEvents.set(k, e); }
+    if (match(e)) n += t[k][0] - (base?.[k]?.[0] ?? 0);
+  }
+  return n;
+}
+/** Did a matching event happen on the step that just ran? */
+export function happenedNow(w: World, match: (e: SimEvent) => boolean): boolean {
+  const t = w.tally;
+  if (!t) return false;
+  for (const k in t) {
+    if (t[k][1] !== w.tick) continue;
+    let e = keyEvents.get(k);
+    if (!e) { e = eventOfKey(k); keyEvents.set(k, e); }
+    if (match(e)) return true;
+  }
+  return false;
+}
+
 const listArg = (n: SpecNode, key: string): SpecNode[] => {
   const v = n.args[key];
   return Array.isArray(v) ? v.filter(isNode) : isNode(v) ? [v] : [];
@@ -181,6 +213,21 @@ export function compileCondition(n: SpecNode): Cond {
       const fs = listArg(n, 'all').map(compileCondition);
       return (c) => fs.every((f) => f(c));
     }
+    case 'cond.any': {
+      const fs = listArg(n, 'any').map(compileCondition);
+      return (c) => fs.some((f) => f(c));
+    }
+    case 'cond.happened': {
+      const ev = nodeArg(n, 'event');
+      const m = ev ? compileEvent(ev) : () => false;
+      const need = paramOf(n, 'count', 1);
+      return ({ w, base }) => countSince(w, base, m) >= need;
+    }
+    case 'cond.just': {
+      const ev = nodeArg(n, 'event');
+      const m = ev ? compileEvent(ev) : () => false;
+      return ({ w }) => happenedNow(w, m);
+    }
     case 'cond.not': {
       const inner = nodeArg(n, 'inner');
       const f = inner ? compileCondition(inner) : () => false;
@@ -206,7 +253,7 @@ export function compileCondition(n: SpecNode): Cond {
   }
 }
 
-function compileEvent(n: SpecNode): (e: SimEvent) => boolean {
+export function compileEvent(n: SpecNode): (e: SimEvent) => boolean {
   const k = kindArg(n, 'what');
   switch (n.cardId) {
     case 'ev.reach': return (e) => e.type === 'reach' && e.kind === k;
@@ -239,7 +286,7 @@ function compileRule(n: SpecNode): CompiledRule {
   for (const e of listArg(n, 'then')) {
     if (e.cardId === 'eff.reward') reward += paramOf(e, 'amount', 0);
     else if (e.cardId === 'eff.penalty') reward -= paramOf(e, 'amount', 0);
-    else if (e.cardId === 'eff.end') end = paramOf(e, 'outcome', 'success') === 'fail' ? 'fail' : 'success';
+    else if (e.cardId === 'eff.end') { const o = paramOf(e, 'outcome', 'judge'); end = o === 'success' || o === 'fail' ? o : 'judge'; }
   }
   const lim = nodeArg(n, 'limit');
   return {
@@ -265,13 +312,28 @@ function regionOk(region: string, x: number, y: number, w: number, h: number): b
 }
 
 /** Build a concrete world from the environment spec for one layout seed. */
+const MEMORY_CARDS = new Set(['cond.happened', 'cond.just', 'sense.did']);
+/** Does any card in the lesson remember events ("Has done…", "Just…", "Done … yet?")? */
+export function usesMemory(spec: StageSpec): boolean {
+  const visit = (v: unknown): boolean => {
+    if (Array.isArray(v)) return v.some(visit);
+    if (!v || typeof v !== 'object') return false;
+    const o = v as { cardId?: string; args?: Record<string, unknown> };
+    return (!!o.cardId && MEMORY_CARDS.has(o.cardId)) || (!!o.args && Object.values(o.args).some(visit));
+  };
+  return visit(spec.rules) || visit(spec.success) || visit(spec.fail) || visit(spec.learner.senses) || visit(spec.learner.routine);
+}
+
 export function generateWorld(spec: StageSpec, seed: number): World {
   const rng = new Rng(hashSeed(seed, 0x5eed));
   const { w: W, h: H } = spec.size;
+  const remembers = usesMemory(spec);
   let last: World | null = null;
   for (let attempt = 0; attempt < 40; attempt++) {
     const w = emptyWorld(W, H);
     w.rng = hashSeed(seed, 0xc4ea7);
+    // Only lessons that remember events keep a tally (it costs a little on every step).
+    if (remembers) w.tally = {};
     const occupied = new Set<number>();
     const key = (x: number, y: number) => y * W + x;
     const areaTiles = new Set<number>();
@@ -357,9 +419,10 @@ function compileStageInner(spec: StageSpec): CompiledStage {
     rules,
     generate: (seed) => generateWorld(spec, seed),
     newRuleState: () => ({ fired: new Map(), lastTick: new Map(), perObj: new Map() }),
+    // A rule that ended the try as a success ✓ or a miss ✗ decides it; otherwise SUCCESS does.
     // 'survive' lessons: success is judged at the end of the try, and only if nothing failed.
-    isSuccess: (w) => success({ w, prev: w.pet }) && (!survive || !fail({ w, prev: w.pet })),
-    isFail: (w) => fail({ w, prev: w.pet }),
+    isSuccess: (w) => (w.verdict ? w.verdict === 'success' : success({ w, prev: w.pet }) && (!survive || !fail({ w, prev: w.pet }))),
+    isFail: (w) => w.verdict === 'fail' || (w.verdict !== 'success' && fail({ w, prev: w.pet })),
     evalStep(w, prev, events, rs) {
       let reward = 0;
       let end: StepOutcome['end'] = null;
@@ -383,13 +446,16 @@ function compileStageInner(spec: StageSpec): CompiledStage {
           rs.fired.set(r.id, fired + 1);
           rs.lastTick.set(r.id, w.tick);
           reward += r.reward;
-          if (r.end && !end) end = r.end;
+          if (r.end && !end) {
+            end = r.end;
+            if (r.end !== 'judge') w.verdict = r.end;
+          }
           hits.push({ ruleId: r.id, label: r.label, amount: r.reward, objId: e.objId, end: r.end ?? undefined });
           if (r.limit.kind === 'lim.once') break;
         }
       }
-      if (!end && !survive && success({ w, prev })) end = 'success';
-      if (!end && fail({ w, prev })) end = 'fail';
+      if (!end && !survive && success({ w, prev })) end = 'judge';
+      if (!end && fail({ w, prev })) end = 'judge';
       return { reward, hits, end };
     },
   };

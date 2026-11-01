@@ -80,6 +80,9 @@ Players invent behaviors by combining **senses**, **abilities** and **rules**. A
 ## Mastery and curriculum
 Lessons are promoted when held-out success meets the stage minimum (Approach/Avoid 80%, Fetch 65%, n=20 unseen layouts). The Curriculum binder shows **mastery** (at save time), **retention** (re-test with current skills), and **transfer** (10 bigger, unseen pens) separately. You can clone a stage without sharing node identity.
 
+## Saying what you mean (teaching polish)
+Lessons should read the way a player thinks. *Has done…* remembers events, so "success = shooed a chicken" is a single card. End try states what the ending means instead of implying success. SUCCESS takes a list. Each rule reads back as a sentence. The game measures (30 quick random tries) rather than guesses when a lesson's parts disagree, explains it, and offers a one-tap repair. "Treats teach; SUCCESS checks" still holds: ending a try is neither. If a treat depends on something the pet can't sense, the game says so and offers the *Done … yet?* sense, so lessons stay honest to the learner.
+
 ## Sound
 Sound adds clarity first and charm second, and it is always redundant: every cue repeats something visible, so muted play loses nothing. It is sparse (no footsteps, no sound per training try, training samples are silent), cozy (soft attacks, no harsh failure sounds: a miss sounds curious, not punished) and consistent (one sound, one meaning: a splash in a replay is the farm's splash). Everything is synthesized on the device. The farm's background (birds by day, crickets at night, rain) changes with the clock and weather, so you can hear dusk coming. Pets have no voices yet, and music will be optional (`docs/SOUND_PLAN.md`).
 

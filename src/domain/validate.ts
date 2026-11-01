@@ -178,6 +178,8 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
   if (template === 'fetch' && (!L.destination || !placed.has(L.destination))) out.push({ severity: 'error', code: 'missing-reference', message: 'Fetch needs a destination (like a Bin) placed in the pen.' });
   if (template === 'fetch' && !reg.objects.get(L.focus)?.carryable) out.push({ severity: 'error', code: 'type-mismatch', message: 'Fetch can only carry Carryable things.' });
 
+  memoryChecks(stage, reg, out, template);
+
   // ---- Static reward warnings (heuristics, not proofs) ----
   if (stage.rules.length === 0) out.push({ severity: 'warning', code: 'no-rules', message: 'No rules yet — the pet gets no treats, so it has nothing to learn from.' });
   if (!stage.rules.some((r) => rewardTotal(r) > 0)) out.push({ severity: 'warning', code: 'no-reward', message: 'Nothing gives a treat. Pets learn much faster when success pays.' });
@@ -191,7 +193,8 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
     const ends = effectsOf(r).some((e) => e.cardId === 'eff.end') || lim === 'lim.once' || lim === 'lim.perObject';
     if (ev.cardId === 'ev.tick' && reward > 0 && !ends && stage.outcome !== 'survive') out.push({ severity: 'warning', code: 'unbounded-reward', nodeId: r.id, message: `“${label}” pays every step. The pet can earn it forever by dawdling.`, repair: { label: 'Make it a nudge (−)', action: 'flip-tick', ruleId: r.id } });
     if (['ev.pickup', 'ev.drop', 'ev.reach', 'ev.shoo', 'ev.entersArea', 'ev.leavesArea', 'ev.stay'].includes(ev.cardId) && ev.cardId !== 'ev.stay' && reward > 0 && (lim === 'lim.every' || lim === 'lim.cooldown')) {
-      const repeat = ev.cardId === 'ev.reach' ? effectsOf(r).some((e) => e.cardId === 'eff.end') ? false : true : true;
+      // A rule that ends the try can only pay once per try, whatever its event.
+      const repeat = !effectsOf(r).some((e) => e.cardId === 'eff.end');
       if (repeat) out.push({ severity: 'warning', code: 'repeatable-reward', nodeId: r.id, message: `“${label}” can pay again and again for the same thing. The pet may learn to repeat it instead of finishing the job.`, repair: { label: 'Limit: once per object', action: 'limit-per-object', ruleId: r.id } });
     }
     if (ev.cardId === 'ev.pickup' && reward > 0 && lim !== 'lim.once' && lim !== 'lim.perObject') pickPay = true;
@@ -240,5 +243,44 @@ export function validateNodes(nodes: SpecNode[], type: TypeExpr, opts: { placed:
   const out: Diagnostic[] = [];
   const ctx: Ctx = { reg: opts.reg ?? REGISTRY, itBound: false, placed: opts.placed, out, target: 'berry', areas: opts.areas };
   for (const n of nodes) validateNode(n, type, ctx);
+  for (const n of nodes) walk(n, (x) => {
+    if (MEMORY.has(x.cardId)) out.push({ severity: 'error', code: 'memory-in-plan', nodeId: x.id, message: `“${title(ctx.reg, x.cardId)}” works in lessons and skills; farm plans can’t use it yet.` });
+  });
   return out;
+}
+
+/** Cards that remember what happened (this try). */
+export const MEMORY = new Set(['cond.happened', 'cond.just', 'sense.did']);
+
+/** An event card's meaning, ignoring node ids (to compare a "Has …" condition with a "Done … yet?" sense). */
+export function eventSignature(n: unknown): string {
+  return JSON.stringify(n, (k, v) => (k === 'id' ? undefined : v));
+}
+
+/**
+ * Memory checks: "Has …" / "Just …" need a real event, and when a reward or a still-running try depends on
+ * something the pet can't sense ("have I shooed yet?"), suggest the matching "Done … yet?" sense.
+ */
+function memoryChecks(stage: StageSpec, reg: Registry, out: Diagnostic[], template: string): void {
+  const sensed = new Set((stage.learner.senses ?? []).filter((s) => s.cardId === 'sense.did').map((s) => eventSignature(s.args.event)));
+  const seen = new Set<string>();
+  const check = (n: SpecNode, matters: boolean) => {
+    if (n.cardId !== 'cond.happened' && n.cardId !== 'cond.just') return;
+    const ev = n.args.event;
+    if (isNode(ev) && ev.cardId === 'ev.tick') out.push({ severity: 'warning', code: 'memory-every-step', nodeId: n.id, message: `“Every step” always happens, so “${title(reg, n.cardId)}” would always be true. Pick a real event (Shoos, Picks up…).` });
+    if (!matters || template !== 'sense' || n.cardId !== 'cond.happened' || !isNode(ev)) return;
+    const sig = eventSignature(ev);
+    if (sensed.has(sig) || seen.has(sig)) return;
+    seen.add(sig);
+    out.push({ severity: 'warning', code: 'memory-unsensed', nodeId: n.id,
+      message: `${stage.learner.skill} is judged or paid on whether “${title(reg, ev.cardId)}” has happened, but it can’t sense that — so “before” and “after” look the same to it. Add the “Done … yet?” sense for it.`,
+      repair: { label: 'Add the “Done … yet?” sense', action: 'add-did-sense', ruleId: n.id } });
+  };
+  // In a rule's IF it gates a treat, and the try goes on afterwards: the pet needs to know.
+  for (const r of stage.rules) for (const c of Array.isArray(r.args.if) ? r.args.if : []) if (isNode(c)) walk(c, (x) => check(x, true));
+  // As the whole SUCCESS (counted once) the try simply ends when it happens; nested or counted more, it goes on.
+  for (const root of [stage.success, stage.fail]) {
+    if (!root) continue;
+    walk(root, (x) => check(x, x !== root || paramOf(x, 'count', 1) > 1));
+  }
 }

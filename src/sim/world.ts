@@ -72,6 +72,44 @@ export interface World {
   petEnergy?: number;
   /** Running counters (e.g. pecks). */
   counts?: Record<string, number>;
+  /**
+   * Present only when something needs it (a lesson with memory cards, or a skill run on the farm).
+   * What has happened so far (this try, or since the farm started): notable events counted by what they
+   * were — `type|kind|state|area|into` → [count, last tick]. Feeds "Has …" / "Just …" conditions and the
+   * "Done … yet?" sense. Moves and ticks aren't counted (too frequent, never asked about).
+   */
+  tally?: Tally;
+  /** Set when a rule ends the try as a success (✓) or a miss (✗); otherwise SUCCESS decides. */
+  verdict?: 'success' | 'fail';
+}
+
+export type Tally = Record<string, [number, number]>;
+
+const UNTALLIED = new Set<SimEventType>(['tick', 'move']);
+
+export function tallyKey(e: SimEvent): string {
+  return `${e.type}|${e.kind ?? ''}|${e.state ?? ''}|${e.area ?? ''}|${e.into ?? ''}`;
+}
+
+/** Rebuild the event a tally key stands for (enough for event matchers, which never look at position). */
+export function eventOfKey(key: string): SimEvent {
+  const [type, kind, state, area, into] = key.split('|');
+  return { type: type as SimEventType, x: 0, y: 0, ...(kind ? { kind } : {}), ...(state ? { state: state as 'open' | 'closed' } : {}), ...(area ? { area } : {}), ...(into ? { into } : {}) };
+}
+
+function recordTally(t: Tally, w: World, events: SimEvent[]): void {
+  for (const e of events) {
+    if (UNTALLIED.has(e.type)) continue;
+    const k = tallyKey(e);
+    const cur = t[k];
+    if (cur) { cur[0]++; cur[1] = w.tick; } else t[k] = [1, w.tick];
+  }
+}
+
+export function cloneTally(t: Tally | undefined): Tally {
+  const out: Tally = {};
+  if (t) for (const k in t) out[k] = [t[k][0], t[k][1]];
+  return out;
 }
 
 export type SimEventType = 'tick' | 'move' | 'bump' | 'reach' | 'enter' | 'pickup' | 'drop' | 'deliver' | 'fumble' | 'stay' | 'fill' | 'water' | 'shoo' | 'scare' | 'peck' | 'enterArea' | 'leaveArea' | 'gate';
@@ -107,6 +145,7 @@ export function cloneWorld(w: World): World {
     delivered: { ...w.delivered },
     ...(w.areas ? { areas: w.areas.map((a) => ({ ...a })) } : {}),
     ...(w.counts ? { counts: { ...w.counts } } : {}),
+    ...(w.tally ? { tally: cloneTally(w.tally) } : {}),
   };
 }
 
@@ -159,12 +198,15 @@ export function isHazardAt(w: World, x: number, y: number): boolean {
   return false;
 }
 
+/** Every action a lesson's abilities allow (the random baseline picks among these). */
 export function legalActions(_w: World, abilities: string[]): Action[] {
   const out: Action[] = [];
   if (abilities.includes('move')) out.push(...MOVES);
+  if (abilities.includes('stay')) out.push('wait');
   if (abilities.includes('pickup')) out.push('pick');
   if (abilities.includes('drop')) out.push('drop');
   if (abilities.includes('water')) out.push('water');
+  if (abilities.includes('shoo')) out.push('shoo');
   if (abilities.includes('nudge')) out.push('nudge');
   if (out.length === 0) out.push('wait');
   return out;
@@ -279,6 +321,7 @@ export function step(w: World, action: Action, opts: StepOptions = {}): SimEvent
     moveCreatures(w, events);
     w.tick++;
   }
+  if (w.tally) recordTally(w.tally, w, events); // only worlds that remember (see generateWorld / SkillRun)
   return events;
 }
 

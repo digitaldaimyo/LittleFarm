@@ -6,7 +6,7 @@ import { typeToString } from '../domain/typecheck';
 import { ObjectIcon } from './art';
 import type { SlotRef } from './store';
 import { store, useStore } from './store';
-import { createNode, instantiateTemplate, saveTemplate, setSlot, slotInfo, templatesFor } from './edit';
+import { createNode, instantiateTemplate, saveTemplate, setSlot, slotInfo, slotRole, templatesFor } from './edit';
 import { snapshotStage } from '../game/state';
 import { audio } from '../audio/engine';
 
@@ -176,7 +176,7 @@ export function Hand({ stage, slot, onPick }: { stage: StageSpec; slot: SlotRef;
   if (!info) return null;
   const hand = buildHand(REGISTRY, {
     socket: info.socket.type, stage, unlocks: new Set(s.state.progress.unlocks), recent: s.state.recentCards,
-    favorites: s.state.favorites, itBound: info.itBound, placing: false,
+    favorites: s.state.favorites, itBound: info.itBound, placing: false, role: slotRole(stage, slot),
   });
   const tpls = templatesFor(s.state.templates, info.socket.type);
   return (

@@ -1,6 +1,6 @@
 import type { Pet, Skill, SkillRevision } from './types';
 import { REGISTRY } from '../domain/registry';
-import { stageRoots, walk } from '../domain/spec';
+import { migrateLegacyEndOutcomes, stageRoots, walk } from '../domain/spec';
 import { STATE_MAX } from '../learning/senses';
 import { addJournal } from './journal';
 import type { GameState } from './types';
@@ -12,7 +12,8 @@ import { isPreset } from './pets';
  */
 export interface SkillCard {
   format: 'pen-deck-skill';
-  version: 1;
+  /** 2 since the End try outcomes changed (v5 saves); version 1 cards are migrated on import. */
+  version: 1 | 2;
   exportedAt: number;
   skill: Pick<Skill, 'name' | 'kind' | 'template' | 'custom' | 'signature' | 'initiation' | 'termination' | 'navigator' | 'nickname'>;
   revision: SkillRevision;
@@ -24,7 +25,7 @@ export function exportSkillCard(p: Pet, skillName: string): SkillCard | null {
   const r = k?.revisions.find((x) => x.rev === k.activeRev);
   if (!k || !r) return null;
   return {
-    format: 'pen-deck-skill', version: 1, exportedAt: Date.now(),
+    format: 'pen-deck-skill', version: 2, exportedAt: Date.now(),
     skill: { name: k.name, kind: k.kind, template: k.template, custom: k.custom, signature: k.signature, initiation: k.initiation, termination: k.termination, navigator: k.navigator, nickname: k.nickname },
     revision: structuredClone(r),
     from: p.name,
@@ -39,7 +40,8 @@ const isObj = (v: unknown): v is Record<string, any> => !!v && typeof v === 'obj
 export function importSkillCard(s: GameState, p: Pet, text: string): ImportResult {
   let c: any;
   try { c = JSON.parse(text); } catch { return { ok: false, reason: 'Not valid JSON.' }; }
-  if (!isObj(c) || c.format !== 'pen-deck-skill' || c.version !== 1) return { ok: false, reason: 'This is not a Pen Deck skill card.' };
+  if (!isObj(c) || c.format !== 'pen-deck-skill' || (c.version !== 1 && c.version !== 2)) return { ok: false, reason: 'This is not a Pen Deck skill card.' };
+  if (c.version === 1) { migrateLegacyEndOutcomes(c.revision); c.version = 2; }
   const k = c.skill, r = c.revision;
   if (!isObj(k) || typeof k.name !== 'string' || !k.name.trim() || !isObj(r)) return { ok: false, reason: 'The card is missing its skill or revision.' };
   const q = r.policy;

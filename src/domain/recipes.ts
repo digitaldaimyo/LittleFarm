@@ -35,7 +35,7 @@ function waitForIt(): StageSpec {
     rules: [
       n('rule', { label: 'Good sit', when: n('ev.stay', { actor: pet(n) }), if: [atT()], then: [n('eff.reward', { amount: 0.4 })] }),
       n('rule', { label: 'Not here', when: n('ev.stay', { actor: pet(n) }), if: [n('cond.not', { inner: atT() })], then: [n('eff.penalty', { amount: 0.2 })] }),
-      n('rule', { label: 'Patient pet!', when: n('ev.tick'), if: [atT(), n('cond.stayedFor', { actor: pet(n), ticks: 5 })], then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'success' })], limit: n('lim.once') }),
+      n('rule', { label: 'Patient pet!', when: n('ev.tick'), if: [atT(), n('cond.stayedFor', { actor: pet(n), ticks: 5 })], then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'judge' })], limit: n('lim.once') }),
       n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.05 })] }),
     ],
     success: n('cond.and', { all: [atT(), n('cond.stayedFor', { actor: pet(n), ticks: 5 })] }),
@@ -92,7 +92,7 @@ function waterGarden(): StageSpec {
     rules: [
       n('rule', { label: 'Splash!', when: n('ev.water', { actor: pet(n), what: n('ref.target') }), then: [n('eff.reward', { amount: 4 })], limit: n('lim.perObject') }),
       n('rule', { label: 'Filled up', when: n('ev.fill', { actor: pet(n) }), if: [n('cond.not', { inner: n('cond.watered', { what: n('ref.target'), count: 2 }) })], then: [n('eff.reward', { amount: 0.5 })], limit: n('lim.once') }),
-      n('rule', { label: 'All watered', when: n('ev.tick'), if: [n('cond.watered', { what: n('ref.target'), count: 2 })], then: [n('eff.reward', { amount: 6 }), n('eff.end', { outcome: 'success' })], limit: n('lim.once') }),
+      n('rule', { label: 'All watered', when: n('ev.tick'), if: [n('cond.watered', { what: n('ref.target'), count: 2 })], then: [n('eff.reward', { amount: 6 }), n('eff.end', { outcome: 'judge' })], limit: n('lim.once') }),
       n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.03 })] }),
     ],
     success: n('cond.watered', { what: n('ref.target'), count: 2 }),
@@ -122,7 +122,7 @@ function herdChicken(): StageSpec {
     ],
     abilities: ['move', 'shoo'],
     rules: [
-      n('rule', { label: 'Home to roost', when: n('ev.entersArea', { what: n('ref.target'), area: coopArea(n) }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'success' })], limit: n('lim.once') }),
+      n('rule', { label: 'Home to roost', when: n('ev.entersArea', { what: n('ref.target'), area: coopArea(n) }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'judge' })], limit: n('lim.once') }),
       n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.03 })] }),
     ],
     success: n('cond.allInArea', { what: n('ref.target'), area: coopArea(n) }),
@@ -202,7 +202,7 @@ function morningChores(): StageSpec {
     rules: [
       n('rule', { label: 'Chicken home', when: n('ev.entersArea', { what: k(n, 'chicken'), area: coop() }), then: [n('eff.reward', { amount: 3 })], limit: n('lim.once') }),
       n('rule', { label: 'Garden watered', when: n('ev.water', { actor: pet(n), what: k(n, 'patch') }), if: [watered()], then: [n('eff.reward', { amount: 3 })], limit: n('lim.once') }),
-      n('rule', { label: 'All done!', when: n('ev.tick'), if: [herded(), watered()], then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'success' })], limit: n('lim.once') }),
+      n('rule', { label: 'All done!', when: n('ev.tick'), if: [herded(), watered()], then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'judge' })], limit: n('lim.once') }),
       n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.02 })] }),
     ],
     success: n('cond.and', { all: [herded(), watered()] }),
@@ -239,7 +239,7 @@ function openGate(): StageSpec {
     ],
     abilities: ['move', 'nudge'],
     rules: [
-      n('rule', { label: 'Gate open!', when: n('ev.gate', { actor: pet(n), state: 'open' }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'success' })], limit: n('lim.once') }),
+      n('rule', { label: 'Gate open!', when: n('ev.gate', { actor: pet(n), state: 'open' }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'judge' })], limit: n('lim.once') }),
       n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.05 })] }),
     ],
     success: n('cond.gates', { state: 'open' }),
@@ -275,7 +275,7 @@ function approach(): StageSpec {
     ],
     abilities: ['move'],
     rules: [
-      n('rule', { label: 'Treat at the berry', when: n('ev.reach', { actor: pet(n), what: k(n, 'berry') }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'success' })], limit: n('lim.once') }),
+      n('rule', { label: 'Treat at the berry', when: n('ev.reach', { actor: pet(n), what: k(n, 'berry') }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'judge' })], limit: n('lim.once') }),
       n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.05 })] }),
     ],
     success: n('cond.at', { actor: pet(n), what: k(n, 'berry') }),
@@ -310,7 +310,7 @@ function avoid(): StageSpec {
     ],
     abilities: ['move'],
     rules: [
-      n('rule', { label: 'Treat at the berry', when: n('ev.reach', { actor: pet(n), what: k(n, 'berry') }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'success' })], limit: n('lim.once') }),
+      n('rule', { label: 'Treat at the berry', when: n('ev.reach', { actor: pet(n), what: k(n, 'berry') }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'judge' })], limit: n('lim.once') }),
       n('rule', { label: 'Splash!', when: n('ev.enter', { actor: pet(n), what: k(n, 'pond') }), then: [n('eff.penalty', { amount: 4 }), n('eff.end', { outcome: 'fail' })] }),
       n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.05 })] }),
     ],
@@ -336,7 +336,7 @@ function fetchRecipe(): StageSpec {
     ],
     abilities: ['move', 'pickup', 'drop'],
     rules: [
-      n('rule', { label: 'Delivered!', when: n('ev.deliver', { what: k(n, 'berry'), into: k(n, 'bin') }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'success' })], limit: n('lim.once') }),
+      n('rule', { label: 'Delivered!', when: n('ev.deliver', { what: k(n, 'berry'), into: k(n, 'bin') }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'judge' })], limit: n('lim.once') }),
       n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.02 })] }),
     ],
     success: n('cond.delivered', { what: k(n, 'berry'), into: k(n, 'bin'), count: 1 }),
@@ -408,7 +408,7 @@ export function suggestedRules(stage: StageSpec): { label: string; rules: SpecNo
     out.push({
       label: `Treat for reaching the ${f}`,
       rules: [
-        n('rule', { label: `Treat at the ${f}`, when: n('ev.reach', { actor: pet(n), what: k(n, f) }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'success' })], limit: n('lim.once') }),
+        n('rule', { label: `Treat at the ${f}`, when: n('ev.reach', { actor: pet(n), what: k(n, f) }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'judge' })], limit: n('lim.once') }),
         n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.05 })] }),
       ],
       success: n('cond.at', { actor: pet(n), what: k(n, f) }),
@@ -418,7 +418,7 @@ export function suggestedRules(stage: StageSpec): { label: string; rules: SpecNo
     out.push({
       label: `Treat for delivering the ${f}`,
       rules: [
-        n('rule', { label: 'Delivered!', when: n('ev.deliver', { what: k(n, f), into: k(n, d) }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'success' })], limit: n('lim.once') }),
+        n('rule', { label: 'Delivered!', when: n('ev.deliver', { what: k(n, f), into: k(n, d) }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'judge' })], limit: n('lim.once') }),
         n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.02 })] }),
       ],
       success: n('cond.delivered', { what: k(n, f), into: k(n, d), count: 1 }),

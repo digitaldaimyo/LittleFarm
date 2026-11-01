@@ -1,3 +1,4 @@
+import { migrateLegacyEndOutcomes } from '../domain/spec';
 import { sanitizeAudio } from '../game/sound';
 import type { GameState } from '../game/types';
 import { SAVE_VERSION } from '../game/types';
@@ -62,6 +63,12 @@ const MIGRATIONS: Record<number, Migration> = {
       w.rng ??= 0xfa53;
     }
     g.version = 4;
+    return g;
+  },
+  /** v4 → v5: "End try (done ✓)" meant "SUCCESS decides"; it is now spelled 'judge' ('success' counts outright). */
+  4: (g) => {
+    migrateLegacyEndOutcomes(g);
+    g.version = 5;
     return g;
   },
 };

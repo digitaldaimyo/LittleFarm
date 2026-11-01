@@ -1,8 +1,8 @@
 import type { SpecNode } from '../domain/types';
 import { REGISTRY } from '../domain/registry';
 import { node } from '../domain/spec';
-import { resolveKind } from '../sim/compile';
-import type { Action, World } from '../sim/world';
+import { compileEvent, countSince, resolveKind, withTarget } from '../sim/compile';
+import type { Action, Tally, World } from '../sim/world';
 import { DIRS, MOVES, def, inArea, isHazardAt, isSolidAt, nearest, nudgeableGate, objectsAt, type Area } from '../sim/world';
 
 /**
@@ -14,7 +14,7 @@ export interface SenseEncoder {
   size: number;
   radices: number[];
   cards: string[];
-  encode(w: World): number[];
+  encode(w: World, base?: Tally): number[];
   index(values: number[]): number;
   /** Coarser fallbacks for rarely-seen states: zero out droppable senses one by one. */
   backoffs(values: number[]): number[];
@@ -45,9 +45,15 @@ export function stateSpaceSize(senses: SpecNode[]): number {
   return senses.reduce((a, s) => a * radixOf(s), 1);
 }
 
-function senseFn(n: SpecNode, target: string): (w: World) => number {
+function senseFn(n: SpecNode, target: string): (w: World, base?: Tally) => number {
   const kind = resolveKind(n.args.what, target);
   switch (n.cardId) {
+    case 'sense.did': {
+      // "Done … yet?": has this event happened (this try, or since a skill run started on the farm)?
+      const ev = n.args.event;
+      const m = ev && typeof ev === 'object' && !Array.isArray(ev) ? withTarget(target, () => compileEvent(ev as SpecNode)) : () => false;
+      return (w, base) => (countSince(w, base, m) > 0 ? 1 : 0);
+    }
     case 'sense.nearest':
       return (w) => {
         const t = nearest(w, kind);
@@ -172,7 +178,7 @@ export function compileEncoder(senses: SpecNode[], target: string): SenseEncoder
     size: radices.reduce((a, b) => a * b, 1),
     radices,
     cards,
-    encode: (w) => fns.map((f) => f(w)),
+    encode: (w, base) => fns.map((f) => f(w, base)),
     index,
     backoffs(values) {
       const v = [...values];

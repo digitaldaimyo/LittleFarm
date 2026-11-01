@@ -100,7 +100,7 @@ describe('M1: player-made skills from cards only', () => {
     const on = () => node('cond.at', { actor: node('actor.pet'), what: node('ref.target') });
     const goal = () => node('cond.and', { all: [near(), node('cond.not', { inner: on() }), node('cond.stayedFor', { actor: node('actor.pet'), ticks: 3 })] });
     s.rules = [
-      node('rule', { label: 'Shadowing', when: node('ev.tick'), if: [goal()], then: [node('eff.reward', { amount: 10 }), node('eff.end', { outcome: 'success' })], limit: node('lim.once') }),
+      node('rule', { label: 'Shadowing', when: node('ev.tick'), if: [goal()], then: [node('eff.reward', { amount: 10 }), node('eff.end', { outcome: 'judge' })], limit: node('lim.once') }),
       node('rule', { label: 'Close by', when: node('ev.stay', { actor: node('actor.pet') }), if: [near(), node('cond.not', { inner: on() })], then: [node('eff.reward', { amount: 0.3 })] }),
       node('rule', { label: 'Hurry', when: node('ev.tick'), then: [node('eff.penalty', { amount: 0.05 })] }),
     ];

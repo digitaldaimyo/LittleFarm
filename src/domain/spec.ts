@@ -98,3 +98,24 @@ export function paramOf(n: SpecNode, id: string, fallback: number | string): num
   if (typeof fallback === 'number') return typeof v === 'number' && Number.isFinite(v) ? v : fallback;
   return typeof v === 'string' ? v : fallback;
 }
+
+/**
+ * Saves before v5 (and skill cards before version 2) used "End try (done ✓)" — outcome 'success' — to mean
+ * "stop here; SUCCESS decides". Since v5 that is 'judge', and 'success' means "counts as a success" outright.
+ * Rewrites old outcomes in place anywhere in a JSON tree; returns how many it changed.
+ */
+export function migrateLegacyEndOutcomes(v: unknown): number {
+  let n = 0;
+  const visit = (x: unknown) => {
+    if (Array.isArray(x)) { for (const y of x) visit(y); return; }
+    if (!x || typeof x !== 'object') return;
+    const o = x as Record<string, unknown>;
+    if (o.cardId === 'eff.end' && o.args && typeof o.args === 'object' && (o.args as Record<string, unknown>).outcome === 'success') {
+      (o.args as Record<string, unknown>).outcome = 'judge';
+      n++;
+    }
+    for (const k in o) visit(o[k]);
+  };
+  visit(v);
+  return n;
+}

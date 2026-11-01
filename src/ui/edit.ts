@@ -3,6 +3,7 @@ import { REGISTRY } from '../domain/registry';
 import { cloneNode, findInStage, findNode, isNode, newId, node, walk } from '../domain/spec';
 import { fits, nominal } from '../domain/typecheck';
 import type { SlotRef } from './store';
+import type { SlotRole } from '../domain/hand';
 
 /** New node from a card with default params; the only Actor (the pet) is filled in automatically. */
 export function createNode(cardId: string): SpecNode {
@@ -135,4 +136,18 @@ export function saveTemplate(templates: Template[], name: string, root: SpecNode
   };
   templates.push(t);
   return t;
+}
+
+/** Which part of the lesson a slot belongs to (the hand ranks cards that make sense there). */
+export function slotRole(stage: StageSpec, slot: SlotRef): SlotRole {
+  const inTree = (root: SpecNode | null | undefined) => !!root && !!findNode(root, slot.parentId);
+  if (slot.parentId === '#success' || inTree(stage.success)) return 'success';
+  if (slot.parentId === '#fail' || inTree(stage.fail)) return 'fail';
+  if (slot.parentId === '#senses' || (stage.learner.senses ?? []).some((n) => inTree(n))) return 'sense';
+  for (const r of stage.rules) {
+    if (r.id === slot.parentId) return slot.socket === 'when' ? 'when' : slot.socket === 'if' ? 'if' : slot.socket === 'then' ? 'then' : 'other';
+    if (isNode(r.args.when) && inTree(r.args.when)) return 'when';
+    if ((Array.isArray(r.args.if) ? r.args.if : []).some((c) => isNode(c) && inTree(c))) return 'if';
+  }
+  return 'other';
 }

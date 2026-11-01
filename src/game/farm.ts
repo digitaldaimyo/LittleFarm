@@ -300,7 +300,7 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
       if (!rev || !policy) return { next: () => ({ done: 'fail', reason: 'skill missing' }) };
       const target = inv.args.target || rev.focus || 'berry';
       const cond = rev.success && rev.outcome !== 'survive' ? withTarget(target, () => compileCondition(rev.success!)) : null;
-      return new SkillRun(policy, target, inv.timeout, cond ? (world) => cond({ w: world, prev: world.pet }) : null);
+      return new SkillRun(policy, target, inv.timeout, cond ? (world, base) => cond({ w: world, prev: world.pet, base }) : null);
     }
     case 'rest': {
       let t = 0;

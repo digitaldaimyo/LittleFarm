@@ -1,7 +1,7 @@
 import type { SpecNode, StageSpec } from '../domain/types';
 import { isNode, paramOf } from '../domain/spec';
 import { compileCondition, resolveKind, withTarget } from '../sim/compile';
-import type { Action, World } from '../sim/world';
+import type { Action, Tally, World } from '../sim/world';
 import { nearest } from '../sim/world';
 import type { Rng } from '../sim/rng';
 import type { SerializedQ } from './qtable';
@@ -33,7 +33,7 @@ export interface SubSkill {
 }
 export type SubSkills = Record<string, SubSkill>;
 
-type Cond = (w: World) => boolean;
+type Cond = (w: World, base?: Tally) => boolean;
 
 export interface CompiledOption {
   label: string;
@@ -55,7 +55,7 @@ export interface CompiledRoutine {
 function cond(n: SpecNode | undefined, target: string): Cond | null {
   if (!n || !isNode(n)) return null;
   const c = withTarget(target, () => compileCondition(n));
-  return (w) => c({ w, prev: w.pet });
+  return (w, base) => c({ w, prev: w.pet, base });
 }
 
 /** Ensure every option consumes at least one tick, so loops always cost time. */

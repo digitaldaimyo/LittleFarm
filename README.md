@@ -20,7 +20,7 @@ Other scripts:
 | `npm run build` | Typecheck + production build into `dist/` (static files; host anywhere or open with `npm run preview`) |
 | `npm run typecheck` | TypeScript only |
 | `npm run lint` | ESLint |
-| `npm test` | Vitest suite: 107 tests in 16 files (sim, registry, learning, saves, farm, training loop, every milestone gate, the Field Guide, the card editor, sound cues) |
+| `npm test` | Vitest suite: 123 tests in 17 files (sim, registry, learning, saves, farm, training loop, every milestone gate, the Field Guide, the card editor, sound cues, teaching polish) |
 | `npm run bench` | Trains every starter skill under 5 seeds and prints held-out results, hardware and timings |
 | `npm run evidence` | Reproduces the measurements behind the Field Guide and the Trainer's notebook |
 | `npm run e2e` | Browser test that plays all nine Field Guide lessons with real clicks, about 45 s (run `npm run build` first; needs Playwright with Chromium). `npm run e2e -- --from=4` runs lessons 4–9 only |
@@ -39,6 +39,14 @@ The **First lesson** banner (lesson 1 of the Field Guide) walks you through this
 6. **Save skill.** It becomes revision r1 in the pet's repertoire.
 7. **Farm → Forage berries.** The pet uses the Approach it just learned. Berries sell for 1 coin.
 8. **Earn 5 coins** to unlock **Fetch** lessons (*Bring it home*), which reuse your saved Approach as their movement option. A certified Fetch unlocks carrot patches (3 coins per delivery). At 12 coins, **Avoid** lessons unlock, so your pet can stop splashing through the pond.
+
+**Saying what you mean.** Lessons are built from typed cards, and a few help you say exactly what you're after:
+- **Has done…** wraps any event and remembers it for the rest of the try ("Pip shoos a chicken has happened at least once"). **Just…** is true on the step it happens. **Any of** sits next to *All of* and *Not*.
+- **End try** says what the ending means: *judged by SUCCESS* (the default), *counts as a success ✓*, or *counts as a miss ✗*.
+- **SUCCESS and FAIL** take one card, or several with **+ and…** and an *all of these / any of these* switch.
+- Every rule and condition **reads back as a sentence** under its cards ("When Pip shoos chicken: +10 treats, end try (judged by SUCCESS)").
+- The hand **recommends cards for this lesson**: a lesson with Shoo suggests *Shoos* and *Has done…* first, and "More cards" is sorted into short groups.
+- **Measured checks** run about 30 quick random tries whenever the lesson changes. They warn, with a one-tap repair, when SUCCESS ends tries before your goal rule can ever fire, when a rule ends tries that never count, or when SUCCESS is already true as tries start. If a reward depends on something the pet can't sense ("have I shooed yet?"), the game suggests the matching **Done … yet?** sense.
 
 **Invent your own skills.** Once a pet has a certified Approach, *Your own skills* unlocks. In **Teach → Pet → + New skill…** you name a skill and choose:
 - its **senses**, i.e. what it pays attention to: *Where is…*, *How far is…*, *Standing on…*, *Walls nearby*, *Hazards nearby*, *Last heading*, *Carrying?*, *Patience*. A meter shows how many situations it must learn.
@@ -93,5 +101,5 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 | `docs/TESTING.md` | Test suites, benchmark results, performance, browser checks |
 | `docs/ROADMAP.md` | The expansion roadmap (all six milestones shipped) and what could come next |
 | `docs/TUTORIAL_PLAN.md` | The Field Guide's design, the evidence behind each lesson, and what shipped |
-| `docs/TEACHING_PLAN.md` | Plan to polish rules, conditions and pens: expressiveness, ease of use, long-term flexibility (not started) |
+| `docs/TEACHING_PLAN.md` | Polishing rules, conditions and pens: the plan, and what phase A shipped |
 | `docs/SOUND_PLAN.md` | Sound effects, ambience, music and sound settings: the plan, and what phase A shipped |
