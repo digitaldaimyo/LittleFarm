@@ -4,6 +4,11 @@
 
 Status: **All three phases shipped.** Sections 1–9 below are the original plan, kept for the reasoning and evidence; the phase notes here record what actually shipped. **Numbering:** the Guide numbers lessons 1–9 in the order used here (lesson 1 is the First lesson), so *Invent a skill* is lesson 6. Shipped: Chapter 1 revised; Field Guide engine and screen; lessons 2–9; notebook; glossary; coaching tips; requests-board side quests; a browser test (`npm run e2e`).
 
+### Farm life (phase A) changes to the lessons
+- **Lesson 1:** "Forage berries" is now **Harvest**. The "Earn 5 coins" step says each berry sells for 2 coins at the house; without Fetch, harvests go straight there, so the lesson flows as before.
+- **Lesson 8:** the routine watches "Is at → Basket" (the bin's new name).
+- **Lesson 9:** the two-pets note quotes the new measurements (one pet 168, two harvesters 259, harvester + hauler 292). The lesson row typically needs to move higher than before, because pets are busier; the lesson already says to keep moving it until the preview shows it runs.
+
 ### After phase C: playtest fixes and polish
 - **Lesson 6 bug (playtest):** after adding “How far is…”, its slot couldn't be aimed at Rock: the sense editor only opened the hand for top-level sense slots. Fixed, with Patience and How far is… now recommended in the hand (`tests/editor.test.ts`).
 - **The Guide numbers its lessons** (1–9, matching this doc), and a locked lesson says what opens it.

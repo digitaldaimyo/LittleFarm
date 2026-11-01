@@ -24,17 +24,24 @@ Outside the tutorial, a training run is 4 taps from the farm (Teach → Curricul
 - **Training HUD:** try n/N, success (last 50), treats per try, exploration %, simulated ticks, the revision it will save as, two single-measure charts, and a progress bar. The pen replays a sampled try with a clear label: *Training try (exploring)*, *Evaluation (held-out layout)*, *Before training*, *Random baseline*, *Transfer*, or *Scripted demo — not your pet*.
 
 ## Economy
-| Source | Coins |
+**Produce travels; the house sells** (farm life, phase A). Coins come only from produce that reaches the house, plus fireflies:
+
+| Sold at the house | Coins |
 |---|---|
-| Forage a berry (Approach) | 1 |
-| Deliver a carrot (Fetch) | 3 |
-| Deliver a berry to the bin | 2 |
-| Catch a firefly (night only, walk into it) | 1 |
-| Deliver an egg (Fetch) | 2 |
+| Berry | 2 |
+| Carrot | 5 |
+| Egg | 3 |
+| Firefly (caught at night, walk into it; not carried) | 1 |
+
+- **Harvest** (with Approach or Avoid) picks a ripe berry or carrot and carries it home. Until the pet knows Fetch, it goes straight to the house. With Fetch, it goes to the nearest storage with room (or the house, if that's nearer).
+- **Storage:** the **basket** (today's bin) holds 6 of one kind; the **shed** (shop, 25) holds 4 kinds, 10 each. A full basket, or one holding another kind, is skipped, and a crop dropped on it anyway is left beside it.
+- **Haul** (Fetch) carries eggs and stored goods to the house.
+- Two pets can split the work: one harvests into the basket while the other hauls it.
+- Prices were tuned against the old economy (5 training seeds, a farm day of 2,400 ticks): a first-hour pet with only Approach earns about the same per day as before (mean 104 vs 97 coins). The first 5 coins take a little longer (median about 100 ticks vs 66, the walk home). A farm with Fetch and carrots earns 252 vs 250.
 
 Berry bushes regrow in 28 ticks and carrots in 44. **Watered** plots grow twice as fast, and the soil dries out when the next crop appears. Watering takes a learned skill: fill up at the well, then find dry plots.
 
-**Day/night:** a farm day is 1200 ticks, and the last 30% is night. Night darkens the farm and spawns 4 fireflies on open tiles, which leave at dawn. On Auto, the rules executive catches fireflies when it can and otherwise naps. The learned executive's context includes night and fireflies. At night, work costs 1.5× energy and naps restore 1.5×. A pond sits between the bushes and the bin, so a pet using Approach often splashes through and loses 3 ticks shaking dry. That's a visible reason to learn Avoid.
+**Day/night:** a farm day is 1200 ticks, and the last 30% is night. Night darkens the farm and spawns 4 fireflies on open tiles, which leave at dawn. On Auto, the rules executive catches fireflies when it can and otherwise naps. The learned executive's context includes night and fireflies. At night, work costs 1.5× energy and naps restore 1.5×. A pond sits between the bushes and the basket and house, so a pet using Approach often splashes through and loses 3 ticks shaking dry. That's a visible reason to learn Avoid.
 
 **Energy:** lessons cost 15 (Avoid costs 20); Field Guide lessons are free. Farm work costs 0.12 per tick, and napping restores 1.5 per tick (3 with the Comfy bed). Off-duty pets recover 0.5 per tick. Pets are never punished: a pet with no energy simply naps.
 
@@ -47,7 +54,7 @@ Berry bushes regrow in 28 ticks and carrots in 44. **Watered** plots grow twice 
 | Fetch lessons | Certified Approach + 5 coins earned |
 | Carrot patches | A certified Fetch |
 | Avoid lessons | 12 coins earned (after Fetch) |
-| Shop | Snack (+40 energy, 3), Tree cards (4), Fence cards (6), Two more bushes (8), Comfy bed (12), Third carrot patch (15, after carrots), Adopt another pet (20). After *Your own skills*: Two chickens (10), Scarecrow (8), Orchard expansion (25) |
+| Shop | Snack (+40 energy, 3), Tree cards (4), Fence cards (6), Two more bushes (8), Comfy bed (12), Third carrot patch (15, after carrots), Shed (25, after Fetch), Adopt another pet (20). After *Your own skills*: Two chickens (10), Scarecrow (8), Orchard expansion (25) |
 | Field Guide lessons | Offered in context (see Tutorial) |
 
 Unlocks add **vocabulary** (new cards and skills) and **problems** (carrots need carrying, ponds need avoiding), not grind.

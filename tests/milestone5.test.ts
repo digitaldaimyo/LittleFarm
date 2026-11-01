@@ -72,12 +72,17 @@ describe('M5: orchard expansion', () => {
     expect(g.journal.some((j) => j.kind === 'expand')).toBe(true);
     const pet = g.pets[0];
     pet.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' };
+    // Farm life: every berry now travels home, and the near bushes regrow during each trip, so a lone pet
+    // never needs the orchard. Make the orchard the only source, to test that it can be harvested at all.
+    for (const p of g.farm.plots) if (p.crop === 'berry' && p.x < 13) p.unlock = 'never';
+    g.farm.world.objects = g.farm.world.objects.filter((o) => !(o.kind === 'berry' && o.x < 13));
     const rt = createRuntime(g.farm);
     let orchardBerries = 0;
     for (let t = 0; t < 1200; t++) {
-      const before = g.resources.berries;
+      const carrying = g.farm.world.pet.carrying;
       farmTick(g, rt);
-      if (g.resources.berries > before && g.farm.world.pet.x >= 13) orchardBerries++;
+      // A berry picked in the orchard (it's sold later, at the house).
+      if (carrying === null && g.farm.world.pet.carrying !== null && g.farm.world.pet.x >= 13) orchardBerries++;
     }
     expect(orchardBerries).toBeGreaterThan(0);
   });
@@ -148,7 +153,8 @@ describe('M5: requests board', () => {
     // Fake a few deliveries/harvests and check completion pays.
     const r = reqs.find((x) => x.kind === 'berries' || x.kind === 'eggs' || x.kind === 'carrots') ?? reqs[0];
     const coins0 = g.resources.coins;
-    const ev = r.kind === 'berries' ? { type: 'pickup' as const, kind: 'berry' } : r.kind === 'eggs' ? { type: 'deliver' as const, kind: 'egg' } : r.kind === 'carrots' ? { type: 'deliver' as const, kind: 'carrot' } : r.kind === 'fireflies' ? { type: 'reach' as const, kind: 'firefly' } : { type: 'water' as const, kind: 'bush' };
+    // Farm life: produce counts when it is sold at the house.
+    const ev = r.kind === 'berries' ? { type: 'deliver' as const, kind: 'berry', into: 'home' } : r.kind === 'eggs' ? { type: 'deliver' as const, kind: 'egg', into: 'home' } : r.kind === 'carrots' ? { type: 'deliver' as const, kind: 'carrot', into: 'home' } : r.kind === 'fireflies' ? { type: 'reach' as const, kind: 'firefly' } : { type: 'water' as const, kind: 'bush' };
     if (r.kind !== 'noPecks' && r.kind !== 'coop') {
       for (let i = 0; i < r.n; i++) trackRequests(g, [{ ...ev, x: 0, y: 0 }]);
       expect(r.status).toBe('done');

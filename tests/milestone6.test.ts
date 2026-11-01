@@ -117,8 +117,9 @@ describe('M6: two pets on duty', () => {
     const a = adoptPet(g, 'Pip', 'meadow');
     const b = adoptPet(g, 'Mochi', 'plum');
     for (const p of [a, b]) { p.traits = { ...DEFAULT_TRAITS }; trainAndSave(g, p, recipeStage('go-to-berry')); p.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' }; }
-    // Mochi delivers carrots while Pip forages berries: two different jobs, each with its own supply.
-    trainAndSave(g, b, recipeStage('bring-it-home'), activeRevision(getSkill(b, 'Approach'))!.policy);
+    // Farm life: Pip harvests into the basket (knowing Fetch, it stores rather than walking home), Mochi hauls
+    // the basket to the house. Two different jobs.
+    for (const p of [a, b]) trainAndSave(g, p, recipeStage('bring-it-home'), activeRevision(getSkill(p, 'Approach'))!.policy);
     b.assignment = { mode: 'job', job: 'deliver', navigator: 'Approach' };
     g.farm.dutyPetId = a.id;
     g.farm.duty2PetId = second ? b.id : null;
@@ -127,7 +128,7 @@ describe('M6: two pets on duty', () => {
     return g;
   }
 
-  it('never share a tile or a target, and harvest more together (one forages, one delivers)', () => {
+  it('never share a tile or a target, and earn more together (one harvests, one hauls)', () => {
     const one = twoPetFarm(false), two = twoPetFarm(true);
     const r1 = createRuntime(one.farm), r2 = createRuntime(two.farm);
     let sameTile = 0, sameClaim = 0;
@@ -135,7 +136,8 @@ describe('M6: two pets on duty', () => {
       farmTick(one, r1);
       farmTick(two, r2);
       const w = two.farm.world;
-      if (w.pet2 && w.pet.x === w.pet2.x && w.pet.y === w.pet2.y) sameTile++;
+      // Pets may share the house and storage tiles (one naps while the other sells); anywhere else, never.
+      if (w.pet2 && w.pet.x === w.pet2.x && w.pet.y === w.pet2.y && !w.objects.some((o) => o.x === w.pet.x && o.y === w.pet.y && ['home', 'bin', 'shed'].includes(o.kind))) sameTile++;
       if (r2.claim !== null && r2.claim === r2.second?.claim) sameClaim++;
       expect(w.objects.some((o) => o.hidden || o.kind === 'buddy')).toBe(false);
     }

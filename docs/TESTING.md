@@ -1,7 +1,7 @@
 # Testing and benchmarks
 
 ## Automated suites (`npm test`)
-145 tests in 20 files. CI-style check before every push: `npm run typecheck && npm run lint && npm test && npm run build`.
+158 tests in 21 files. CI-style check before every push: `npm run typecheck && npm run lint && npm test && npm run build`.
 
 | File | Covers |
 |---|---|
@@ -23,6 +23,7 @@
 | `tests/teaching.test.ts` | Teaching polish: the event tally (per try, cloned, no moves or ticks); *Has done…* with counts, *Just…*, *Any of*; the *Done … yet?* sense before vs after, and a farm skill run counting from its own start; End try *judged by SUCCESS / counts as a success / counts as a miss*; no recipe ends a try "as a miss" while SUCCESS holds (so recipe scores are unchanged); **gate:** "end on shoo chicken" built from cards learns ≥ 30 points over random (held out); your original setup is caught by the measured check and its repair works; measured checks stay quiet on every recipe; the random baseline uses every ability; memory validation (sense suggestion and its repair, *every step*, plans); the hand ranks *Shoos* / *Has done…* first in a Shoo lesson and groups More cards; every recipe reads as sentences; v4 → v5 save and v1 → v2 skill-card migrations |
 | `tests/pens.test.ts` | Better pens: *next to* (one of the 8 tiles around), *away from* and *far from the pet* keep their distances, *inside* an area (things and the pet's start), the pet starting *away from* something; counts that vary stay in range and really vary; *sometimes* appears on 25–75% of tries; varying pen size covers 6×6 to 10×10; obstacles scale with the pen (rocks, fences, mixed); new options are deterministic; conditional sockets are required only when used; fence obstacles need the shop's fences; placements read as sentences; *Next to* counts diagonals but not standing on it; *Thing near thing*; *Time in try*; switched-off rules never run and checks ignore them |
 | `tests/cards.test.ts` | Your cards: a saved rule with a blank leaves the thing empty and points the editor at it, and keeps its name on placed copies; a named condition is offered for conditions only and works in a farm plan row and as a routine's watched condition; saves keep cards, blanks and names. Lesson cards: every recipe round-trips with fresh ids, the same rules and exactly the same layouts; renamed on clash; a Field Guide pen becomes an ordinary lesson; bad JSON, wrong format, unknown cards, out-of-range sizes or times and oversized files are rejected without half-adding. Farm plans: "IF has done… picks up a berry DO nap" alternates forage → nap → forage → nap (memory counts from each job's start); plans without memory never create a farm tally |
+| `tests/farmlife.test.ts` | Farm life: a basket holds 6 of one kind (a 7th or another kind is refused and left beside it, nothing lost); a shed holds 4 slots × 10 and picking takes from the fullest; pens' containers are unlimited as before; coins come only from the house (the walk home comes between picking and earning); harvests go to the house without Fetch, to the nearest storage with room with it; a Fetch pet on Auto stores and hauls; Haul empties storage into the house (coins = sold × price); never stuck from 0 coins; deterministic; the shop's shed; requests count sales, not picks or storing; the storage-full tip; v5 → v6 save migration |
 | `tests/layouts.test.ts` | Every recipe and the tutorial pen (and their bigger transfer pens) produce exactly the layouts recorded in `tests/fixtures/layouts.json`, so changes to layout generation can't silently move existing lessons. Regenerate only on purpose: `PRINT_LAYOUTS=1 npx vite-node scripts/layout-fingerprint.ts > tests/fixtures/layouts.json` |
 | `tests/farm.test.ts` | Trained pet produces coins where an untrained pet produces none; independent repertoires and rollback; full first-hour flow (adopt → pen → train → save → deploy → earn → Fetch unlocked, tutorial complete); Fetch delivers carrots on the farm; 3000-tick runs keep producing (no permanent stuck loops) with both executives |
 
@@ -73,13 +74,30 @@ Varying the size didn't help Approach: it already copes with bigger pens. Obstac
 ## Tutorial evidence (`npm run evidence`)
 Numbers behind the Field Guide and the Trainer's notebook (3 training seeds, 30 held-out scattered layouts): see `docs/TUTORIAL_PLAN.md` §2. Scatter lesson check (5 seeds): fully pinned pen 15% on every seed; berry and start scattered (rocks still fixed) 85–95%.
 
-## Two pets (Milestone 6), 1,500 ticks, 4 berry bushes + carrots
+## Two pets, 1,500 ticks, 4 berry bushes + carrots (re-measured for farm life)
 
-| Setup | Coins | Berries | Carrots |
+| Setup | Coins | Berries sold | Carrots sold |
 |---|---|---|---|
-| Pip alone, foraging | 178 | 168 | 0 |
-| Pip + Mochi, both foraging | 183 | 170 | 0 |
-| Pip foraging + Mochi delivering carrots | 387 | 166 | 65 |
+| One pet harvesting (knows Fetch, so it stores in the basket) | 168 | 21 | 20 |
+| Two harvesters | 259 | 45 | 27 |
+| One harvests, one hauls | 292 | 19 | 45 |
+
+Before farm life (coins at the bush): one forager 178, two foragers 183, forager + carrot deliverer 387. Now each sale needs a trip to the house, so a second harvester helps a lot, and splitting the work helps a little more.
+
+## Farm-life economy (phase A), 5 training seeds, 2,400 ticks (≈ 2 farm days)
+
+| | First 5 coins (ticks) | Coins per 2,400 ticks |
+|---|---|---|
+| Approach only, before | 64–97 | 70–117 (mean 97) |
+| Approach only, after (berry 2) | 87–186 (median 102) | 60–130 (mean 104) |
+| With Fetch + carrots, before | — | mean 250 |
+| With Fetch + carrots, after (carrot 5) | — | 165–315 (mean 252) |
+
+**Found while tuning:**
+- Every trip now starts at the house, so pets cross the farm and meet the rock at (8,6) more often. Learned Approach can loop beside it (wall to one side, target diagonally beyond), the known "Approach near obstacles" gap. On the farm only, a Harvest walk now sniffs around for two random steps when it revisits a tile 3 times in 8 steps; pens and reports are unchanged. Without it, Approach-only farms earned 32–134 coins with first-5 times up to 842 ticks.
+- A pet napping on the house tile counted as an obstacle and blocked the other pet from selling. Pets may now share the house and storage tiles.
+- Seed 303's Approach reaches the house from only 79% of tiles (98–100% for the others); it's the slow first-5 outlier.
+- Training temperament is random at adoption, so economy measurements pin it (curiosity, persistence and caution all 0.5).
 
 ## Performance (Milestone 5 gate)
 Headless Chromium, 390×844 phone viewport, DPR 2, expanded 16×12 farm, 2 pets (1 on duty), 6 chickens/crows, raining, farm at 4× speed, 5 s per measurement:

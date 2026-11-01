@@ -158,7 +158,7 @@ function fetchAsRoutine(): StageSpec {
   s.id = 'stage-fetch-routine';
   s.name = 'Bring it home (routine)';
   s.recipeId = 'fetch-routine';
-  s.blurb = 'Fetch, built from cards: Approach → berry, Approach → bin, pick up, put down.';
+  s.blurb = 'Fetch, built from cards: Approach → berry, Approach → basket, pick up, put down.';
   const carrying = () => n('cond.carrying', { actor: pet(n), what: n('ref.target') });
   s.learner = {
     skill: 'Fetch routine', template: 'routine', focus: 'berry', destination: 'bin', episodes: 400,
@@ -326,7 +326,7 @@ function fetchRecipe(): StageSpec {
   const n = maker('fe');
   return {
     id: 'stage-fetch', name: 'Bring it home', recipeId: 'bring-it-home', version: 1,
-    blurb: 'Pick up the berry and drop it in the bin. Reuses your Approach skill.',
+    blurb: 'Pick up the berry and drop it in the basket. Reuses your Approach skill.',
     size: { w: 8, h: 8 },
     environment: [
       n('place.pet', { mode: 'random', x: 0, y: 0 }),
@@ -365,7 +365,7 @@ function payPerPickup(): StageSpec {
 
 export const RECIPES: Recipe[] = [
   { id: 'go-to-berry', name: 'Go to the berry', blurb: 'Approach: walk to a target from anywhere.', skill: 'Approach', build: approach },
-  { id: 'bring-it-home', name: 'Bring it home', blurb: 'Fetch: carry a crop to the bin, reusing Approach.', skill: 'Fetch', unlock: 'fetch', build: fetchRecipe },
+  { id: 'bring-it-home', name: 'Bring it home', blurb: 'Fetch: carry a crop to the basket, reusing Approach.', skill: 'Fetch', unlock: 'fetch', build: fetchRecipe },
   { id: 'avoid-pond', name: 'Avoid the pond', blurb: 'Avoid: reach the goal while staying dry.', skill: 'Avoid', unlock: 'avoid', build: avoid },
   { id: 'wait-for-it', name: 'Wait for it', blurb: 'Your own skill: go to the target and stay put.', skill: 'Wait for it', unlock: 'custom', optional: true, build: waitForIt },
   { id: 'keep-clear', name: 'Keep clear', blurb: 'Your own skill: stay away from the pond until time is up.', skill: 'Keep clear', unlock: 'custom', optional: true, build: keepClear },

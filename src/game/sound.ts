@@ -19,7 +19,9 @@ export type CueId =
   // Progression and the Field Guide
   | 'pet.adopt' | 'ui.unlock' | 'ui.shop' | 'ui.request' | 'guide.step' | 'guide.offer' | 'guide.done'
   // Phase C: personality and small extras
-  | 'pet.chirp' | 'pet.sigh' | 'probe.pluck' | 'train.tick';
+  | 'pet.chirp' | 'pet.sigh' | 'probe.pluck' | 'train.tick'
+  // Farm life: storage
+  | 'farm.store' | 'farm.full';
 
 export type Bus = 'effects' | 'ui';
 
@@ -66,6 +68,8 @@ export const CUES: Record<CueId, CueDef> = {
   'world.dawn': { bus: 'effects', priority: 'B', cooldownMs: 5000, durationMs: 1100 },
   'world.dusk': { bus: 'effects', priority: 'B', cooldownMs: 5000, durationMs: 1300 },
   'pet.adopt': { bus: 'ui', priority: 'A', cooldownMs: 500, durationMs: 250 },
+  'farm.store': { bus: 'effects', priority: 'B', cooldownMs: 150, durationMs: 160 },
+  'farm.full': { bus: 'effects', priority: 'A', cooldownMs: 1500, durationMs: 200 },
   'pet.chirp': { bus: 'effects', priority: 'B', cooldownMs: 2500, durationMs: 200 },
   'pet.sigh': { bus: 'effects', priority: 'C', cooldownMs: 4000, durationMs: 650 },
   'probe.pluck': { bus: 'ui', priority: 'C', cooldownMs: 40, durationMs: 160 },
@@ -96,7 +100,7 @@ const PICKUP_PITCH: Record<string, number> = { egg: 1.15, carrot: 0.9 };
 
 /** Sound-only farm markers (`type: 'sound'`), which the farm view doesn't draw. */
 const SOUND_TAGS: Record<string, CueId> = { shoo: 'farm.shoo', firefly: 'farm.firefly', crow: 'farm.crow', dawn: 'world.dawn', dusk: 'world.dusk' };
-const DROP_TAGS: Record<string, CueId> = { watered: 'farm.water', filled: 'farm.fill', 'gate open': 'farm.gateOpen', 'gate shut': 'farm.gateShut' };
+const DROP_TAGS: Record<string, CueId> = { watered: 'farm.water', filled: 'farm.fill', 'gate open': 'farm.gateOpen', 'gate shut': 'farm.gateShut', stored: 'farm.store' };
 
 /** The cue for one farm effect (null = silent). Exposed for the coverage test. */
 export function cueForFx(f: FarmFx): CueId | null {
@@ -108,7 +112,7 @@ export function cueForFx(f: FarmFx): CueId | null {
     case 'bump': return 'farm.bump';
     case 'drop': return (f.text && DROP_TAGS[f.text]) || 'farm.drop';
     case 'celebrate': return f.text === 'shoo!' ? 'farm.scare' : 'farm.celebrate';
-    case 'confused': return f.text === 'pecked' ? 'farm.peck' : 'farm.confused';
+    case 'confused': return f.text === 'pecked' ? 'farm.peck' : f.text === 'full' ? 'farm.full' : 'farm.confused';
     case 'sound': return (f.text && SOUND_TAGS[f.text]) || null;
     case 'nap': return 'pet.sigh';
     default: return null;
@@ -156,6 +160,7 @@ export function cuesForSimEvents(events: SimEvent[], width: number): CueRequest[
       : e.type === 'scare' ? 'farm.scare'
       : e.type === 'peck' ? 'farm.peck'
       : e.type === 'gate' ? (e.state === 'open' ? 'farm.gateOpen' : 'farm.gateShut')
+      : e.type === 'full' ? 'farm.full'
       : null;
     if (id) out.push({ id, ...(id === 'farm.pickup' ? { pitch: PICKUP_PITCH[e.kind ?? ''] ?? 1 } : {}), pan: panFor(e.x, width) });
   }

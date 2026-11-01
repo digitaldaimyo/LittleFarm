@@ -37,7 +37,7 @@ describe('typed registry', () => {
     s.rules.push(node('rule', { label: 'carrot', when: node('ev.reach', { actor: node('actor.pet'), what: node('kind:bin') }), then: [node('eff.reward', { amount: 1 })] }));
     s.rules.push(node('rule', { label: 'it', when: node('ev.tick'), if: [node('cond.itNear', { object: node('ref.it'), what: node('kind:berry'), dist: 1 })], then: [node('eff.reward', { amount: 1 })] }));
     const d = validateStage(s);
-    expect(d.some((x) => x.code === 'missing-reference' && /Bin/.test(x.message))).toBe(true);
+    expect(d.some((x) => x.code === 'missing-reference' && /Basket/.test(x.message))).toBe(true);
     expect(d.some((x) => x.code === 'scope')).toBe(true);
   });
 

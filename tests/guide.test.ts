@@ -227,10 +227,11 @@ describe('Coaching tips', () => {
     const a = adoptPet(s, 'Pip', 'meadow'), b = adoptPet(s, 'Mochi', 'plum');
     s.farm.dutyPetId = a.id; s.farm.duty2PetId = b.id;
     a.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' };
-    b.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' };
-    expect(farmTips(s).map((t) => t.id)).toEqual(['two-pets-same-job']);
-    b.assignment.job = 'deliver';
-    expect(farmTips(s)).toEqual([]);
+    b.assignment = { mode: 'job', job: 'deliver', navigator: 'Approach' };
+    a.assignment.job = 'deliver';
+    expect(farmTips(s).map((t) => t.id)).toEqual(['two-pets-same-job']); // both hauling, nobody harvesting
+    a.assignment.job = 'forage';
+    expect(farmTips(s)).toEqual([]); // harvester + hauler (farm life: two harvesters are fine too)
   });
 });
 
@@ -292,7 +293,7 @@ describe('Field Guide phase C lessons', () => {
     advanceTutorial(s);
     const { r: seeing, q } = train();
     expect(seeing.after.successRate).toBeGreaterThan(seeing.randomOptions!.successRate + 0.4);
-    expect(guideComparison(s, 'routines').map((c) => c.label)).toEqual(['Watching 2 things', 'Watching 3 (+ at the bin)']);
+    expect(guideComparison(s, 'routines').map((c) => c.label)).toEqual(['Watching 2 things', 'Watching 3 (+ at the basket)']);
     ackStep(s);
     saveRevision(s, s.pets[0], { stage: st, policy: q, report: seeing, episodes: st.learner.episodes, durationMs: 1, simTicks: 0, uses: [{ skill: 'Approach', rev: 1 }] });
     advanceTutorial(s);
@@ -318,7 +319,14 @@ describe('Field Guide phase C lessons', () => {
     plan.rows.splice(w, 0, row);
     advanceTutorial(s);
     expect(currentStep(s)?.id).toBe('preview-again');
+    // As the lesson says: keep moving it up until the preview shows it runs (farm life keeps pets busier).
+    let i = plan.rows.indexOf(row);
+    while ((previewPlan(s, pet.id, plan, 300).fires[LESSON_ROW] ?? 0) === 0 && i > 0) {
+      [plan.rows[i - 1], plan.rows[i]] = [plan.rows[i], plan.rows[i - 1]];
+      i--;
+    }
     expect(previewPlan(s, pet.id, plan, 300).fires[LESSON_ROW] ?? 0).toBeGreaterThan(0);
+    expect(i).toBeLessThan(w); // it had to be above "Otherwise wander" to run
   });
 
   it('“Plan the farm” on a busy farm (Fetch + carrots): the row must go higher than “Otherwise wander” to run; the lesson ends once it is tidied away', () => {

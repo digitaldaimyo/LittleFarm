@@ -29,9 +29,9 @@ const GIFTS = ['trees', 'fences'];
 
 export function describeRequest(r: FarmRequest): string {
   switch (r.kind) {
-    case 'eggs': return `Deliver ${r.n} egg${r.n > 1 ? 's' : ''} by nightfall`;
-    case 'carrots': return `Deliver ${r.n} carrot${r.n > 1 ? 's' : ''} by nightfall`;
-    case 'berries': return `Gather ${r.n} berries by nightfall`;
+    case 'eggs': return `Sell ${r.n} egg${r.n > 1 ? 's' : ''} at the house by nightfall`;
+    case 'carrots': return `Sell ${r.n} carrot${r.n > 1 ? 's' : ''} at the house by nightfall`;
+    case 'berries': return `Sell ${r.n} berries at the house by nightfall`;
     case 'fireflies': return `Catch ${r.n} firefl${r.n > 1 ? 'ies' : 'y'} tonight`;
     case 'water': return `Water ${r.n} bushes or patches by nightfall`;
     case 'noPecks': return 'No crow pecks today';
@@ -43,9 +43,9 @@ export function describeRequest(r: FarmRequest): string {
 /** Side quests: how a request can be met, and which Field Guide lesson helps. */
 export function requestHelp(kind: RequestKind): { hint: string; lesson?: string } {
   switch (kind) {
-    case 'berries': return { hint: 'Forage berries with Approach (or Avoid, to stay out of the pond).', lesson: 'where' };
-    case 'eggs':
-    case 'carrots': return { hint: 'The Deliver job uses Fetch — it carries eggs as well as carrots.', lesson: 'results' };
+    case 'berries': return { hint: 'Harvest berries with Approach (or Avoid, to stay out of the pond); they count once they reach the house.', lesson: 'where' };
+    case 'eggs': return { hint: 'The Haul job uses Fetch to carry eggs (and anything in the basket or shed) to the house.', lesson: 'results' };
+    case 'carrots': return { hint: 'Harvest carrots into the basket, then Haul them to the house (Haul needs Fetch).', lesson: 'results' };
     case 'fireflies': return { hint: 'At night, Auto catches fireflies — or add a plan row “IF it’s night DO Catch fireflies”.', lesson: 'plans' };
     case 'water': return { hint: 'Teach the “Water the garden” recipe (Curriculum) and run it on the farm with “Run a skill”.', lesson: 'invent' };
     case 'noPecks': return { hint: 'Invent a guard skill with the Shoo ability (aim it at the crow) — or buy a scarecrow.', lesson: 'invent' };
@@ -119,9 +119,10 @@ export function trackRequests(s: GameState, events: SimEvent[]): void {
   for (const e of events) {
     for (const r of open) {
       if (r.status !== 'open') continue;
-      const hit = (r.kind === 'eggs' && e.type === 'deliver' && e.kind === 'egg')
-        || (r.kind === 'carrots' && e.type === 'deliver' && e.kind === 'carrot')
-        || (r.kind === 'berries' && e.type === 'pickup' && e.kind === 'berry')
+      const sold = e.type === 'deliver' && e.into === 'home';
+      const hit = (r.kind === 'eggs' && sold && e.kind === 'egg')
+        || (r.kind === 'carrots' && sold && e.kind === 'carrot')
+        || (r.kind === 'berries' && sold && e.kind === 'berry')
         || (r.kind === 'fireflies' && e.type === 'reach' && e.kind === 'firefly')
         || (r.kind === 'water' && e.type === 'water');
       if (hit) { r.progress++; if (r.progress >= r.n) complete(s, r); }

@@ -213,6 +213,16 @@ export function compileCondition(n: SpecNode): Cond {
       const fs = listArg(n, 'all').map(compileCondition);
       return (c) => fs.every((f) => f(c));
     }
+    case 'cond.storage': {
+      // Any basket or shed with something in it / at least half full / full.
+      const level = paramOf(n, 'level', 'any');
+      return ({ w }) => w.objects.some((o) => {
+        if (!o.store) return false;
+        const st = def(o.kind).storage;
+        const n2 = o.store.reduce((a, s) => a + s.n, 0), cap = st ? st.slots * st.perSlot : Infinity;
+        return level === 'any' ? n2 > 0 : level === 'half' ? n2 * 2 >= cap : n2 >= cap;
+      });
+    }
     case 'cond.nextTo': {
       const k = kindArg(n, 'what');
       return ({ w }) => w.objects.some((o) => o.kind === k && onGround(o) && Math.max(Math.abs(o.x - w.pet.x), Math.abs(o.y - w.pet.y)) === 1);

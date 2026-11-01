@@ -18,7 +18,7 @@ let chromium;
 try { ({ chromium } = await import('playwright')); } catch { ({ chromium } = require('playwright')); }
 
 const PORT = 4179;
-const CUE_COUNT = 42; // cues in src/audio/kit.ts
+const CUE_COUNT = 44; // cues in src/audio/kit.ts
 const URL = `http://localhost:${PORT}/`;
 const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'ignore' });
 const FROM = Number(process.argv.find((a) => a.startsWith('--from='))?.slice(7) ?? 1);
@@ -262,8 +262,8 @@ try {
     await tab('Pet');
     await page.click('[data-tut="watches"] .slot:has-text("+ condition")');
     await page.click('.sleeve .card:has-text("Is at")');
-    await page.click('.sleeve .card:has-text("Bin")');
-    await step('Train it again', 'L8: “Is at → Bin” added to Watches');
+    await page.click('.sleeve .card:has-text("Basket")');
+    await step('Train it again', 'L8: “Is at → Basket” added to Watches');
     await train();
     const c8 = await compareInGuide();
     console.log('   L8 comparison:', c8.slice(0, 170));

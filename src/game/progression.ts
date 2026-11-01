@@ -1,7 +1,7 @@
 import type { GameState } from './types';
 import { activePet, getSkill, isCertified } from './pets';
 import { addJournal } from './journal';
-import { addObject } from '../sim/world';
+import { addObject, emptyStore } from '../sim/world';
 import { expandFarm } from './expand';
 
 const SCARECROW_POS = { x: 8, y: 2 };
@@ -21,7 +21,7 @@ export const UNLOCKS: UnlockDef[] = [
   { id: 'custom', label: 'Your own skills', describe: 'Invent skills: name them, choose what your pet senses and can do, and write the rules.',
     when: (s) => anyPet(s, (p) => isCertified(getSkill(p, 'Approach'))),
     progress: (s) => ({ have: anyPet(s, (p) => isCertified(getSkill(p, 'Approach'))) ? 1 : 0, need: 1, unit: 'certified Approach skill' }) },
-  { id: 'fetch', label: 'Fetch lessons', describe: 'Teach pets to carry crops to the bin.',
+  { id: 'fetch', label: 'Fetch lessons', describe: 'Teach pets to carry things to a place. On the farm, Fetch is what hauls stored crops and eggs to the house.',
     when: (s) => anyPet(s, (p) => isCertified(getSkill(p, 'Approach'))) && s.progress.totalCoins >= 5,
     progress: (s) => ({ have: Math.min(5, s.progress.totalCoins), need: 5, unit: 'coins earned (with a certified Approach)' }) },
   { id: 'carrots', label: 'Carrot patches', describe: 'Carrots are worth 3 coins each when delivered.',
@@ -54,6 +54,7 @@ export const SHOP: ShopItem[] = [
   { id: 'chickens', label: 'Two chickens', price: 10, describe: 'They wander — and lay eggs (2 coins each) only while in the coop. Teach a pet to herd them!', requires: 'custom' },
   { id: 'orchard', label: 'Orchard expansion', price: 25, describe: 'The farm grows to 16×12: a fenced orchard of berry bushes behind a gate, and a southern meadow.', requires: 'custom' },
   { id: 'scarecrow', label: 'Scarecrow', price: 8, describe: 'Crows won’t come within 2 tiles of it (protects the top-right bushes).', requires: 'custom' },
+  { id: 'shed', label: 'Shed', price: 25, describe: 'Storage for 40 by the house: 4 slots of 10, one kind each. Harvesters fill it; haulers take it to the house.', requires: 'fetch' },
   { id: 'adopt', label: 'Adopt another pet', price: 20, describe: 'A second trainee with their own skills.', consumable: true },
 ];
 
@@ -113,6 +114,13 @@ export function buy(s: GameState, id: string): BuyResult {
     const w = s.farm.world;
     const busy = w.objects.some((o) => !o.carried && !o.delivered && o.x === SCARECROW_POS.x && o.y === SCARECROW_POS.y);
     if (!busy) addObject(w, 'scarecrow', SCARECROW_POS.x, SCARECROW_POS.y);
+  }
+  if (id === 'shed' && !s.farm.world.objects.some((o) => o.kind === 'shed')) {
+    // Next to the house, on the first free tile (layout mode will let you move it later).
+    const w = s.farm.world;
+    const free = (x: number, y: number) => x >= 0 && y >= 0 && x < w.w && y < w.h && !w.objects.some((o) => !o.carried && !o.delivered && o.x === x && o.y === y) && !(w.pet.x === x && w.pet.y === y);
+    const spot = [[2, 1], [1, 2], [2, 2], [0, 1], [1, 0], [2, 0], [0, 2]].find(([x, y]) => free(x, y));
+    if (spot) addObject(w, 'shed', spot[0], spot[1]).store = emptyStore('shed');
   }
   if (id === 'snack') {
     const p = activePet(s);

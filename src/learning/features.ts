@@ -85,6 +85,6 @@ export function legalOptions(s: number): number[] {
 }
 
 export function describeFetchState(s: number): string {
-  const parts = [s & 1 ? 'carrying' : 'empty-pawed', s & 2 ? 'on the crop' : '', s & 4 ? 'at the bin' : '', s & 8 ? 'crop visible' : s & 1 ? '' : 'no crop in sight'];
+  const parts = [s & 1 ? 'carrying' : 'empty-pawed', s & 2 ? 'on the crop' : '', s & 4 ? 'at the destination' : '', s & 8 ? 'crop visible' : s & 1 ? '' : 'no crop in sight'];
   return parts.filter(Boolean).join(', ');
 }

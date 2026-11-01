@@ -1,5 +1,5 @@
 import type { Action, SimEvent, World } from '../sim/world';
-import { addObject, bfsPath, cloneTally, emptyWorld, inArea, nearest, nudgeableGate, objectsAt, onGround, step, type StepOptions } from '../sim/world';
+import { addObject, bfsPath, cloneTally, def, emptyStore, emptyWorld, storeAccepts, storeCount, inArea, nearest, nudgeableGate, objectsAt, onGround, step, type StepOptions } from '../sim/world';
 import { nightfallRequests, postRequests, trackRequests } from './requests';
 import { Rng } from '../sim/rng';
 import { FetchController, FetchRun, NavRun, SkillRun, isDone, randomMove, type ExecStep } from '../learning/policies';
@@ -18,7 +18,10 @@ import { GUARD_HOLD, choosePlanRow, compilePlan, newPlanRuntime, planInvocation,
 export const FARM_W = 12;
 export const FARM_H = 9;
 export const GROW_TICKS: Record<Plot['crop'], number> = { berry: 28, carrot: 44 };
-export const CROP_VALUE = { berry: 1, carrot: 3, berryDelivered: 2, egg: 2 };
+/** What produce sells for when it reaches the house (the only place coins come from, besides fireflies). */
+export const SELL_PRICE: Record<string, number> = { berry: 2, carrot: 5, egg: 3 };
+/** Kept for older references: a berry's price. */
+export const CROP_VALUE = { berry: SELL_PRICE.berry, carrot: SELL_PRICE.carrot, egg: SELL_PRICE.egg };
 export const TIRED = 25;
 
 /** Day/night clock: one farm day = 1200 ticks (~5½ minutes at 1×); the last 30% is night. */
@@ -38,7 +41,7 @@ const FIREFLIES_PER_NIGHT = 4;
 export function createFarm(): FarmState {
   const w = emptyWorld(FARM_W, FARM_H);
   addObject(w, 'home', 1, 1);
-  addObject(w, 'bin', 2, 3);
+  addObject(w, 'bin', 2, 3).store = emptyStore('bin');
   addObject(w, 'well', WELL_POS.x, WELL_POS.y);
   for (const [x, y] of [[5, 2], [6, 2], [5, 3], [6, 3], [7, 3], [6, 4], [5, 4]]) addObject(w, 'pond', x, y);
   for (const [x, y] of [[0, 8], [11, 0], [4, 0], [11, 8], [0, 4]]) addObject(w, 'tree', x, y);
@@ -119,12 +122,56 @@ function regrow(s: GameState): void {
   }
 }
 
+/**
+ * A farm walk with the learned movement skill, plus the farm's stuck recovery a little earlier: if the pet keeps
+ * revisiting the same tile (3 times in 8 steps: a loop, typically beside an obstacle), it sniffs around for two
+ * random steps and carries on. Farm only — pens and reports measure the learned skill as it is.
+ */
+class FarmWalk {
+  private recent: string[] = [];
+  private sniff = 0;
+  private inner: NavRun;
+  constructor(nav: ReturnType<typeof sensePolicyOf>, focus: string, timeout: number, private rng: Rng) {
+    this.inner = new NavRun(nav, focus, timeout, rng);
+  }
+  next(w: World): ExecStep {
+    const st = this.inner.next(w);
+    if (isDone(st)) return st;
+    const here = `${w.pet.x},${w.pet.y}`;
+    this.recent.push(here);
+    if (this.recent.length > 8) this.recent.shift();
+    if (this.sniff === 0 && this.recent.filter((p) => p === here).length >= 3) { this.sniff = 2; this.recent = []; }
+    if (this.sniff > 0) { this.sniff--; return randomMove(w, this.rng); }
+    return st;
+  }
+}
+
+/** Where a harvested item goes: without Fetch straight to the house; with it, the nearest storage with room (or the house). */
+export function harvestDestination(w: World, kind: string, hasFetch: boolean): string {
+  if (!hasFetch) return 'home';
+  const options = w.objects.filter((o) => onGround(o) && (o.kind === 'home' || (o.store && storeAccepts(o, kind))));
+  options.sort((a, b) => (Math.abs(a.x - w.pet.x) + Math.abs(a.y - w.pet.y)) - (Math.abs(b.x - w.pet.x) + Math.abs(b.y - w.pet.y)));
+  return options[0]?.kind ?? 'home';
+}
+
+/** Is any basket or shed at least half full? */
+export function storeHalfFull(w: World): boolean {
+  return w.objects.some((o) => { const st = def(o.kind).storage; return !!o.store && !!st && storeCount(o) * 2 >= st.slots * st.perSlot; });
+}
+
+/** Everything sold at the house so far (the haul job is done when this goes up). */
+function totalSold(w: World): number {
+  return w.sold ?? 0;
+}
+
 export function farmContext(s: GameState, pet: Pet, recentFail: boolean): ExecContext {
   const w = s.farm.world;
   return {
     energyLow: pet.energy < TIRED,
-    berry: !!nearest(w, 'berry'),
-    carrot: !!nearest(w, 'carrot') || !!nearest(w, 'egg'),
+    // "berry": something ripe to harvest; "carrot": goods to haul (eggs, or anything in storage).
+    berry: !!nearest(w, 'berry') || !!nearest(w, 'carrot'),
+    carrot: !!nearest(w, 'egg') || w.objects.some((o) => o.store && storeCount(o) > 0),
+    storeHalf: storeHalfFull(w),
     carrying: w.pet.carrying !== null,
     recentFail,
     night: !!w.night,
@@ -232,8 +279,11 @@ function updateClock(s: GameState, rt: FarmRuntime, fx: FarmFx[]): void {
 export function eligibleBehaviors(pet: Pet, ctx: ExecContext): BehaviorId[] {
   const out: BehaviorId[] = ['rest'];
   const nav = navPolicyFor(pet, pet.assignment.navigator);
-  if (nav && ctx.berry && !ctx.carrying) out.push('forage');
-  if (activeRevision(getSkill(pet, 'Fetch')) && nav && (ctx.carrot || ctx.carrying)) out.push('deliver');
+  const fetch = !!activeRevision(getSkill(pet, 'Fetch'));
+  // Harvest: pick something ripe, or (without Fetch) finish carrying it home.
+  // (A pet holding something can always finish carrying it; with Fetch, Auto prefers hauling it.)
+  if (nav && ((ctx.berry && !ctx.carrying) || ctx.carrying)) out.push('forage');
+  if (fetch && nav && (ctx.carrot || ctx.carrying)) out.push('deliver');
   if (nav && ctx.firefly && !ctx.carrying) out.push('catch');
   if (!ctx.energyLow) out.push('wander');
   return out;
@@ -246,18 +296,33 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
   const tmo = navTimeout(w.w, w.h, pet.traits.persistence);
   switch (inv.behaviorId) {
     case 'forage': {
-      const run = new NavRun(nav, 'berry', tmo, rt.rng);
-      let picked = false;
+      // Harvest: walk to the nearest ripe crop, pick it, carry it to storage with room (or the house), drop it.
+      const hasFetch = !!activeRevision(getSkill(pet, 'Fetch'));
+      const crop = (['berry', 'carrot'] as const).map((k) => nearest(w, k)).filter((o): o is NonNullable<typeof o> => !!o)
+        .sort((a, b) => (Math.abs(a.x - w.pet.x) + Math.abs(a.y - w.pet.y)) - (Math.abs(b.x - w.pet.x) + Math.abs(b.y - w.pet.y)))[0];
+      let phase: 'go' | 'pick' | 'carry' | 'drop' = w.pet.carrying !== null ? 'carry' : 'go';
+      // Farm trips are longer now (from the house to the crops and back), so each leg gets a little more patience.
+      const leg = Math.round(tmo * 1.5);
+      let run: FarmWalk | null = phase === 'go' ? new FarmWalk(nav, crop?.kind ?? 'berry', leg, rt.rng) : null;
+      const toStore = (world: World) => {
+        const kind = world.objects.find((o) => o.id === world.pet.carrying)?.kind ?? '';
+        run = new FarmWalk(nav, harvestDestination(world, kind, hasFetch), leg, rt.rng);
+        phase = 'carry';
+      };
+      if (phase === 'carry') toStore(w);
       return {
         next(world) {
-          if (picked) return { done: 'success', reason: 'gathered' };
-          const st = run.next(world);
-          if (isDone(st)) {
-            if (st.done === 'fail') return st;
-            picked = true;
-            return 'pick';
+          if (phase === 'drop') return { done: 'success', reason: 'stored' };
+          if (phase === 'pick') {
+            if (world.pet.carrying === null) return { done: 'fail', reason: 'missed it' };
+            toStore(world);
           }
-          return st;
+          const st = run!.next(world);
+          if (!isDone(st)) return st;
+          if (st.done === 'fail') return st;
+          if (phase === 'go') { phase = 'pick'; return 'pick'; }
+          phase = 'drop';
+          return 'drop';
         },
       };
     }
@@ -284,11 +349,13 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
       return new NavRun(nav, 'firefly', tmo, rt.rng);
     }
     case 'deliver': {
+      // Haul: with the learned Fetch controller, take eggs or stored goods (fullest storage first) to the house.
       const fetch = activeRevision(getSkill(pet, 'Fetch'));
       const ctrl = FetchController.from(fetch?.policy) ?? new FetchController();
-      const nearestOf = (ks: string[]) => ks.map((k) => nearest(w, k)).filter((o): o is NonNullable<typeof o> => !!o).sort((a, b) => (Math.abs(a.x - w.pet.x) + Math.abs(a.y - w.pet.y)) - (Math.abs(b.x - w.pet.x) + Math.abs(b.y - w.pet.y)))[0];
-      const item = w.pet.carrying !== null ? (w.objects.find((o) => o.id === w.pet.carrying)?.kind ?? 'carrot') : nearestOf(['carrot', 'egg'])?.kind ?? 'carrot';
-      return new FetchRun(ctrl, nav, item, 'bin', tmo, inv.timeout, rt.rng, w.delivered[item] ?? 0);
+      const fullest = w.objects.filter((o) => o.store && storeCount(o) > 0).sort((a, b) => storeCount(b) - storeCount(a))[0];
+      const item = w.pet.carrying !== null ? (w.objects.find((o) => o.id === w.pet.carrying)?.kind ?? 'carrot') : nearest(w, 'egg') ? 'egg' : fullest?.kind ?? 'bin';
+      const soldBefore = totalSold(w);
+      return new FetchRun(ctrl, nav, item, 'home', tmo, inv.timeout, rt.rng, soldBefore, totalSold);
     }
     case 'skill': {
       const rev = activeRevision(getSkill(pet, inv.args.skill ?? ''));
@@ -337,7 +404,8 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
   rt.ctx = ctx;
   const w = s.farm.world;
   const tmo = navTimeout(w.w, w.h, pet.traits.persistence);
-  const timeouts: Record<BehaviorId, number> = { forage: tmo + 3, deliver: tmo * 3, rest: 30, wander: 6, manual: 1e9, skill: 60, catch: tmo, goto: tmo, gate: tmo + 2 };
+  const timeouts: Record<BehaviorId, number> = { forage: tmo * 3 + 6, // farm life: walk to the crop, then carry it to storage or the house
+    deliver: tmo * 3, rest: 30, wander: 6, manual: 1e9, skill: 60, catch: tmo, goto: tmo, gate: tmo + 2 };
   const custom = pet.assignment.skillName ? activeRevision(getSkill(pet, pet.assignment.skillName)) : null;
   if (custom) timeouts.skill = Math.round((custom.maxTicks ?? 40) * (1 + pet.traits.persistence));
   const navigator = pet.assignment.navigator;
@@ -387,8 +455,8 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
     if (eligible.includes(j)) return mk(j, 'player', `You asked for: ${BEHAVIOR_LABEL[j]}`);
     if (ctx.energyLow) return mk('rest', 'rules', 'Tired — resting before the job');
     const why = j === 'rest' ? 'Napping as asked'
-      : j === 'forage' && !ctx.berry ? 'No ripe berries yet — resting while they regrow'
-      : j === 'deliver' && !ctx.carrot ? 'No carrots ready — resting while they grow'
+      : j === 'forage' && !ctx.berry ? 'Nothing ripe yet — resting while crops regrow'
+      : j === 'deliver' && !ctx.carrot ? 'Nothing to haul — the basket and shed are empty'
       : `Can't ${BEHAVIOR_LABEL[j].toLowerCase()} yet — check the skill it needs`;
     return mk('rest', 'rules', why);
   }
@@ -478,28 +546,30 @@ function handleEvents(s: GameState, pet: Pet, events: SimEvent[], rt: FarmRuntim
       fx.push({ type: 'drop', x: e.x, y: e.y, text: 'filled' });
     } else if (e.type === 'bump') {
       fx.push({ type: 'bump', x: e.x, y: e.y });
-    } else if (e.type === 'pickup' && e.kind === 'berry') {
-      // Berries go straight into the basket.
-      const o = w.objects.find((x) => x.id === e.objId);
-      if (o) { o.carried = false; o.delivered = true; }
-      w.pet.carrying = null;
-      s.resources.berries++;
-      pet.stats.berries++;
-      earn(s, pet, CROP_VALUE.berry, e.x, e.y, fx);
+    } else if (e.type === 'pickup' && e.kind === 'berry' && !e.into) {
+      // Picked, not sold: it travels to storage or the house first.
       fx.push({ type: 'pickup', x: e.x, y: e.y });
-      if (addJournalOnce(s, pet.id, 'first-berry', `${pet.name} gathered their first berry on the farm${rt.inv?.chosenBy === 'player' && rt.inv.behaviorId === 'manual' ? ' with your help' : ' all on their own'}.`)) void 0;
+      addJournalOnce(s, pet.id, 'first-berry', `${pet.name} picked their first berry on the farm${rt.inv?.chosenBy === 'player' && rt.inv.behaviorId === 'manual' ? ' with your help' : ' all on their own'}. It earns coins once it reaches the house.`);
+    } else if (e.type === 'full') {
+      fx.push({ type: 'confused', x: e.x, y: e.y, text: 'full' });
+      addJournalOnce(s, null, 'first-full', `The ${e.into === 'shed' ? 'shed' : 'basket'} was full (or held something else), so the ${e.kind} was left beside it. Someone with Fetch can haul storage to the house.`);
     } else if (e.type === 'pickup') {
       fx.push({ type: 'pickup', x: e.x, y: e.y });
     } else if (e.type === 'drop') {
       fx.push({ type: 'drop', x: e.x, y: e.y });
-    } else if (e.type === 'deliver') {
-      const value = e.kind === 'carrot' ? CROP_VALUE.carrot : e.kind === 'egg' ? CROP_VALUE.egg : CROP_VALUE.berryDelivered;
+    } else if (e.type === 'deliver' && e.into === 'home') {
+      // Sold at the house: the only place produce turns into coins.
+      const value = SELL_PRICE[e.kind ?? ''] ?? 1;
+      if (e.kind === 'berry') { s.resources.berries++; pet.stats.berries++; }
       if (e.kind === 'carrot') { s.resources.carrots++; pet.stats.carrots++; }
-      if (e.kind === 'egg') { s.resources.eggs = (s.resources.eggs ?? 0) + 1; addJournalOnce(s, pet.id, 'first-egg-delivery', `${pet.name} carried an egg all the way to the bin without dropping it.`); }
+      if (e.kind === 'egg') { s.resources.eggs = (s.resources.eggs ?? 0) + 1; addJournalOnce(s, pet.id, 'first-egg-delivery', `${pet.name} carried an egg all the way to the house without dropping it.`); }
       pet.stats.deliveries++;
-      pet.mood = Math.min(100, pet.mood + 3);
+      pet.mood = Math.min(100, pet.mood + 2);
       earn(s, pet, value, e.x, e.y, fx);
-      addJournalOnce(s, pet.id, 'first-delivery', `${pet.name} made their first delivery to the bin: one ${e.kind}, carried all the way.`);
+      addJournalOnce(s, pet.id, 'first-sale', `${pet.name} brought a ${e.kind} to the house and sold it for ${value} coin${value === 1 ? '' : 's'}. Produce only earns once it reaches the house.`, true);
+    } else if (e.type === 'deliver') {
+      fx.push({ type: 'drop', x: e.x, y: e.y, text: 'stored' });
+      addJournalOnce(s, pet.id, 'first-store', `${pet.name} put a ${e.kind} in the ${e.into === 'shed' ? 'shed' : 'basket'}. It's safe there until someone hauls it to the house.`);
     }
   }
   // Delivered/collected objects leave the world.
@@ -556,12 +626,15 @@ function createSecondRuntime(f: FarmState): FarmRuntime {
 function withOtherPet(s: GameState, other: FarmRuntime | undefined, fn: () => void, otherBody = s.farm.world.pet2): void {
   const w = s.farm.world;
   if (!other || !otherBody) { fn(); return; }
-  const buddy = addObject(w, 'buddy', otherBody.x, otherBody.y);
+  // The other pet is an obstacle, except at the house and storage, which both pets may use at once
+  // (a pet napping in the house mustn't stop the other selling).
+  const shared = objectsAt(w, otherBody.x, otherBody.y).some((o) => def(o.kind).container);
+  const buddy = shared ? null : addObject(w, 'buddy', otherBody.x, otherBody.y);
   const claimed = other.claim !== null ? w.objects.find((o) => o.id === other.claim && !o.carried && !o.delivered) : undefined;
   if (claimed) claimed.hidden = true;
   try { fn(); } finally {
     if (claimed) delete claimed.hidden;
-    w.objects = w.objects.filter((o) => o !== buddy);
+    if (buddy) w.objects = w.objects.filter((o) => o !== buddy);
   }
 }
 
@@ -587,7 +660,9 @@ function secondTurn(s: GameState, pet2: Pet, rt: FarmRuntime, fx: FarmFx[]): voi
 
 function claimFor(w: World, inv: Invocation | null): number | null {
   if (!inv) return null;
-  const kinds = inv.behaviorId === 'forage' ? ['berry'] : inv.behaviorId === 'catch' ? ['firefly'] : inv.behaviorId === 'goto' ? [inv.args.target ?? ''] : inv.behaviorId === 'deliver' && w.pet.carrying === null ? ['carrot', 'egg'] : [];
+  // Harvesters claim the crop they're heading for; haulers claim eggs. Storage is shared, never claimed
+  // (hiding a basket would stop the other pet storing there).
+  const kinds = inv.behaviorId === 'forage' && w.pet.carrying === null ? ['berry', 'carrot'] : inv.behaviorId === 'catch' ? ['firefly'] : inv.behaviorId === 'goto' ? [inv.args.target ?? ''] : inv.behaviorId === 'deliver' && w.pet.carrying === null ? ['egg'] : [];
   let best: number | null = null, bd = Infinity;
   for (const k of kinds) {
     const o = nearest(w, k);

@@ -79,6 +79,15 @@ export function ObjectGlyph({ kind }: { kind: string }) {
           <path d="M12 15 q8 -10 16 0" fill="none" stroke="#7F5427" strokeWidth="2" />
         </g>
       );
+    case 'shed':
+      return (
+        <g>
+          <path d="M5 18 L20 6 L35 18 Z" fill="#A4452F" stroke="#7A2F1F" strokeWidth="1.5" strokeLinejoin="round" />
+          <rect x="8" y="18" width="24" height="18" fill="#C9874E" stroke="#7F5427" strokeWidth="1.5" />
+          <rect x="16" y="24" width="8" height="12" fill="#7F5427" />
+          <path d="M16 24 l8 12 M24 24 l-8 12" stroke="#5E3D1C" strokeWidth="1" />
+        </g>
+      );
     case 'pond':
       return (
         <g>

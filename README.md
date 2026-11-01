@@ -18,7 +18,7 @@ npm run dev        # http://localhost:5173
 | `npm run build` | Typecheck + production build into `dist/` (static files; host anywhere or open with `npm run preview`) |
 | `npm run typecheck` | TypeScript only |
 | `npm run lint` | ESLint |
-| `npm test` | Vitest: 145 tests in 20 files (sim, registry, learning, saves, farm, every milestone gate, the Field Guide, the card editor, sound, teaching polish, pens, cards, and a layout fingerprint that keeps existing lessons' layouts fixed) |
+| `npm test` | Vitest: 158 tests in 21 files (sim, registry, learning, saves, farm, every milestone gate, the Field Guide, the card editor, sound, teaching polish, pens, cards, farm life, and a layout fingerprint that keeps existing lessons' layouts fixed) |
 | `npm run bench` | Trains every starter skill under 5 seeds and prints held-out results, hardware and timings |
 | `npm run evidence` | Reproduces the measurements behind the Field Guide and the Trainer's notebook |
 | `npm run e2e` | Browser test that plays all nine Field Guide lessons and the newer editor features with real clicks, about a minute (run `npm run build` first; needs Playwright with Chromium). `npm run e2e -- --from=4` skips lessons 1–3 |
@@ -35,8 +35,8 @@ The **First lesson** banner (lesson 1 of the Field Guide) walks you through this
 4. **Train Approach.** Watch the success line climb. Pause, cancel and speed controls are always available. Field Guide lessons cost no energy.
 5. **Read the report:** before vs random vs after vs transfer, measured on 20 layouts the pet never trained on. Replay any of them.
 6. **Save skill.** It becomes revision r1 in the pet's repertoire.
-7. **Farm → Forage berries.** The pet uses the Approach it just learned. Berries sell for 1 coin.
-8. **Earn 5 coins** to unlock **Fetch** lessons (*Bring it home*), which reuse your saved Approach to move. A certified Fetch unlocks carrot patches (3 coins per delivery). At 12 coins, **Avoid** lessons unlock, so your pet can stop splashing through the pond.
+7. **Farm → Harvest.** The pet uses the Approach it just learned to pick berries and carry them to the house, where each sells for 2 coins. Coins only come from the house.
+8. **Earn 5 coins** to unlock **Fetch** lessons (*Bring it home*), which reuse your saved Approach to move. With Fetch, a pet stores harvests in the basket and **hauls** stored goods to the house. A certified Fetch unlocks carrot patches (5 coins per carrot sold). At 12 coins, **Avoid** lessons unlock, so your pet can stop splashing through the pond.
 
 ## Building lessons
 
@@ -93,7 +93,8 @@ The **First lesson** banner (lesson 1 of the Field Guide) walks you through this
 
 ## The farm
 
-- **Jobs:** Auto, Forage berries, Deliver carrots & eggs (Fetch), Nap, **Run a skill** (any of your skills or routines, aimed at anything), and **Steer** (tap tiles, or arrow keys, P pick up, D put down, W water, X shoo, G nudge a gate). The farm keeps running while you're on other screens.
+- **Produce travels; the house sells.** Coins come only from produce brought to the house (berry 2, carrot 5, egg 3), plus fireflies. The **basket** stores 6 of one kind and a **shed** (shop) 4 kinds × 10; the map shows how full each is. A full basket gets a coaching tip.
+- **Jobs:** Auto, **Harvest** (pick a ripe crop, carry it to storage with room, or the house), **Haul** (Fetch: eggs and stored goods to the house), Nap, **Run a skill** (any of your skills or routines, aimed at anything), and **Steer** (tap tiles, or arrow keys, P pick up, D put down, W water, X shoo, G nudge a gate). The farm keeps running while you're on other screens.
 - **Day and night:** a day lasts about 5½ minutes at 1×, and the last 30% is night. Night darkens the farm, pets on Auto prefer to nap, and **fireflies** appear (+1 coin each, gone at dawn).
 - **Watering:** a pet with *Water* fills up at the **well** (3 splashes) and waters dry bushes or patches, which then regrow twice as fast.
 - **Creatures:**
@@ -107,7 +108,7 @@ The **First lesson** banner (lesson 1 of the Field Guide) walks you through this
   - Rows are tried top to bottom, skipping jobs that can't do anything right now. *Has done…* in a row counts from when the current job started.
   - **Preview 300 ticks** shows exactly what the plan would do (the farm is deterministic).
   - The **starter plan** is the built-in Auto rules written out. *Learn among matches* lets the pet choose among applicable rows, and an **anti-dithering guard** steps in when rows flip-flop.
-- **Two pets** can work at once (**Also on duty**). They never chase the same thing, and they earn the most doing different jobs.
+- **Two pets** can work at once (**Also on duty**). They never chase the same thing (but may share the house and storage tiles). One harvesting while the other hauls earns the most.
 
 ## The Field Guide
 
@@ -163,5 +164,5 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 | `docs/ROADMAP.md` | The expansion roadmap (all six milestones shipped), later work, and what could come next |
 | `docs/TUTORIAL_PLAN.md` | The Field Guide's design, the evidence behind each lesson, and what shipped |
 | `docs/TEACHING_PLAN.md` | Polishing rules, conditions and pens: the plan, and what phases A–C shipped |
-| `docs/FARM_LIFE_PLAN.md` | Plan for farm life: storage and selling at the house, replanting, your own layout, a pet roster (not started) |
+| `docs/FARM_LIFE_PLAN.md` | Farm life: storage and selling at the house (phase A shipped), then replanting, your own layout, a pet roster |
 | `docs/SOUND_PLAN.md` | Sound effects, ambience, music and settings: the plan, and what phases A–C shipped |

@@ -136,6 +136,8 @@ export const KIT: Record<CueId, Recipe> = {
   'pet.chirp': { voices: [{ wave: 'sine', freq: [1100, 1500], at: 0, dur: 0.07, gain: 0.14, attack: 0.005 }, { wave: 'sine', freq: [1350, 1050], at: 0.08, dur: 0.08, gain: 0.12, attack: 0.005 }] },
   'pet.sigh': { voices: [{ wave: 'noise', at: 0, dur: 0.55, gain: 0.07, attack: 0.15, filter: { type: 'bandpass', freq: [900, 400], q: 1.1 } }, { wave: 'sine', freq: [330, 250], at: 0.05, dur: 0.45, gain: 0.05, attack: 0.1 }] },
   'probe.pluck': { voices: [{ wave: 'triangle', freq: [784, 784], at: 0, dur: 0.12, gain: 0.1, attack: 0.002 }] },
+  'farm.store': { voices: [{ wave: 'sine', freq: [260, 160], at: 0, dur: 0.1, gain: 0.25, attack: 0.003 }, { wave: 'noise', at: 0, dur: 0.05, gain: 0.08, attack: 0.002, filter: { type: 'lowpass', freq: [1200, 600] } }, note(G5, 0.07, 0.08, 0.05, 'sine')] },
+  'farm.full': { voices: [{ wave: 'triangle', freq: [200, 160], at: 0, dur: 0.08, gain: 0.22, attack: 0.002, filter: { type: 'lowpass', freq: [800, 600] } }, { wave: 'triangle', freq: [200, 160], at: 0.1, dur: 0.08, gain: 0.18, attack: 0.002, filter: { type: 'lowpass', freq: [800, 600] } }] },
   'train.tick': { voices: [{ wave: 'sine', freq: [1800, 1800], at: 0, dur: 0.03, gain: 0.06, attack: 0.001 }] },
 };
 

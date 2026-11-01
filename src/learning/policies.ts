@@ -142,9 +142,11 @@ export class FetchRun {
     private totalTimeout: number,
     private rng: Rng,
     private deliveredBefore: number,
+    /** How to count deliveries (default: of this item kind). The farm's Haul counts sales at the house. */
+    private countFn?: (w: World) => number,
   ) {}
   next(w: World): ExecStep {
-    if ((w.delivered[this.item] ?? 0) > this.deliveredBefore) return { done: 'success', reason: 'delivered' };
+    if ((this.countFn ? this.countFn(w) : w.delivered[this.item] ?? 0) > this.deliveredBefore) return { done: 'success', reason: 'delivered' };
     if (this.ticks >= this.totalTimeout) return { done: 'fail', reason: 'timeout' };
     for (let guard = 0; guard < 4; guard++) {
       if (!this.cur) {

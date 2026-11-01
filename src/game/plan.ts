@@ -29,10 +29,11 @@ export function starterPlan(): FarmPlan {
       row('Tired? Nap', [node('cond.energyBelow', { value: 25 })], node('job.nap')),
       row('Fireflies out', [node('cond.night'), has('firefly')], node('job.catch', { navigator: 'Approach' })),
       row('Night: sleep', [node('cond.night'), node('cond.not', { inner: node('cond.carryingAny', { actor: pet() }) })], node('job.nap')),
-      row('Finish a delivery', [node('cond.carryingAny', { actor: pet() })], node('job.deliver', { navigator: 'Approach' })),
-      row('Carrots ready', [has('carrot')], node('job.deliver', { navigator: 'Approach' })),
-      row('Eggs ready', [has('egg')], node('job.deliver', { navigator: 'Approach' })),
-      row('Berries ripe', [has('berry')], node('job.forage', { navigator: 'Approach' })),
+      row('Finish hauling', [node('cond.carryingAny', { actor: pet() })], node('job.deliver', { navigator: 'Approach' })),
+      row('Carry it home', [node('cond.carryingAny', { actor: pet() })], node('job.forage', { navigator: 'Approach' })),
+      row('Storage filling up', [node('cond.storage', { level: 'half' })], node('job.deliver', { navigator: 'Approach' })),
+      row('Something ripe', [node('cond.any', { any: [has('berry'), has('carrot')] })], node('job.forage', { navigator: 'Approach' })),
+      row('Goods waiting', [node('cond.any', { any: [node('cond.storage', { level: 'any' }), has('egg')] })], node('job.deliver', { navigator: 'Approach' })),
       row('Otherwise wander', [], node('job.wander')),
       row('Otherwise nap', [], node('job.nap')),
     ],
@@ -83,7 +84,7 @@ export function jobPossible(p: Pet, w: World, ctx: ExecContext, job: CompiledRow
   switch (job.behaviorId) {
     case 'rest': return true;
     case 'wander': return !ctx.energyLow;
-    case 'forage': return !!nav && ctx.berry && !ctx.carrying;
+    case 'forage': return !!nav && ((ctx.berry && !ctx.carrying) || ctx.carrying);
     case 'deliver': return !!activeRevision(getSkill(p, 'Fetch')) && !!nav && (ctx.carrot || ctx.carrying);
     case 'catch': return !!nav && !!ctx.firefly && !ctx.carrying;
     case 'goto': return !!nav && !!nearest(w, job.args.target) && !atFocus(w, job.args.target);

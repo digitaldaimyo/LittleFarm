@@ -79,16 +79,17 @@ describe('farm', () => {
     expect(s.journal.some((j) => j.kind === 'first-berry')).toBe(true);
   });
 
-  it('deploys Fetch on the farm to deliver carrots', () => {
+  it('with Fetch, carrots are harvested into the basket and hauled to the house, where they sell', () => {
     const s = newGame();
     const pet = adoptPet(s, 'Pip', 'meadow');
     pet.traits = { curiosity: 0.5, persistence: 0.5, caution: 0.5 };
     const ap = trainAndSave(s, pet, recipeStage('go-to-berry'));
     trainAndSave(s, pet, recipeStage('bring-it-home'), ap.policy);
     s.progress.unlocks.push('fetch', 'carrots');
-    pet.assignment = { mode: 'job', job: 'deliver', navigator: 'Approach' };
+    pet.assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' };
     runFarm(s, 1200);
-    expect(s.resources.carrots).toBeGreaterThan(2);
+    expect(s.resources.carrots).toBeGreaterThan(2); // sold at the house
+    expect(s.journal.some((j) => j.kind === 'first-store')).toBe(true); // via the basket
   });
 });
 

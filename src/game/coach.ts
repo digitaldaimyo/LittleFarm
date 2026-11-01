@@ -3,6 +3,8 @@ import type { TrainingReport } from '../learning/report';
 import type { GameState } from './types';
 import { templateOf } from '../learning/skilldef';
 import { stateSpaceSize } from '../learning/senses';
+import { OBJECT_BY_ID } from '../domain/packs/farm';
+import { activeRevision, getSkill } from './pets';
 
 /**
  * Coaching tips: short, evidence-triggered hints that link to the Field Guide lesson explaining them.
@@ -45,12 +47,18 @@ export function reportTips(stage: StageSpec, r: TrainingReport, episodes: number
 /** Farm-level tip: two pets doing the same job share one supply. */
 export function farmTips(s: GameState): Tip[] {
   const f = s.farm;
-  if (!f.duty2PetId || !f.dutyPetId) return [];
-  const a = s.pets.find((p) => p.id === f.dutyPetId), b = s.pets.find((p) => p.id === f.duty2PetId);
-  if (!a || !b) return [];
-  const same = (a.assignment.mode === 'job' && b.assignment.mode === 'job' && a.assignment.job === b.assignment.job)
-    || (f.current && f.current2 && f.current.behaviorId === f.current2.behaviorId && f.current.behaviorId !== 'rest' && f.current.behaviorId !== 'wander' && a.assignment.mode !== 'auto');
-  return same ? [{ id: 'two-pets-same-job', text: `${a.name} and ${b.name} are doing the same job, so they share one supply. Different jobs earn far more (one forager + one deliverer earned 387 coins vs 183 for two foragers).` }] : [];
+  const tips: Tip[] = [];
+  const duty = [f.dutyPetId, f.duty2PetId].map((id) => s.pets.find((p) => p.id === id)).filter((p): p is NonNullable<typeof p> => !!p);
+  // Farm life: storage is full and nobody on duty can (or is set to) haul it to the house.
+  const full = f.world.objects.some((o) => { const st = OBJECT_BY_ID[o.kind]?.storage; return !!o.store && !!st && o.store.reduce((a, x) => a + x.n, 0) >= st.slots * st.perSlot; });
+  const hauler = duty.some((p) => !!activeRevision(getSkill(p, 'Fetch')) && (p.assignment.mode !== 'job' || p.assignment.job === 'deliver'));
+  if (full && !hauler) tips.push({ id: 'storage-full', text: 'The basket is full and nobody is hauling it, so new crops are left beside it. A pet with Fetch on Auto (or on Haul) carries storage to the house, where it sells.', lesson: 'results' });
+  // Two pets both hauling: nobody harvests, so there's soon nothing to haul.
+  const [a, b] = duty;
+  if (a && b && a.assignment.mode === 'job' && b.assignment.mode === 'job' && a.assignment.job === b.assignment.job && (a.assignment.job === 'deliver' || a.assignment.job === 'rest')) {
+    tips.push({ id: 'two-pets-same-job', text: `${a.name} and ${b.name} are both ${a.assignment.job === 'deliver' ? 'hauling, but nobody is harvesting — soon there’s nothing to haul' : 'napping'}. Give one of them Harvest.` });
+  }
+  return tips;
 }
 
 export function visibleTips(s: GameState, tips: Tip[]): Tip[] {

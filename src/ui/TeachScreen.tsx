@@ -605,7 +605,7 @@ function PetBinder({ stage, pet }: { stage: StageSpec; pet: Pet }) {
   const canInvent = s.state.progress.unlocks.includes('custom');
   const lockedSkill = (k: string) => (k === 'Fetch' && !s.state.progress.unlocks.includes('fetch') ? 'Unlocks after earning 5 coins with a certified Approach' : k === 'Avoid' && !s.state.progress.unlocks.includes('avoid') ? 'Unlocks after earning 12 coins' : null);
   const newSkill = () => {
-    const name = prompt('Name your new skill (e.g. “Guard the bin”, “Wait for it”)', '');
+    const name = prompt('Name your new skill (e.g. “Guard the basket”, “Wait for it”)', '');
     if (!name?.trim()) return;
     const clean = name.trim().slice(0, 24);
     if (isPreset(clean)) return store.toast(`“${clean}” is a built-in skill — pick another name.`, 'warn');

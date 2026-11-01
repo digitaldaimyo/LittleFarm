@@ -65,6 +65,16 @@ const MIGRATIONS: Record<number, Migration> = {
     g.version = 4;
     return g;
   },
+  /** v5 → v6 (farm life): the farm's bin becomes a basket that stores 6 of one kind; produce sells at the house. */
+  5: (g) => {
+    const w = g.farm?.world;
+    if (isObj(w) && Array.isArray(w.objects)) {
+      for (const o of w.objects) if (isObj(o) && o.kind === 'bin' && !Array.isArray(o.store)) o.store = [{ kind: null, n: 0 }];
+      w.sold ??= 0;
+    }
+    g.version = 6;
+    return g;
+  },
   /** v4 → v5: "End try (done ✓)" meant "SUCCESS decides"; it is now spelled 'judge' ('success' counts outright). */
   4: (g) => {
     migrateLegacyEndOutcomes(g);

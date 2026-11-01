@@ -2,6 +2,7 @@ import type { World } from '../sim/world';
 import type { PaletteId } from '../game/types';
 import { ObjectGlyph, PetSprite, type PetMood } from './art';
 import type { FxItem } from './store';
+import { OBJECT_BY_ID } from '../domain/packs/farm';
 
 const C = 40;
 
@@ -115,6 +116,19 @@ export function WorldView({ world, palette, mood = 'idle', label, onTile, tileLa
           {ghostIds?.has(o.id) && <rect x="2" y="2" width={C - 4} height={C - 4} rx="7" className="ghost-ring" />}
         </g>
       ))}
+      {objs.filter((o) => o.store).map((o) => {
+        // Farm storage: how full it is, and with what.
+        const n = o.store!.reduce((a, s) => a + s.n, 0);
+        const cap = (OBJECT_BY_ID[o.kind]?.storage?.slots ?? 1) * (OBJECT_BY_ID[o.kind]?.storage?.perSlot ?? 0);
+        const top = o.store!.filter((s) => s.n > 0).sort((a, b) => b.n - a.n)[0]?.kind;
+        return (
+          <g key={`st${o.id}`} transform={`translate(${o.x * C + C - 30} ${o.y * C + 1})`} pointerEvents="none" className={`store-badge ${n >= cap ? 'full' : ''}`} aria-label={`${OBJECT_BY_ID[o.kind]?.name}: ${n} of ${cap}`}>
+            <rect width="29" height="13" rx="6.5" />
+            {top && <g transform="translate(1 0) scale(0.32)"><ObjectGlyph kind={top} /></g>}
+            <text x={top ? 19 : 14.5} y="10" textAnchor="middle">{n}/{cap}</text>
+          </g>
+        );
+      })}
       {fx?.map((f) => (
         <g key={f.id} transform={`translate(${f.x * C + C / 2} ${f.y * C})`} className={`fx fx-${f.type}`} pointerEvents="none">
           {f.type === 'coin' && <g className="fx-coin"><circle cx="-10" cy="-4" r="6" /><text x="-1" y="0">+{f.amount}</text></g>}

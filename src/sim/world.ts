@@ -23,6 +23,31 @@ export interface Obj {
   open?: boolean;
   /** Transient: claimed by the other pet on duty during this pet's turn (never saved as true). */
   hidden?: boolean;
+  /**
+   * Farm storage (baskets, sheds): slots of one kind each, up to the kind's `storage.perSlot`. Only objects
+   * that have this are limited; pens' containers take anything, as before.
+   */
+  store?: StoreSlot[];
+}
+
+export interface StoreSlot { kind: string | null; n: number }
+
+/** Can this container take one `kind` right now? (Unlimited if it has no store.) */
+export function storeAccepts(o: Obj, kind: string): boolean {
+  if (!o.store) return true;
+  const cap = def(o.kind).storage?.perSlot ?? Infinity;
+  return o.store.some((s) => (s.kind === kind && s.n < cap) || s.kind === null || s.n === 0);
+}
+
+/** Items held, in all slots. */
+export function storeCount(o: Obj): number {
+  return (o.store ?? []).reduce((a, s) => a + s.n, 0);
+}
+
+/** An empty store for a storage object kind (or undefined if the kind isn't storage). */
+export function emptyStore(kind: string): StoreSlot[] | undefined {
+  const st = def(kind).storage;
+  return st ? Array.from({ length: st.slots }, () => ({ kind: null, n: 0 })) : undefined;
 }
 
 export interface PetBody {
@@ -79,6 +104,8 @@ export interface World {
    * "Done … yet?" sense. Moves and ticks aren't counted (too frequent, never asked about).
    */
   tally?: Tally;
+  /** Items sold (dropped at a container that sells, i.e. the farm's house). */
+  sold?: number;
   /** Set when a rule ends the try as a success (✓) or a miss (✗); otherwise SUCCESS decides. */
   verdict?: 'success' | 'fail';
 }
@@ -112,7 +139,7 @@ export function cloneTally(t: Tally | undefined): Tally {
   return out;
 }
 
-export type SimEventType = 'tick' | 'move' | 'bump' | 'reach' | 'enter' | 'pickup' | 'drop' | 'deliver' | 'fumble' | 'stay' | 'fill' | 'water' | 'shoo' | 'scare' | 'peck' | 'enterArea' | 'leaveArea' | 'gate';
+export type SimEventType = 'tick' | 'move' | 'bump' | 'reach' | 'enter' | 'pickup' | 'drop' | 'deliver' | 'fumble' | 'stay' | 'fill' | 'water' | 'shoo' | 'scare' | 'peck' | 'enterArea' | 'leaveArea' | 'gate' | 'full';
 
 export interface SimEvent {
   type: SimEventType;
@@ -139,12 +166,12 @@ export function emptyWorld(w: number, h: number): World {
 export function cloneWorld(w: World): World {
   return {
     ...w,
-    objects: w.objects.map((o) => ({ ...o })),
     pet: { ...w.pet },
     ...(w.pet2 ? { pet2: { ...w.pet2 } } : {}),
     delivered: { ...w.delivered },
     ...(w.areas ? { areas: w.areas.map((a) => ({ ...a })) } : {}),
     ...(w.counts ? { counts: { ...w.counts } } : {}),
+    objects: w.objects.map((o) => (o.store ? { ...o, store: o.store.map((s) => ({ ...s })) } : { ...o })),
     ...(w.tally ? { tally: cloneTally(w.tally) } : {}),
   };
 }
@@ -264,10 +291,20 @@ export function step(w: World, action: Action, opts: StepOptions = {}): SimEvent
     }
   } else if (action === 'pick') {
     const target = p.carrying === null ? objectsAt(w, p.x, p.y).find((o) => def(o.kind).carryable) : undefined;
+    // Storage: take one item out of the fullest slot of a basket or shed here.
+    const store = !target && p.carrying === null ? objectsAt(w, p.x, p.y).find((o) => o.store && storeCount(o) > 0) : undefined;
     if (target) {
       target.carried = true;
       p.carrying = target.id;
       events.push({ type: 'pickup', x: p.x, y: p.y, kind: target.kind, objId: target.id });
+    } else if (store) {
+      const slot = store.store!.filter((s) => s.n > 0).sort((a, b) => b.n - a.n)[0];
+      const item = addObject(w, slot.kind!, p.x, p.y);
+      slot.n--;
+      if (slot.n === 0) slot.kind = null;
+      item.carried = true;
+      p.carrying = item.id;
+      events.push({ type: 'pickup', x: p.x, y: p.y, kind: item.kind, objId: item.id, into: store.kind });
     } else events.push({ type: 'fumble', x: p.x, y: p.y });
   } else if (action === 'water') {
     const here = objectsAt(w, p.x, p.y);
@@ -310,10 +347,19 @@ export function step(w: World, action: Action, opts: StepOptions = {}): SimEvent
       c.y = p.y;
       events.push({ type: 'drop', x: p.x, y: p.y, kind: c.kind, objId: c.id });
       const container = objectsAt(w, p.x, p.y).find((o) => o.id !== c.id && def(o.kind).container);
-      if (container) {
+      if (container && storeAccepts(container, c.kind)) {
+        if (container.store) {
+          const cap = def(container.kind).storage?.perSlot ?? Infinity;
+          const slot = container.store.find((s) => s.kind === c.kind && s.n < cap) ?? container.store.find((s) => s.kind === null || s.n === 0)!;
+          slot.kind = c.kind;
+          slot.n++;
+        }
         c.delivered = true;
         w.delivered[c.kind] = (w.delivered[c.kind] ?? 0) + 1;
+        if (def(container.kind).sells) w.sold = (w.sold ?? 0) + 1;
         events.push({ type: 'deliver', x: p.x, y: p.y, kind: c.kind, objId: c.id, into: container.kind });
+      } else if (container) {
+        events.push({ type: 'full', x: p.x, y: p.y, kind: c.kind, objId: c.id, into: container.kind });
       }
     } else events.push({ type: 'fumble', x: p.x, y: p.y });
   }

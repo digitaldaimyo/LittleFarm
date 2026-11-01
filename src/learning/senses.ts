@@ -210,7 +210,7 @@ export function legalActionIdx(w: World, actions: Action[]): number[] {
     if (a === 'N' || a === 'E' || a === 'S' || a === 'W') {
       if (!isSolidAt(w, w.pet.x + DIRS[a][0], w.pet.y + DIRS[a][1])) out.push(i);
     } else if (a === 'pick') {
-      if (w.pet.carrying === null && objectsAt(w, w.pet.x, w.pet.y).some((o) => def(o.kind).carryable)) out.push(i);
+      if (w.pet.carrying === null && objectsAt(w, w.pet.x, w.pet.y).some((o) => def(o.kind).carryable || (o.store?.some((s) => s.n > 0) ?? false))) out.push(i);
     } else if (a === 'drop') {
       if (w.pet.carrying !== null) out.push(i);
     } else if (a === 'nudge') {

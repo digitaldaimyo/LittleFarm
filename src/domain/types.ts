@@ -143,6 +143,10 @@ export interface ObjectDef {
   hint: string;
   /** Creatures move on their own each tick (after the pet). */
   mover?: 'wander' | 'crow';
+  /** Farm storage: how many slots (one kind each) and how many items per slot. */
+  storage?: { slots: number; perSlot: number };
+  /** Farm: bringing produce here sells it. */
+  sells?: boolean;
 }
 
 export interface Diagnostic {

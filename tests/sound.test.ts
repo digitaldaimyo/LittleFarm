@@ -16,13 +16,13 @@ const FX_SAMPLES: FarmFx[] = [
   ...FX_TYPES.filter((t) => t !== 'sound').map((type) => ({ type, x: 3, y: 3, amount: 1 })),
   ...['rain'].map((text) => ({ type: 'splash' as const, x: 1, y: 1, text })),
   ...['egg'].map((text) => ({ type: 'pickup' as const, x: 1, y: 1, text })),
-  ...['watered', 'filled', 'gate open', 'gate shut'].map((text) => ({ type: 'drop' as const, x: 1, y: 1, text })),
+  ...['watered', 'filled', 'gate open', 'gate shut', 'stored'].map((text) => ({ type: 'drop' as const, x: 1, y: 1, text })),
   ...['shoo!'].map((text) => ({ type: 'celebrate' as const, x: 1, y: 1, text })),
-  ...['pecked', 'timed out'].map((text) => ({ type: 'confused' as const, x: 1, y: 1, text })),
+  ...['pecked', 'timed out', 'full'].map((text) => ({ type: 'confused' as const, x: 1, y: 1, text })),
   ...['night'].map((text) => ({ type: 'nap' as const, x: 1, y: 1, text })),
   ...['shoo', 'firefly', 'crow', 'dawn', 'dusk'].map((text) => ({ type: 'sound' as const, x: 1, y: 1, text })),
 ];
-const SIM_EVENTS: SimEventType[] = ['tick', 'move', 'bump', 'reach', 'enter', 'pickup', 'drop', 'deliver', 'fumble', 'stay', 'fill', 'water', 'shoo', 'scare', 'peck', 'enterArea', 'leaveArea', 'gate'];
+const SIM_EVENTS: SimEventType[] = ['tick', 'move', 'bump', 'reach', 'enter', 'pickup', 'drop', 'deliver', 'fumble', 'stay', 'fill', 'water', 'shoo', 'scare', 'peck', 'enterArea', 'leaveArea', 'gate', 'full'];
 
 describe('sound cues', () => {
   it('every farm effect (and every tag on one) either makes a sound or is silent on purpose', () => {

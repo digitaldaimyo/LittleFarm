@@ -40,8 +40,8 @@ function jobCards(pet: Pet, unlocks: string[]): JobCard[] {
   return [
     { id: 'auto', title: 'Auto', blurb: `${pet.name} decides using their executive — napping at night, unless there are fireflies to catch.` },
     { id: 'plan', title: 'Farm plan', blurb: 'Your own IF/DO rows decide which skill runs when. Preview before applying.' },
-    { id: 'forage', title: BEHAVIOR_LABEL.forage, blurb: 'Approach a ripe berry, then gather it. +1 coin.', needs: 'Approach', locked: hasNav ? undefined : 'Needs a saved Approach skill' },
-    { id: 'deliver', title: BEHAVIOR_LABEL.deliver, blurb: 'Fetch carrots (+3) and eggs (+2) to the bin.', needs: 'Fetch', locked: hasFetch ? undefined : 'Needs a saved Fetch skill' },
+    { id: 'forage', title: BEHAVIOR_LABEL.forage, blurb: 'Pick ripe berries and carrots and carry them to storage or the house, where they sell (berry +2, carrot +5).', needs: 'Approach', locked: hasNav ? undefined : 'Needs a saved Approach skill' },
+    { id: 'deliver', title: BEHAVIOR_LABEL.deliver, blurb: 'Fetch eggs and whatever is in the basket or shed to the house, where it sells.', needs: 'Fetch', locked: hasFetch ? undefined : 'Needs a saved Fetch skill' },
     { id: 'rest', title: 'Nap', blurb: 'Rest to refill energy.' },
     { id: 'skill', title: 'Run a skill', blurb: 'Run one of your own skills, aimed at anything on the farm.', locked: customSkills(pet).length ? undefined : unlocks.includes('custom') ? 'Invent a skill in the pen first (Pet binder → New skill)' : 'Unlocks with a certified Approach' },
     { id: 'manual', title: 'Steer', blurb: 'Guide them yourself: tap tiles or use arrow keys.' },
@@ -141,7 +141,7 @@ export function FarmScreen() {
               <button className="wide" onClick={() => queueManual(store.runtime, 'shoo')}>Shoo (X)</button>
               <button className="wide" onClick={() => queueManual(store.runtime, 'nudge')}>Nudge gate (G)</button>
             </div>
-            <p className="muted small">Tap a tile to walk there. Berries go straight into the basket; carrots must be dropped in the bin. Water at the well to fill up, then on a bush or patch — watered plots regrow twice as fast. Walk into fireflies at night to catch them. Shoo pushes a next-door chicken one tile away and sends crows flying. Chickens only lay eggs inside the coop.</p>
+            <p className="muted small">Tap a tile to walk there. Pick up (P) and put down (D) to carry crops: put them down in the basket or shed to store them, or in the house to sell them. Water at the well to fill up, then on a bush or patch — watered plots regrow twice as fast. Walk into fireflies at night to catch them. Shoo pushes a next-door chicken one tile away and sends crows flying. Chickens only lay eggs inside the coop.</p>
           </div>
         )}
       </section>

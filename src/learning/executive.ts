@@ -25,6 +25,8 @@ export interface ExecContext {
   /** Added with day/night: optional so older code paths still type-check. */
   night?: boolean;
   firefly?: boolean;
+  /** Farm life: a basket or shed is at least half full (haul before harvesting more). */
+  storeHalf?: boolean;
 }
 
 export interface ExecutiveTable {
@@ -41,8 +43,8 @@ export function describeContext(c: ExecContext): string {
   p.push(c.night ? 'night' : 'day');
   p.push(c.energyLow ? 'tired' : 'rested');
   if (c.carrying) p.push('carrying something');
-  if (c.berry) p.push('berries ripe');
-  if (c.carrot) p.push('carrots/eggs ready');
+  if (c.berry) p.push('something ripe');
+  if (c.carrot) p.push(c.storeHalf ? 'storage filling up' : 'goods to haul');
   if (c.firefly) p.push('fireflies out');
   if (c.recentFail) p.push('just had a setback');
   return p.join(', ');
@@ -53,9 +55,12 @@ export function rulesSelect(c: ExecContext, eligible: BehaviorId[]): BehaviorId 
   if (c.energyLow && has('rest')) return 'rest';
   if (c.night && c.firefly && has('catch')) return 'catch';
   if (c.night && !c.carrying && has('rest')) return 'rest'; // pets prefer sleeping at night
+  // Farm life: "berry" = something ripe to harvest, "carrot" = goods to haul (eggs or stored produce).
   if (c.carrying && has('deliver')) return 'deliver';
-  if (c.carrot && has('deliver')) return 'deliver';
+  if (c.carrying && has('forage')) return 'forage'; // no Fetch yet: carry the harvest home
+  if (c.storeHalf && has('deliver')) return 'deliver';
   if (c.berry && has('forage')) return 'forage';
+  if (c.carrot && has('deliver')) return 'deliver';
   if (has('wander') && !c.energyLow) return 'wander';
   return 'rest';
 }
@@ -83,8 +88,8 @@ export function updateExecutive(table: ExecutiveTable, c: ExecContext, b: Behavi
 }
 
 export const BEHAVIOR_LABEL: Record<BehaviorId, string> = {
-  forage: 'Forage berries',
-  deliver: 'Deliver carrots & eggs',
+  forage: 'Harvest',
+  deliver: 'Haul to the house',
   rest: 'Nap',
   wander: 'Wander',
   manual: 'Follow your lead',

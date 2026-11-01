@@ -108,6 +108,15 @@ The same simulator runs pens, evaluation and the farm. Fixed seed + fixed action
 - **Lesson cards** (`game/lessoncard.ts`): `{ format: 'pen-deck-lesson', version: 1, lesson }`. Import checks format, shape, size (4–16), time and practice ranges, node count and unknown cards before adding anything. It then re-ids the lesson (`cloneStage`), renames on clash, and drops the Field Guide flag.
 - **Memory in plans:** `CompiledRow.holds(w, base)`. The farm keeps a tally only when the duty pet's plan uses *Has done…* / *Just…* (`planUsesMemory`), and snapshots it into `PlanRuntime.base` whenever a job starts. Rows are tried between jobs, so they count what happened during the job that just finished.
 
+### Farm life: storage and selling (phase A)
+- **Sim:** `ObjectDef.storage` (`slots`, `perSlot`) and `sells`; `Obj.store: { kind, n }[]` exists only on farm storage, so pens' containers stay unlimited. Dropping onto a container stores (if `storeAccepts`), sells (house: `World.sold++`) or, when full, emits `full` and leaves the item there. `pick` on storage takes one item from the fullest slot (`pickup` with `into` = the source).
+- **Farm:** `SELL_PRICE` is paid on `deliver` into `home`; storing is an effect plus a journal entry.
+  - **Harvest** (`forage`): walk to the nearest ripe berry or carrot, `pick`, walk to `harvestDestination` (the house without Fetch; else the nearest storage that accepts it, or the house), `drop`. Walks use `FarmWalk`: a `NavRun` with earlier stuck recovery (farm only).
+  - **Haul** (`deliver`): a `FetchRun` with eggs or the fullest storage as the item, the house as the destination, and "done" counted by `World.sold`.
+  - The executive context reads `berry` as "something ripe", `carrot` as "goods to haul" (eggs or storage), plus `storeHalf`. The starter plan mirrors the rules with the `cond.storage` card.
+  - Pets may share container tiles (no `buddy` obstacle there). Claims cover crops and eggs, never storage.
+- **Saves v6:** the farm's bin gets an empty one-slot store; `sold` starts at 0.
+
 ### Sound
 - `game/sound.ts` (pure): cue ids and their bus, priority, cooldown and length; `cueForFx`/`cuesForFarmFx` map one tick's `FarmFx` to cues (by type and tag; coins merge; stereo position from x; naps and rain listed in `SILENT_FX`). The farm adds sound-only effects (`type: 'sound'`: shoo, firefly, crow, dawn, dusk) that the view doesn't draw. `cuesForSimEvents` maps replay frames to the same cues (`SILENT_EVENTS` for moves, ticks and the like). `ambienceMix` says which background layers play; `CueLimiter` (per-cue cooldown, voice cap, thinner low-priority cues at high farm speeds, fake-clock testable); `AudioSettings` defaults, `sanitizeAudio`, `cueGain`.
 - `audio/kit.ts`: one synthesis recipe per cue (oscillators and filtered noise with envelopes, glides, vibrato). `audio/engine.ts`: creates the AudioContext on the first user gesture with sound on, renders every recipe once with `OfflineAudioContext`, plays buffers through a compressor with ±3% pitch variety and stereo panning, and suspends while the tab is hidden. It never fetches anything. Ambience: three 12 s loops (`ambienceRecipe`: seeded birdsong, crickets, rain) rendered at 22 kHz with an extra 0.8 s folded back into the start for a seamless loop; each plays on its own gain, which glides to `ambienceMix × master × background` (×0.4 off the Farm screen) whenever the scene changes. Noise voices share one 4.1 s noise buffer.
@@ -149,7 +158,7 @@ Saves are v2. The v1 → v2 migration adds templates and explicit preset senses.
 
 ## Persistence
 
-Saves are currently **v5** (`SAVE_VERSION`). `persistence/save.ts` handles the save envelope `{ format: 'pen-deck-save', version, game }`. It has a migration table (version N → N+1), fills missing sections from defaults, validates shapes, clamps numbers, checks policy formats, and reports unknown cards. Saves never execute code. `storage.ts` writes to IndexedDB with a localStorage fallback. Export and Import JSON live in Settings.
+Saves are currently **v6** (`SAVE_VERSION`). `persistence/save.ts` handles the save envelope `{ format: 'pen-deck-save', version, game }`. It has a migration table (version N → N+1), fills missing sections from defaults, validates shapes, clamps numbers, checks policy formats, and reports unknown cards. Saves never execute code. `storage.ts` writes to IndexedDB with a localStorage fallback. Export and Import JSON live in Settings.
 
 ## Extension points
 

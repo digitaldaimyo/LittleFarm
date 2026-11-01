@@ -103,7 +103,8 @@ describe('M3: routines elsewhere', () => {
     pet.assignment = { mode: 'job', job: 'skill', navigator: 'Approach', skillName: 'Fetch routine', target: 'carrot' };
     const rt = createRuntime(g.farm);
     for (let t = 0; t < 800; t++) farmTick(g, rt);
-    expect(g.resources.carrots).toBeGreaterThan(2);
+    // The routine's destination is the basket: carrots are stored there (to be hauled and sold later).
+    expect(g.farm.world.delivered.carrot ?? 0).toBeGreaterThan(2);
   });
 
   it('validation: options, watch limit, self-reference; training refuses missing skills', () => {

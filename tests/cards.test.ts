@@ -119,6 +119,7 @@ describe('farm plans remember (since the current job started)', () => {
   it('“IF Has done… picks up a berry DO nap”: naps after a foraging job that picked one, then forages again', () => {
     const s = newGame();
     const p = adoptPet(s, 'Pip', 'meadow');
+    p.traits = { curiosity: 0.5, persistence: 0.5, caution: 0.5 }; // adoptPet's temperament is random
     trainAndSave(s, p, rs('go-to-berry'));
     p.plan = starterPlan();
     const picked = node('cond.happened', { event: node('ev.pickup', { actor: node('actor.pet'), what: node('kind:berry') }), count: 1 });
@@ -128,22 +129,31 @@ describe('farm plans remember (since the current job started)', () => {
     ];
     const rt = createRuntime(s.farm);
     applyPlan(s, rt, p.id);
-    const jobs: string[] = [];
-    let last = '';
-    for (let i = 0; i < 1500 && jobs.length < 6; i++) {
+    // Each job: what it was, and whether a berry was picked during it.
+    const jobs: { id: string; picked: boolean }[] = [];
+    let cur: unknown = null;
+    for (let i = 0; i < 2000 && jobs.length < 12; i++) {
+      const carrying0 = s.farm.world.pet.carrying;
       farmTick(s, rt);
-      const id = s.farm.current?.behaviorId ?? '';
-      if (s.farm.current && `${s.farm.current.args.row}:${s.farm.tick}` !== last && id !== jobs.at(-1)) jobs.push(id);
-      last = `${s.farm.current?.args.row}:${s.farm.tick}`;
+      if (s.farm.current && s.farm.current !== cur) { cur = s.farm.current; jobs.push({ id: s.farm.current.behaviorId, picked: false }); }
+      if (carrying0 === null && s.farm.world.pet.carrying !== null && jobs.length) jobs[jobs.length - 1].picked = true;
     }
-    // Forage → (it picked a berry) nap → (nothing picked during the nap) forage → nap …
-    expect(jobs.slice(0, 4)).toEqual(['forage', 'rest', 'forage', 'rest']);
+    // A nap (from the memory row) always follows a job that picked a berry, and a harvest follows each nap.
+    if (process.env.DBG) console.log('JOBS', JSON.stringify(jobs));
+    const naps = jobs.map((j, i) => ({ j, i })).filter(({ j, i }) => j.id === 'rest' && i > 0);
+    expect(naps.length).toBeGreaterThanOrEqual(2);
+    for (const { i } of naps) {
+      const before = jobs.slice(0, i).reverse().find((x) => x.id !== 'wander'); // skip "sniffing around" after a stuck job
+      expect(before?.picked).toBe(true);
+      if (jobs[i + 1]) expect(['forage', 'wander']).toContain(jobs[i + 1].id);
+    }
     expect(s.farm.world.tally).toBeDefined();
   });
 
   it('plans without memory leave the farm without a tally (so the starter plan stays tick-for-tick identical)', () => {
     const s = newGame();
     const p = adoptPet(s, 'Pip', 'meadow');
+    p.traits = { curiosity: 0.5, persistence: 0.5, caution: 0.5 }; // adoptPet's temperament is random
     trainAndSave(s, p, rs('go-to-berry'));
     const rt = createRuntime(s.farm);
     applyPlan(s, rt, p.id);

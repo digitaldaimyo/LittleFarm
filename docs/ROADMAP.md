@@ -238,8 +238,8 @@ The milestones shipped in the recommended order: M1 → M5 (watering + day/night
   - your cards with blanks and names, lesson cards, memory in farm plans.
 - **Fixes found along the way:** the random baseline never used Shoo or Stay (learned results unchanged); lesson 9 could get stuck on busy farms; a starting lesson's report covered the next one.
 
-## Next: farm life (planned)
-Baskets and sheds as storage, coins only at the house, replanting with seed costs, a few crop types, your own farm layout, and managing pets by tapping them (and the house for the roster). See `docs/FARM_LIFE_PLAN.md`.
+## Next: farm life (in progress)
+Phase A shipped: produce travels to storage (baskets, sheds) and sells only at the house, with Harvest and Haul jobs. Still to come: replanting with seed costs and a few crop types (B), your own farm layout (C), and managing pets by tapping them and the house (D). See `docs/FARM_LIFE_PLAN.md`.
 
 ## What could come next
 Not committed; listed roughly smallest first.

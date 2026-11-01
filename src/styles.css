@@ -411,3 +411,6 @@ button.node { padding: 2px 9px; font-weight: 600; }
 @media (max-width: 640px) { .layout-strip { grid-template-columns: repeat(3, 1fr); } }
 .card-tag { font-size: 11px; font-weight: 700; color: var(--leaf-ink); background: rgba(46,122,76,.12); border-radius: 6px; padding: 1px 6px; margin-right: 4px; white-space: nowrap; }
 .your-card { align-items: flex-start; } .your-card .grow { flex: 1; min-width: 0; }
+.store-badge rect { fill: rgba(255,255,255,.92); stroke: #7F5427; stroke-width: 1; }
+.store-badge text { font-size: 9px; font-weight: 700; fill: #5E3D1C; font-family: system-ui, sans-serif; }
+.store-badge.full rect { fill: #FCE3B5; stroke: #B5651D; }

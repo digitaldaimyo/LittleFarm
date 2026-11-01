@@ -6,7 +6,33 @@
 - You lay out the farm: plots, baskets, sheds and the rest.
 - Pets still do all the work, managed from the farm itself: tap a pet for its details and controls, tap the house for the roster.
 
-Status: **plan, not started.** Section 9 lists the decisions to take before phase A.
+Status: **phase A shipped.** Decisions (section 9) all went with the recommendations: perennial berry bushes; harvests to the nearest storage with room; without Fetch, harvests go straight to the house; fireflies stay instant; up to 4 pets on duty (phase D); plain pumpkins; a fixed house; build order A → B → C → D.
+
+### Phase A: what shipped, and what we learned
+- **Selling and storage:**
+  - Produce sells only at the house: berry 2, carrot 5, egg 3, plus fireflies at 1 when caught.
+  - The farm's bin is now a **basket** (6 of one kind) and the shop sells a **shed** (25 coins, 4 slots × 10, placed by the house). Both show a count badge on the map.
+  - Storage rules live in the simulator: `Obj.store`, `storeAccepts`, a `full` event, picking from storage, and `World.sold`. Pens are unchanged, because only objects with a store are limited.
+- **Jobs:**
+  - Forage became **Harvest**: walk to the crop, pick it, carry it to the destination, drop it.
+  - Deliver became **Haul**: the learned Fetch controller with storage as the source and the house as the destination, done when a sale happens.
+  - The rules executive and the starter plan gained matching rows: "Carry it home", "Storage filling up", "Something ripe", "Goods waiting". The tick-for-tick test still holds.
+  - A new condition card, **Storage** (has anything / at least half full / full), is available for plans and lessons.
+- **Lesson 1 needed no new steps.** Without Fetch, harvests go straight to the house, so "Harvest" and "Earn 5 coins" still work. The text now says coins only come from the house, and the browser test still plays it.
+- **Tuning (TESTING.md):**
+  - Prices were tuned so an Approach-only farm earns about the same per day as before (104 vs 97); the first 5 coins take a little longer (the walk home).
+  - Two pets: harvester + hauler 292, two harvesters 259, one pet 168.
+- **Changes from the plan:**
+  - Sheds are one tile, not 2×2, until the layout phase.
+  - Farm Harvest walks get an earlier stuck recovery. Starting every trip at the house exposed a loop beside the rock at (8,6), and fixing it more than doubled the worst seeds' earnings. Farm only; pens and reports still measure the skill as learned.
+  - Pets may share the house and storage tiles: a pet napping on the house had blocked the other from selling.
+  - Harvest's job time limit was raised (it now includes the carry home).
+  - Coaching: a new "storage full and nobody hauling" tip. The two-pet tip now fires only when both pets haul (nobody harvests), because two harvesters are fine now.
+- **Not done in A:**
+  - multiple baskets: the destination is chosen by kind, so the layout phase must pick a specific basket;
+  - an "away from" option for storage.
+- **Tests:** `tests/farmlife.test.ts` (13), updated two-pet, orchard, routine, Fetch and lesson-9 tests, and the full browser test.
+
 
 ---
 
