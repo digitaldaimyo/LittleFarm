@@ -82,7 +82,7 @@ function avoid(): StageSpec {
     success: n('cond.at', { actor: pet(n), what: k(n, 'berry') }),
     fail: n('cond.at', { actor: pet(n), what: k(n, 'pond') }),
     seed: 202, maxTicks: 40,
-    learner: { skill: 'Avoid', focus: 'berry', episodes: 6000 },
+    learner: { skill: 'Avoid', focus: 'berry', episodes: 8000 },
     evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.8 },
   };
 }

@@ -178,7 +178,8 @@ export function evaluate(stage: StageSpec, p: PolicySpec, seeds: number[], label
     }
   }
   // Keep a representative mix: first success, first failure, then the rest.
-  const firstOk = all.find((t) => t.success);
+  // Prefer the longest success: more interesting to watch than a one-step win.
+  const firstOk = all.filter((t) => t.success).sort((a, b) => b.ticks - a.ticks)[0];
   const firstBad = all.find((t) => !t.success);
   for (const t of [firstOk, firstBad, ...all]) if (t && !traces.includes(t) && traces.length < keepTraces) traces.push(t);
   const n = Math.max(1, seeds.length);

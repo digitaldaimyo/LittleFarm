@@ -41,6 +41,13 @@ export function navObserve(w: World, focus: string): NavObs | null {
   return { index: navIndex(dir, db, blocked, hazard, heading), heading, dir, dist: d, blocked, hazard };
 }
 
+/** Legal movement actions (indices into NAV_ACTIONS): walking into walls/rocks/edges is not allowed. */
+export function legalMoves(o: NavObs): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < 4; i++) if (!(o.blocked & (1 << i))) out.push(i);
+  return out.length ? out : [0, 1, 2, 3];
+}
+
 export function navIndex(dir: number, db: number, blocked: number, hazard: number, heading: number): number {
   return (((dir * 3 + db) * 16 + blocked) * 16 + hazard) * 4 + heading;
 }
@@ -61,11 +68,23 @@ export function fetchObserve(w: World, item: string, dest: string): number {
   const here = objectsAt(w, w.pet.x, w.pet.y);
   const atItem = here.some((o) => o.kind === item) ? 1 : 0;
   const atDest = here.some((o) => o.kind === dest) ? 1 : 0;
-  const exists = nearest(w, item) ? 1 : 0;
+  // "Crop visible" only matters while empty-pawed; once carrying, the job is the bin.
+  const exists = !carrying && nearest(w, item) ? 1 : 0;
   return carrying | (atItem << 1) | (atDest << 2) | (exists << 3);
 }
 
+/** Options that make sense in a controller state (indices into FETCH_OPTIONS). */
+export function legalOptions(s: number): number[] {
+  const carrying = s & 1, atItem = s & 2, atDest = s & 4, exists = s & 8;
+  const out: number[] = [];
+  if (!carrying && exists && !atItem) out.push(0);
+  if (!atDest) out.push(1);
+  if (!carrying && atItem) out.push(2);
+  if (carrying) out.push(3);
+  return out.length ? out : [1];
+}
+
 export function describeFetchState(s: number): string {
-  const parts = [s & 1 ? 'carrying' : 'empty-pawed', s & 2 ? 'on the crop' : '', s & 4 ? 'at the bin' : '', s & 8 ? 'crop visible' : 'no crop in sight'];
+  const parts = [s & 1 ? 'carrying' : 'empty-pawed', s & 2 ? 'on the crop' : '', s & 4 ? 'at the bin' : '', s & 8 ? 'crop visible' : s & 1 ? '' : 'no crop in sight'];
   return parts.filter(Boolean).join(', ');
 }

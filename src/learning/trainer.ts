@@ -4,7 +4,7 @@ import { Rng, hashSeed } from '../sim/rng';
 import type { World } from '../sim/world';
 import { cloneWorld, step } from '../sim/world';
 import { DoubleQ, type SerializedQ } from './qtable';
-import { FETCH_OPTIONS, FETCH_STATES, NAV_ACTIONS, NAV_STATES, fetchObserve, navObserve } from './features';
+import { FETCH_OPTIONS, FETCH_STATES, NAV_ACTIONS, NAV_STATES, fetchObserve, legalMoves, legalOptions, navObserve } from './features';
 import { FetchController, NavPolicy, OptionRun, isDone } from './policies';
 import type { EpisodeTrace, Frame, LedgerEntry, Traits } from './episodes';
 import { navTimeout } from './episodes';
@@ -154,7 +154,8 @@ export class Trainer {
       let obs = navObserve(w, focus);
       while (w.tick < maxT && obs && obs.dist > 0) {
         const s = obs.index;
-        const a = this.rng.next() < eps ? this.rng.int(NAV_ACTIONS.length) : this.q.greedy(s);
+        const legal = legalMoves(obs);
+        const a = this.rng.next() < eps ? legal[this.rng.int(legal.length)] : this.q.greedy(s, legal);
         const { r, end } = applyStep(NAV_ACTIONS[a]);
         const rr = r + this.fb(s, a);
         total += rr;
@@ -170,7 +171,8 @@ export class Trainer {
       let s = fetchObserve(w, item, dest);
       let ended = false;
       while (w.tick < maxT && !ended) {
-        const o = this.rng.next() < eps ? this.rng.int(FETCH_OPTIONS.length) : this.q.greedy(s);
+        const lo = legalOptions(s);
+        const o = this.rng.next() < eps ? lo[this.rng.int(lo.length)] : this.q.greedy(s, lo);
         options.push(FETCH_OPTIONS[o]);
         const run = new OptionRun(FETCH_OPTIONS[o], this.nav, item, dest, tmo, this.rng);
         let R = 0;

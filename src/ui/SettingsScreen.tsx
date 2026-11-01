@@ -1,0 +1,74 @@
+import { useRef } from 'react';
+import { store, useStore } from './store';
+import { parseGame, serializeGame } from '../persistence/save';
+import { newGame } from '../game/state';
+import { clearLocal } from '../persistence/storage';
+import { TUTORIAL } from '../game/tutorial';
+
+export function SettingsScreen() {
+  const s = useStore();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const g = s.state;
+  const exportSave = () => {
+    const blob = new Blob([serializeGame(g)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `pen-deck-save-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+  const importSave = async (f: File) => {
+    const r = parseGame(await f.text());
+    if (!r.ok) return store.toast(`Import failed: ${r.diagnostics.join(' ')}`, 'warn');
+    store.load(r.game!, r.diagnostics);
+    await store.saveNow();
+    store.toast(`Save imported.${r.diagnostics.length ? ` (${r.diagnostics.length} notes)` : ''}`, 'good');
+  };
+  return (
+    <div className="screen single">
+      <div className="panel">
+        <h3>Settings</h3>
+        <label className="param-edit">Motion
+          <select value={g.settings.reducedMotion} onChange={(e) => s.mutate((x) => { x.settings.reducedMotion = e.target.value as 'system'; })}>
+            <option value="system">Follow system setting</option><option value="on">Reduce motion</option><option value="off">Full animation</option>
+          </select>
+        </label>
+        <label className="param-edit">Default training speed
+          <select value={g.settings.trainSpeed} onChange={(e) => s.mutate((x) => { x.settings.trainSpeed = e.target.value as 'normal'; })}>
+            <option value="watch">Watch (slow, ~30–60 s)</option><option value="normal">Normal</option><option value="fast">Fast (as fast as your CPU allows)</option>
+          </select>
+        </label>
+        <p className="small muted">Sound: this version is silent.</p>
+      </div>
+      <div className="panel">
+        <h3>Tutorial</h3>
+        <p className="small">{g.progress.tutorialDone ? 'Tutorial finished or skipped.' : `Step ${g.progress.tutorialStep + 1} of ${TUTORIAL.length}.`}</p>
+        <div className="row gap">
+          <button className="btn" onClick={() => s.mutate((x) => { x.progress.tutorialDone = false; x.progress.tutorialStep = 0; })}>Replay tutorial hints</button>
+          {!g.progress.tutorialDone && <button className="btn ghost" onClick={() => s.mutate((x) => { x.progress.tutorialDone = true; })}>Skip tutorial</button>}
+        </div>
+      </div>
+      <div className="panel">
+        <h3>Your save</h3>
+        <p className="small muted">Everything lives on this device (IndexedDB). No accounts, no servers, no analytics. Auto-saves every few seconds and after lessons.</p>
+        {s.ui.loadDiagnostics.length > 0 && <ul className="small">{s.ui.loadDiagnostics.map((d, i) => <li key={i}>{d}</li>)}</ul>}
+        <div className="row gap wrap">
+          <button className="btn" onClick={exportSave}>Export JSON</button>
+          <button className="btn" onClick={() => fileRef.current?.click()}>Import JSON</button>
+          <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void importSave(f); e.target.value = ''; }} />
+          <button className="btn danger" onClick={() => s.setUi({ modal: 'confirm-reset' })}>Reset game…</button>
+        </div>
+      </div>
+      <div className="panel">
+        <h3>About the learning</h3>
+        <p className="small">Pets learn with tabular Double Q-learning, run in a Web Worker on your CPU. Movement skills use a compact view (direction and distance to the target, nearby walls and hazards, last heading) so they work on layouts they’ve never seen. Fetch is a small learned controller that calls your saved movement skill. Auto mode uses either simple rules or a tiny bandit that learns which job pays off in which situation. No language models, nothing online.</p>
+      </div>
+    </div>
+  );
+}
+
+export async function resetGame() {
+  await clearLocal();
+  store.load(newGame());
+  store.setUi({ modal: 'adopt', screen: 'farm' });
+}

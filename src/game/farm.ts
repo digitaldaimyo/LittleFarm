@@ -58,13 +58,15 @@ export interface FarmRuntime {
   startTick: number;
   manual: Action[];
   recentFail: boolean;
+  /** Recovery after a failed job: a few random sniffing steps so a pet never repeats a stuck loop forever. */
+  jitter: number;
   rng: Rng;
 }
 
 export function createRuntime(f: FarmState): FarmRuntime {
   const rng = new Rng(1);
   rng.state = f.rngState >>> 0;
-  return { exec: null, inv: null, ctx: null, startCoins: 0, startEnergy: 0, startTick: 0, manual: [], recentFail: false, rng };
+  return { exec: null, inv: null, ctx: null, startCoins: 0, startEnergy: 0, startTick: 0, manual: [], recentFail: false, jitter: 0, rng };
 }
 
 function plotUnlocked(s: GameState, p: Plot): boolean {
@@ -140,7 +142,7 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
       let t = 0;
       return {
         next() {
-          if (pet.energy >= 98 || t >= inv.timeout) return { done: 'success', reason: 'rested' };
+          if ((pet.energy >= 98 && t >= 6) || t >= inv.timeout) return { done: 'success', reason: 'rested' };
           t++;
           return 'wait';
         },
@@ -187,7 +189,11 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
     const j = pet.assignment.job;
     if (eligible.includes(j)) return mk(j, 'player', `You asked for: ${BEHAVIOR_LABEL[j]}`);
     if (ctx.energyLow) return mk('rest', 'rules', 'Tired — resting before the job');
-    return mk('rest', 'rules', j === 'rest' ? 'Napping as asked' : `Waiting: ${BEHAVIOR_LABEL[j]} isn't possible right now`);
+    const why = j === 'rest' ? 'Napping as asked'
+      : j === 'forage' && !ctx.berry ? 'No ripe berries yet — resting while they regrow'
+      : j === 'deliver' && !ctx.carrot ? 'No carrots ready — resting while they grow'
+      : `Can't ${BEHAVIOR_LABEL[j].toLowerCase()} yet — check the skill it needs`;
+    return mk('rest', 'rules', why);
   }
   pet.executive.decisions++;
   if (pet.executive.mode === 'learned') {
@@ -212,6 +218,7 @@ function finishInvocation(s: GameState, pet: Pet, rt: FarmRuntime, result: 'succ
   const w = s.farm.world;
   if (result === 'fail' && inv.behaviorId !== 'wander') {
     fx.push({ type: 'confused', x: w.pet.x, y: w.pet.y, text: reason });
+    if (reason === 'timeout') rt.jitter = 3 + rt.rng.int(3);
   }
   if (result === 'success' && (inv.behaviorId === 'forage' || inv.behaviorId === 'deliver')) fx.push({ type: 'celebrate', x: w.pet.x, y: w.pet.y });
   s.farm.current = null;
@@ -293,6 +300,13 @@ export function farmTick(s: GameState, rt: FarmRuntime): TickResult {
   }
   // Mode change → drop current activity.
   if (rt.inv && ((pet.assignment.mode === 'manual') !== (rt.inv.behaviorId === 'manual'))) { rt.exec = null; rt.inv = null; f.current = null; }
+  if (!rt.exec && rt.jitter > 0 && pet.assignment.mode !== 'manual') {
+    rt.jitter--;
+    f.current = { behaviorId: 'wander', args: {}, intention: 'Confused after getting stuck — sniffing around before trying again', timeout: 1, chosenBy: 'rules' };
+    handleEvents(s, pet, step(f.world, randomMove(f.world, rt.rng)), rt, fx);
+    f.rngState = rt.rng.state;
+    return { fx, unlocked: checkUnlocks(s) };
+  }
   if (!rt.exec) {
     const inv = chooseInvocation(s, pet, rt);
     rt.inv = inv;
@@ -302,7 +316,7 @@ export function farmTick(s: GameState, rt: FarmRuntime): TickResult {
     rt.startTick = f.tick;
     f.current = inv;
     f.queue = [inv, ...f.queue].slice(0, 6);
-    if (inv.behaviorId === 'rest') fx.push({ type: 'nap', x: f.world.pet.x, y: f.world.pet.y });
+    if (inv.behaviorId === 'rest' && pet.energy < 90) fx.push({ type: 'nap', x: f.world.pet.x, y: f.world.pet.y });
   }
   const st = rt.exec.next(f.world);
   if (isDone(st)) {

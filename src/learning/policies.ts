@@ -2,7 +2,9 @@ import type { Action, World } from '../sim/world';
 import { MOVES, isSolidAt, DIRS } from '../sim/world';
 import { Rng } from '../sim/rng';
 import { DoubleQ, type SerializedQ } from './qtable';
-import { FETCH_OPTIONS, FETCH_STATES, NAV_ACTIONS, NAV_STATES, atFocus, fetchObserve, navIndex, navObserve, type FetchOption } from './features';
+import { FETCH_OPTIONS, FETCH_STATES, NAV_ACTIONS, NAV_STATES, atFocus, fetchObserve, legalMoves, legalOptions, navIndex, navObserve, type FetchOption } from './features';
+
+const MIN_VISITS = 3;
 
 /** Learned navigation policy (Approach / Avoid). Parameterised by the focus kind at call time. */
 export class NavPolicy {
@@ -22,9 +24,10 @@ export class NavPolicy {
     if (!o || o.dist === 0) return null;
     let s = o.index;
     const db = o.dist <= 1 ? 0 : o.dist <= 3 ? 1 : 2;
-    if (this.q.visits[s] === 0) s = navIndex(o.dir, db, o.blocked, 0, o.heading);
-    if (this.q.visits[s] === 0) s = navIndex(o.dir, db, 0, 0, o.heading);
-    return NAV_ACTIONS[this.q.greedy(s)];
+    // Rarely-seen states back off to a coarser view (ignore hazards, then walls); walls stay masked.
+    if (this.q.visits[s] < MIN_VISITS) s = navIndex(o.dir, db, o.blocked, 0, o.heading);
+    if (this.q.visits[s] < MIN_VISITS) s = navIndex(o.dir, db, 0, 0, o.heading);
+    return NAV_ACTIONS[this.q.greedy(s, legalMoves(o))];
   }
 }
 
@@ -98,7 +101,8 @@ export class FetchController {
     return s ? new FetchController(DoubleQ.deserialize(s)) : null;
   }
   choose(w: World, item: string, dest: string): FetchOption {
-    return FETCH_OPTIONS[this.q.greedy(fetchObserve(w, item, dest))];
+    const s = fetchObserve(w, item, dest);
+    return FETCH_OPTIONS[this.q.greedy(s, legalOptions(s))];
   }
 }
 
