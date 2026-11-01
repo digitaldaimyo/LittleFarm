@@ -120,9 +120,28 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
   if (stage.fail) validateNode(stage.fail, nominal('Condition'), ruleCtx);
 
   const L = stage.learner;
+  const template = L.template ?? (L.skill === 'Fetch' ? 'fetch' : 'sense');
+  if (!L.skill.trim()) out.push({ severity: 'error', code: 'no-name', message: 'Give this skill a name.' });
+  if (template === 'sense') {
+    const senses = L.senses ?? [];
+    if (L.senses && senses.length === 0) out.push({ severity: 'error', code: 'no-senses', message: 'Pick at least one Sense — otherwise the pet is learning blindfolded.' });
+    if (senses.length > 5) out.push({ severity: 'error', code: 'too-many-senses', message: 'At most 5 senses per skill.' });
+    const senseCtx: Ctx = { reg, itBound: false, placed: null, out };
+    let size = 1;
+    for (const sn of senses) {
+      validateNode(sn, nominal('Sense'), senseCtx);
+      size *= reg.cards.get(sn.cardId)?.radix ?? 1;
+      const w = sn.args.what;
+      const k = isNode(w) ? kindOfCard(w.cardId) : null;
+      if (k && !placed.has(k)) out.push({ severity: 'warning', code: 'sense-missing', nodeId: sn.id, message: `This skill watches for ${reg.objects.get(k)?.name ?? k}, but none is in the pen, so it can't learn what that sense means.` });
+    }
+    if (size > 100000) out.push({ severity: 'error', code: 'state-budget', message: `These senses make ${size.toLocaleString()} situations to learn — too many for one pet (max 100,000). Drop a sense or use a cheaper one (e.g. “How far is…” instead of “Where is…”).` });
+    else if (size > 50000) out.push({ severity: 'warning', code: 'state-budget', message: `${size.toLocaleString()} situations to learn — this will need lots of practice tries.` });
+    if (!stage.abilities.length) out.push({ severity: 'error', code: 'no-abilities', message: 'Give the skill at least one ability (Move, Stay…).' });
+  }
   if (!placed.has(L.focus)) out.push({ severity: 'error', code: 'missing-reference', message: `${L.skill} is pointed at ${reg.objects.get(L.focus)?.name ?? L.focus}, but none is placed in the pen.` });
-  if (L.skill === 'Fetch' && (!L.destination || !placed.has(L.destination))) out.push({ severity: 'error', code: 'missing-reference', message: 'Fetch needs a destination (like a Bin) placed in the pen.' });
-  if (L.skill === 'Fetch' && !reg.objects.get(L.focus)?.carryable) out.push({ severity: 'error', code: 'type-mismatch', message: 'Fetch can only carry Carryable things.' });
+  if (template === 'fetch' && (!L.destination || !placed.has(L.destination))) out.push({ severity: 'error', code: 'missing-reference', message: 'Fetch needs a destination (like a Bin) placed in the pen.' });
+  if (template === 'fetch' && !reg.objects.get(L.focus)?.carryable) out.push({ severity: 'error', code: 'type-mismatch', message: 'Fetch can only carry Carryable things.' });
 
   // ---- Static reward warnings (heuristics, not proofs) ----
   if (stage.rules.length === 0) out.push({ severity: 'warning', code: 'no-rules', message: 'No rules yet — the pet gets no treats, so it has nothing to learn from.' });
@@ -134,14 +153,18 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
     const reward = rewardTotal(r);
     const lim = limitOf(r);
     const label = paramOf(r, 'label', 'rule');
-    if (ev.cardId === 'ev.tick' && reward > 0) out.push({ severity: 'warning', code: 'unbounded-reward', nodeId: r.id, message: `“${label}” pays every step. The pet can earn it forever by dawdling.`, repair: { label: 'Make it a nudge (−)', action: 'flip-tick', ruleId: r.id } });
+    const ends = effectsOf(r).some((e) => e.cardId === 'eff.end') || lim === 'lim.once' || lim === 'lim.perObject';
+    if (ev.cardId === 'ev.tick' && reward > 0 && !ends && stage.outcome !== 'survive') out.push({ severity: 'warning', code: 'unbounded-reward', nodeId: r.id, message: `“${label}” pays every step. The pet can earn it forever by dawdling.`, repair: { label: 'Make it a nudge (−)', action: 'flip-tick', ruleId: r.id } });
     if ((ev.cardId === 'ev.pickup' || ev.cardId === 'ev.drop' || ev.cardId === 'ev.reach') && reward > 0 && (lim === 'lim.every' || lim === 'lim.cooldown')) {
       const repeat = ev.cardId === 'ev.reach' ? effectsOf(r).some((e) => e.cardId === 'eff.end') ? false : true : true;
       if (repeat) out.push({ severity: 'warning', code: 'repeatable-reward', nodeId: r.id, message: `“${label}” can pay again and again for the same thing. The pet may learn to repeat it instead of finishing the job.`, repair: { label: 'Limit: once per object', action: 'limit-per-object', ruleId: r.id } });
     }
     if (ev.cardId === 'ev.pickup' && reward > 0 && lim !== 'lim.once' && lim !== 'lim.perObject') pickPay = true;
     if (ev.cardId === 'ev.drop' && reward > 0 && lim !== 'lim.once' && lim !== 'lim.perObject') dropPay = true;
-    if (L.skill !== 'Fetch' && (ev.cardId === 'ev.pickup' || ev.cardId === 'ev.drop' || ev.cardId === 'ev.deliver')) out.push({ severity: 'info', code: 'unusable-event', nodeId: r.id, message: `${L.skill} only moves around, so “${label}” will never fire while training it.` });
+    const fetchT = (L.template ?? (L.skill === 'Fetch' ? 'fetch' : 'sense')) === 'fetch';
+    const needs: Record<string, string> = { 'ev.pickup': 'pickup', 'ev.drop': 'drop', 'ev.deliver': 'drop', 'ev.stay': 'stay' };
+    const need = needs[ev.cardId];
+    if (need && !fetchT && !stage.abilities.includes(need)) out.push({ severity: 'info', code: 'unusable-event', nodeId: r.id, message: `“${label}” needs the ${need === 'pickup' ? 'Pick up' : need === 'drop' ? 'Put down' : 'Stay'} ability, which ${L.skill} doesn’t have — it will never fire.` });
     const conds = r.args.if;
     const hasCloser = (Array.isArray(conds) ? conds : []).some((c) => isNode(c) && c.cardId === 'cond.closer');
     if (hasCloser && reward > 0 && !stage.rules.some((o) => rewardTotal(o) < 0)) out.push({ severity: 'warning', code: 'shaping-loop', nodeId: r.id, message: `“${label}” pays for getting closer but nothing costs moving away — wiggling back and forth may pay.`, repair: { label: 'Add a step nudge', action: 'add-tick-penalty' } });

@@ -3,7 +3,9 @@ import { compileStage, type CompiledStage } from '../sim/compile';
 import { Rng, hashSeed } from '../sim/rng';
 import type { Action, World } from '../sim/world';
 import { bfsPath, cloneWorld, legalActions, nearest, objectsAt, step } from '../sim/world';
-import { FetchController, FetchRun, NavPolicy, isDone, type ExecStep } from './policies';
+import { FetchController, FetchRun, NavPolicy, SensePolicy, isDone, type ExecStep, type SenseSkillDef } from './policies';
+import { legalActionIdx } from './senses';
+import { templateOf } from './skilldef';
 
 export type TraceLabel = 'training' | 'evaluation' | 'baseline' | 'scripted' | 'before' | 'transfer';
 
@@ -105,7 +107,7 @@ export function runEpisode(cs: CompiledStage, seed: number, chooser: Chooser, op
 export type PolicySpec =
   | { kind: 'random' }
   | { kind: 'scripted' }
-  | { kind: 'nav'; nav: NavPolicy | null }
+  | { kind: 'sense'; policy: SensePolicy | null; def: SenseSkillDef }
   | { kind: 'fetch'; ctrl: FetchController; nav: NavPolicy | null };
 
 export function makeChooser(stage: StageSpec, p: PolicySpec, seed: number, traits: Traits): Chooser {
@@ -119,13 +121,14 @@ export function makeChooser(stage: StageSpec, p: PolicySpec, seed: number, trait
     };
   }
   if (p.kind === 'scripted') return scriptedChooser(stage);
-  if (p.kind === 'nav') {
+  if (p.kind === 'sense') {
     return (w) => {
-      if (!p.nav) {
-        const acts = legalActions(w, ['move']);
-        return acts[rng.int(acts.length)];
+      if (!p.policy) {
+        // Untrained: random among physically possible actions.
+        const legal = legalActionIdx(w, p.def.actions);
+        return p.def.actions[legal[rng.int(legal.length)]];
       }
-      return p.nav.act(w, focus) ?? 'wait';
+      return p.policy.act(w, focus);
     };
   }
   let run: FetchRun | null = null;
@@ -140,11 +143,13 @@ export function scriptedChooser(stage: StageSpec): Chooser {
   const focus = stage.learner.focus;
   const dest = stage.learner.destination ?? 'bin';
   const avoid = stage.learner.skill !== 'Approach';
+  const custom = templateOf(stage) === 'sense' && stage.learner.skill !== 'Approach' && stage.learner.skill !== 'Avoid';
   return (w) => {
     const goTo = (kind: string): Action => {
       const path = bfsPath(w, w.pet.x, w.pet.y, (x, y) => objectsAt(w, x, y).some((o) => o.kind === kind), avoid) ?? bfsPath(w, w.pet.x, w.pet.y, (x, y) => objectsAt(w, x, y).some((o) => o.kind === kind), false);
       return path && path.length ? path[0] : 'wait';
     };
+    if (custom) return { done: 'fail', reason: 'no scripted demo for custom skills' };
     if (stage.learner.skill !== 'Fetch') return goTo(focus);
     const here = objectsAt(w, w.pet.x, w.pet.y);
     if (w.pet.carrying === null) {

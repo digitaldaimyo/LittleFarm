@@ -1,13 +1,14 @@
-import type { SkillName, StageSpec, Template } from '../domain/types';
+import type { LearnerTemplate, SkillName, SpecNode, StageSpec, Template } from '../domain/types';
+import type { SenseSkillDef } from '../learning/policies';
 import type { SerializedQ } from '../learning/qtable';
 import type { Traits } from '../learning/episodes';
 import type { ExecutiveTable, Invocation } from '../learning/executive';
 import type { World } from '../sim/world';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export type PaletteId = 'meadow' | 'plum' | 'sky' | 'moss';
-export type JobId = 'forage' | 'deliver' | 'rest';
+export type JobId = 'forage' | 'deliver' | 'rest' | 'skill';
 export type NavigatorName = 'Approach' | 'Avoid';
 
 export interface SkillEval {
@@ -41,12 +42,24 @@ export interface SkillRevision {
     resumedFrom?: number;
   };
   note?: string;
+  /** Sense skills: the senses/actions this policy was trained with (absent = Approach/Avoid preset). */
+  learner?: SenseSkillDef;
+  /** Kind the skill was aimed at during training. */
+  focus?: string;
+  /** The lesson's SUCCESS condition and outcome mode — the skill's own termination when run on the farm. */
+  success?: SpecNode | null;
+  outcome?: 'reach' | 'survive';
+  maxTicks?: number;
 }
 
 export interface Skill {
   id: string;
   name: SkillName;
   kind: 'nav' | 'fetch';
+  /** 'sense' for movement/custom skills, 'fetch' for the Fetch controller. Absent in v1 saves. */
+  template?: LearnerTemplate;
+  /** Player-made (not one of the built-in presets). */
+  custom?: boolean;
   signature: string;
   initiation: string;
   termination: string;
@@ -72,6 +85,9 @@ export interface Assignment {
   mode: 'auto' | 'job' | 'manual';
   job: JobId;
   navigator: NavigatorName;
+  /** For the "Run a skill" job: which skill, aimed at what. */
+  skillName?: string;
+  target?: string;
 }
 
 export interface PetStats {

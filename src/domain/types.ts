@@ -27,7 +27,7 @@ export interface ParamDef {
 
 export type CardGroup =
   | 'kind' | 'actor' | 'event' | 'condition' | 'effect' | 'limit' | 'quantity'
-  | 'reference' | 'placement' | 'rule';
+  | 'reference' | 'placement' | 'rule' | 'sense';
 
 export interface CardDef {
   id: string;
@@ -40,6 +40,8 @@ export interface CardDef {
   evaluator: string;
   /** Event cards that bind the scoped reference `it` to the affected object. */
   bindsIt?: boolean;
+  /** Sense cards: how many distinct values this sense contributes to the state. */
+  radix?: number;
   /** Unlock flag required before the card is usable. */
   unlock?: string;
   presentation: {
@@ -70,11 +72,24 @@ export interface EvaluationSpec {
   maximumFailureRate?: number;
 }
 
-export type SkillName = 'Approach' | 'Avoid' | 'Fetch';
+/** Built-in presets; player-made skills use any other name. */
+export type PresetSkill = 'Approach' | 'Avoid' | 'Fetch';
+export type SkillName = string;
+export const PRESET_SKILLS: PresetSkill[] = ['Approach', 'Avoid', 'Fetch'];
+
+/**
+ * Learner templates:
+ *  - 'sense': tabular Q-learning over player-chosen Sense cards and Ability set (Approach/Avoid are presets of this)
+ *  - 'fetch': option-level controller that reuses a saved movement skill
+ */
+export type LearnerTemplate = 'sense' | 'fetch';
 
 export interface LearnerSpec {
-  /** Which reusable behavior this stage teaches. */
+  /** Name of the reusable behavior this stage teaches (preset or player-made). */
   skill: SkillName;
+  template?: LearnerTemplate;
+  /** Sense cards (template 'sense'): what the pet pays attention to. */
+  senses?: SpecNode[];
   /** Object kind the behavior is pointed at during training (e.g. berry). */
   focus: string;
   /** Destination kind for composite skills (Fetch). */
@@ -97,6 +112,8 @@ export interface StageSpec {
   fail?: SpecNode | null;
   seed: number;
   maxTicks: number;
+  /** 'reach' (default): success ends the try. 'survive': success is judged when time runs out. */
+  outcome?: 'reach' | 'survive';
   learner: LearnerSpec;
   evaluation: EvaluationSpec;
   /** Starter recipe this stage was cloned from, if any. */

@@ -4,8 +4,10 @@ import { Rng, hashSeed } from '../sim/rng';
 import type { World } from '../sim/world';
 import { cloneWorld, step } from '../sim/world';
 import { DoubleQ, type SerializedQ } from './qtable';
-import { FETCH_OPTIONS, FETCH_STATES, NAV_ACTIONS, NAV_STATES, fetchObserve, legalMoves, legalOptions, navObserve } from './features';
-import { FetchController, NavPolicy, OptionRun, isDone } from './policies';
+import { FETCH_OPTIONS, FETCH_STATES, fetchObserve, legalOptions } from './features';
+import { compileEncoder, legalActionIdx, type SenseEncoder } from './senses';
+import { FetchController, NavPolicy, OptionRun, SensePolicy, isDone, type SenseSkillDef } from './policies';
+import { senseDefFor, templateOf } from './skilldef';
 import type { EpisodeTrace, Frame, LedgerEntry, Traits } from './episodes';
 import { navTimeout } from './episodes';
 
@@ -21,6 +23,8 @@ export interface TrainConfig {
   initial?: SerializedQ | null;
   /** For composite skills: the navigator revision used as the movement option. */
   navigator?: SerializedQ | null;
+  /** Senses/actions of that navigator revision (defaults to the Approach preset). */
+  navigatorDef?: SenseSkillDef;
   /** Offsets training seeds so "train more" sees new layouts. */
   seedOffset?: number;
 }
@@ -59,7 +63,9 @@ export class Trainer {
   readonly cfg: TrainConfig;
   readonly cs: CompiledStage;
   readonly q: DoubleQ;
-  readonly kind: 'nav' | 'fetch';
+  readonly kind: 'sense' | 'fetch';
+  readonly senseDef: SenseSkillDef | null;
+  private encoder: SenseEncoder | null;
   episode = 0;
   simTicks = 0;
   curve: CurvePoint[] = [];
@@ -74,14 +80,16 @@ export class Trainer {
   constructor(cfg: TrainConfig) {
     this.cfg = cfg;
     this.cs = compileStage(cfg.stage);
-    this.kind = cfg.stage.learner.skill === 'Fetch' ? 'fetch' : 'nav';
-    const [nS, nA] = this.kind === 'nav' ? [NAV_STATES, NAV_ACTIONS.length] : [FETCH_STATES, FETCH_OPTIONS.length];
+    this.kind = templateOf(cfg.stage) === 'fetch' ? 'fetch' : 'sense';
+    this.senseDef = this.kind === 'sense' ? senseDefFor(cfg.stage) : null;
+    this.encoder = this.senseDef ? compileEncoder(this.senseDef.senses, cfg.stage.learner.focus) : null;
+    const [nS, nA] = this.senseDef ? [this.encoder!.size, this.senseDef.actions.length] : [FETCH_STATES, FETCH_OPTIONS.length];
     this.q = cfg.initial ? DoubleQ.deserialize(cfg.initial) : new DoubleQ(nS, nA);
     if (this.q.nS !== nS || this.q.nA !== nA) throw new Error('Policy shape does not match this skill.');
     this.rng = new Rng(hashSeed(cfg.stage.seed, cfg.seedOffset ?? 0, 0x7a11));
-    this.nav = this.kind === 'fetch' ? NavPolicy.from(cfg.navigator) : null;
-    this.gamma = this.kind === 'nav' ? 0.95 : 0.9;
-    this.alpha = this.kind === 'nav' ? 0.25 : 0.3;
+    this.nav = this.kind === 'fetch' ? SensePolicy.from(cfg.navigator, cfg.navigatorDef) : null;
+    this.gamma = this.kind === 'sense' ? 0.95 : 0.9;
+    this.alpha = this.kind === 'sense' ? 0.25 : 0.3;
   }
 
   get total(): number {
@@ -149,20 +157,19 @@ export class Trainer {
     };
 
     const options: string[] = [];
-    if (this.kind === 'nav') {
-      const focus = cs.spec.learner.focus;
-      let obs = navObserve(w, focus);
-      while (w.tick < maxT && obs && obs.dist > 0) {
-        const s = obs.index;
-        const legal = legalMoves(obs);
+    if (this.kind === 'sense') {
+      const enc = this.encoder!;
+      const actions = this.senseDef!.actions;
+      let s = enc.index(enc.encode(w));
+      while (w.tick < maxT) {
+        const legal = legalActionIdx(w, actions);
         const a = this.rng.next() < eps ? legal[this.rng.int(legal.length)] : this.q.greedy(s, legal);
-        const { r, end } = applyStep(NAV_ACTIONS[a]);
+        const { r, end } = applyStep(actions[a]);
         const rr = r + this.fb(s, a);
         total += rr;
-        const next = navObserve(w, focus);
-        const terminal = end !== null || !next || next.dist === 0;
-        this.q.update(s, a, rr, terminal ? -1 : next.index, this.gamma, this.alpha, this.rng.next());
-        obs = next;
+        const next = enc.index(enc.encode(w));
+        this.q.update(s, a, rr, end !== null ? -1 : next, this.gamma, this.alpha, this.rng.next());
+        s = next;
         if (end) break;
       }
     } else {
@@ -235,7 +242,7 @@ export class Trainer {
   }
 
   /** Runtime policy object for evaluation. */
-  runtime(): NavPolicy | FetchController {
-    return this.kind === 'nav' ? new NavPolicy(this.q.clone()) : new FetchController(this.q.clone());
+  runtime(): SensePolicy | FetchController {
+    return this.kind === 'sense' ? new SensePolicy(this.senseDef!, this.q.clone()) : new FetchController(this.q.clone());
   }
 }

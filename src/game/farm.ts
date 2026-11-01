@@ -1,14 +1,15 @@
 import type { Action, SimEvent, World } from '../sim/world';
 import { addObject, bfsPath, emptyWorld, nearest, objectsAt, step } from '../sim/world';
 import { Rng } from '../sim/rng';
-import { FetchController, FetchRun, NavRun, NavPolicy, isDone, randomMove, type ExecStep } from '../learning/policies';
+import { FetchController, FetchRun, NavRun, SkillRun, isDone, randomMove, type ExecStep } from '../learning/policies';
 import { navTimeout } from '../learning/episodes';
 import {
   BEHAVIOR_LABEL, describeContext, learnedSelect, rulesSelect, updateExecutive,
   type BehaviorId, type ExecContext, type Invocation,
 } from '../learning/executive';
 import type { FarmState, GameState, Pet, Plot } from './types';
-import { activeRevision, getSkill, navPolicyFor, petById } from './pets';
+import { activeRevision, getSkill, navPolicyFor, petById, sensePolicyOf } from './pets';
+import { compileCondition, withTarget } from '../sim/compile';
 import { addJournal, addJournalOnce } from './journal';
 import { checkUnlocks } from './progression';
 
@@ -113,7 +114,7 @@ export function eligibleBehaviors(pet: Pet, ctx: ExecContext): BehaviorId[] {
 function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime): { next(w: World): ExecStep } {
   const w = s.farm.world;
   const navInfo = navPolicyFor(pet, inv.args.navigator === 'Avoid' ? 'Avoid' : 'Approach');
-  const nav = navInfo ? NavPolicy.from(navInfo.rev.policy) : null;
+  const nav = navInfo ? sensePolicyOf(navInfo.rev) : null;
   const tmo = navTimeout(w.w, w.h, pet.traits.persistence);
   switch (inv.behaviorId) {
     case 'forage': {
@@ -137,6 +138,14 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
       const ctrl = FetchController.from(fetch?.policy) ?? new FetchController();
       const item = w.pet.carrying !== null ? (w.objects.find((o) => o.id === w.pet.carrying)?.kind ?? 'carrot') : 'carrot';
       return new FetchRun(ctrl, nav, item, 'bin', tmo, inv.timeout, rt.rng, w.delivered[item] ?? 0);
+    }
+    case 'skill': {
+      const rev = activeRevision(getSkill(pet, inv.args.skill ?? ''));
+      const policy = rev ? sensePolicyOf(rev) : null;
+      if (!rev || !policy) return { next: () => ({ done: 'fail', reason: 'skill missing' }) };
+      const target = inv.args.target || rev.focus || 'berry';
+      const cond = rev.success && rev.outcome !== 'survive' ? withTarget(target, () => compileCondition(rev.success!)) : null;
+      return new SkillRun(policy, target, inv.timeout, cond ? (world) => cond({ w: world, prev: world.pet }) : null);
     }
     case 'rest': {
       let t = 0;
@@ -173,11 +182,16 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
   rt.ctx = ctx;
   const w = s.farm.world;
   const tmo = navTimeout(w.w, w.h, pet.traits.persistence);
-  const timeouts: Record<BehaviorId, number> = { forage: tmo + 3, deliver: tmo * 3, rest: 30, wander: 6, manual: 1e9 };
+  const timeouts: Record<BehaviorId, number> = { forage: tmo + 3, deliver: tmo * 3, rest: 30, wander: 6, manual: 1e9, skill: 60 };
+  const custom = pet.assignment.skillName ? activeRevision(getSkill(pet, pet.assignment.skillName)) : null;
+  if (custom) timeouts.skill = Math.round((custom.maxTicks ?? 40) * (1 + pet.traits.persistence));
   const navigator = pet.assignment.navigator;
   const mk = (b: BehaviorId, chosenBy: Invocation['chosenBy'], why: string): Invocation => ({
     behaviorId: b,
-    args: b === 'forage' ? { target: 'berry', navigator } : b === 'deliver' ? { item: ctx.carrying ? 'carried item' : 'carrot', into: 'bin', navigator } : {},
+    args: b === 'forage' ? { target: 'berry', navigator }
+      : b === 'deliver' ? { item: ctx.carrying ? 'carried item' : 'carrot', into: 'bin', navigator }
+      : b === 'skill' ? { skill: pet.assignment.skillName ?? '', target: pet.assignment.target || custom?.focus || 'berry' }
+      : {},
     intention: why,
     timeout: timeouts[b],
     chosenBy,
@@ -185,8 +199,12 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
   if (pet.assignment.mode === 'manual') return mk('manual', 'player', 'Following your lead');
   const eligible = eligibleBehaviors(pet, ctx);
   if (pet.energy <= 5) return mk('rest', 'rules', 'Too sleepy to work — nap first');
+  if (pet.assignment.mode === 'job' && pet.assignment.job === 'skill') {
+    if (custom && !ctx.energyLow) return mk('skill', 'player', `You asked for: ${pet.assignment.skillName} → ${pet.assignment.target || custom.focus}`);
+    return mk('rest', 'rules', custom ? 'Tired — resting before running the skill' : 'Pick a saved skill to run');
+  }
   if (pet.assignment.mode === 'job') {
-    const j = pet.assignment.job;
+    const j = pet.assignment.job as Exclude<typeof pet.assignment.job, 'skill'>;
     if (eligible.includes(j)) return mk(j, 'player', `You asked for: ${BEHAVIOR_LABEL[j]}`);
     if (ctx.energyLow) return mk('rest', 'rules', 'Tired — resting before the job');
     const why = j === 'rest' ? 'Napping as asked'
@@ -220,7 +238,7 @@ function finishInvocation(s: GameState, pet: Pet, rt: FarmRuntime, result: 'succ
     fx.push({ type: 'confused', x: w.pet.x, y: w.pet.y, text: reason });
     if (reason === 'timeout') rt.jitter = 3 + rt.rng.int(3);
   }
-  if (result === 'success' && (inv.behaviorId === 'forage' || inv.behaviorId === 'deliver')) fx.push({ type: 'celebrate', x: w.pet.x, y: w.pet.y });
+  if (result === 'success' && (inv.behaviorId === 'forage' || inv.behaviorId === 'deliver' || (inv.behaviorId === 'skill' && reason === 'goal reached'))) fx.push({ type: 'celebrate', x: w.pet.x, y: w.pet.y });
   s.farm.current = null;
   rt.exec = null;
   rt.inv = null;

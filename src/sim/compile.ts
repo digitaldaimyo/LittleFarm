@@ -53,10 +53,19 @@ export interface CompiledStage {
   isFail(w: World): boolean;
 }
 
-const kindArg = (n: SpecNode, key: string): string => {
-  const v = n.args[key];
-  return isNode(v) ? kindOfCard(v.cardId) ?? '' : '';
-};
+/** What `ref.target` ("the target") means while compiling — the learner's focus. */
+let currentTarget = '';
+export function withTarget<T>(target: string, fn: () => T): T {
+  const prev = currentTarget;
+  currentTarget = target;
+  try { return fn(); } finally { currentTarget = prev; }
+}
+export function resolveKind(v: unknown, target = currentTarget): string {
+  if (!isNode(v)) return '';
+  if (v.cardId === 'ref.target') return target;
+  return kindOfCard(v.cardId) ?? '';
+}
+const kindArg = (n: SpecNode, key: string): string => resolveKind(n.args[key]);
 const nodeArg = (n: SpecNode, key: string): SpecNode | null => {
   const v = n.args[key];
   return isNode(v) ? v : null;
@@ -108,6 +117,19 @@ export function compileCondition(n: SpecNode): Cond {
       const k = kindArg(n, 'what');
       return ({ w, prev }) => distTo(w, k) < distTo(w, k, prev.x, prev.y);
     }
+    case 'cond.farFrom': {
+      const k = kindArg(n, 'what');
+      const d = paramOf(n, 'dist', 2);
+      return ({ w }) => distTo(w, k) > d;
+    }
+    case 'cond.stayedFor': {
+      const t = paramOf(n, 'ticks', 5);
+      return ({ w }) => (w.pet.still ?? 0) >= t;
+    }
+    case 'cond.and': {
+      const fs = listArg(n, 'all').map(compileCondition);
+      return (c) => fs.every((f) => f(c));
+    }
     case 'cond.not': {
       const inner = nodeArg(n, 'inner');
       const f = inner ? compileCondition(inner) : () => false;
@@ -146,6 +168,7 @@ function compileEvent(n: SpecNode): (e: SimEvent) => boolean {
     }
     case 'ev.tick': return (e) => e.type === 'tick';
     case 'ev.bump': return (e) => e.type === 'bump';
+    case 'ev.stay': return (e) => e.type === 'stay';
     default:
       throw new Error(`Cannot compile event ${n.cardId}`);
   }
@@ -194,7 +217,7 @@ export function generateWorld(spec: StageSpec, seed: number): World {
     const key = (x: number, y: number) => y * W + x;
     for (const p of spec.environment) {
       if (p.cardId !== 'place.fixed') continue;
-      const k = kindArg(p, 'kind');
+      const k = resolveKind(p.args.kind, spec.learner.focus);
       const x = paramOf(p, 'x', 0), y = paramOf(p, 'y', 0);
       if (!k || !inBounds(w, x, y)) continue;
       addObject(w, k, x, y);
@@ -218,7 +241,7 @@ export function generateWorld(spec: StageSpec, seed: number): World {
     occupied.add(key(w.pet.x, w.pet.y));
     for (const p of spec.environment) {
       if (p.cardId !== 'place.random') continue;
-      const k = kindArg(p, 'kind');
+      const k = resolveKind(p.args.kind, spec.learner.focus);
       if (!k) continue;
       const count = paramOf(p, 'count', 1);
       const region = paramOf(p, 'region', 'anywhere');
@@ -244,6 +267,11 @@ export function generateWorld(spec: StageSpec, seed: number): World {
 }
 
 export function compileStage(spec: StageSpec): CompiledStage {
+  return withTarget(spec.learner.focus, () => compileStageInner(spec));
+}
+
+function compileStageInner(spec: StageSpec): CompiledStage {
+  const survive = spec.outcome === 'survive';
   const rules = spec.rules.filter((r) => r.cardId === 'rule').map(compileRule);
   const success = spec.success ? compileCondition(spec.success) : () => false;
   const fail = spec.fail ? compileCondition(spec.fail) : () => false;
@@ -252,7 +280,8 @@ export function compileStage(spec: StageSpec): CompiledStage {
     rules,
     generate: (seed) => generateWorld(spec, seed),
     newRuleState: () => ({ fired: new Map(), lastTick: new Map(), perObj: new Map() }),
-    isSuccess: (w) => success({ w, prev: w.pet }),
+    // 'survive' lessons: success is judged at the end of the try, and only if nothing failed.
+    isSuccess: (w) => success({ w, prev: w.pet }) && (!survive || !fail({ w, prev: w.pet })),
     isFail: (w) => fail({ w, prev: w.pet }),
     evalStep(w, prev, events, rs) {
       let reward = 0;
@@ -282,7 +311,7 @@ export function compileStage(spec: StageSpec): CompiledStage {
           if (r.limit.kind === 'lim.once') break;
         }
       }
-      if (!end && success({ w, prev })) end = 'success';
+      if (!end && !survive && success({ w, prev })) end = 'success';
       if (!end && fail({ w, prev })) end = 'fail';
       return { reward, hits, end };
     },

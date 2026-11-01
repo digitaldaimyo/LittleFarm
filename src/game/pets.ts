@@ -5,6 +5,10 @@ import type { TrainingReport } from '../learning/report';
 import type { GameState, NavigatorName, PaletteId, Pet, Skill, SkillRevision } from './types';
 import { addJournal, addJournalOnce, pct } from './journal';
 import { Rng, hashSeed } from '../sim/rng';
+import { REGISTRY } from '../domain/registry';
+import { senseDefFor, templateOf } from '../learning/skilldef';
+import { ABILITY_LABELS } from '../learning/senses';
+import { SensePolicy } from '../learning/policies';
 
 export const NAME_SUGGESTIONS = ['Pip', 'Biscuit', 'Mochi', 'Clover', 'Pebble', 'Juniper', 'Toast'];
 export const PALETTES: { id: PaletteId; label: string; body: string; belly: string; ear: string; ink: string }[] = [
@@ -14,11 +18,29 @@ export const PALETTES: { id: PaletteId; label: string; body: string; belly: stri
   { id: 'moss', label: 'Moss', body: '#9CC48A', belly: '#F0F8E8', ear: '#6F9A5E', ink: '#1F3519' },
 ];
 
-export const SKILL_META: Record<SkillName, Pick<Skill, 'kind' | 'signature' | 'initiation' | 'termination'>> = {
+type Meta = Pick<Skill, 'kind' | 'signature' | 'initiation' | 'termination'>;
+export const SKILL_META: Record<string, Meta> = {
   Approach: { kind: 'nav', signature: 'Approach(target: Kind) → Event', initiation: 'A target of that kind is lying somewhere on the grid.', termination: 'Standing on the target (success) or out of time (fail).' },
   Avoid: { kind: 'nav', signature: 'Avoid(target: Kind, hazard: Kind<Hazard>) → Event', initiation: 'A target is visible; hazards may be nearby.', termination: 'Reached the target dry (success), or out of time (fail).' },
   Fetch: { kind: 'fetch', signature: 'Fetch(item: Kind<Carryable>, into: Kind<Container>) → Event', initiation: 'An item to carry and a container both exist.', termination: 'Item delivered (success) or out of time (fail).' },
 };
+
+export function isPreset(name: string): boolean {
+  return name === 'Approach' || name === 'Avoid' || name === 'Fetch';
+}
+
+/** Describe a player-made skill from its lesson: signature lists what it pays attention to and can do. */
+export function customMeta(stage: StageSpec): Meta {
+  const def = senseDefFor(stage);
+  const senses = def.senses.map((n) => REGISTRY.cards.get(n.cardId)?.presentation.title ?? n.cardId).join(', ');
+  const acts = stage.abilities.map((a) => ABILITY_LABELS[a] ?? a).join(', ');
+  return {
+    kind: 'nav',
+    signature: `${stage.learner.skill}(target: Kind) — senses: ${senses}; can: ${acts}`,
+    initiation: 'Can start anywhere.',
+    termination: stage.outcome === 'survive' ? 'Runs until time is up (judged at the end).' : 'Ends when its lesson’s SUCCESS condition holds, or time runs out.',
+  };
+}
 
 export function adoptPet(s: GameState, name: string, palette: PaletteId): Pet {
   const rng = new Rng(hashSeed(Date.now() & 0xffffff, s.pets.length));
@@ -71,6 +93,15 @@ export function navPolicyFor(p: Pet, prefer: NavigatorName): { skill: Skill; rev
   return null;
 }
 
+/** Runtime policy for a sense-skill revision (falls back to the movement preset for v1 revisions). */
+export function sensePolicyOf(rev: SkillRevision): SensePolicy | null {
+  return SensePolicy.from(rev.policy, rev.learner);
+}
+
+export function customSkills(p: Pet): Skill[] {
+  return p.skills.filter((k) => k.custom && activeRevision(k));
+}
+
 export function isCertified(k: Skill | null): boolean {
   return !!k && k.revisions.some((r) => r.eval.passed);
 }
@@ -91,9 +122,13 @@ export function saveRevision(s: GameState, pet: Pet, input: SaveRevisionInput): 
   const name = input.stage.learner.skill;
   let skill = getSkill(pet, name);
   if (!skill) {
-    skill = { id: newId('skill'), name, ...SKILL_META[name], activeRev: 0, revisions: [], navigator: name === 'Fetch' ? (input.stage.learner.navigator ?? 'Approach') : undefined };
+    const custom = !isPreset(name);
+    skill = { id: newId('skill'), name, ...(custom ? customMeta(input.stage) : SKILL_META[name]), template: templateOf(input.stage), custom: custom || undefined, activeRev: 0, revisions: [], navigator: name === 'Fetch' ? (input.stage.learner.navigator ?? 'Approach') : undefined };
     pet.skills.push(skill);
+  } else if (skill.custom) {
+    Object.assign(skill, customMeta(input.stage));
   }
+  const sense = templateOf(input.stage) === 'sense';
   const rev: SkillRevision = {
     rev: (skill.revisions.at(-1)?.rev ?? 0) + 1,
     createdAt: Date.now(),
@@ -113,8 +148,8 @@ export function saveRevision(s: GameState, pet: Pet, input: SaveRevisionInput): 
       minimum: input.stage.evaluation.minimumSuccessRate,
     },
     provenance: {
-      trainer: name === 'Fetch' ? 'Double Q-learning over options (SMDP)' : 'Tabular Double Q-learning',
-      features: name === 'Fetch' ? 'carrying × at item × at bin × item visible' : 'direction × distance × walls × hazards × heading',
+      trainer: !sense ? 'Double Q-learning over options (SMDP)' : 'Tabular Double Q-learning',
+      features: !sense ? 'carrying × at item × at bin × item visible' : senseDefFor(input.stage).senses.map((n) => REGISTRY.cards.get(n.cardId)?.presentation.title ?? n.cardId).join(' × '),
       trainSeeds: `hash(stage ${input.stage.seed}, i) mod 800000`,
       evalSeeds: input.report.evalSeeds,
       navigator: input.navigator,
@@ -122,6 +157,13 @@ export function saveRevision(s: GameState, pet: Pet, input: SaveRevisionInput): 
       simTicks: input.simTicks,
       resumedFrom: input.resumedFrom,
     },
+    ...(sense ? {
+      learner: senseDefFor(input.stage),
+      focus: input.stage.learner.focus,
+      success: input.stage.success ? structuredClone(input.stage.success) : null,
+      outcome: input.stage.outcome ?? 'reach',
+      maxTicks: input.stage.maxTicks,
+    } : {}),
   };
   skill.revisions.push(rev);
   // Never silently replace a certified behavior with an uncertified one; the player can switch in Pets.

@@ -14,6 +14,9 @@ export interface UnlockDef {
 const anyPet = (s: GameState, f: (p: GameState['pets'][number]) => boolean) => s.pets.some(f);
 
 export const UNLOCKS: UnlockDef[] = [
+  { id: 'custom', label: 'Your own skills', describe: 'Invent skills: name them, choose what your pet senses and can do, and write the rules.',
+    when: (s) => anyPet(s, (p) => isCertified(getSkill(p, 'Approach'))),
+    progress: (s) => ({ have: anyPet(s, (p) => isCertified(getSkill(p, 'Approach'))) ? 1 : 0, need: 1, unit: 'certified Approach skill' }) },
   { id: 'fetch', label: 'Fetch lessons', describe: 'Teach pets to carry crops to the bin.',
     when: (s) => anyPet(s, (p) => isCertified(getSkill(p, 'Approach'))) && s.progress.totalCoins >= 5,
     progress: (s) => ({ have: Math.min(5, s.progress.totalCoins), need: 5, unit: 'coins earned (with a certified Approach)' }) },

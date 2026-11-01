@@ -6,7 +6,7 @@ import { Rng } from '../sim/rng';
  *   - a deterministic rules baseline
  *   - a locally trained contextual bandit (tabular, ε-greedy, running means)
  */
-export type BehaviorId = 'forage' | 'deliver' | 'rest' | 'wander' | 'manual';
+export type BehaviorId = 'forage' | 'deliver' | 'rest' | 'wander' | 'manual' | 'skill';
 
 export interface Invocation {
   behaviorId: BehaviorId;
@@ -81,4 +81,5 @@ export const BEHAVIOR_LABEL: Record<BehaviorId, string> = {
   rest: 'Nap',
   wander: 'Wander',
   manual: 'Follow your lead',
+  skill: 'Run a skill',
 };

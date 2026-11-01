@@ -4,6 +4,7 @@ import { newGame } from '../game/state';
 import { REGISTRY } from '../domain/registry';
 import { stageRoots, walk } from '../domain/spec';
 import type { SpecNode } from '../domain/types';
+import { presetSenses } from '../learning/senses';
 
 export interface SaveEnvelope {
   format: 'pen-deck-save';
@@ -25,7 +26,22 @@ export function serializeGame(g: GameState): string {
 
 type Migration = (g: any) => any;
 /** version N → N+1 migrations. Add new entries here; never edit old ones. */
-const MIGRATIONS: Record<number, Migration> = {};
+const MIGRATIONS: Record<number, Migration> = {
+  /** v1 → v2: learner templates + explicit senses; skills record their template; pets can stay still. */
+  1: (g) => {
+    for (const st of Array.isArray(g.stages) ? g.stages : []) {
+      if (!isObj(st?.learner)) continue;
+      st.learner.template ??= st.learner.skill === 'Fetch' ? 'fetch' : 'sense';
+      if (st.learner.template === 'sense' && !Array.isArray(st.learner.senses)) st.learner.senses = presetSenses();
+    }
+    for (const p of Array.isArray(g.pets) ? g.pets : []) {
+      for (const k of Array.isArray(p?.skills) ? p.skills : []) k.template ??= k.name === 'Fetch' ? 'fetch' : 'sense';
+    }
+    if (isObj(g.farm?.world?.pet)) g.farm.world.pet.still ??= 0;
+    g.version = 2;
+    return g;
+  },
+};
 
 function isObj(v: unknown): v is Record<string, any> {
   return !!v && typeof v === 'object' && !Array.isArray(v);

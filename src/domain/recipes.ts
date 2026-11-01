@@ -1,5 +1,6 @@
 import type { SpecNode, StageSpec } from './types';
 import { cloneStage, idFactory, newId } from './spec';
+import { presetSenses } from '../learning/senses';
 
 /** Held-out evaluation seeds live in [900000, 999999]; training seeds are always < 800000. */
 export const EVAL_SEED_BASE = 900000;
@@ -16,6 +17,63 @@ function maker(prefix: string): Mk {
 
 const pet = (n: Mk) => n('actor.pet');
 const k = (n: Mk, kind: string) => n(`kind:${kind}`);
+
+/** Example player-style skill: walk to the target, then stay put for 5 steps. */
+function waitForIt(): StageSpec {
+  const n = maker('wf');
+  const atT = () => n('cond.at', { actor: pet(n), what: n('ref.target') });
+  return {
+    id: 'stage-wait', name: 'Wait for it', recipeId: 'wait-for-it', version: 1,
+    blurb: 'A custom skill: go to the target and sit still for 5 steps.',
+    size: { w: 8, h: 8 },
+    environment: [
+      n('place.pet', { mode: 'random', x: 0, y: 0 }),
+      n('place.random', { kind: k(n, 'target'), count: 1, region: 'anywhere' }),
+      n('place.random', { kind: k(n, 'rock'), count: 2, region: 'anywhere' }),
+    ],
+    abilities: ['move', 'stay'],
+    rules: [
+      n('rule', { label: 'Good sit', when: n('ev.stay', { actor: pet(n) }), if: [atT()], then: [n('eff.reward', { amount: 0.4 })] }),
+      n('rule', { label: 'Not here', when: n('ev.stay', { actor: pet(n) }), if: [n('cond.not', { inner: atT() })], then: [n('eff.penalty', { amount: 0.2 })] }),
+      n('rule', { label: 'Patient pet!', when: n('ev.tick'), if: [atT(), n('cond.stayedFor', { actor: pet(n), ticks: 5 })], then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'success' })], limit: n('lim.once') }),
+      n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.05 })] }),
+    ],
+    success: n('cond.and', { all: [atT(), n('cond.stayedFor', { actor: pet(n), ticks: 5 })] }),
+    fail: null,
+    seed: 505, maxTicks: 50,
+    learner: { skill: 'Wait for it', template: 'sense', focus: 'target', episodes: 2500,
+      senses: [n('sense.nearest', { what: n('ref.target') }), n('sense.blocked'), n('sense.heading'), n('sense.still')] },
+    evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.7 },
+  };
+}
+
+/** Example player-style skill: keep away from the pond until time runs out ("survive" lesson). */
+function keepClear(): StageSpec {
+  const n = maker('kc');
+  return {
+    id: 'stage-keep-clear', name: 'Keep clear', recipeId: 'keep-clear', version: 1,
+    blurb: 'A custom skill: stay more than 2 steps from the pond until time is up.',
+    size: { w: 8, h: 8 },
+    environment: [
+      n('place.pet', { mode: 'random', x: 0, y: 0 }),
+      n('place.random', { kind: k(n, 'pond'), count: 6, region: 'center' }),
+      n('place.random', { kind: k(n, 'rock'), count: 2, region: 'anywhere' }),
+    ],
+    abilities: ['move', 'stay'],
+    rules: [
+      n('rule', { label: 'Safe distance', when: n('ev.tick'), if: [n('cond.farFrom', { actor: pet(n), what: n('ref.target'), dist: 2 })], then: [n('eff.reward', { amount: 0.1 })] }),
+      n('rule', { label: 'Too close', when: n('ev.tick'), if: [n('cond.near', { actor: pet(n), what: n('ref.target'), dist: 2 })], then: [n('eff.penalty', { amount: 0.1 })] }),
+      n('rule', { label: 'Splash!', when: n('ev.enter', { actor: pet(n), what: k(n, 'pond') }), then: [n('eff.penalty', { amount: 5 }), n('eff.end', { outcome: 'fail' })] }),
+    ],
+    outcome: 'survive',
+    success: n('cond.farFrom', { actor: pet(n), what: n('ref.target'), dist: 2 }),
+    fail: n('cond.at', { actor: pet(n), what: k(n, 'pond') }),
+    seed: 606, maxTicks: 30,
+    learner: { skill: 'Keep clear', template: 'sense', focus: 'pond', episodes: 2000,
+      senses: [n('sense.nearest', { what: n('ref.target') }), n('sense.blocked'), n('sense.hazards')] },
+    evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.7 },
+  };
+}
 
 export interface Recipe {
   id: string;
@@ -47,7 +105,7 @@ function approach(): StageSpec {
     success: n('cond.at', { actor: pet(n), what: k(n, 'berry') }),
     fail: null,
     seed: 101, maxTicks: 40,
-    learner: { skill: 'Approach', focus: 'berry', episodes: 1500 },
+    learner: { skill: 'Approach', template: 'sense', senses: presetSenses(), focus: 'berry', episodes: 1500 },
     evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.8 },
   };
 }
@@ -82,7 +140,7 @@ function avoid(): StageSpec {
     success: n('cond.at', { actor: pet(n), what: k(n, 'berry') }),
     fail: n('cond.at', { actor: pet(n), what: k(n, 'pond') }),
     seed: 202, maxTicks: 40,
-    learner: { skill: 'Avoid', focus: 'berry', episodes: 8000 },
+    learner: { skill: 'Avoid', template: 'sense', senses: presetSenses(), focus: 'berry', episodes: 8000 },
     evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.8 },
   };
 }
@@ -107,7 +165,7 @@ function fetchRecipe(): StageSpec {
     success: n('cond.delivered', { what: k(n, 'berry'), into: k(n, 'bin'), count: 1 }),
     fail: null,
     seed: 303, maxTicks: 80,
-    learner: { skill: 'Fetch', focus: 'berry', destination: 'bin', navigator: 'Approach', episodes: 400 },
+    learner: { skill: 'Fetch', template: 'fetch', focus: 'berry', destination: 'bin', navigator: 'Approach', episodes: 400 },
     evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.65 },
   };
 }
@@ -132,6 +190,8 @@ export const RECIPES: Recipe[] = [
   { id: 'go-to-berry', name: 'Go to the berry', blurb: 'Approach: walk to a target from anywhere.', skill: 'Approach', build: approach },
   { id: 'bring-it-home', name: 'Bring it home', blurb: 'Fetch: carry a crop to the bin, reusing Approach.', skill: 'Fetch', unlock: 'fetch', build: fetchRecipe },
   { id: 'avoid-pond', name: 'Avoid the pond', blurb: 'Avoid: reach the goal while staying dry.', skill: 'Avoid', unlock: 'avoid', build: avoid },
+  { id: 'wait-for-it', name: 'Wait for it', blurb: 'Your own skill: go to the target and stay put.', skill: 'Wait for it', unlock: 'custom', optional: true, build: waitForIt },
+  { id: 'keep-clear', name: 'Keep clear', blurb: 'Your own skill: stay away from the pond until time is up.', skill: 'Keep clear', unlock: 'custom', optional: true, build: keepClear },
   { id: 'pay-per-pickup', name: 'Treat for every pickup', blurb: 'Experiment: a reward with a loophole.', skill: 'Fetch', unlock: 'fetch', optional: true, build: payPerPickup },
 ];
 

@@ -1,35 +1,55 @@
 import type { Action, World } from '../sim/world';
-import { MOVES, isSolidAt, DIRS } from '../sim/world';
+import { MOVES, isSolidAt, DIRS, nearest } from '../sim/world';
+import type { SpecNode } from '../domain/types';
+import { compileEncoder, legalActionIdx, presetSenses, stateSpaceSize, type SenseEncoder } from './senses';
 import { Rng } from '../sim/rng';
 import { DoubleQ, type SerializedQ } from './qtable';
-import { FETCH_OPTIONS, FETCH_STATES, NAV_ACTIONS, NAV_STATES, atFocus, fetchObserve, legalMoves, legalOptions, navIndex, navObserve, type FetchOption } from './features';
+import { FETCH_OPTIONS, FETCH_STATES, atFocus, fetchObserve, legalOptions, type FetchOption } from './features';
 
 const MIN_VISITS = 3;
 
-/** Learned navigation policy (Approach / Avoid). Parameterised by the focus kind at call time. */
-export class NavPolicy {
+export interface SenseSkillDef {
+  senses: SpecNode[];
+  actions: Action[];
+}
+
+export const PRESET_NAV: SenseSkillDef = { senses: presetSenses(), actions: MOVES };
+
+/**
+ * Learned policy over player-chosen senses (Approach/Avoid are presets).
+ * Parameterised by its target at call time: re-aiming needs no retraining.
+ */
+export class SensePolicy {
   q: DoubleQ;
-  constructor(q?: DoubleQ) {
-    this.q = q ?? new DoubleQ(NAV_STATES, NAV_ACTIONS.length);
+  readonly def: SenseSkillDef;
+  private encoders = new Map<string, SenseEncoder>();
+  constructor(def: SenseSkillDef = PRESET_NAV, q?: DoubleQ) {
+    this.def = def;
+    this.q = q ?? new DoubleQ(stateSpaceSize(def.senses), def.actions.length);
   }
-  static from(s: SerializedQ | null | undefined): NavPolicy | null {
-    return s ? new NavPolicy(DoubleQ.deserialize(s)) : null;
+  static from(s: SerializedQ | null | undefined, def: SenseSkillDef = PRESET_NAV): SensePolicy | null {
+    return s ? new SensePolicy(def, DoubleQ.deserialize(s)) : null;
   }
-  /**
-   * Greedy action toward `focus`, or null when arrived / nothing to approach.
-   * Unvisited states back off to a factored state (ignore hazards, then walls).
-   */
-  act(w: World, focus: string): Action | null {
-    const o = navObserve(w, focus);
-    if (!o || o.dist === 0) return null;
-    let s = o.index;
-    const db = o.dist <= 1 ? 0 : o.dist <= 3 ? 1 : 2;
-    // Rarely-seen states back off to a coarser view (ignore hazards, then walls); walls stay masked.
-    if (this.q.visits[s] < MIN_VISITS) s = navIndex(o.dir, db, o.blocked, 0, o.heading);
-    if (this.q.visits[s] < MIN_VISITS) s = navIndex(o.dir, db, 0, 0, o.heading);
-    return NAV_ACTIONS[this.q.greedy(s, legalMoves(o))];
+  encoder(target: string): SenseEncoder {
+    let e = this.encoders.get(target);
+    if (!e) { e = compileEncoder(this.def.senses, target); this.encoders.set(target, e); }
+    return e;
+  }
+  /** Greedy legal action. Rarely-seen states back off to coarser views. */
+  act(w: World, target: string): Action {
+    const enc = this.encoder(target);
+    const v = enc.encode(w);
+    let s = enc.index(v);
+    if (this.q.visits[s] < MIN_VISITS) {
+      for (const b of enc.backoffs(v)) { s = b; if (this.q.visits[s] >= MIN_VISITS) break; }
+    }
+    return this.def.actions[this.q.greedy(s, legalActionIdx(w, this.def.actions))];
   }
 }
+
+/** Back-compat name: movement skills are SensePolicies with the preset senses. */
+export const NavPolicy = SensePolicy;
+export type NavPolicy = SensePolicy;
 
 /** A pet with no learned movement just ambles randomly (seeded). */
 export function randomMove(w: World, rng: Rng): Action {
@@ -52,11 +72,10 @@ export class NavRun {
   ) {}
   next(w: World): ExecStep {
     if (atFocus(w, this.focus)) return { done: 'success', reason: 'arrived' };
+    if (!nearest(w, this.focus)) return { done: 'fail', reason: 'nothing to approach' };
     if (this.ticks >= this.timeout) return { done: 'fail', reason: 'timeout' };
     this.ticks++;
-    const a = this.policy ? this.policy.act(w, this.focus) : randomMove(w, this.rng);
-    if (a === null) return { done: 'fail', reason: 'nothing to approach' };
-    return a;
+    return this.policy ? this.policy.act(w, this.focus) : randomMove(w, this.rng);
   }
 }
 
@@ -146,5 +165,25 @@ export class FetchRun {
   }
   get currentOption(): FetchOption | null {
     return this.cur?.option ?? null;
+  }
+}
+
+/**
+ * Runs any sense skill until its own termination condition holds, it times out,
+ * or (optionally) a target-arrival check succeeds. Used for player-made skills on the farm.
+ */
+export class SkillRun {
+  ticks = 0;
+  constructor(
+    private policy: SensePolicy,
+    private target: string,
+    private timeout: number,
+    private done: ((w: World) => boolean) | null,
+  ) {}
+  next(w: World): ExecStep {
+    if (this.ticks > 0 && this.done?.(w)) return { done: 'success', reason: 'goal reached' };
+    if (this.ticks >= this.timeout) return { done: 'success', reason: 'time up' };
+    this.ticks++;
+    return this.policy.act(w, this.target);
   }
 }

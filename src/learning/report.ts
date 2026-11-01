@@ -1,7 +1,8 @@
 import type { Diagnostic, StageSpec } from '../domain/types';
 import { EVAL_SEED_BASE, TRANSFER_SEED_BASE, evalSeeds } from '../domain/recipes';
 import type { SerializedQ } from './qtable';
-import { FetchController, NavPolicy } from './policies';
+import { FetchController, SensePolicy, type SenseSkillDef } from './policies';
+import { senseDefFor, templateOf } from './skilldef';
 import { evaluate, transferVariant, type EvalResult, type EpisodeTrace, type PolicySpec, type Traits } from './episodes';
 
 export interface TrainingReport {
@@ -21,11 +22,12 @@ export interface ExploitFinding {
   replay?: EpisodeTrace;
 }
 
-export function policySpecFor(stage: StageSpec, q: SerializedQ | null, navigator: SerializedQ | null): PolicySpec {
-  if (stage.learner.skill === 'Fetch') {
-    return { kind: 'fetch', ctrl: FetchController.from(q) ?? new FetchController(), nav: NavPolicy.from(navigator) };
+export function policySpecFor(stage: StageSpec, q: SerializedQ | null, navigator: SerializedQ | null, navigatorDef?: SenseSkillDef): PolicySpec {
+  if (templateOf(stage) === 'fetch') {
+    return { kind: 'fetch', ctrl: FetchController.from(q) ?? new FetchController(), nav: SensePolicy.from(navigator, navigatorDef) };
   }
-  return { kind: 'nav', nav: NavPolicy.from(q) };
+  const def = senseDefFor(stage);
+  return { kind: 'sense', policy: SensePolicy.from(q, def), def };
 }
 
 /** Held-out seeds are disjoint from training seeds by construction (≥ 900000 vs < 800000). */
@@ -34,13 +36,13 @@ export function heldOutSeeds(stage: StageSpec): number[] {
   return s.length >= 10 ? s : evalSeeds(Math.max(10, stage.evaluation.episodes));
 }
 
-export function buildReport(stage: StageSpec, traits: Traits, before: SerializedQ | null, after: SerializedQ, navigator: SerializedQ | null): TrainingReport {
+export function buildReport(stage: StageSpec, traits: Traits, before: SerializedQ | null, after: SerializedQ, navigator: SerializedQ | null, navigatorDef?: SenseSkillDef): TrainingReport {
   const seeds = heldOutSeeds(stage);
-  const beforeR = evaluate(stage, policySpecFor(stage, before, navigator), seeds, 'before', traits);
-  const afterR = evaluate(stage, policySpecFor(stage, after, navigator), seeds, 'evaluation', traits);
+  const beforeR = evaluate(stage, policySpecFor(stage, before, navigator, navigatorDef), seeds, 'before', traits);
+  const afterR = evaluate(stage, policySpecFor(stage, after, navigator, navigatorDef), seeds, 'evaluation', traits);
   const random = evaluate(stage, { kind: 'random' }, seeds, 'baseline', traits, 1);
   const tStage = transferVariant(stage);
-  const transfer = evaluate(tStage, policySpecFor(tStage, after, navigator), evalSeeds(10, TRANSFER_SEED_BASE), 'transfer', traits, 2);
+  const transfer = evaluate(tStage, policySpecFor(tStage, after, navigator, navigatorDef), evalSeeds(10, TRANSFER_SEED_BASE), 'transfer', traits, 2);
   return {
     before: beforeR, after: afterR, random, transfer,
     exploits: findExploits(stage, afterR),

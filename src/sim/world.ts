@@ -24,6 +24,8 @@ export interface PetBody {
   y: number;
   carrying: number | null;
   facing: 'N' | 'E' | 'S' | 'W';
+  /** Consecutive ticks spent deliberately staying put (the 'wait' action). Optional for old saves. */
+  still?: number;
 }
 
 export interface World {
@@ -36,7 +38,7 @@ export interface World {
   delivered: Record<string, number>;
 }
 
-export type SimEventType = 'tick' | 'move' | 'bump' | 'reach' | 'enter' | 'pickup' | 'drop' | 'deliver' | 'fumble';
+export type SimEventType = 'tick' | 'move' | 'bump' | 'reach' | 'enter' | 'pickup' | 'drop' | 'deliver' | 'fumble' | 'stay';
 
 export interface SimEvent {
   type: SimEventType;
@@ -131,6 +133,10 @@ export function distTo(w: World, kind: string, x = w.pet.x, y = w.pet.y): number
 export function step(w: World, action: Action): SimEvent[] {
   const p = w.pet;
   const events: SimEvent[] = [{ type: 'tick', x: p.x, y: p.y }];
+  if (action === 'wait') {
+    p.still = (p.still ?? 0) + 1;
+    events.push({ type: 'stay', x: p.x, y: p.y });
+  } else p.still = 0;
   if (action === 'N' || action === 'E' || action === 'S' || action === 'W') {
     const [dx, dy] = DIRS[action];
     const nx = p.x + dx, ny = p.y + dy;
