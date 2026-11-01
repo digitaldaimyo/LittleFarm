@@ -2,7 +2,11 @@
 
 **Goal:** turn the tutorial from "here are the buttons" into "here's how a good trainer thinks". By the end, a player should be able to set up a training pen for a behaviour *they* want, predict roughly whether it will work, read the evidence when it doesn't, and fix it.
 
-Status: **All three phases shipped:** Chapter 1 revised; Field Guide engine and screen; lessons 2–9; notebook; glossary; coaching tips; requests-board side quests; a browser test (`npm run e2e`).
+Status: **All three phases shipped.** Sections 1–9 below are the original plan, kept for the reasoning and evidence; the phase notes here record what actually shipped. **Numbering:** the Guide numbers lessons 1–9 in the order used here (lesson 1 is the First lesson), so *Invent a skill* is lesson 6. Shipped: Chapter 1 revised; Field Guide engine and screen; lessons 2–9; notebook; glossary; coaching tips; requests-board side quests; a browser test (`npm run e2e`).
+
+### After phase C: playtest fixes and polish
+- **Lesson 6 bug (playtest):** after adding “How far is…”, its slot couldn't be aimed at Rock: the sense editor only opened the hand for top-level sense slots. Fixed, with Patience and How far is… now recommended in the hand (`tests/editor.test.ts`).
+- **The Guide numbers its lessons** (1–9, matching this doc), and a locked lesson says what opens it.
 
 ### Phase C: what shipped, and what we learned
 - **Lesson 7, See what your pet learned** (offered once you've saved a skill you invented). The player opens the summary on Approach and on their own skill, uses "What does Pip do?" and taps a tile, reads the Journal's curiosities, and exports a skill card.
@@ -174,7 +178,10 @@ One-shot, dismissible, each linking to its Field Guide lesson. They are triggere
 
 Each phase ships on its own and keeps today's tutorial working until replaced.
 
-## 9. Decisions needed
+## 9. Decisions (taken)
+All five went with the recommendation: contrast lessons, free Field Guide training, lessons offered in context, the neutral voice (no narrator), and the first treat rule built card by card.
+
+The original questions:
 1. **Contrast lessons:** keep "do it the wrong way first" (recommended: it's the strongest teacher here, and experiments are free), or show the contrast pre-computed?
 2. **Free tutorial training:** no energy cost for tutorial lessons and experiments? (Recommended.)
 3. **Field Guide pacing:** *offered* in context (recommended), or a fixed sequence after Chapter 1?

@@ -1,12 +1,14 @@
 # Pen Deck roadmap: player-authored behaviors and a livelier farm
 
+> **Status (all six milestones shipped).** Everything below was planned before it was built; each milestone has a *Status* note recording what changed from the plan. The tutorial was then rebuilt as the Trainer's Field Guide (`docs/TUTORIAL_PLAN.md`). Candidates for what comes next are at the end of this file.
+
 ## Goal
 
-Today the player can only teach three fixed skills (Approach, Avoid, Fetch). Each one is hardcoded as a `SkillName`, has a fixed observation, and fills a fixed farm job. The next phase should let players **invent behaviors we didn't anticipate**, such as "guard the carrot patch", "herd the chickens home", "wait by the bin until I call", or "patrol the fence at night". They should then be able to **plan how those behaviors are used** on a farm with a bit more going on.
+When this roadmap was written, the player could only teach three fixed skills (Approach, Avoid, Fetch). Each one is hardcoded as a `SkillName`, has a fixed observation, and fills a fixed farm job. The next phase should let players **invent behaviors we didn't anticipate**, such as "guard the carrot patch", "herd the chickens home", "wait by the bin until I call", or "patrol the fence at night". They should then be able to **plan how those behaviors are used** on a farm with a bit more going on.
 
 We get there in small steps. Each milestone ships a playable game, keeps every current test green, and adds its own gate. The guiding idea is to stop hardcoding skills and expose the learner's building blocks as cards:
 
-| Today (hardcoded) | Becomes (player-composed) |
+| Before (hardcoded) | Became (player-composed) |
 |---|---|
 | `SkillName = 'Approach' \| 'Avoid' \| 'Fetch'` | Named skills the player creates from a **learner template** |
 | Fixed nav observation (direction to one focus kind + walls + hazards + heading) | **Sense cards** the player chooses (what the pet pays attention to) |
@@ -167,7 +169,7 @@ The player *plans* which taught behavior runs when. The learned executive become
 
 ---
 
-## Milestone 5: A slightly richer farm
+## Milestone 5: A slightly richer farm — ✅ shipped
 
 Each item is independent and small, so they ship one at a time.
 
@@ -183,7 +185,7 @@ Each item is independent and small, so they ship one at a time.
 Keep it cozy: no death and no losses beyond time. Crows peck crops (slower regrowth), they never take coins.
 
 **Gate**
-- [x] 60 fps with the expanded 16×12 farm, 2 pets (one on duty) and 6 creatures, raining, at 4× speed: phone viewport with **4× CPU throttling** (Chromium DevTools emulation, not a real device). Main thread 53% busy, script 9%, no long tasks; still 60 fps at 6× throttling (69% busy). SVG was enough, no canvas needed. *Only the on-duty pet is drawn on the farm.*
+- [x] 60 fps with the expanded 16×12 farm, 2 pets (one on duty) and 6 creatures, raining, at 4× speed: phone viewport with **4× CPU throttling** (Chromium DevTools emulation, not a real device). Main thread 53% busy, script 9%, no long tasks; still 60 fps at 6× throttling (69% busy). SVG was enough, no canvas needed. *At the time only the on-duty pet was drawn; Milestone 6 added drawing the second pet on duty.*
 - [x] Each feature has sim tests (`tests/milestone5.test.ts`) and event-grounded journal entries: expansion, first gate open/shut, first rain and its end, first requests, request done/missed.
 
 > **Found while testing:** the learned Approach is shaky right next to the new fence, e.g. wall to the east with the target close by to the north-east, a situation that barely appears in 8×8 practice pens. The stuck-recovery gets the pet through (the gate job succeeds within ~100 ticks), but it's a real transfer gap, and a good reason for players to retrain in pens with fences.
@@ -209,26 +211,26 @@ The more freedom players have, the more they need to understand surprising resul
 
 ---
 
-## Sequencing and effort
+## How it was sequenced
 
-| Milestone | Depends on | Rough effort | Ships on its own? |
-|---|---|---|---|
-| M1 Custom skills and senses | — | 1.5–2 weeks | Yes: biggest unlock for creativity |
-| M2 Areas and creatures | M1 (senses) | 1.5 weeks | Yes |
-| M3 Routine builder | M1 | 1 week | Yes |
-| M4 Farm routines | M3 (any skill as a job) | 1 week | Yes |
-| M5 Richer farm | M2 for crows/chickens; watering and day/night need nothing | 0.5–1 week per row | Yes, feature by feature |
-| M6 Discovery tools | M1 | 1 week | Yes |
+The milestones shipped in the recommended order: M1 → M5 (watering + day/night) → M2 → M3 → M4 → M5 (expansion, gates, weather, requests) → M6. Bringing two small farm features forward right after M1 gave custom skills something new to point at early. Each milestone kept every earlier test green and added its own gate tests (`tests/milestone1–6.test.ts`, `tests/water-night.test.ts`).
 
-**Recommended order:** M1 → M5 (watering + day/night) → M2 → M3 → M4 → M6. Bringing two small farm features forward right after M1 gives players something new to point their custom skills at early, before the larger creature work.
+## Risks: how they played out
+- **Players build lessons that can't be learned:** the state-budget meter, preflight and Refine shipped. The Field Guide's *Invent a skill* lesson now teaches the budget directly (one sense too many costs ~35 points), and coaching tips flag "too many situations".
+- **Tabular RL hits its limits:** herding needed one extra relative sense (*Area seen from…*), not a bigger learner. No neural network was needed for anything in M1–M6.
+- **UI complexity:** presets and recipes stay one tap away; the hand recommends 3–7 cards; the Field Guide introduces senses, routines and plans when they unlock.
+- **Save churn:** saves went v1 → v4, one migration each, tested against a real v1 fixture (`tests/fixtures/`).
 
-## Risks and mitigations
-- **Players build lessons that can't be learned:** state-budget meter, preflight with a scripted demo where possible, and Refine. Treat "the pet couldn't learn this" as a readable outcome, with a hint such as which sense was never informative.
-- **Tabular RL hits its limits** (herding, multi-entity situations): keep senses local and relative, lean on curriculum (sub-skills then routine), and only then consider a tiny MLP behind the same `ObservationEncoder` interface. It's opt-in and benchmarked.
-- **UI complexity:** presets stay one tap away. Senses, abilities and routines live in "advanced" sleeves until the player first opens them, and the hand keeps recommending 3–7 cards.
-- **Save churn:** one migration per milestone, each with a round-trip test using a real v1 save fixture checked into `tests/fixtures/`.
+## Open questions: what was decided
+1. **Sharing skills between pets:** yes, as explicit **skill cards** (export/import, M6). Each pet still trains on its own; a card is a copy with its own history.
+2. **Requests board:** shipped (M5) as light, optional requests; missing one costs nothing.
+3. **Creatures:** chickens and crows shipped (M2). Nothing else has been requested.
 
-## Open questions for you
-1. Should custom skills be shareable between pets (copy a policy to a second pet) or stay strictly individual? Copying is easy but softens "each pet learns for itself".
-2. Is a requests board (light quests) welcome, or should the farm stay purely self-directed?
-3. Creatures: are chickens and crows the right tone, or would you prefer something else (bees, ducks, a lost lamb)?
+## What could come next
+Not committed; listed roughly smallest first.
+- **Browser test for lessons 4–9:** extend `npm run e2e` with a prepared save so the later Field Guide lessons are clicked through, not only tested at game level.
+- **Approach near fences:** the known transfer gap (M5 note above). Options: a fence-pen curriculum step, or a Field Guide follow-up on retraining for a changed farm.
+- **Routines over Fetch and other routines:** allow nesting (with a depth limit and a cycle check) so *Morning chores* can include deliveries.
+- **A built-in Guard job** for plans, or a recipe for one, since guarding crops currently needs a player-made skill.
+- **Exposed template parameters:** templates store `exposed` fields but there's no editing UI yet.
+- **Sound** (optional, offline, procedurally generated).

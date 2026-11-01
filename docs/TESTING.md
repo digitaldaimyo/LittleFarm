@@ -1,6 +1,8 @@
 # Testing and benchmarks
 
 ## Automated suites (`npm test`)
+95 tests in 15 files. CI-style check before every push: `npm run typecheck && npm run lint && npm test && npm run build`.
+
 | File | Covers |
 |---|---|
 | `tests/sim.test.ts` | Determinism (same seed + actions → identical state/event/reward trace); collision, carrying, delivery; reachable layout generation; limits stopping a pickup/drop loop |
@@ -16,6 +18,7 @@
 | `tests/milestone5.test.ts` | Gates block pets and chickens, Nudge opens/closes and never shuts on the pet; *Open the gate* learnable (≥ 30 points over random); orchard expansion grows the farm to 16×12 with a gated orchard a trained pet harvests; a "Mind the gate" plan row shuts the gate (preview agrees); rain from day 2 waters plots, adds exactly one pond tile, keeps crows away and dries up; Weather card; requests posted, tracked, paid (with journal); a full day judges at nightfall and posts at dawn |
 | `tests/milestone6.test.ts` | Summaries cover all held-out episodes (heat sums to 1, endings match, time concentrates near the target, reward shares); curiosities flag the pickup loophole and stay quiet for plain Approach; probe gives an arrow on every free tile and its greedy path reaches the berry; skill card export → import into another pet acts identically, renames on clash, round-trips through saves; cards with garbage, bad policy rows, oversize tables or unknown cards are rejected; two pets never share a tile or a claim, earn > 1.3× with different jobs, are deterministic and survive save/load |
 | `tests/guide.test.ts` | Field Guide: lessons offered after the previous is done or skipped and free to train; *practice* (300 vs 1,500 tries, > 30 points apart, comparison card); *scatter* (pinned pen ≥ 90% on its own layout but < 40% on the report's scattered row; scattered pen > 40 points better); replaying the first lesson resets its pen; an old finished tutorial maps to Chapter 1 done; **phase B:** *results* (loophole run has more treats and > 50 points less success than the repaired run, comparison shows both), *where* (Avoid > tested Approach by 15+ points, lesson finishes when "Move with" is Avoid), *invent* (lean senses > extra-sense run by 30+ points); coaching tips point at the right lessons (practice, pinned, situations, loophole) and spot two pets on the same job; **phase C:** *read* follows summary/probe/journal/card actions, *routines* (2 watched conditions scores below random choices, + "at the bin" beats random choices by 40+ points), *plans* (the lesson row never fires until moved above "Otherwise wander", proven by previews); every request has a hint; the orchard gate request is judged at nightfall |
+| `tests/editor.test.ts` | Card editor regression (the hand stayed closed for slots *inside* a sense card, so “How far is…” couldn't be aimed at Rock): the sense editor keeps its hand open for nested slots and fills them; the hand recommends Patience and How far is… without opening “More cards” |
 | `tests/farm.test.ts` | Trained pet produces coins where an untrained pet produces none; independent repertoires and rollback; full first-hour flow (adopt → pen → train → save → deploy → earn → Fetch unlocked, tutorial complete); Fetch delivers carrots on the farm; 3000-tick runs keep producing (no permanent stuck loops) with both executives |
 
 ## Benchmark protocol (`npm run bench`)
@@ -39,7 +42,7 @@ Hardware: Intel Xeon @ 2.10 GHz, 4 threads, Node 22 (a cloud container, no GPU).
 | *Bring it home (routine)* (Fetch from cards) | 400 | 0% (random choices 70–90%) | **91%** | 85% | 70–100% | ~45 ms |
 | *Morning chores* (routine over Herd, Water, Keep clear, Wait for it) | 600 | 0% (random choices 30–75%, mean 57%) | **83%** | 65% | 60–90% | ~180 ms |
 
-Per-run rows are printed by the script. In the browser, *Normal* speed adds small delays so training is watchable (Approach takes a few seconds). *Fast* is close to the raw numbers above.
+Re-run for the docs polish pass (same hardware): every mean and minimum above reproduced exactly. Per-run rows are printed by the script. In the browser, *Normal* speed adds small delays so training is watchable (Approach takes a few seconds). *Fast* is close to the raw numbers above.
 
 ### Known failures and caveats
 - *Morning chores* beats random choice of the same skills by +15 to +35 points depending on the seed (worst seed: 65% vs 30%). It depends on sub-skills trained in simpler pens (Herd, Water), and their failures dominate its misses.
@@ -71,7 +74,7 @@ Headless Chromium, 390×844 phone viewport, DPR 2, expanded 16×12 farm, 2 pets 
 This is emulation, not a real device. Most of the cost is style and paint from CSS animations (rain, pet bobbing); *Reduce motion* turns those off.
 
 ## Browser test (`npm run e2e`)
-Starts its own preview server on the built game and plays Chapter 1 (building the rule and SUCCESS card by card) plus the practice and scatter lessons with real clicks. Checks banners, comparison cards, the Scattered layouts row, page errors, and that no request leaves the page's origin. Last run: all checks passed (practice 55% → 80%, scatter 25% → 90%).
+Starts its own preview server (port 4179) on the built game, so run `npm run build` first. It plays lesson 1 (building the rule and SUCCESS card by card) plus lessons 2 and 3 (practice, scatter) with real clicks. Checks banners, comparison cards, the Scattered layouts row, page errors, and that no request leaves the page's origin. Last run: all checks passed (practice 55% → 80%, scatter 25% → 90%).
 
 ## Manual checks done
 In headless Chromium (Playwright), at desktop 1280×900 and phone 390×844:
@@ -79,3 +82,6 @@ In headless Chromium (Playwright), at desktop 1280×900 and phone 390×844:
 - No console errors. **Zero network requests to any other origin.**
 - After one online load, the page reloads and a full lesson trains with the network disabled.
 - No horizontal scroll on phone width.
+- Docs polish pass: Farm, Teach, Pets and Guide at both sizes with an expanded two-pet save; no page errors, no horizontal scroll.
+
+Lessons 4–9 have no browser test yet; they are covered at game level by `tests/guide.test.ts`.

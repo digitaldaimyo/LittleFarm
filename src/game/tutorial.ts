@@ -38,6 +38,8 @@ export interface Chapter {
   minutes: number;
   /** When the lesson is offered (Chapter 1 is active from the start). */
   offered: (s: GameState) => boolean;
+  /** Shown while the lesson isn't offered yet: what opens it. */
+  opensWhen?: string;
   /** Prepare the lesson (e.g. create its practice pen). */
   start?: (s: GameState) => void;
   steps: GuideStep[];
@@ -141,7 +143,7 @@ export const CHAPTERS: Chapter[] = [
     ],
   },
   {
-    id: 'practice', title: 'Read the report: practice', blurb: 'Why a lesson can look broken when it just needs more practice.', minutes: 3,
+    id: 'practice', title: 'Read the report: practice', blurb: 'Why a lesson can look broken when it just needs more practice.', minutes: 3, opensWhen: 'Opens after the first lesson.',
     offered: (s) => guideStatus(s, 'first') === 'done' || guideStatus(s, 'first') === 'skipped',
     start: (s) => {
       upsertStage(s, guideStage(PRACTICE_STAGE, 'Field guide: practice', (x) => { x.learner.episodes = 300; }));
@@ -155,7 +157,7 @@ export const CHAPTERS: Chapter[] = [
     ],
   },
   {
-    id: 'scatter', title: 'Scatter, don’t pin', blurb: 'Why pinned objects teach one layout instead of a skill.', minutes: 4,
+    id: 'scatter', title: 'Scatter, don’t pin', blurb: 'Why pinned objects teach one layout instead of a skill.', minutes: 4, opensWhen: 'Opens after “Read the report: practice”.',
     offered: (s) => guideStatus(s, 'practice') === 'done' || guideStatus(s, 'practice') === 'skipped',
     start: (s) => {
       upsertStage(s, guideStage(PINNED_STAGE, 'Field guide: pinned berry', (x) => {
@@ -180,7 +182,7 @@ export const CHAPTERS: Chapter[] = [
     ],
   },
   {
-    id: 'results', title: 'Pay for results, not effort', blurb: 'How a reward with a loophole teaches the wrong thing — and how to repair it.', minutes: 5,
+    id: 'results', title: 'Pay for results, not effort', blurb: 'How a reward with a loophole teaches the wrong thing — and how to repair it.', minutes: 5, opensWhen: 'Opens when Fetch lessons unlock (earn 5 coins) and a pet knows Approach.',
     offered: (s) => s.progress.unlocks.includes('fetch') && s.pets.some((p) => !!getSkill(p, 'Approach')),
     start: (s) => {
       const st = recipeStage('pay-per-pickup');
@@ -203,7 +205,7 @@ export const CHAPTERS: Chapter[] = [
     compare: { stage: LOOPHOLE_STAGE, rows: [{ variant: 'loophole', label: 'Treat every pickup' }, { variant: 'repaired', label: 'Once per object' }], note: 'More treats is not more success. When treats rise but success doesn’t, look for a rule that pays for repeating something — and pay for the result instead.' },
   },
   {
-    id: 'where', title: 'Practise where it works', blurb: 'Why a skill learned in an easy pen stumbles in the real world.', minutes: 5,
+    id: 'where', title: 'Practise where it works', blurb: 'Why a skill learned in an easy pen stumbles in the real world.', minutes: 5, opensWhen: 'Opens when Avoid lessons unlock and a pet has splashed through the pond.',
     offered: (s) => s.progress.unlocks.includes('avoid') && s.pets.some((p) => p.stats.dips > 0 && !!getSkill(p, 'Approach')),
     start: (s) => {
       const st = recipeStage('avoid-pond');
@@ -225,7 +227,7 @@ export const CHAPTERS: Chapter[] = [
     compare: { stage: AVOID_STAGE, rows: [{ variant: 'approach', label: 'Approach (practised without ponds)' }, { variant: 'avoid', label: 'Avoid (practised with ponds)' }], note: 'A skill is only as good as the pens it practised in. Build the pen like the place the skill will be used.' },
   },
   {
-    id: 'invent', title: 'Invent a skill', blurb: 'Choose what your pet senses and can do — and why fewer senses often learn better.', minutes: 6,
+    id: 'invent', title: 'Invent a skill', blurb: 'Choose what your pet senses and can do — and why fewer senses often learn better.', minutes: 6, opensWhen: 'Opens when “Your own skills” unlocks (a certified Approach).',
     offered: (s) => s.progress.unlocks.includes('custom'),
     start: (s) => {
       const st = recipeStage('wait-for-it');
@@ -254,7 +256,7 @@ export const CHAPTERS: Chapter[] = [
     compare: { stage: INVENT_STAGE, rows: [{ variant: 'first', label: 'Lean senses' }, { variant: 'latest', label: 'With the extra sense' }], note: 'Choose the fewest senses that decide the next move. Every extra one multiplies the practice your pet needs — and with the same practice, it learns worse.' },
   },
   {
-    id: 'read', title: 'See what your pet learned', blurb: 'Summaries, the “What does Pip do?” probe, curiosities and skill cards.', minutes: 5,
+    id: 'read', title: 'See what your pet learned', blurb: 'Summaries, the “What does Pip do?” probe, curiosities and skill cards.', minutes: 5, opensWhen: 'Opens once you’ve saved a skill you invented.',
     offered: (s) => s.pets.some((p) => p.skills.some((k) => k.custom && k.revisions.length > 0)),
     start: (s) => {
       for (const k of ['viewedSummaryPreset', 'viewedSummaryCustom', 'probed', 'probePath', 'exportedCard']) delete s.progress.flags[k];
@@ -270,7 +272,7 @@ export const CHAPTERS: Chapter[] = [
     ],
   },
   {
-    id: 'routines', title: 'Combine skills (routines)', blurb: 'A routine chooses between your skills — but only as well as what it watches.', minutes: 5,
+    id: 'routines', title: 'Combine skills (routines)', blurb: 'A routine chooses between your skills — but only as well as what it watches.', minutes: 5, opensWhen: 'Opens when routines unlock (a certified Approach and 2 saved skills).',
     offered: (s) => s.progress.unlocks.includes('routines'),
     start: (s) => {
       const st = recipeStage('fetch-routine');
@@ -297,7 +299,7 @@ export const CHAPTERS: Chapter[] = [
     compare: { stage: ROUTINE_STAGE, rows: [{ variant: 'watch:2', label: 'Watching 2 things' }, { variant: 'watch:3', label: 'Watching 3 (+ at the bin)' }], note: 'A routine chooses only as well as what it watches. If “After” isn’t clearly above “Random choices”, it’s missing something it needs to notice.' },
   },
   {
-    id: 'plans', title: 'Plan the farm', blurb: 'Decide when each skill runs — and preview before you commit.', minutes: 5,
+    id: 'plans', title: 'Plan the farm', blurb: 'Decide when each skill runs — and preview before you commit.', minutes: 5, opensWhen: 'Opens after “Combine skills”, or once you have two pets.',
     offered: (s) => ['done', 'skipped'].includes(guideStatus(s, 'routines') ?? '') || s.pets.length >= 2,
     start: (s) => {
       for (const k of ['planOpened', 'planPreviewed', 'planRowFired']) delete s.progress.flags[k];

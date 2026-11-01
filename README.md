@@ -20,16 +20,16 @@ Other scripts:
 | `npm run build` | Typecheck + production build into `dist/` (static files; host anywhere or open with `npm run preview`) |
 | `npm run typecheck` | TypeScript only |
 | `npm run lint` | ESLint |
-| `npm test` | Vitest suite (sim, registry, learning, saves, farm, training loop) |
+| `npm test` | Vitest suite: 95 tests in 15 files (sim, registry, learning, saves, farm, training loop, every milestone gate, the Field Guide, the card editor) |
 | `npm run bench` | Trains every starter skill under 5 seeds and prints held-out results, hardware and timings |
 | `npm run evidence` | Reproduces the measurements behind the Field Guide and the Trainer's notebook |
-| `npm run e2e` | Browser test of the Field Guide (after `npm run build`; needs Playwright with Chromium) |
+| `npm run e2e` | Browser test of the first three Field Guide lessons (run `npm run build` first; needs Playwright with Chromium) |
 
 Requires Node 18+ (developed on Node 22). Needs no secrets or environment variables.
 
 ## How to play (first hour)
 
-The **First lesson** banner walks you through this, explaining *why* at each step:
+The **First lesson** banner (lesson 1 of the Field Guide) walks you through this, explaining *why* at each step:
 
 1. **Adopt** a pet and choose its name and colours.
 2. **Teach → Environment:** pick the *Berry* card and tap the pen. *Scatter* puts it somewhere new on every try, which teaches a skill that works anywhere.
@@ -47,7 +47,7 @@ The **First lesson** banner walks you through this, explaining *why* at each ste
 
 Then write its rules with the same cards, using *the target* to mean "whatever this skill is aimed at". The Curriculum has two examples, *Wait for it* and *Keep clear*. On the farm, **Run a skill** runs any of your skills aimed at anything (berry, bin, home, pond…), with no retraining.
 
-After the first lesson, the **Guide** tab (the Trainer's Field Guide) offers short, free lessons that teach how to set up training that works, each by trying something the wrong way first and comparing your own pet's numbers: *Read the report: practice* (300 vs 1,500 tries), *Scatter, don't pin* (one perfect layout vs a scattered pen), *Pay for results, not effort* (the pickup loophole and its repair), *Practise where it works* (Approach vs Avoid in a pond pen), *Invent a skill* (abilities, senses, and what one sense too many costs), *See what your pet learned* (summaries, the probe, curiosities, skill cards), *Combine skills* (a routine is only as good as what it watches) and *Plan the farm* (preview, shadowed rows, two pets on different jobs). It also holds the **Trainer's notebook** (a checklist built from measured results) and a **glossary**. **Coaching tips** appear in lesson reports (and on the farm) when the evidence suggests a common mistake, each linking to the lesson that explains it. Requests on the neighbours' board say how they can be met and link to the lesson that helps (`docs/TUTORIAL_PLAN.md`).
+After the first lesson, the **Guide** tab (the Trainer's Field Guide) offers short, free lessons that teach how to set up training that works, each by trying something the wrong way first and comparing your own pet's numbers. They are numbered in the Guide, and each one opens when it becomes useful (a locked lesson says what opens it): 2 *Read the report: practice* (300 vs 1,500 tries), 3 *Scatter, don't pin* (one perfect layout vs a scattered pen), 4 *Pay for results, not effort* (the pickup loophole and its repair), 5 *Practise where it works* (Approach vs Avoid in a pond pen), 6 *Invent a skill* (abilities, senses, and what one sense too many costs), 7 *See what your pet learned* (summaries, the probe, curiosities, skill cards), 8 *Combine skills* (a routine is only as good as what it watches) and 9 *Plan the farm* (preview, shadowed rows, two pets on different jobs). It also holds the **Trainer's notebook** (a checklist built from measured results) and a **glossary**. **Coaching tips** appear in lesson reports (and on the farm) when the evidence suggests a common mistake, each linking to the lesson that explains it. Requests on the neighbours' board say how they can be met and link to the lesson that helps (`docs/TUTORIAL_PLAN.md`).
 
 Try the optional **Treat for every pickup** recipe to watch a pet discover a reward loophole, then fix it with a repair card.
 
@@ -73,13 +73,22 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 
 ## Limitations (honest list)
 
-- Only one pet works on the farm at a time (the "on duty" pet); others nap and recover.
 - No sound. Crows only visit by day and at most one at a time. Guarding crops means running a skill you taught (there's no built-in guard job yet).
 - Thumbs up/down feedback applies to movement skills (Approach/Avoid), not to the Fetch controller.
 - Templates are immutable named revisions you can instantiate. "Exposed parameters" are stored but have no editing UI yet.
-- Avoid is the hardest skill: about 82% mean held-out success, with occasional runs at 75%. Use *Refine* to train more.
+- Avoid is the hardest preset: about 82% mean held-out success, with occasional runs at 75%. Use *Refine* to train more.
+- Learned Approach is shaky right beside fences (8×8 practice pens rarely have walls there). Pets get through with the stuck-recovery, but retraining with fences in the pen helps.
+- The browser test covers lessons 1–3; lessons 4–9 are covered by game-level tests (`tests/guide.test.ts`), not by clicking through.
 - Up to two pets work the farm at once; others nap. Routines can't use Fetch or other routines as options yet. Plan previews always start from a fresh decision (the current job is dropped when you apply a plan).
 - No local language model (the spec's optional Level D). The executive is a rules baseline plus a small learned bandit.
 - Static reward checks and the preflight random-rollout comparison are heuristics, not proofs that a reward can't be exploited.
 
-See `docs/ARCHITECTURE.md`, `docs/GAME_DESIGN.md` and `docs/TESTING.md`.
+## Documentation
+
+| Doc | What's in it |
+|---|---|
+| `docs/GAME_DESIGN.md` | The loop, economy, progression, the Field Guide, content |
+| `docs/ARCHITECTURE.md` | Code layout, the typed spec, simulator, learners, farm, saves |
+| `docs/TESTING.md` | Test suites, benchmark results, performance, browser checks |
+| `docs/ROADMAP.md` | The expansion roadmap (all six milestones shipped) and what could come next |
+| `docs/TUTORIAL_PLAN.md` | The Field Guide's design, the evidence behind each lesson, and what shipped |

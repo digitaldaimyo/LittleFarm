@@ -5,10 +5,14 @@ src/
   domain/       canonical typed spec, card registry (Farm pack), validation, contextual hand, recipes, repairs
   sim/          deterministic gridworld (rng, world, compile: spec → runnable stage)
   learning/     features, Double-Q tables, policies/executors, trainer, evaluation/report, executive, worker
-  game/         pets & skills, farm runtime, progression/shop, tutorial, journal, game state
+  game/         pets & skills, farm runtime, plans, requests, expansion, progression/shop,
+                Field Guide (tutorial), coaching tips, skill cards, journal, game state
   persistence/  versioned save format + IndexedDB storage (localStorage fallback)
   ui/           React presentation only (store, screens, cards/sleeves, charts, replay)
-tests/          vitest suites;  scripts/bench.ts  benchmark
+tests/          vitest suites (+ fixtures/ with a real v1 save)
+scripts/        bench.ts (npm run bench), tutorial-evidence.ts (npm run evidence),
+                e2e-guide.mjs (npm run e2e, Playwright)
+public/sw.js    service worker for offline play
 ```
 
 Game rules never import React. The UI edits the **canonical spec** (`StageSpec`, `SpecNode`) and the simulator and learners compile from it. The Inspect binder shows that exact JSON.
@@ -74,16 +78,24 @@ The same simulator runs pens, evaluation and the farm. Fixed seed + fixed action
 - `game/skillcard.ts`: `exportSkillCard` / `importSkillCard` (validated JSON, `format: 'pen-deck-skill'`). Custom sense skills now keep a copy of their lesson on each revision, too.
 - Two pets: `farm.duty2PetId`, `world.pet2`, `farm.current2/stun2/queue2/rngState2`, `runtime.second`. `farmTick` runs `petTurn` for the first pet (creatures move and the clock advances), then `secondTurn`, which swaps the second pet into the primary slots and calls the same `petTurn` with `step(..., { advance: false })`. `withOtherPet` adds a transient solid `buddy` object at the other pet's tile and sets `hidden` on its claimed object (`runtime.claim`, the nearest target of its current job). `onGround` ignores hidden objects. Both are removed after the turn.
 
+### Field Guide and coaching (tutorial)
+- `game/tutorial.ts`: `CHAPTERS` (lesson 1 *First lesson*, then lessons 2–9). A chapter has `offered(s)`, an `opensWhen` hint for the Guide list, an optional `start(s)` that creates its practice pen (a stage with `extensions.guide`), `steps` (`done(s)`, optional `ack`, `action`, `highlight` = a `data-tut` key) and an optional `compare` (which recorded runs to show side by side).
+- State lives in `progress.guide = { status, active, step }` and `progress.guideRuns` (one entry per finished guide training run: episodes, after, random, transfer, scattered, treats, variant). `advanceTutorial` runs after every store mutation: it advances the active step, finishes the chapter and offers newly relevant ones.
+- Guide stages and the tutorial pen are free (`trainingCost` 0). Reports add a *Scattered layouts* row whenever a pen pins its target or start.
+- `game/coach.ts`: pure functions from (stage, report, game) to tips with lesson links, dismissible for good via `progress.flags`.
+- UI: `App.tsx` draws the lesson banner and injects a style rule that outlines `[data-tut="…"]` and scrolls it into view; `GuideScreen.tsx` holds the lesson list, comparisons, notebook and glossary.
+
 ## Learning
 
 ### Templates, senses and abilities (Milestone 1)
 A lesson's `LearnerSpec` has a **template**:
 - `sense`: a tabular learner over player-chosen **Sense cards**. Approach and Avoid are presets of it.
 - `fetch`: the option controller.
+- `routine`: an option controller over the player's own skills and actions (see *Routines* above).
 
 `learning/senses.ts` compiles sense cards into a mixed-radix `SenseEncoder`. The radix of each card is declared on its `CardDef`. The preset `[Where is the target (27), Walls (16), Hazards (16), Last heading (4)]` reproduces the v1 index exactly, so v1 policies load unchanged (tested move-for-move against a fixture).
 
-**Abilities** (`move`, `stay`, `pickup`, `drop`) map to an ordered action list. Physically impossible actions (walking into walls, dropping with empty paws) are always masked. Backoff for rarely seen states zeroes droppable senses in a fixed order: hazards, walls, patience, carrying, standing-on.
+**Abilities** (`move`, `stay`, `pickup`, `drop`, and later `water`, `shoo`, `nudge`) map to an ordered action list. Physically impossible actions (walking into walls, dropping with empty paws) are always masked. Backoff for rarely seen states zeroes droppable senses in a fixed order: hazards, walls, patience, carrying, standing-on.
 
 Validation enforces 1–5 senses and a **state budget**: it warns above 50k situations and errors above 100k.
 
@@ -107,11 +119,12 @@ Saves are v2. The v1 → v2 migration adds templates and explicit preset senses.
 
 ## Persistence
 
-`persistence/save.ts` handles the save envelope `{ format: 'pen-deck-save', version, game }`. It has a migration table (version N → N+1), fills missing sections from defaults, validates shapes, clamps numbers, checks policy formats, and reports unknown cards. Saves never execute code. `storage.ts` writes to IndexedDB with a localStorage fallback. Export and Import JSON live in Settings.
+Saves are currently **v4** (`SAVE_VERSION`). `persistence/save.ts` handles the save envelope `{ format: 'pen-deck-save', version, game }`. It has a migration table (version N → N+1), fills missing sections from defaults, validates shapes, clamps numbers, checks policy formats, and reports unknown cards. Saves never execute code. `storage.ts` writes to IndexedDB with a localStorage fallback. Export and Import JSON live in Settings.
 
 ## Extension points
 
 - New objects and cards: add to a pack file. Kind cards and hands pick them up automatically.
 - New evaluators: add a case in `sim/compile.ts` (conditions, events, quantities, effects, limits).
-- New skills: add a learner kind in `learning/trainer.ts`, an executor in `learning/policies.ts`, and metadata in `game/pets.ts`.
+- New skills: most need no code at all (a custom skill is a lesson with senses, abilities and rules). A new learner *template* needs a case in `learning/trainer.ts`, an executor in `learning/policies.ts`, and metadata in `game/pets.ts`.
+- New Field Guide lessons: add a chapter to `game/tutorial.ts` (and `data-tut` hooks on any new control it highlights).
 - A future local model (Level D) would implement the same `Invocation` contract as the executive selectors.

@@ -5,9 +5,17 @@ You are a trainer, not a programmer. The loop is: design a pen → choose what e
 
 The **farm** is the home screen and the pet is always visible. The **pen** is a focused teaching mode.
 
-## Tutorial (skippable, replayable from Settings)
-1. Adopt a pet. 2. Open the pen. 3. Put a berry in it. 4. Tap the suggested recipe. 5. Train Approach. 6. Compare before/after on held-out layouts. 7. Save the skill. 8. Assign *Forage berries* on the farm. 9. Earn 5 coins → Fetch unlocked.
-A novice reaches a training run in 4 taps from the farm (Teach → Curriculum → a recipe → Train). The tutorial path takes about 6.
+## Tutorial: the Trainer's Field Guide
+The tutorial teaches *how a good trainer thinks*, not just which buttons exist. Full design and evidence: `docs/TUTORIAL_PLAN.md`.
+
+- **Lesson 1, First lesson** (10 steps, active from the start): adopt → open the pen → place a scattered berry → build the treat rule card by card → set SUCCESS → train Approach → read the report → save → Forage on the farm → earn 5 coins (Fetch unlocks). The tutorial pen starts with rocks but no berry, rules or SUCCESS. A suggested recipe sits behind "Stuck?".
+- **Lessons 2–9** appear in the **Guide** tab when they become useful (a locked lesson says what opens it): 2 *Read the report: practice*, 3 *Scatter, don't pin*, 4 *Pay for results, not effort*, 5 *Practise where it works*, 6 *Invent a skill*, 7 *See what your pet learned*, 8 *Combine skills*, 9 *Plan the farm*. Most try something the wrong way first and show the player's own two runs side by side.
+- Every lesson can be started, paused, skipped and replayed. Field Guide training costs no energy and is never saved automatically.
+- A banner shows the current step, *why* it matters and, where useful, a button that does it ("Test my Approach here"). The control it refers to is outlined and scrolled into view.
+- The Guide also holds the **Trainer's notebook** (a checklist built from measured results) and a **glossary**.
+- **Coaching tips** appear in reports and on the farm when the evidence suggests a common mistake (pinned pen, loophole, too little practice, too many situations, poor transfer, two pets on the same job), each linking to its lesson. Requests on the neighbours' board carry a "How:" hint and a lesson link.
+
+Outside the tutorial, a training run is 4 taps from the farm (Teach → Curriculum → a recipe → Train).
 
 ## Interface vocabulary
 - **Binders:** Environment, Rules, Pet, Curriculum, Behaviors, Inspect.
@@ -28,19 +36,19 @@ Berry bushes regrow in 28 ticks and carrots in 44. **Watered** plots grow twice 
 
 **Day/night:** a farm day is 1200 ticks, and the last 30% is night. Night darkens the farm and spawns 4 fireflies on open tiles, which leave at dawn. On Auto, the rules executive catches fireflies when it can and otherwise naps. The learned executive's context includes night and fireflies. At night, work costs 1.5× energy and naps restore 1.5×. A pond sits between the bushes and the bin, so a pet using Approach often splashes through and loses 3 ticks shaking dry. That's a visible reason to learn Avoid.
 
-**Energy:** lessons cost 15 (Avoid costs 20). Farm work costs 0.12 per tick, and napping restores 1.5 per tick (3 with the Comfy bed). Off-duty pets recover 0.5 per tick. Pets are never punished: a pet with no energy simply naps.
+**Energy:** lessons cost 15 (Avoid costs 20); Field Guide lessons are free. Farm work costs 0.12 per tick, and napping restores 1.5 per tick (3 with the Comfy bed). Off-duty pets recover 0.5 per tick. Pets are never punished: a pet with no energy simply naps.
 
 ## Progression
 | Unlock | How |
 |---|---|
 | Your own skills | A certified Approach |
 | Routines | A certified Approach and 2 saved skills |
-| Chickens, Scarecrow (shop) | After *Your own skills* |
 | Crow visits | Day 2+, after *Your own skills* |
 | Fetch lessons | Certified Approach + 5 coins earned |
 | Carrot patches | A certified Fetch |
 | Avoid lessons | 12 coins earned (after Fetch) |
-| Shop | Snack (+40 energy, 3), Tree cards (4), Fence cards (6), Two more bushes (8), Comfy bed (12), Third carrot patch (15), Adopt another pet (20) |
+| Shop | Snack (+40 energy, 3), Tree cards (4), Fence cards (6), Two more bushes (8), Comfy bed (12), Third carrot patch (15, after carrots), Adopt another pet (20). After *Your own skills*: Two chickens (10), Scarecrow (8), Orchard expansion (25) |
+| Field Guide lessons | Offered in context (see Tutorial) |
 
 Unlocks add **vocabulary** (new cards and skills) and **problems** (carrots need carrying, ponds need avoiding), not grind.
 
@@ -73,10 +81,12 @@ Players invent behaviors by combining **senses**, **abilities** and **rules**. A
 Lessons are promoted when held-out success meets the stage minimum (Approach/Avoid 80%, Fetch 65%, n=20 unseen layouts). The Curriculum binder shows **mastery** (at save time), **retention** (re-test with current skills), and **transfer** (10 bigger, unseen pens) separately. You can clone a stage without sharing node identity.
 
 ## Journal
-Entries are grounded templates filled from real events: adoption, skill learned (with actual success counts), certification, first berry, first delivery, first pond dip and repeat dips, loopholes found, revisits, purchases and unlocks. A *Scrapbook* filter shows milestones. No made-up psychology.
+Entries are grounded templates filled from real events: adoption, skill learned (with actual success counts), certification, first berry, first delivery, first pond dip and repeat dips, loopholes found, revisits, purchases and unlocks, plus later farm events (first eggs, gates, rain, requests done or missed) and **curiosities** noticed in a lesson's behaviour summary. A *Scrapbook* filter shows milestones. No made-up psychology.
 
 ## Content
 - Two-plus pet palettes (Meadow, Plum, Sky, Moss) and seven name suggestions.
 - Objects: berry, carrot, target, bin, pond, rock, tree, fence, plus farm-only home, berry bush and carrot patch.
 - Objects added with watering and day/night: well, firefly. With Milestone 2: chicken, crow, egg, scarecrow, and the Area card. Berry bushes, carrot patches and home can now go in pens.
-- Recipes: *Go to the berry*, *Bring it home*, *Avoid the pond*, *Treat for every pickup* (experiment), and custom-skill examples *Wait for it*, *Keep clear*, *Water the garden* and *Herd a chicken*, the experiment *Treat for every shoo*, and the routines *Bring it home (routine)* and *Morning chores*.
+- Recipes: *Go to the berry*, *Bring it home*, *Avoid the pond*, *Treat for every pickup* (experiment), and custom-skill examples *Wait for it*, *Keep clear*, *Water the garden*, *Herd a chicken* and *Open the gate*, the experiment *Treat for every shoo*, and the routines *Bring it home (routine)* and *Morning chores*.
+- Objects added with Milestone 5: gate (and the orchard and meadow areas of the expansion), rain puddles.
+- Farm plan jobs: Forage, Deliver, Catch fireflies, Nap, Wander, Go to…, Run skill, Mind the gate.

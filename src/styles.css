@@ -164,7 +164,7 @@ code, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .badge.b-scripted { background: var(--obj-tint); color: var(--obj-ink); }
 .badge.b-baseline, .badge.b-before { background: var(--cond-tint); color: var(--cond-ink); }
 .train-bar { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-.tabs { display: flex; gap: 2px; padding: 3px; background: #DAD5C8; border-radius: 10px; overflow-x: auto; scrollbar-width: none; }
+.tabs { display: flex; flex-wrap: wrap; gap: 2px; padding: 3px; background: #DAD5C8; border-radius: 10px; }
 .tab { flex: 1; min-height: 38px; border: 0; border-radius: 8px; background: transparent; font-size: 13px; font-weight: 600; color: var(--ink-2); white-space: nowrap; padding: 0 10px; }
 .tab.on { background: var(--paper); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
 .binder { background: var(--mat); border-radius: var(--radius); padding: 12px; }
@@ -292,8 +292,8 @@ button.node { padding: 2px 9px; font-weight: 600; }
 .shop { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
 .shop li { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
 .shop li .small.muted:last-child { grid-column: 1 / -1; }
-.toasts { position: fixed; bottom: 16px; left: 16px; display: flex; flex-direction: column; gap: 6px; z-index: 60; width: min(380px, calc(100% - 32px)); pointer-events: none; }
-@media (max-width: 640px) { .toasts { bottom: 76px; } }
+.toasts { position: fixed; bottom: 16px; right: 16px; display: flex; flex-direction: column; gap: 6px; z-index: 60; width: min(380px, calc(100% - 32px)); pointer-events: none; }
+@media (max-width: 640px) { .toasts { bottom: 76px; left: 16px; right: auto; gap: 4px; } .toast { padding: 7px 12px; font-size: 13px; opacity: .94; } }
 .toast { background: var(--ink); color: #fff; padding: 10px 14px; border-radius: 10px; font-size: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.2); }
 .toast.good { background: var(--leaf-ink); }
 .toast.warn { background: #6B3F00; }

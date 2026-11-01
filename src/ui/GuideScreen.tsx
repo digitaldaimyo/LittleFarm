@@ -29,14 +29,15 @@ export function GuideScreen() {
       {tab === 'lessons' && (
         <div className="panel">
           <ol className="guide-list">
-            {CHAPTERS.map((c) => {
+            {CHAPTERS.map((c, n) => {
               const st = g.status[c.id];
               return (
                 <li key={c.id} className={`guide-item ${st ?? 'locked'}`}>
                   <div className="row between wrap">
-                    <div>
-                      <strong>{c.title}</strong> <span className="small muted">· {c.minutes} min</span>
+                    <div style={{ flex: '1 1 280px', minWidth: 0 }}>
+                      <strong>{n + 1}. {c.title}</strong> <span className="small muted">· {c.minutes} min</span>
                       <div className="small muted">{c.blurb}</div>
+                      {!st && c.opensWhen && <div className="small muted">🔒 {c.opensWhen}</div>}
                     </div>
                     <span className="row gap">
                       <span className={`chip ${st === 'done' ? 'good' : ''}`}>{st === 'done' ? '✓ done' : st === 'active' ? 'in progress' : st === 'offered' ? 'new' : st === 'skipped' ? 'skipped' : '🔒 later'}</span>
