@@ -4,7 +4,7 @@
  */
 import type { SpecNode } from './types';
 import { REGISTRY } from './registry';
-import { isNode } from './spec';
+import { isNode, socketActive } from './spec';
 
 export interface DescribeCtx {
   petName: string;
@@ -47,6 +47,7 @@ export function describe(n: SpecNode | null | undefined, ctx: DescribeCtx): stri
   const phrase = card.presentation.phrase ?? card.presentation.title;
   return phrase.replace(/\{([a-zA-Z]+)\}/g, (_, id: string) => {
     const sock = card.sockets.find((s) => s.id === id);
+    if (sock && !socketActive(n, sock, card.params?.find((p) => p.id === sock.when?.param)?.default)) return '';
     if (sock) {
       const v = n.args[id];
       if (Array.isArray(v)) { const parts = v.filter(isNode).map((c) => describe(c, ctx)); return parts.length ? parts.join(', ') : '…'; }
@@ -63,5 +64,5 @@ export function describeRule(r: SpecNode, ctx: DescribeCtx): string {
   const lim = isNode(r.args.limit) && r.args.limit.cardId !== 'lim.every' ? ` (${describe(r.args.limit, ctx)})` : '';
   const ev = isNode(r.args.when) ? r.args.when : null;
   const start = ev?.cardId === 'ev.tick' ? 'Every step' : `When ${ev ? describe(ev, ctx) : '…'}`;
-  return `${start}${conds.length ? `, if ${conds.join(' and ')}` : ''}: ${thens.length ? thens.join(', ') : 'nothing yet'}${lim}.`;
+  return `${r.args.off === 1 ? '(Switched off) ' : ''}${start}${conds.length ? `, if ${conds.join(' and ')}` : ''}: ${thens.length ? thens.join(', ') : 'nothing yet'}${lim}.`;
 }

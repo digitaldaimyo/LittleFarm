@@ -399,3 +399,13 @@ button.node { padding: 2px 9px; font-weight: 600; }
 .plan-row > .row.between { flex-wrap: wrap; gap: 4px 8px; }
 .plan-row > .row.between > .row:first-child { flex: 1 1 160px; min-width: 0; }
 .reads { margin-top: 4px; font-style: italic; }
+.rule.off { opacity: .55; }
+.rule.off .rule-label { text-decoration: line-through; }
+.rule-tools { flex-wrap: wrap; justify-content: flex-end; }
+.layout-strip { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 8px; }
+.layout-strip button { padding: 0; border: 2px solid transparent; border-radius: 8px; background: none; cursor: pointer; }
+.layout-strip button.on { border-color: var(--leaf); }
+.layout-strip svg { width: 100%; height: auto; display: block; border-radius: 6px; }
+.play-pad { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.play-log { font-size: 12px; min-height: 1.4em; }
+@media (max-width: 640px) { .layout-strip { grid-template-columns: repeat(3, 1fr); } }

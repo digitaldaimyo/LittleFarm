@@ -119,3 +119,10 @@ export function migrateLegacyEndOutcomes(v: unknown): number {
   visit(v);
   return n;
 }
+
+/** Is this socket in use for this node? (Sockets with `when` only apply for some parameter values.) */
+export function socketActive(n: SpecNode, s: { when?: { param: string; in: string[] } }, paramDefault?: unknown): boolean {
+  if (!s.when) return true;
+  const v = n.args[s.when.param] ?? paramDefault;
+  return s.when.in.includes(String(v));
+}

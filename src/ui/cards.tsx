@@ -1,6 +1,6 @@
 import type { CardDef, SpecNode, StageSpec } from '../domain/types';
 import { REGISTRY } from '../domain/registry';
-import { isNode } from '../domain/spec';
+import { isNode, socketActive } from '../domain/spec';
 import { buildHand, type HandCard } from '../domain/hand';
 import { typeToString } from '../domain/typecheck';
 import { ObjectIcon } from './art';
@@ -76,6 +76,7 @@ export function NodeChip({ stage, n, slot, errors }: { stage: StageSpec; n: Spec
         if (!m) return <span key={i} className="ptext">{p}</span>;
         const id = m[1];
         const sock = card.sockets.find((x) => x.id === id);
+        if (sock && !socketActive(n, sock, card.params?.find((x) => x.id === sock.when?.param)?.default)) return null;
         if (sock) return <SlotChip key={i} stage={stage} slot={{ parentId: n.id, socket: id, index: null }} label={sock.label} errors={errors} />;
         return <button key={i} className="param" onClick={select}>{paramText(card, n, id)}</button>;
       })}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { cloneWorld } from '../sim/world';
+import { cloneWorld, legalActions, step, type Action, type World } from '../sim/world';
 import { probeField, probePath } from '../learning/probe';
 import { audio } from '../audio/engine';
 import { describe, describeRule } from '../domain/describe';
@@ -7,11 +7,12 @@ import { rolloutChecks } from '../learning/lint';
 import type { SpecNode, StageSpec } from '../domain/types';
 import { REGISTRY } from '../domain/registry';
 import { RECIPES, instantiateRecipe, suggestedRules } from '../domain/recipes';
-import { cloneStage, findNode, isNode, newId, node, paramOf, placedKinds } from '../domain/spec';
+import { cloneNode, cloneStage, findNode, isNode, newId, node, paramOf, placedKinds, socketActive } from '../domain/spec';
 import { hasErrors, nodesWithErrors, validateStage } from '../domain/validate';
 import { buildHand } from '../domain/hand';
 import { applyRepair } from '../domain/repairs';
-import { generateWorld } from '../sim/compile';
+import { compileStage, generateWorld, type CompiledStage, type RuleState } from '../sim/compile';
+import { trainingSeed } from '../learning/trainer';
 import { store, useStore, type Binder } from './store';
 import { WorldView } from './WorldView';
 import { HandCardView, ManySlot, NodeChip, Sleeve, SlotChip, cardOf, withSnapshot } from './cards';
@@ -139,7 +140,47 @@ function PenView({ stage, pet }: { stage: StageSpec; pet: Pet }) {
   }, [probing, preview, probeAt]);
   const probeCells = useMemo(() => (probeWorld && probePolicy ? probeField(probePolicy, probeWorld, stage.learner.focus) : []), [probeWorld, probePolicy, stage.learner.focus]);
   const probeTrail = useMemo(() => (probeWorld && probePolicy && probeAt ? probePath(probePolicy, probeWorld, stage.learner.focus, Math.min(40, stage.maxTicks)) : undefined), [probeWorld, probePolicy, probeAt, stage.learner.focus, stage.maxTicks]);
-  const world = showingReplay && replay.world ? replay.world : probeWorld ?? preview;
+  // "Play it yourself": steer the pet through the lesson by hand. Same simulator and rules; never training.
+  const [play, setPlay] = useState<PlayState | null>(null);
+  const startPlay = (seed = s.ui.previewSeed) => {
+    const cs = compileStage(stage);
+    setProbing(false);
+    setPlay({ cs, w: cs.generate(seed), rs: cs.newRuleState(), treats: 0, log: [], ended: null });
+    store.mutate((g) => { g.progress.flags.playedLesson = true; }, { save: false });
+  };
+  const act = (a: Action) => {
+    if (!play || play.ended) return;
+    if (!legalActions(play.w, stage.abilities).includes(a)) { audio.play('card.reject'); store.toast(`This lesson doesn’t give ${pet.name} that ability.`, 'warn'); return; }
+    const w = cloneWorld(play.w);
+    const prev = { x: w.pet.x, y: w.pet.y };
+    const events = step(w, a);
+    const out = play.cs.evalStep(w, prev, events, play.rs);
+    audio.playReplay(events, w.w);
+    const log = out.hits.map((h) => `${h.label}${h.amount ? ` ${h.amount > 0 ? '+' : '−'}${Math.abs(h.amount)}` : ''}${h.end ? ' · ends the try' : ''}`);
+    let ended: string | null = null;
+    if (out.end || w.tick >= stage.maxTicks) {
+      const ok = play.cs.isSuccess(w);
+      ended = ok ? 'Success ✓ — this try counts.' : play.cs.isFail(w) ? 'A miss ✗ — FAIL held (or a rule ended it as a miss).' : out.end ? 'The try ended, but SUCCESS wasn’t true — it counts as a miss.' : 'Time’s up and SUCCESS wasn’t true — a miss.';
+      audio.play(ok ? 'train.certified' : 'train.notCertified');
+    }
+    setPlay({ ...play, w, treats: play.treats + out.reward, log, ended });
+  };
+  useEffect(() => {
+    if (!play) return;
+    const keys: Record<string, Action> = { ArrowUp: 'N', ArrowRight: 'E', ArrowDown: 'S', ArrowLeft: 'W', ' ': 'wait', p: 'pick', d: 'drop', w: 'water', x: 'shoo', g: 'nudge' };
+    const h = (e: KeyboardEvent) => {
+      const a = keys[e.key];
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (!a || tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+      e.preventDefault();
+      act(a);
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  });
+  useEffect(() => { setPlay(null); }, [stage.id, stage.version]);
+
+  const world = play ? play.w : showingReplay && replay.world ? replay.world : probeWorld ?? preview;
   const last = showingReplay ? trace!.frames[replay.frame - 1] : undefined;
   const mood = showingReplay ? (replay.frame >= replay.frames && trace!.success ? 'celebrate' : last?.hits?.length ? 'celebrate' : 'move') : 'idle';
 
@@ -196,7 +237,20 @@ function PenView({ stage, pet }: { stage: StageSpec; pet: Pet }) {
           tileLabel={(x, y) => s.ui.placing ? `Place at ${x},${y}` : `Tile ${x},${y}`} />
       </div>
       <div className="pen-foot">
-        {showingReplay ? (
+        {play && !showingReplay ? (
+          <div className="play" data-tut="play">
+            <span className="badge b-scripted">Playing it yourself — not training</span>
+            <span className="num small">step {play.w.tick}/{stage.maxTicks} · {play.treats.toFixed(2).replace(/\.?0+$/, '')} treats · SUCCESS now: {play.cs.isSuccess(play.w) ? 'yes ✓' : 'no'}</span>
+            <div className="play-log small" aria-live="polite">{play.ended ?? (play.log.length ? `Rules fired: ${play.log.join(' · ')}` : 'Arrow keys to move · Space stay · P pick up · D put down · W water · X shoo · G gate')}</div>
+            <div className="play-pad">
+              {(['W', 'N', 'S', 'E'] as Action[]).map((a) => <button key={a} className="btn ghost small" aria-label={`Move ${a === 'N' ? 'up' : a === 'S' ? 'down' : a === 'W' ? 'left' : 'right'}`} onClick={() => act(a)}>{a === 'N' ? '↑' : a === 'S' ? '↓' : a === 'W' ? '←' : '→'}</button>)}
+              {([['stay', 'wait', 'Stay'], ['pickup', 'pick', 'Pick up'], ['drop', 'drop', 'Put down'], ['water', 'water', 'Water'], ['shoo', 'shoo', 'Shoo'], ['nudge', 'nudge', 'Nudge gate']] as const).filter(([ab]) => stage.abilities.includes(ab)).map(([, a, label]) => <button key={a} className="btn ghost small" onClick={() => act(a as Action)}>{label}</button>)}
+              <button className="btn ghost small" onClick={() => startPlay()}>Restart</button>
+              <button className="btn ghost small" onClick={() => { s.setUi({ previewSeed: s.ui.previewSeed + 1 }); startPlay(s.ui.previewSeed + 1); }}>Next layout</button>
+              <button className="btn ghost small" onClick={() => setPlay(null)}>Stop</button>
+            </div>
+          </div>
+        ) : showingReplay ? (
           <>
             <span className={`badge b-${trace!.label}`}>{traceBadge(trace)}</span>
             <span className="num small">step {replay.frame}/{replay.frames} · {trace!.success ? 'success' : trace!.failed ? 'failed' : replay.frame >= replay.frames ? 'ran out of time' : '…'} · {trace!.reward.toFixed(1)} treats</span>
@@ -210,11 +264,13 @@ function PenView({ stage, pet }: { stage: StageSpec; pet: Pet }) {
             <span className="small">{probing ? `Arrows = ${stage.learner.skill} r${probeRev?.rev}'s move on each tile, dots = another action (shoo, stay…). Bigger = surer, grey = never practised exactly. Tap a tile to start ${pet.name} there.` : s.ui.placing === 'zone.rect' ? (s.ui.zoneStart ? 'Now tap the opposite corner' : 'Tap one corner of the area') : s.ui.placing ? `Tap a tile to place ${cardOf(node(s.ui.placing))?.presentation.title ?? 'it'}` : 'Dashed = scattered (moves every try)'}</span>
             <span className="row gap">
               {probePolicy && <button className="btn ghost small" data-tut="probe" aria-pressed={probing} onClick={() => { setProbing(!probing); setProbeAt(null); if (!probing) store.mutate((g) => { g.progress.flags.probed = true; }); }}>{probing ? 'Stop probing' : `What does ${pet.name} do?`}</button>}
+              <button className="btn ghost small" data-tut="play-btn" onClick={() => startPlay()}>Play it yourself</button>
               <button className="btn ghost small" onClick={() => s.setUi({ previewSeed: s.ui.previewSeed + 1 })}>Roll layout</button>
             </span>
           </>
         )}
       </div>
+      {!showingReplay && !play && <LayoutStrip stage={stage} pet={pet} />}
     </div>
   );
 }
@@ -287,7 +343,20 @@ function EnvironmentBinder({ stage }: { stage: StageSpec }) {
           if (!id) { const t = node('place.time', { mode: 'night' }); id = t.id; update((st) => { st.environment.push(t); }); }
           s.setUi({ placing: null, slot: { parentId: id, socket: 'kind', index: null } });
         }}><span className="card-title">Time of day</span><span className="card-sub">{(() => { const t = stage.environment.find((p) => p.cardId === 'place.time'); return t ? paramOf(t, 'mode', 'day') : 'day (default)'; })()}</span></button>
+        <button className="card g-obj" onClick={() => {
+          let id = stage.environment.find((p) => p.cardId === 'place.obstacles')?.id;
+          if (!id) { const t = node('place.obstacles', { amount: 'few', kind: 'rocks' }); id = t.id; update((st) => { st.environment.push(t); }); audio.play('pen.place'); }
+          s.setUi({ placing: null, slot: { parentId: id, socket: 'kind', index: null } });
+        }}><span className="card-title">Obstacles</span><span className="card-sub">{(() => { const t = stage.environment.find((p) => p.cardId === 'place.obstacles'); return t ? `${paramOf(t, 'amount', 'few')} ${paramOf(t, 'kind', 'rocks')}` : 'none yet'; })()}</span></button>
       </div>
+      <h4>Pen size</h4>
+      <div className="seg small-seg" role="radiogroup" aria-label="Pen size" data-tut="pen-size">
+        {([[6, false, '6×6'], [8, false, '8×8'], [10, false, '10×10'], [10, true, 'varies (6–10)']] as const).map(([n, vary, label]) => {
+          const on = stage.size.w === n && stage.size.h === n && !!stage.varySize === vary;
+          return <button key={label} role="radio" aria-checked={on} className={on ? 'on' : ''} onClick={() => update((st) => { st.size = { w: n, h: n }; st.varySize = vary || undefined; })}>{label}</button>;
+        })}
+      </div>
+      <p className="small muted">{stage.varySize ? 'A new size every try, from 6×6 up to 10×10. (Movement skills already cope with bigger pens; obstacles help more in cluttered places.)' : 'Bigger pens mean longer walks (raise “Time per try” in the Pet binder if tries run out).'}</p>
       <h4>In this pen</h4>
       <ul className="placements" data-tut="placements">
         {stage.environment.map((p) => {
@@ -297,7 +366,7 @@ function EnvironmentBinder({ stage }: { stage: StageSpec }) {
             <li key={p.id} className={s.ui.slot?.parentId === p.id ? 'sel' : ''}>
               {kind && <ObjectIcon kind={kind} size={22} />}
               <button className="link" onClick={() => s.setUi({ slot: { parentId: p.id, socket: 'kind', index: null } })}>
-                {p.cardId === 'place.weather' ? `Weather: ${paramOf(p, 'mode', 'dry') === 'random' ? 'rain or dry (random each try)' : paramOf(p, 'mode', 'dry')}` : p.cardId === 'zone.rect' ? `Area “${paramOf(p, 'name', 'coop')}” ${paramOf(p, 'w', 2)}×${paramOf(p, 'h', 2)} ${paramOf(p, 'where', 'fixed') === 'random' ? '(random spot each try)' : `at (${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`}` : p.cardId === 'place.time' ? `Time of day: ${paramOf(p, 'mode', 'day') === 'random' ? 'day or night (random each try)' : paramOf(p, 'mode', 'day')}` : p.cardId === 'place.pet' ? `Pet starts at ${paramOf(p, 'mode', 'random') === 'random' ? 'a random spot' : `(${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`}` : p.cardId === 'place.random' ? `${paramOf(p, 'count', 1)} × ${REGISTRY.objects.get(kind ?? '')?.name ?? '?'} scattered (${paramOf(p, 'region', 'anywhere')})` : `${REGISTRY.objects.get(kind ?? '')?.name ?? '?'} at (${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`}
+                {placementText(stage, p)}
               </button>
               <span className="chip">{card?.presentation.title}</span>
               {p.cardId === 'place.fixed' && <button className="btn ghost small" onClick={() => update((st) => { const x = st.environment.find((y) => y.id === p.id); if (x) { x.cardId = 'place.random'; x.args = { kind: x.args.kind, count: 1, region: 'anywhere' }; } })}>Scatter this</button>}
@@ -312,15 +381,59 @@ function EnvironmentBinder({ stage }: { stage: StageSpec }) {
   );
 }
 
+const kindOf = (p: SpecNode) => (isNode(p.args.kind) ? p.args.kind.cardId.replace(/^kind:/, '') : null);
+
+/** One line for a placement card in the "In this pen" list. */
+function placementText(stage: StageSpec, p: SpecNode): string {
+  const t = describe(p, { petName: 'Pet', target: stage.learner.focus });
+  if (p.cardId === 'place.random') return `Scatter ${t}`;
+  if (p.cardId === 'place.obstacles') return `Obstacles: ${t}`;
+  if (p.cardId === 'place.fixed') return `Place ${t}`;
+  if (p.cardId === 'zone.rect') return `Area “${paramOf(p, 'name', 'coop')}” ${paramOf(p, 'w', 2)}×${paramOf(p, 'h', 2)} ${paramOf(p, 'where', 'fixed') === 'random' ? '(random spot each try)' : `at (${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`}`;
+  if (p.cardId === 'place.pet' && paramOf(p, 'mode', 'random') === 'fixed') return `Pet starts at (${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`;
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+interface PlayState { cs: CompiledStage; w: World; rs: RuleState; treats: number; log: string[]; ended: string | null }
+
+/** Six layouts the pen makes during practice, to see its variety at a glance. Tap one to show it above. */
+function LayoutStrip({ stage, pet }: { stage: StageSpec; pet: Pet }) {
+  const s = useStore();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const seeds = useMemo(() => Array.from({ length: 6 }, (_, i) => trainingSeed(stage, i * 97)), [stage.id, stage.seed]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const worlds = useMemo(() => seeds.map((seed) => generateWorld(stage, seed)), [seeds, stage, stage.version]);
+  return (
+    <div className="layout-strip" data-tut="layout-strip" aria-label="Example practice layouts">
+      {worlds.map((w, i) => (
+        <button key={seeds[i]} className={s.ui.previewSeed === seeds[i] ? 'on' : ''} aria-label={`Show practice layout ${i + 1}`} onClick={() => s.setUi({ previewSeed: seeds[i] })}>
+          <WorldView world={w} palette={pet.palette} label={`Practice layout ${i + 1}`} className="thumb" />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function PlacementSleeve({ stage, id }: { stage: StageSpec; id: string }) {
   const p = stage.environment.find((x) => x.id === id);
   if (!p) return null;
   const card = cardOf(p)!;
   const set = (k: string, v: number | string) => withSnapshot(stage.id, (st) => { const t = st.environment.find((x) => x.id === id); if (t) t.args[k] = v; });
+  const setNode = (k: string, v: SpecNode) => withSnapshot(stage.id, (st) => { const t = st.environment.find((x) => x.id === id); if (t) t.args[k] = v; });
   return (
     <div className="sleeve panel">
       <div className="eyebrow">Sleeve · {card.presentation.title}</div>
       <div className="params">
+        {card.sockets.filter((so) => so.id !== 'kind' && socketActive(p, so, card.params?.find((x) => x.id === so.when?.param)?.default)).map((so) => {
+          if (so.type.kind === 'nominal' && so.type.name === 'Area') {
+            const names = stage.environment.filter((z) => z.cardId === 'zone.rect').map((z) => String(z.args.name ?? 'coop'));
+            const cur = isNode(p.args[so.id]) ? String((p.args[so.id] as SpecNode).args.name ?? '') : '';
+            return <label key={so.id} className="param-edit">{so.label}<select value={cur} onChange={(e) => setNode(so.id, node('area.named', { name: e.target.value }))}><option value="" disabled>{names.length ? 'pick an area' : 'paint an Area first'}</option>{names.map((n) => <option key={n} value={n}>{n}</option>)}</select></label>;
+          }
+          const kinds = [...placedKinds(stage)].filter((k) => k !== kindOf(p));
+          const cur = isNode(p.args[so.id]) ? (p.args[so.id] as SpecNode).cardId.replace(/^kind:/, '') : '';
+          return <label key={so.id} className="param-edit">{so.label}<select value={cur} onChange={(e) => setNode(so.id, node(`kind:${e.target.value}`))}><option value="" disabled>pick a thing in the pen</option>{kinds.map((k) => <option key={k} value={k}>{REGISTRY.objects.get(k)?.name ?? k}</option>)}</select></label>;
+        })}
         {(card.params ?? []).map((pd) => {
           const v = p.args[pd.id] ?? pd.default;
           if (pd.kind === 'choice') return <label key={pd.id} className="param-edit">{pd.label}<select value={String(v)} onChange={(e) => set(pd.id, e.target.value)}>{pd.choices!.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}</select></label>;
@@ -431,10 +544,15 @@ function RuleRow({ stage, r, errs }: { stage: StageSpec; r: SpecNode; errs: Set<
   const s = useStore();
   const update = (fn: (st: StageSpec) => void) => withSnapshot(stage.id, fn);
   return (
-    <div className={`rule ${errs.has(r.id) ? 'err' : ''}`}>
+    <div className={`rule ${errs.has(r.id) ? 'err' : ''} ${r.args.off === 1 ? 'off' : ''}`}>
       <div className="row between">
         <input className="rule-label" aria-label="Rule name" value={paramOf(r, 'label', '')} onChange={(e) => update((st) => { const x = st.rules.find((y) => y.id === r.id); if (x) x.args.label = e.target.value.slice(0, 40); })} />
-        <span className="row gap">
+        <span className="row gap rule-tools">
+          <button className="icon-btn small" title={r.args.off === 1 ? 'Switch this rule back on' : 'Switch off (keep it, but don’t use it)'} aria-label={r.args.off === 1 ? 'Switch rule on' : 'Switch rule off'} aria-pressed={r.args.off === 1}
+            onClick={() => update((st) => { const x = st.rules.find((y) => y.id === r.id); if (!x) return; if (x.args.off === 1) delete x.args.off; else x.args.off = 1; })}>{r.args.off === 1 ? '▶' : '⏸'}</button>
+          <button className="icon-btn small" aria-label="Move rule up" disabled={stage.rules[0]?.id === r.id} onClick={() => update((st) => { const i = st.rules.findIndex((y) => y.id === r.id); if (i > 0) [st.rules[i - 1], st.rules[i]] = [st.rules[i], st.rules[i - 1]]; })}>↑</button>
+          <button className="icon-btn small" aria-label="Move rule down" disabled={stage.rules.at(-1)?.id === r.id} onClick={() => update((st) => { const i = st.rules.findIndex((y) => y.id === r.id); if (i >= 0 && i < st.rules.length - 1) [st.rules[i + 1], st.rules[i]] = [st.rules[i], st.rules[i + 1]]; })}>↓</button>
+          <button className="icon-btn small" title="Duplicate rule" aria-label="Duplicate rule" onClick={() => { audio.play('card.snap'); update((st) => { const i = st.rules.findIndex((y) => y.id === r.id); if (i < 0) return; const c = cloneNode(st.rules[i], true); c.args.label = `${paramOf(st.rules[i], 'label', 'Rule')} (copy)`.slice(0, 40); st.rules.splice(i + 1, 0, c); }); }}>⎘</button>
           <button className="icon-btn small" title="Save rule as template" aria-label="Save rule as template" onClick={() => { const name = prompt('Template name', paramOf(r, 'label', 'Rule')); if (name) store.mutate((g) => { const prev = g.templates.filter((t) => t.name === name); g.templates.push({ id: newId('tpl'), name, revision: prev.length + 1, createdAt: Date.now(), output: { kind: 'nominal', name: 'Rule' }, root: structuredClone(r), exposed: [] }); store.toast(`Template “${name}” saved.`, 'good'); }); }}>⧉</button>
           <button className="icon-btn small" aria-label="Delete rule" onClick={() => { update((st) => { st.rules = st.rules.filter((x) => x.id !== r.id); }); s.setUi({ slot: null }); }}>✕</button>
         </span>

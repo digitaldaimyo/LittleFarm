@@ -20,7 +20,7 @@ Other scripts:
 | `npm run build` | Typecheck + production build into `dist/` (static files; host anywhere or open with `npm run preview`) |
 | `npm run typecheck` | TypeScript only |
 | `npm run lint` | ESLint |
-| `npm test` | Vitest suite: 123 tests in 17 files (sim, registry, learning, saves, farm, training loop, every milestone gate, the Field Guide, the card editor, sound cues, teaching polish) |
+| `npm test` | Vitest suite: 134 tests in 19 files (sim, registry, learning, saves, farm, training loop, every milestone gate, the Field Guide, the card editor, sound cues, teaching polish, pens, and a layout fingerprint that keeps existing lessons' layouts fixed) |
 | `npm run bench` | Trains every starter skill under 5 seeds and prints held-out results, hardware and timings |
 | `npm run evidence` | Reproduces the measurements behind the Field Guide and the Trainer's notebook |
 | `npm run e2e` | Browser test that plays all nine Field Guide lessons with real clicks, about 45 s (run `npm run build` first; needs Playwright with Chromium). `npm run e2e -- --from=4` runs lessons 4–9 only |
@@ -47,6 +47,17 @@ The **First lesson** banner (lesson 1 of the Field Guide) walks you through this
 - Every rule and condition **reads back as a sentence** under its cards ("When Pip shoos chicken: +10 treats, end try (judged by SUCCESS)").
 - The hand **recommends cards for this lesson**: a lesson with Shoo suggests *Shoos* and *Has done…* first, and "More cards" is sorted into short groups.
 - **Measured checks** run about 30 quick random tries whenever the lesson changes. They warn, with a one-tap repair, when SUCCESS ends tries before your goal rule can ever fire, when a rule ends tries that never count, or when SUCCESS is already true as tries start. If a reward depends on something the pet can't sense ("have I shooed yet?"), the game suggests the matching **Done … yet?** sense.
+
+**Better pens, and trying them yourself.**
+- **Scatter** can now place things *inside* an area, *next to* or *away from* something, or *far from the pet*.
+- Counts can vary ("2, or up to 2 more"), and things can appear *on about half the tries*.
+- **Pen size**: 6×6, 8×8, 10×10, or *varies* each try.
+- **Obstacles** scatter a few, some or many rocks (or fences, from the shop).
+- The pet can start inside an area or away from something.
+- Six **example layouts** under the pen show the variety your pen produces.
+- **Play it yourself** steers the pet through the lesson by hand (arrow keys or buttons): rules light up as they fire, treats add up, and you see whether SUCCESS holds and how the try ends. It never counts as training.
+- Rules can be **duplicated, reordered and switched off** (kept on the mat, but not used).
+- New conditions: **Next to** (the 8 tiles around), **Thing near thing** (e.g. a chicken within 1 of the bin), **Time in try** (before or after step N).
 
 **Invent your own skills.** Once a pet has a certified Approach, *Your own skills* unlocks. In **Teach → Pet → + New skill…** you name a skill and choose:
 - its **senses**, i.e. what it pays attention to: *Where is…*, *How far is…*, *Standing on…*, *Walls nearby*, *Hazards nearby*, *Last heading*, *Carrying?*, *Patience*. A meter shows how many situations it must learn.
@@ -101,5 +112,5 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 | `docs/TESTING.md` | Test suites, benchmark results, performance, browser checks |
 | `docs/ROADMAP.md` | The expansion roadmap (all six milestones shipped) and what could come next |
 | `docs/TUTORIAL_PLAN.md` | The Field Guide's design, the evidence behind each lesson, and what shipped |
-| `docs/TEACHING_PLAN.md` | Polishing rules, conditions and pens: the plan, and what phase A shipped |
+| `docs/TEACHING_PLAN.md` | Polishing rules, conditions and pens: the plan, and what phases A and B shipped |
 | `docs/SOUND_PLAN.md` | Sound effects, ambience, music and sound settings: the plan, and what phase A shipped |

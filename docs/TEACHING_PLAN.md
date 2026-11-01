@@ -2,7 +2,24 @@
 
 **Goal:** make it easier to say what you mean when you build a lesson. More of what a player intends should be expressible, the right card should be quick to find, a lesson that can't work should explain why, and players should be able to keep building on what they've made.
 
-Status: **phase A shipped.** Decisions (section 6) all went with the recommendations: three honest End try outcomes with old saves migrated; *Has done…* on the farm counts from when the skill started; SUCCESS and FAIL as lists; pen sizes and play-it-yourself in phase B. Sound phase C is on hold.
+Status: **phases A and B shipped.** Decisions (section 6) all went with the recommendations: three honest End try outcomes with old saves migrated; *Has done…* on the farm counts from when the skill started; SUCCESS and FAIL as lists; pen sizes and play-it-yourself in phase B. Sound phase C is on hold.
+
+### Phase B: what shipped, and what we learned
+- **Pens:**
+  - *Scatter* places things inside an area, next to something (the 8 tiles around), away from something, or far from the pet.
+  - Counts vary ("or up to 2 more"), and things can appear "on about half the tries".
+  - Pen size is 6×6, 8×8, 10×10, or *varies* each try. *Obstacles* gives a few, some or many rocks, fences or both.
+  - The pet can start inside an area or away from something.
+  - The extra boxes ("next to …", "inside …") appear only when that option is chosen, via sockets with a `when`.
+- **Try it yourself:**
+  - *Play it yourself* steers the pet through the real lesson. Rules light up as they fire, with treats, "SUCCESS now" and how the try ended, plus the same sounds as replays. It never counts as training.
+  - Six example practice layouts sit under the pen; tap one to show it.
+- **Rule housekeeping:** duplicate, reorder, and switch off a rule. A switched-off rule is kept on the mat (dimmed and struck through, "Switched off" in its sentence) but doesn't run, and the checks ignore it.
+- **Conditions:** *Next to*, *Thing near thing*, *Time in try*.
+- **Safety net:** before changing layout generation, every recipe's and the tutorial's layouts (and transfer pens) were fingerprinted into a fixture. New options only draw random numbers when used, so all existing lessons keep exactly the same layouts (tested).
+- **What we learned (measured, 5 seeds):** varying the pen size did *not* help Approach. It already handles bigger pens (96%), and in a cluttered 12×12 it scored a little lower (42% vs 47%). *Some* obstacles helped exactly there (+7–9 points) at a small cost in open pens. The pen-size hint now says this instead of promising transfer. Details in TESTING.md.
+- **Not done in B:** a "varies" option for non-square pens, and drawing the probe on varied sizes (it uses the previewed layout, which works).
+- **Tests:** `tests/pens.test.ts` (10), `tests/layouts.test.ts` (fixture), and browser checks for pen size, the layout strip, play-it-yourself and rule housekeeping.
 
 ### Phase A: what shipped, and what we learned
 - **Your case now takes 4 taps** from an empty SUCCESS: the slot, *Has done…*, *Shoos*, *Chicken* ("Your pet" fills itself in). The hand recommends each card first. Built with fitting senses it learns **90–100% held out vs 30% random** (bigger pens 100%), on 3 seeds.

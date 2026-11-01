@@ -33,13 +33,13 @@ export const EVENT_ABILITY: Record<string, string> = {
 
 /** "More cards" sub-groups for conditions, so a long list reads as a few short ones. */
 const COND_GROUP: Record<string, string> = {
-  'cond.at': 'Where', 'cond.near': 'Where', 'cond.farFrom': 'Where', 'cond.itNear': 'Where', 'cond.closer': 'Where', 'cond.petInArea': 'Where', 'cond.inArea': 'Where', 'cond.allInArea': 'Where',
+  'cond.at': 'Where', 'cond.near': 'Where', 'cond.nextTo': 'Where', 'cond.kindNear': 'Where', 'cond.farFrom': 'Where', 'cond.itNear': 'Where', 'cond.closer': 'Where', 'cond.petInArea': 'Where', 'cond.inArea': 'Where', 'cond.allInArea': 'Where',
   'cond.happened': 'Has happened', 'cond.just': 'Has happened', 'cond.delivered': 'Has happened', 'cond.watered': 'Has happened', 'cond.stayedFor': 'Has happened', 'cond.compare': 'Has happened',
   'cond.carrying': 'Your pet', 'cond.carryingAny': 'Your pet', 'cond.hasWater': 'Your pet', 'cond.energyBelow': 'Your pet',
-  'cond.night': 'The world', 'cond.raining': 'The world', 'cond.gates': 'The world',
+  'cond.night': 'Time and world', 'cond.raining': 'Time and world', 'cond.gates': 'Time and world', 'cond.time': 'Time and world',
   'cond.and': 'Combine', 'cond.any': 'Combine', 'cond.not': 'Combine',
 };
-const GROUP_ORDER = ['Combine', 'Has happened', 'Where', 'Your pet', 'The world'];
+const GROUP_ORDER = ['Combine', 'Has happened', 'Where', 'Your pet', 'Time and world'];
 
 /** Contextual nudges: abilities, the slot's role, and whether the pen has what a card talks about. */
 function contextScore(reg: Registry, card: CardDef, ctx: HandContext, placedTraits: Set<string>): number {

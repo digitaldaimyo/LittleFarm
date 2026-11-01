@@ -1,7 +1,7 @@
 # Testing and benchmarks
 
 ## Automated suites (`npm test`)
-123 tests in 17 files. CI-style check before every push: `npm run typecheck && npm run lint && npm test && npm run build`.
+134 tests in 19 files. CI-style check before every push: `npm run typecheck && npm run lint && npm test && npm run build`.
 
 | File | Covers |
 |---|---|
@@ -21,6 +21,8 @@
 | `tests/editor.test.ts` | Card editor regression (the hand stayed closed for slots *inside* a sense card, so “How far is…” couldn't be aimed at Rock): the sense editor keeps its hand open for nested slots and fills them; the hand recommends Patience and How far is… without opening “More cards” |
 | `tests/sound.test.ts` | Every farm effect and every tag on one (watered, filled, gate open/shut, shoo!, pecked, egg, and the sound-only shoo/firefly/crow/dawn/dusk markers) maps to its cue or is silent on purpose (naps, rain), also checked against a real farm run through a night (dusk and dawn heard); every sim event maps to a replay cue or is silent on purpose, matching the farm's sounds; stereo position; coins in one tick merge; the limiter's cooldowns and voice cap are deterministic with a fake clock and keep 4× speed sparse; every cue has a recipe within its declared length and gentle levels; ambience layers follow day/night/rain and their loops are seeded and fit their length; new games have sound on; older saves start with it on, a chosen “off” is kept, volumes are clamped |
 | `tests/teaching.test.ts` | Teaching polish: the event tally (per try, cloned, no moves or ticks); *Has done…* with counts, *Just…*, *Any of*; the *Done … yet?* sense before vs after, and a farm skill run counting from its own start; End try *judged by SUCCESS / counts as a success / counts as a miss*; no recipe ends a try "as a miss" while SUCCESS holds (so recipe scores are unchanged); **gate:** "end on shoo chicken" built from cards learns ≥ 30 points over random (held out); your original setup is caught by the measured check and its repair works; measured checks stay quiet on every recipe; the random baseline uses every ability; memory validation (sense suggestion and its repair, *every step*, plans); the hand ranks *Shoos* / *Has done…* first in a Shoo lesson and groups More cards; every recipe reads as sentences; v4 → v5 save and v1 → v2 skill-card migrations |
+| `tests/pens.test.ts` | Better pens: *next to* (one of the 8 tiles around), *away from* and *far from the pet* keep their distances, *inside* an area (things and the pet's start), the pet starting *away from* something; counts that vary stay in range and really vary; *sometimes* appears on 25–75% of tries; varying pen size covers 6×6 to 10×10; obstacles scale with the pen (rocks, fences, mixed); new options are deterministic; conditional sockets are required only when used; fence obstacles need the shop's fences; placements read as sentences; *Next to* counts diagonals but not standing on it; *Thing near thing*; *Time in try*; switched-off rules never run and checks ignore them |
+| `tests/layouts.test.ts` | Every recipe and the tutorial pen (and their bigger transfer pens) produce exactly the layouts recorded in `tests/fixtures/layouts.json`, so changes to layout generation can't silently move existing lessons. Regenerate only on purpose: `PRINT_LAYOUTS=1 npx vite-node scripts/layout-fingerprint.ts > tests/fixtures/layouts.json` |
 | `tests/farm.test.ts` | Trained pet produces coins where an untrained pet produces none; independent repertoires and rollback; full first-hour flow (adopt → pen → train → save → deploy → earn → Fetch unlocked, tutorial complete); Fetch delivers carrots on the farm; 3000-tick runs keep producing (no permanent stuck loops) with both executives |
 
 ## Benchmark protocol (`npm run bench`)
@@ -47,6 +49,18 @@ Hardware: Intel Xeon @ 2.10 GHz, 4 threads, Node 22 (a cloud container, no GPU).
 Re-run for the docs polish pass (same hardware): every mean and minimum above reproduced exactly. Per-run rows are printed by the script. In the browser, *Normal* speed adds small delays so training is watchable (Approach takes a few seconds). *Fast* is close to the raw numbers above.
 
 **Random-baseline fix (teaching polish, phase A):** the random baseline used to leave out the Shoo and Stay abilities, so it never shooed or stayed. Re-run with the fix (same hardware), every learned mean and minimum is unchanged. Random moved for Herd (25% → 20%) and the shoo loophole (25% → 20%); *Wait for it* stays at 0%. Herd's old 25% came from chickens wandering into the coop by themselves.
+
+### Does pen variety help? (teaching polish, phase B)
+Approach (1,500 tries, 5 seeds), measured on its own held-out layouts, bigger transfer pens, and a cluttered 12×12 pen with many rocks:
+
+| Practised in | Own layouts | Bigger pens | Cluttered 12×12 |
+|---|---|---|---|
+| 8×8, the recipe's rocks | 93% | 96% | 47% (40–60) |
+| Pen size varies 6–10 | 94% | 94% | 42% (27–47) |
+| 8×8 + Obstacles: some | 83% | 86% | 54% (43–63) |
+| Varies + Obstacles: some | 82% | 86% | 56% (47–67) |
+
+Varying the size didn't help Approach: it already copes with bigger pens. Obstacles help in clutter (+7–9 points) at a small cost in open pens. The in-game hints say this rather than promising more.
 
 ### Known failures and caveats
 - *Morning chores* beats random choice of the same skills by +15 to +35 points depending on the seed (worst seed: 65% vs 30%). It depends on sub-skills trained in simpler pens (Herd, Water), and their failures dominate its misses.
@@ -88,6 +102,7 @@ Plays the whole Field Guide in headless Chromium with real clicks (run `npm run 
 - **Part 1, lessons 1–3, from a new game:** builds the first rule and SUCCESS card by card, trains, saves, forages to 5 coins, then the practice and scatter lessons (comparison cards, the Scattered layouts row, "▶ a miss").
 - **Part 2, lessons 4–9, from a prepared save:** `scripts/e2e-save.ts` builds the save a player would have after lessons 1–3 (a certified Approach, 20 coins earned, so Fetch, Avoid and own skills are unlocked, and two pond splashes). The test imports it through Settings and plays: the pickup loophole and its repair card (4); "Test my Approach here" vs Avoid, then "Move with: Avoid" (5); Stay + Patience, the suggested rules, "How far is… → Rock" (the playtest bug) and removing it again (6); summaries, the probe, the journal and a skill-card download (7); a routine watching 2 conditions, then "Is at → Bin" (8); a shadowed plan row moved up until the preview shows it runs, deleted again, and the plan applied (9). Every lesson must end marked done.
 - **Teaching polish:** on the *Herd a chicken* lesson the test builds your original setup by clicking. That's a rule *WHEN Pip shoos chicken THEN End try* and SUCCESS *Is near → chicken*. The measured check warns that SUCCESS ends tries before the shoo rule can fire. Its one-tap repair makes SUCCESS *Has done… Pip shoos chicken* and the warning clears. Then it rebuilds that SUCCESS from empty in 4 taps (the hand recommends *Has done…*, then *Shoos*, first) and trains it: 10/20 vs 5/20 random. The herd recipe's senses aren't made for this goal; with fitting senses the unit-test gate gets 90–100%.
+- **Better pens:** on the same lesson the test sets pen size to *varies* and sees six example layouts in different sizes. It plays the lesson by keyboard (step 3, SUCCESS shown), then duplicates a rule and switches the copy off, which keeps it on the mat.
 - **Sound:** no AudioContext before the first click, one after it (the adopt chirp); all 38 cues render, none renders as silence (peak check), and the three ambience loops render at a gentle level (RMS day 0.009, night 0.005, rain 0.026); audio is running; the one-time "Sound is on" note appears with the first sound; key moments trigger their cues (card flick/snap/remove, pen place, train start, certified or not, save, pickup, coin; loophole, repair card, unlock, Field Guide step/offer/done). The test watches the loophole replay for 3 s and hears its pick-up/put-down sounds. On the farm the ambience is playing; pressing M mutes: no cues for 3 s and the ambience fades to zero. Cues are counted through a test hook (`window.__penDeckAudio`), not by listening.
 - Step checks wait up to 3 s for the banner, since some steps advance a moment after the click (`<details>` toggle events are asynchronous; this made one lesson-7 check flaky).
 - Throughout: no page errors and no request leaves the page's origin. On a failure it saves a screenshot and prints its path.

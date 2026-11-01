@@ -213,6 +213,23 @@ export function compileCondition(n: SpecNode): Cond {
       const fs = listArg(n, 'all').map(compileCondition);
       return (c) => fs.every((f) => f(c));
     }
+    case 'cond.nextTo': {
+      const k = kindArg(n, 'what');
+      return ({ w }) => w.objects.some((o) => o.kind === k && onGround(o) && Math.max(Math.abs(o.x - w.pet.x), Math.abs(o.y - w.pet.y)) === 1);
+    }
+    case 'cond.kindNear': {
+      const a = kindArg(n, 'what'), b = kindArg(n, 'near');
+      const d = paramOf(n, 'dist', 1);
+      return ({ w }) => {
+        const bs = w.objects.filter((o) => o.kind === b && onGround(o));
+        return w.objects.some((o) => o.kind === a && onGround(o) && bs.some((q) => q !== o && Math.abs(q.x - o.x) + Math.abs(q.y - o.y) <= d));
+      };
+    }
+    case 'cond.time': {
+      const before = paramOf(n, 'op', 'before') === 'before';
+      const t = paramOf(n, 'step', 20);
+      return ({ w }) => (before ? w.tick < t : w.tick >= t);
+    }
     case 'cond.any': {
       const fs = listArg(n, 'any').map(compileCondition);
       return (c) => fs.some((f) => f(c));
@@ -326,10 +343,13 @@ export function usesMemory(spec: StageSpec): boolean {
 
 export function generateWorld(spec: StageSpec, seed: number): World {
   const rng = new Rng(hashSeed(seed, 0x5eed));
-  const { w: W, h: H } = spec.size;
   const remembers = usesMemory(spec);
   let last: World | null = null;
+  // New options below only draw random numbers when they're used, so existing lessons keep their exact
+  // layouts (tests/layouts.test.ts).
   for (let attempt = 0; attempt < 40; attempt++) {
+    let { w: W, h: H } = spec.size;
+    if (spec.varySize) { const lo = Math.min(6, W); W = H = lo + rng.int(Math.max(1, Math.min(W, H) - lo + 1)); }
     const w = emptyWorld(W, H);
     w.rng = hashSeed(seed, 0xc4ea7);
     // Only lessons that remember events keep a tally (it costs a little on every step).
@@ -359,16 +379,51 @@ export function generateWorld(spec: StageSpec, seed: number): World {
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (!occupied.has(key(x, y)) && !areaTiles.has(key(x, y)) && regionOk(region, x, y, W, H)) out.push([x, y]);
       return out;
     };
-    if (petNode && paramOf(petNode, 'mode', 'random') === 'fixed') {
-      w.pet.x = Math.min(W - 1, paramOf(petNode, 'x', 0));
-      w.pet.y = Math.min(H - 1, paramOf(petNode, 'y', 0));
+    let petPlaced = true;
+    /** Tiles for the newer regions (inside an area, next to / away from a kind, far from the pet); null = old regions. */
+    const relTiles = (region: string, n: SpecNode): [number, number][] | null => {
+      const free = (x: number, y: number) => !occupied.has(key(x, y)) && !(petPlaced && w.pet.x === x && w.pet.y === y);
+      const out: [number, number][] = [];
+      if (region === 'inArea') {
+        const ar = w.areas?.find((a) => a.name === areaArg(n, 'area'));
+        if (ar) for (let y = ar.y; y < ar.y + ar.h; y++) for (let x = ar.x; x < ar.x + ar.w; x++) if (free(x, y)) out.push([x, y]);
+        return out;
+      }
+      if (region === 'nextTo' || region === 'awayFrom') {
+        const k = resolveKind(n.args.ref, spec.learner.focus);
+        const refs = w.objects.filter((o) => o.kind === k);
+        if (!refs.length) return out;
+        const away = Math.max(3, Math.floor((W + H) / 4));
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+          if (!free(x, y) || areaTiles.has(key(x, y))) continue;
+          const ok = region === 'nextTo'
+            ? refs.some((o) => Math.max(Math.abs(o.x - x), Math.abs(o.y - y)) === 1)
+            : refs.every((o) => Math.abs(o.x - x) + Math.abs(o.y - y) >= away);
+          if (ok) out.push([x, y]);
+        }
+        return out;
+      }
+      if (region === 'farFromPet') {
+        const far = Math.max(3, Math.floor((W + H) / 3));
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (free(x, y) && !areaTiles.has(key(x, y)) && Math.abs(w.pet.x - x) + Math.abs(w.pet.y - y) >= far) out.push([x, y]);
+        return out;
+      }
+      return null;
+    };
+    const petMode = petNode ? paramOf(petNode, 'mode', 'random') : 'random';
+    if (petMode === 'fixed') {
+      w.pet.x = Math.min(W - 1, paramOf(petNode!, 'x', 0));
+      w.pet.y = Math.min(H - 1, paramOf(petNode!, 'y', 0));
+    } else if (petMode === 'awayFrom') {
+      petPlaced = false; // placed after everything else, so it can start away from scattered things too
     } else {
-      const t = freeTiles('anywhere');
-      const [x, y] = t.length ? rng.pick(t) : [0, 0];
+      const t = (petMode === 'inArea' ? relTiles('inArea', petNode!) : null) ?? freeTiles('anywhere');
+      const t2 = t.length ? t : freeTiles('anywhere');
+      const [x, y] = t2.length ? rng.pick(t2) : [0, 0];
       w.pet.x = x;
       w.pet.y = y;
     }
-    occupied.add(key(w.pet.x, w.pet.y));
+    if (petPlaced) occupied.add(key(w.pet.x, w.pet.y));
     const timeNode = spec.environment.find((p) => p.cardId === 'place.time');
     const tmode = timeNode ? paramOf(timeNode, 'mode', 'day') : 'day';
     w.night = tmode === 'night' || (tmode === 'random' && rng.next() < 0.5);
@@ -376,19 +431,44 @@ export function generateWorld(spec: StageSpec, seed: number): World {
     const wmode = weatherNode ? paramOf(weatherNode, 'mode', 'dry') : 'dry';
     w.raining = wmode === 'rain' || (wmode === 'random' && rng.next() < 0.5);
     for (const p of spec.environment) {
+      if (p.cardId === 'place.obstacles') {
+        // A share of the pen's tiles, as rocks / fences / both.
+        const share = { few: 0.05, some: 0.1, many: 0.18 }[paramOf(p, 'amount', 'few')] ?? 0.05;
+        const mat = paramOf(p, 'kind', 'rocks');
+        const n = Math.max(1, Math.round(W * H * share));
+        for (let i = 0; i < n; i++) {
+          const t = freeTiles('anywhere');
+          if (!t.length) break;
+          const [x, y] = rng.pick(t);
+          addObject(w, mat === 'fences' ? 'fence' : mat === 'mixed' && i % 2 === 1 ? 'fence' : 'rock', x, y);
+          occupied.add(key(x, y));
+        }
+        continue;
+      }
       if (p.cardId !== 'place.random') continue;
       const k = resolveKind(p.args.kind, spec.learner.focus);
       if (!k) continue;
-      const count = paramOf(p, 'count', 1);
+      let count = paramOf(p, 'count', 1);
+      const vary = paramOf(p, 'vary', 'exact');
+      if (vary !== 'exact') count += rng.int((vary === 'more1' ? 1 : vary === 'more2' ? 2 : 3) + 1);
+      if (paramOf(p, 'chance', 'always') === 'sometimes' && rng.next() < 0.5) count = 0;
       const region = paramOf(p, 'region', 'anywhere');
       for (let i = 0; i < count; i++) {
-        let t = freeTiles(region);
+        let t = relTiles(region, p) ?? freeTiles(region);
         if (!t.length) t = freeTiles('anywhere');
         if (!t.length) break;
         const [x, y] = rng.pick(t);
         addObject(w, k, x, y);
         occupied.add(key(x, y));
       }
+    }
+    if (!petPlaced) {
+      const t = relTiles('awayFrom', petNode!) ?? [];
+      const t2 = t.length ? t : freeTiles('anywhere');
+      const [x, y] = t2.length ? rng.pick(t2) : [0, 0];
+      w.pet.x = x;
+      w.pet.y = y;
+      petPlaced = true;
     }
     if (w.raining) for (const o of w.objects) if (def(o.kind).traits.includes('Plot')) o.wet = true;
     last = w;
@@ -411,7 +491,8 @@ export function compileStage(spec: StageSpec): CompiledStage {
 
 function compileStageInner(spec: StageSpec): CompiledStage {
   const survive = spec.outcome === 'survive';
-  const rules = spec.rules.filter((r) => r.cardId === 'rule').map(compileRule);
+  // Switched-off rules stay on the mat (and in saves) but don't run.
+  const rules = spec.rules.filter((r) => r.cardId === 'rule' && r.args.off !== 1).map(compileRule);
   const success = spec.success ? compileCondition(spec.success) : () => false;
   const fail = spec.fail ? compileCondition(spec.fail) : () => false;
   return {

@@ -12,6 +12,8 @@ export interface SocketDef {
   type: TypeExpr;
   required: boolean;
   many?: boolean;
+  /** Only used (shown, validated, read) when a parameter has one of these values, e.g. "next to …" only for that region. */
+  when?: { param: string; in: string[] };
 }
 
 export interface ParamDef {
@@ -108,6 +110,8 @@ export interface StageSpec {
   blurb?: string;
   version: number;
   size: { w: number; h: number };
+  /** Pen size changes each try: a square from 6×6 up to `size` (variety helps skills transfer). */
+  varySize?: boolean;
   environment: SpecNode[];
   abilities: string[];
   rules: SpecNode[];

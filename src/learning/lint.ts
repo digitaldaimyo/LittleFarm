@@ -54,6 +54,7 @@ export function rolloutChecks(stage: StageSpec): Diagnostic[] {
   // A goal rule (it ends the try) that never gets a chance: SUCCESS keeps ending tries before it fires.
   if (endedBySuccess >= TRIES / 3) {
     for (const r of stage.rules) {
+      if (r.args.off === 1) continue;
       const ends = (Array.isArray(r.args.then) ? r.args.then : []).some((e) => isNode(e) && e.cardId === 'eff.end' && e.args.outcome !== 'fail');
       const ev = isNode(r.args.when) ? r.args.when : null;
       if (!ends || !ev || ev.cardId === 'ev.tick' || (fired.get(r.id) ?? 0) > 0) continue;

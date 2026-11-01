@@ -342,6 +342,24 @@ try {
     const rep = (await page.textContent('[data-tut="report-compare"]')).replace(/\s+/g, ' ');
     const after = Number(rep.split('After')[1]?.match(/(\d{1,2})\/20/)?.[1] ?? -1), rnd = Number(rep.split('Random')[1]?.match(/(\d{1,2})\/20/)?.[1] ?? -1);
     check(after >= 0 && after > rnd, `polish: trained, it beats random wandering (${after}/20 vs ${rnd}/20)`);
+
+    // Teaching polish (phase B): better pens, example layouts, play it yourself, rule housekeeping.
+    await tab('Environment');
+    await page.click('[data-tut="pen-size"] button:has-text("varies")');
+    const boxes = await page.$$eval('[data-tut="layout-strip"] svg.thumb', (els) => els.map((e) => e.getAttribute('viewBox')));
+    check(boxes.length === 6 && new Set(boxes).size >= 2, `pens: six example layouts, in different sizes (${[...new Set(boxes)].join(' / ')})`);
+    await page.click('[data-tut="layout-strip"] button >> nth=2');
+    await page.click('[data-tut="play-btn"]');
+    for (const k of ['ArrowUp', 'ArrowLeft', 'ArrowDown']) await page.keyboard.press(k);
+    const playing = (await page.textContent('[data-tut="play"]')).replace(/\s+/g, ' ');
+    check(/step 3\/\d+/.test(playing) && playing.includes('SUCCESS now'), `pens: play it yourself steps the real lesson (${playing.slice(0, 80)})`);
+    await page.click('.play-pad button:has-text("Stop")');
+    await tab('Rules');
+    const nRules = await page.locator('.binder-body .rule:not(.success-row):not(.fail-row)').count();
+    await page.click('.binder-body .rule:not(.success-row):not(.fail-row) >> nth=0 >> button[aria-label="Duplicate rule"]');
+    await page.click('.binder-body .rule:not(.success-row):not(.fail-row) >> nth=1 >> button[aria-label="Switch rule off"]');
+    const copy = (await page.textContent('.binder-body .rule:not(.success-row):not(.fail-row) >> nth=1')).replace(/\s+/g, ' ');
+    check((await page.locator('.binder-body .rule:not(.success-row):not(.fail-row)').count()) === nRules + 1 && copy.includes('(Switched off)'), 'pens: a rule duplicated and switched off (it stays on the mat)');
     const a2 = await page.evaluate(() => window.__penDeckAudio);
     const want2 = ['train.loophole', 'train.certified', 'ui.unlock', 'skill.save', 'card.remove', 'guide.step', 'guide.offer', 'guide.done'];
     const missing2 = want2.filter((c) => !a2.cues.includes(c));

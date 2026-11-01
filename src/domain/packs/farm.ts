@@ -58,14 +58,22 @@ export const FARM_CARDS: CardDef[] = [
 
   // Placement (Environment binder)
   N({ id: 'place.random', output: nominal('Placement'), evaluator: 'place.random',
-    sockets: [{ id: 'kind', label: 'Thing', type: KIND, required: true }],
+    sockets: [
+      { id: 'kind', label: 'Thing', type: KIND, required: true },
+      { id: 'ref', label: 'Next to / away from', type: KIND, required: true, when: { param: 'region', in: ['nextTo', 'awayFrom'] } },
+      { id: 'area', label: 'Area', type: nominal('Area'), required: true, when: { param: 'region', in: ['inArea'] } },
+    ],
     params: [
       { id: 'count', label: 'How many', kind: 'number', default: 1, min: 1, max: 8, step: 1 },
       { id: 'region', label: 'Where', kind: 'choice', default: 'anywhere', choices: [
         { value: 'anywhere', label: 'anywhere' }, { value: 'left', label: 'left half' }, { value: 'right', label: 'right half' },
-        { value: 'top', label: 'top half' }, { value: 'bottom', label: 'bottom half' }, { value: 'center', label: 'middle' } ] },
+        { value: 'top', label: 'top half' }, { value: 'bottom', label: 'bottom half' }, { value: 'center', label: 'middle' },
+        { value: 'inArea', label: 'inside' }, { value: 'nextTo', label: 'next to' }, { value: 'awayFrom', label: 'away from' }, { value: 'farFromPet', label: 'far from the pet' } ] },
+      { id: 'vary', label: 'Count varies', kind: 'choice', default: 'exact', choices: [
+        { value: 'exact', label: 'exactly' }, { value: 'more1', label: 'or 1 more' }, { value: 'more2', label: 'up to 2 more' }, { value: 'more3', label: 'up to 3 more' } ] },
+      { id: 'chance', label: 'Every try?', kind: 'choice', default: 'always', choices: [{ value: 'always', label: 'every try' }, { value: 'sometimes', label: 'on about half the tries' }] },
     ],
-    presentation: { title: 'Scatter', group: 'placement', sheet: 'Placement', hint: 'Random spot each try — teaches skills that transfer.', phrase: '{count} × {kind} {region}' } }),
+    presentation: { title: 'Scatter', group: 'placement', sheet: 'Placement', hint: 'Random spot each try — teaches skills that transfer. Vary the count, or make it appear only sometimes, for sturdier skills.', phrase: '{count} × {kind} {region} {ref}{area} ({vary}, {chance})' } }),
   N({ id: 'place.fixed', output: nominal('Placement'), evaluator: 'place.fixed',
     sockets: [{ id: 'kind', label: 'Thing', type: KIND, required: true }],
     params: [
@@ -74,12 +82,22 @@ export const FARM_CARDS: CardDef[] = [
     ],
     presentation: { title: 'Place here', group: 'placement', sheet: 'Placement', hint: 'Always the same tile.', phrase: '{kind} at ({x},{y})' } }),
   N({ id: 'place.pet', output: nominal('Placement'), evaluator: 'place.pet',
+    sockets: [
+      { id: 'ref', label: 'Away from', type: KIND, required: true, when: { param: 'mode', in: ['awayFrom'] } },
+      { id: 'area', label: 'Area', type: nominal('Area'), required: true, when: { param: 'mode', in: ['inArea'] } },
+    ],
     params: [
-      { id: 'mode', label: 'Start', kind: 'choice', default: 'random', choices: [{ value: 'random', label: 'random spot' }, { value: 'fixed', label: 'fixed spot' }] },
+      { id: 'mode', label: 'Start', kind: 'choice', default: 'random', choices: [{ value: 'random', label: 'anywhere' }, { value: 'fixed', label: 'on a fixed tile' }, { value: 'inArea', label: 'inside' }, { value: 'awayFrom', label: 'away from' }] },
       { id: 'x', label: 'Column', kind: 'number', default: 0, min: 0, max: 15, step: 1 },
       { id: 'y', label: 'Row', kind: 'number', default: 0, min: 0, max: 15, step: 1 },
     ],
-    presentation: { title: 'Pet start', group: 'placement', sheet: 'Placement', hint: 'Where the pet begins each try.', phrase: 'pet starts at {mode}' } }),
+    presentation: { title: 'Pet start', group: 'placement', sheet: 'Placement', hint: 'Where the pet begins each try.', phrase: 'pet starts {mode} {area}{ref}' } }),
+  N({ id: 'place.obstacles', output: nominal('Placement'), evaluator: 'place.obstacles',
+    params: [
+      { id: 'amount', label: 'How many', kind: 'choice', default: 'few', choices: [{ value: 'few', label: 'a few' }, { value: 'some', label: 'some' }, { value: 'many', label: 'many' }] },
+      { id: 'kind', label: 'Made of', kind: 'choice', default: 'rocks', choices: [{ value: 'rocks', label: 'rocks' }, { value: 'fences', label: 'fences' }, { value: 'mixed', label: 'rocks and fences' }] },
+    ],
+    presentation: { title: 'Obstacles', group: 'placement', sheet: 'Placement', hint: 'Scatters obstacles each try (a few ≈ 5% of tiles, some ≈ 10%, many ≈ 18%). Some variety helps more than none or lots.', phrase: '{amount} {kind}' } }),
 
   N({ id: 'zone.rect', output: nominal('Placement'), evaluator: 'zone.rect',
     params: [
@@ -212,6 +230,19 @@ export const FARM_CARDS: CardDef[] = [
   N({ id: 'cond.not', output: nominal('Condition'), evaluator: 'cond.not',
     sockets: [{ id: 'inner', label: 'Condition', type: nominal('Condition'), required: true }],
     presentation: { title: 'Not', group: 'condition', sheet: 'Conditions', phrase: 'not ({inner})' } }),
+  N({ id: 'cond.nextTo', output: nominal('Condition'), evaluator: 'cond.nextTo',
+    sockets: [{ id: 'actor', label: 'Who', type: A, required: true }, { id: 'what', label: 'What', type: KIND, required: true }],
+    presentation: { title: 'Next to', group: 'condition', sheet: 'Conditions', hint: 'On one of the 8 tiles around it (diagonals count), not on it.', phrase: '{actor} next to {what}' } }),
+  N({ id: 'cond.kindNear', output: nominal('Condition'), evaluator: 'cond.kindNear',
+    sockets: [{ id: 'what', label: 'What', type: KIND, required: true }, { id: 'near', label: 'Near what', type: KIND, required: true }],
+    params: [{ id: 'dist', label: 'Steps', kind: 'number', default: 1, min: 0, max: 10, step: 1 }],
+    presentation: { title: 'Thing near thing', group: 'condition', sheet: 'Conditions', hint: 'Any one of these within N steps of any one of those (e.g. a chicken within 1 of the coop’s rock).', phrase: 'a {what} within {dist} of a {near}' } }),
+  N({ id: 'cond.time', output: nominal('Condition'), evaluator: 'cond.time',
+    params: [
+      { id: 'op', label: 'Is', kind: 'choice', default: 'before', choices: [{ value: 'before', label: 'before' }, { value: 'after', label: 'after' }] },
+      { id: 'step', label: 'Step', kind: 'number', default: 20, min: 1, max: 120, step: 1 },
+    ],
+    presentation: { title: 'Time in try', group: 'condition', sheet: 'Conditions', hint: 'Which step of the try it is: reward finishing early, or give up on dawdling.', phrase: 'step {op} {step}' } }),
   N({ id: 'cond.any', output: nominal('Condition'), evaluator: 'cond.any',
     sockets: [{ id: 'any', label: 'Any of', type: nominal('Condition'), required: true, many: true }],
     presentation: { title: 'Any of', group: 'condition', sheet: 'Conditions', hint: 'True when at least one inner condition is true.', phrase: 'any of {any}' } }),

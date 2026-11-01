@@ -2,7 +2,7 @@ import type { CardDef, Diagnostic, SpecNode, StageSpec, TypeExpr } from './types
 import type { Registry } from './registry';
 import { REGISTRY, kindOfCard } from './registry';
 import { fits, generic, nominal, typeToString } from './typecheck';
-import { isNode, paramOf, placedKinds, walk } from './spec';
+import { isNode, paramOf, placedKinds, socketActive, walk } from './spec';
 
 interface Ctx {
   reg: Registry;
@@ -48,11 +48,13 @@ export function validateNode(n: SpecNode, expected: TypeExpr, ctx: Ctx): void {
   if (kind && ctx.placed && !ctx.placed.has(kind)) {
     ctx.out.push({ severity: 'error', code: 'missing-reference', nodeId: n.id, message: `This refers to ${card.presentation.title}, but no ${card.presentation.title} is placed in the pen.` });
   }
-  const known = new Set<string>([...card.sockets.map((s) => s.id), ...(card.params ?? []).map((p) => p.id)]);
+  const known = new Set<string>([...card.sockets.map((s) => s.id), ...(card.params ?? []).map((p) => p.id), ...(card.id === 'rule' ? ['off'] : [])]);
+  if (card.id === 'rule' && n.args.off !== undefined && n.args.off !== 0 && n.args.off !== 1) ctx.out.push({ severity: 'error', code: 'bad-param', nodeId: n.id, message: 'A rule is either on or off.' });
   for (const k of Object.keys(n.args)) {
     if (!known.has(k)) ctx.out.push({ severity: 'warning', code: 'unknown-field', nodeId: n.id, message: `Field “${k}” isn't used by ${card.presentation.title}; it is kept as-is.` });
   }
   for (const s of card.sockets) {
+    if (!socketActive(n, s, card.params?.find((p) => p.id === s.when?.param)?.default)) continue; // e.g. "next to …" when the region isn't "next to"
     const v = n.args[s.id];
     const list = Array.isArray(v) ? v : v === undefined ? [] : [v];
     if (list.some((x) => !isNode(x))) {
@@ -109,7 +111,8 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
   const out: Diagnostic[] = [];
   const placed = placedKinds(stage);
   const areas = new Set(stage.environment.filter((p) => p.cardId === 'zone.rect').map((p) => String(p.args.name ?? 'coop')));
-  const envCtx: Ctx = { reg, itBound: false, placed: null, out, target: stage.learner.focus };
+  const envAreas = new Set(stage.environment.filter((p) => p.cardId === 'zone.rect').map((p) => String(p.args.name ?? 'coop')));
+  const envCtx: Ctx = { reg, itBound: false, placed: null, out, target: stage.learner.focus, areas: envAreas };
   if (stage.size.w < 4 || stage.size.h < 4 || stage.size.w > 16 || stage.size.h > 16) out.push({ severity: 'error', code: 'bad-size', message: 'Pens must be between 4×4 and 16×16 tiles.' });
   for (const p of stage.environment) {
     validateNode(p, nominal('Placement'), envCtx);
@@ -119,6 +122,13 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
       const obj = reg.objects.get(kindOfCard(k.cardId) ?? '');
       if (obj && !obj.penPlaceable) out.push({ severity: 'error', code: 'not-placeable', nodeId: p.id, message: `${obj.name} can only exist on the farm.` });
       if (card?.unlock && unlocks && !unlocks.has(card.unlock)) out.push({ severity: 'error', code: 'locked', nodeId: p.id, message: `${card.presentation.title} isn't unlocked yet.` });
+    }
+    if (p.cardId === 'place.obstacles' && paramOf(p, 'kind', 'rocks') !== 'rocks' && unlocks && !unlocks.has('fences')) out.push({ severity: 'error', code: 'locked', nodeId: p.id, message: 'Fence obstacles need the Fence cards from the shop. Use rocks for now.' });
+    const ref = p.args.ref;
+    const refMode = p.cardId === 'place.random' ? paramOf(p, 'region', 'anywhere') : p.cardId === 'place.pet' ? paramOf(p, 'mode', 'random') : '';
+    if ((refMode === 'nextTo' || refMode === 'awayFrom') && isNode(ref)) {
+      const rk = ref.cardId === 'ref.target' ? stage.learner.focus : kindOfCard(ref.cardId);
+      if (rk && !placedKinds(stage).has(rk)) out.push({ severity: 'warning', code: 'placement-ref-missing', nodeId: p.id, message: `This is placed relative to ${reg.objects.get(rk)?.name ?? rk}, but there's none in the pen — it falls back to anywhere.` });
     }
     if (p.cardId === 'place.fixed' || p.cardId === 'place.pet') {
       const x = paramOf(p, 'x', 0), y = paramOf(p, 'y', 0);
@@ -181,10 +191,11 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
   memoryChecks(stage, reg, out, template);
 
   // ---- Static reward warnings (heuristics, not proofs) ----
-  if (stage.rules.length === 0) out.push({ severity: 'warning', code: 'no-rules', message: 'No rules yet — the pet gets no treats, so it has nothing to learn from.' });
-  if (!stage.rules.some((r) => rewardTotal(r) > 0)) out.push({ severity: 'warning', code: 'no-reward', message: 'Nothing gives a treat. Pets learn much faster when success pays.' });
+  const onRules = stage.rules.filter((r) => r.args.off !== 1); // switched-off rules don't run
+  if (onRules.length === 0) out.push({ severity: 'warning', code: 'no-rules', message: 'No rules yet — the pet gets no treats, so it has nothing to learn from.' });
+  if (!onRules.some((r) => rewardTotal(r) > 0)) out.push({ severity: 'warning', code: 'no-reward', message: 'Nothing gives a treat. Pets learn much faster when success pays.' });
   let pickPay = false, dropPay = false;
-  for (const r of stage.rules) {
+  for (const r of onRules) {
     const ev = r.args.when;
     if (!isNode(ev)) continue;
     const reward = rewardTotal(r);
