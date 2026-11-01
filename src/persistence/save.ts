@@ -53,6 +53,16 @@ const MIGRATIONS: Record<number, Migration> = {
     g.version = 3;
     return g;
   },
+  /** v3 → v4: the farm gets a coop area and a creature PRNG. */
+  3: (g) => {
+    const w = g.farm?.world;
+    if (isObj(w)) {
+      if (!Array.isArray(w.areas)) w.areas = [{ name: 'coop', x: 0, y: 5, w: 2, h: 2 }];
+      w.rng ??= 0xfa53;
+    }
+    g.version = 4;
+    return g;
+  },
 };
 
 function isObj(v: unknown): v is Record<string, any> {
@@ -95,8 +105,8 @@ export function parseGame(text: string): LoadResult {
     ['resources', isObj], ['progress', isObj], ['farm', isObj], ['settings', isObj],
   ];
   for (const [k, ok] of required) if (!ok(g[k])) return { ok: false, diagnostics: [...diagnostics, `Save field “${k}” is malformed.`] };
-  for (const key of ['coins', 'berries', 'carrots', 'fireflies']) {
-    if (key === 'fireflies' && g.resources[key] === undefined) continue;
+  for (const key of ['coins', 'berries', 'carrots', 'fireflies', 'eggs']) {
+    if ((key === 'fireflies' || key === 'eggs') && g.resources[key] === undefined) continue;
     const n = Number(g.resources[key]);
     g.resources[key] = Number.isFinite(n) && n >= 0 ? n : 0;
   }

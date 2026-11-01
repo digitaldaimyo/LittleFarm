@@ -62,7 +62,8 @@ export function findExploits(stage: StageSpec, r: EvalResult): ExploitFinding[] 
     const perEp = e.count / Math.max(1, r.episodes);
     const amount = e.count ? e.total / e.count : 0;
     if (amount <= 0 || perEp < 2.5) continue;
-    if (r.successRate >= 0.5) continue;
+    // Below the lesson's own bar (not just below 50%): a loophole can coexist with lucky successes.
+    if (r.successRate >= Math.max(0.5, stage.evaluation.minimumSuccessRate)) continue;
     let replay: EpisodeTrace | undefined;
     for (const t of r.traces) if (!replay || (t.ruleCounts[e.ruleId] ?? 0) > (replay.ruleCounts[e.ruleId] ?? 0)) replay = t;
     out.push({
@@ -74,6 +75,5 @@ export function findExploits(stage: StageSpec, r: EvalResult): ExploitFinding[] 
       },
     });
   }
-  void stage;
   return out;
 }

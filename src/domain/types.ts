@@ -134,6 +134,8 @@ export interface ObjectDef {
   unlock?: string;
   penPlaceable: boolean;
   hint: string;
+  /** Creatures move on their own each tick (after the pet). */
+  mover?: 'wander' | 'crow';
 }
 
 export interface Diagnostic {

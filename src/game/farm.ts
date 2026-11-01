@@ -1,5 +1,5 @@
 import type { Action, SimEvent, World } from '../sim/world';
-import { addObject, bfsPath, emptyWorld, nearest, objectsAt, step } from '../sim/world';
+import { addObject, bfsPath, emptyWorld, inArea, nearest, objectsAt, onGround, step } from '../sim/world';
 import { Rng } from '../sim/rng';
 import { FetchController, FetchRun, NavRun, SkillRun, isDone, randomMove, type ExecStep } from '../learning/policies';
 import { navTimeout } from '../learning/episodes';
@@ -16,7 +16,7 @@ import { checkUnlocks } from './progression';
 export const FARM_W = 12;
 export const FARM_H = 9;
 export const GROW_TICKS: Record<Plot['crop'], number> = { berry: 28, carrot: 44 };
-export const CROP_VALUE = { berry: 1, carrot: 3, berryDelivered: 2 };
+export const CROP_VALUE = { berry: 1, carrot: 3, berryDelivered: 2, egg: 2 };
 export const TIRED = 25;
 
 /** Day/night clock: one farm day = 1200 ticks (~5½ minutes at 1×); the last 30% is night. */
@@ -29,6 +29,8 @@ export function dayInfo(tick: number): { day: number; phase: number; night: bool
   return { day: Math.floor(tick / DAY_TICKS) + 1, phase, night, label };
 }
 export const WELL_POS = { x: 3, y: 1 };
+export const COOP = { name: 'coop', x: 0, y: 5, w: 2, h: 2 };
+const MAX_EGGS = 4;
 const FIREFLIES_PER_NIGHT = 4;
 
 export function createFarm(): FarmState {
@@ -51,6 +53,8 @@ export function createFarm(): FarmState {
   for (const p of plots) addObject(w, p.crop === 'berry' ? 'bush' : 'patch', p.x, p.y);
   w.pet.x = 1;
   w.pet.y = 2;
+  w.areas = [{ ...COOP }];
+  w.rng = 0xfa53;
   return { world: w, plots, tick: 0, rngState: 12345, dutyPetId: null, stun: 0, queue: [], current: null, production: [], manualMode: false };
 }
 
@@ -111,12 +115,45 @@ export function farmContext(s: GameState, pet: Pet, recentFail: boolean): ExecCo
   return {
     energyLow: pet.energy < TIRED,
     berry: !!nearest(w, 'berry'),
-    carrot: !!nearest(w, 'carrot'),
+    carrot: !!nearest(w, 'carrot') || !!nearest(w, 'egg'),
     carrying: w.pet.carrying !== null,
     recentFail,
     night: !!w.night,
     firefly: !!nearest(w, 'firefly'),
   };
+}
+
+/** Chickens lay in the coop; crows visit by day once you can teach your own skills. */
+function updateCreatures(s: GameState, rt: FarmRuntime, fx: FarmFx[]): void {
+  const w = s.farm.world;
+  const coop = w.areas?.find((a) => a.name === 'coop');
+  const free = (x: number, y: number) => x >= 0 && y >= 0 && x < w.w && y < w.h && !objectsAt(w, x, y).length && !(w.pet.x === x && w.pet.y === y);
+  if (coop) {
+    const eggs = w.objects.filter((o) => o.kind === 'egg' && onGround(o)).length;
+    for (const c of w.objects.filter((o) => o.kind === 'chicken' && onGround(o))) {
+      if (!inArea(coop, c.x, c.y) || eggs >= MAX_EGGS || rt.rng.next() >= 1 / 90) continue;
+      const spots: [number, number][] = [];
+      for (let y = coop.y; y < coop.y + coop.h; y++) for (let x = coop.x; x < coop.x + coop.w; x++) if (free(x, y)) spots.push([x, y]);
+      if (!spots.length) continue;
+      const [x, y] = spots[rt.rng.int(spots.length)];
+      addObject(w, 'egg', x, y);
+      fx.push({ type: 'pickup', x, y, text: 'egg' });
+      addJournalOnce(s, null, 'first-egg', 'A chicken laid the first egg in the coop. Chickens only lay where they feel safe.');
+    }
+  }
+  const crows = w.objects.filter((o) => o.kind === 'crow' && onGround(o));
+  if (w.night) {
+    if (crows.length) w.objects = w.objects.filter((o) => o.kind !== 'crow');
+  } else if (!crows.length && s.progress.unlocks.includes('custom') && s.farm.tick >= DAY_TICKS && rt.rng.next() < 1 / 250) {
+    const edge: [number, number][] = [];
+    for (let x = 0; x < w.w; x++) for (const y of [0, w.h - 1]) if (free(x, y)) edge.push([x, y]);
+    for (let y = 1; y < w.h - 1; y++) for (const x of [0, w.w - 1]) if (free(x, y)) edge.push([x, y]);
+    if (edge.length) {
+      const [x, y] = edge[rt.rng.int(edge.length)];
+      addObject(w, 'crow', x, y);
+      addJournalOnce(s, null, 'first-crow', 'A crow landed at the edge of the farm, eyeing the crops. A pet that can Shoo could send it packing.');
+    }
+  }
 }
 
 /** Night falls → fireflies appear on open tiles; dawn → the uncaught ones drift away. */
@@ -181,7 +218,8 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
     case 'deliver': {
       const fetch = activeRevision(getSkill(pet, 'Fetch'));
       const ctrl = FetchController.from(fetch?.policy) ?? new FetchController();
-      const item = w.pet.carrying !== null ? (w.objects.find((o) => o.id === w.pet.carrying)?.kind ?? 'carrot') : 'carrot';
+      const nearestOf = (ks: string[]) => ks.map((k) => nearest(w, k)).filter((o): o is NonNullable<typeof o> => !!o).sort((a, b) => (Math.abs(a.x - w.pet.x) + Math.abs(a.y - w.pet.y)) - (Math.abs(b.x - w.pet.x) + Math.abs(b.y - w.pet.y)))[0];
+      const item = w.pet.carrying !== null ? (w.objects.find((o) => o.id === w.pet.carrying)?.kind ?? 'carrot') : nearestOf(['carrot', 'egg'])?.kind ?? 'carrot';
       return new FetchRun(ctrl, nav, item, 'bin', tmo, inv.timeout, rt.rng, w.delivered[item] ?? 0);
     }
     case 'skill': {
@@ -234,7 +272,7 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
   const mk = (b: BehaviorId, chosenBy: Invocation['chosenBy'], why: string): Invocation => ({
     behaviorId: b,
     args: b === 'forage' ? { target: 'berry', navigator }
-      : b === 'deliver' ? { item: ctx.carrying ? 'carried item' : 'carrot', into: 'bin', navigator }
+      : b === 'deliver' ? { item: ctx.carrying ? 'carried item' : 'carrot or egg', into: 'bin', navigator }
       : b === 'catch' ? { target: 'firefly', navigator }
       : b === 'skill' ? { skill: pet.assignment.skillName ?? '', target: pet.assignment.target || custom?.focus || 'berry' }
       : {},
@@ -319,6 +357,15 @@ function handleEvents(s: GameState, pet: Pet, events: SimEvent[], rt: FarmRuntim
       pet.stats.waterings = (pet.stats.waterings ?? 0) + 1;
       fx.push({ type: 'drop', x: e.x, y: e.y, text: 'watered' });
       addJournalOnce(s, pet.id, 'first-water', `${pet.name} watered the ${e.kind === 'bush' ? 'berry bush' : 'carrot patch'} — it will grow back twice as fast.`);
+    } else if (e.type === 'scare') {
+      fx.push({ type: 'celebrate', x: e.x, y: e.y, text: 'shoo!' });
+      pet.stats.crowsShooed = (pet.stats.crowsShooed ?? 0) + 1;
+      addJournalOnce(s, pet.id, 'first-scare', `${pet.name} shooed a crow off the farm. It flapped away, empty-beaked.`);
+    } else if (e.type === 'peck') {
+      fx.push({ type: 'confused', x: e.x, y: e.y, text: 'pecked' });
+      addJournalOnce(s, null, 'first-peck', `A crow pecked a ${e.kind} and flew off with it. It will regrow — but a guard would help.`);
+    } else if (e.type === 'enterArea' && e.kind === 'chicken' && e.area === 'coop' && events.some((x) => x.type === 'shoo' && x.objId === e.objId)) {
+      addJournalOnce(s, pet.id, 'first-herd', `${pet.name} shooed a chicken back into the coop.`);
     } else if (e.type === 'fill') {
       fx.push({ type: 'drop', x: e.x, y: e.y, text: 'filled' });
     } else if (e.type === 'bump') {
@@ -338,8 +385,9 @@ function handleEvents(s: GameState, pet: Pet, events: SimEvent[], rt: FarmRuntim
     } else if (e.type === 'drop') {
       fx.push({ type: 'drop', x: e.x, y: e.y });
     } else if (e.type === 'deliver') {
-      const value = e.kind === 'carrot' ? CROP_VALUE.carrot : CROP_VALUE.berryDelivered;
+      const value = e.kind === 'carrot' ? CROP_VALUE.carrot : e.kind === 'egg' ? CROP_VALUE.egg : CROP_VALUE.berryDelivered;
       if (e.kind === 'carrot') { s.resources.carrots++; pet.stats.carrots++; }
+      if (e.kind === 'egg') { s.resources.eggs = (s.resources.eggs ?? 0) + 1; addJournalOnce(s, pet.id, 'first-egg-delivery', `${pet.name} carried an egg all the way to the bin without dropping it.`); }
       pet.stats.deliveries++;
       pet.mood = Math.min(100, pet.mood + 3);
       earn(s, pet, value, e.x, e.y, fx);
@@ -362,6 +410,7 @@ export function farmTick(s: GameState, rt: FarmRuntime): TickResult {
   f.tick++;
   regrow(s);
   updateClock(s, rt, fx);
+  updateCreatures(s, rt, fx);
   const pet = petById(s, f.dutyPetId);
   for (const p of s.pets) {
     if (p.id !== f.dutyPetId) p.energy = Math.min(100, p.energy + 0.5); // off-duty pets nap at home

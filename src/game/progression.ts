@@ -1,6 +1,9 @@
 import type { GameState } from './types';
 import { activePet, getSkill, isCertified } from './pets';
 import { addJournal } from './journal';
+import { addObject } from '../sim/world';
+
+const SCARECROW_POS = { x: 8, y: 2 };
 
 export interface UnlockDef {
   id: string;
@@ -44,6 +47,8 @@ export const SHOP: ShopItem[] = [
   { id: 'bushes', label: 'Two more berry bushes', price: 8, describe: 'More berries to forage.' },
   { id: 'bed', label: 'Comfy bed', price: 12, describe: 'Naps restore energy twice as fast.' },
   { id: 'patch2', label: 'Third carrot patch', price: 15, describe: 'More carrots to deliver.', requires: 'carrots' },
+  { id: 'chickens', label: 'Two chickens', price: 10, describe: 'They wander — and lay eggs (2 coins each) only while in the coop. Teach a pet to herd them!', requires: 'custom' },
+  { id: 'scarecrow', label: 'Scarecrow', price: 8, describe: 'Crows won’t come within 2 tiles of it (protects the top-right bushes).', requires: 'custom' },
   { id: 'adopt', label: 'Adopt another pet', price: 20, describe: 'A second trainee with their own skills.', consumable: true },
 ];
 
@@ -87,6 +92,21 @@ export function buy(s: GameState, id: string): BuyResult {
   if (!item.consumable) {
     s.purchases.push(id);
     if (!s.progress.unlocks.includes(id)) s.progress.unlocks.push(id);
+  }
+  if (id === 'chickens') {
+    const w = s.farm.world;
+    const coop = w.areas?.find((a) => a.name === 'coop');
+    let placed = 0;
+    for (let y = coop?.y ?? 5; coop && y < coop.y + coop.h && placed < 2; y++) for (let x = coop.x; x < coop.x + coop.w && placed < 2; x++) {
+      if (w.objects.some((o) => !o.carried && !o.delivered && o.x === x && o.y === y) || (w.pet.x === x && w.pet.y === y)) continue;
+      addObject(w, 'chicken', x, y);
+      placed++;
+    }
+  }
+  if (id === 'scarecrow' && !s.farm.world.objects.some((o) => o.kind === 'scarecrow')) {
+    const w = s.farm.world;
+    const busy = w.objects.some((o) => !o.carried && !o.delivered && o.x === SCARECROW_POS.x && o.y === SCARECROW_POS.y);
+    if (!busy) addObject(w, 'scarecrow', SCARECROW_POS.x, SCARECROW_POS.y);
   }
   if (id === 'snack') {
     const p = activePet(s);

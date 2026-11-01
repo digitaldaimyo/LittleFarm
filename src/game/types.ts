@@ -5,7 +5,7 @@ import type { Traits } from '../learning/episodes';
 import type { ExecutiveTable, Invocation } from '../learning/executive';
 import type { World } from '../sim/world';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export type PaletteId = 'meadow' | 'plum' | 'sky' | 'moss';
 export type JobId = 'forage' | 'deliver' | 'rest' | 'skill';
@@ -100,6 +100,7 @@ export interface PetStats {
   deliveries: number;
   fireflies?: number;
   waterings?: number;
+  crowsShooed?: number;
 }
 
 export interface Pet {
@@ -173,7 +174,7 @@ export interface GameState {
   updatedAt: number;
   settings: Settings;
   progress: Progress;
-  resources: { coins: number; berries: number; carrots: number; fireflies?: number };
+  resources: { coins: number; berries: number; carrots: number; fireflies?: number; eggs?: number };
   pets: Pet[];
   activePetId: string | null;
   farm: FarmState;

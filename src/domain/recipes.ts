@@ -105,6 +105,52 @@ function waterGarden(): StageSpec {
   };
 }
 
+const coopArea = (n: Mk) => n('area.named', { name: 'coop' });
+
+/** Example player-style skill: shoo a chicken into a coop that sits somewhere new each try. */
+function herdChicken(): StageSpec {
+  const n = maker('hc');
+  return {
+    id: 'stage-herd', name: 'Herd a chicken', recipeId: 'herd-chicken', version: 1,
+    blurb: 'A custom skill: get behind the chicken and shoo it into the coop.',
+    size: { w: 8, h: 8 },
+    environment: [
+      n('place.pet', { mode: 'random', x: 0, y: 0 }),
+      n('zone.rect', { name: 'coop', where: 'random', x: 0, y: 0, w: 2, h: 2 }),
+      n('place.random', { kind: k(n, 'chicken'), count: 1, region: 'anywhere' }),
+      n('place.random', { kind: k(n, 'rock'), count: 1, region: 'anywhere' }),
+    ],
+    abilities: ['move', 'shoo'],
+    rules: [
+      n('rule', { label: 'Home to roost', when: n('ev.entersArea', { what: n('ref.target'), area: coopArea(n) }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'success' })], limit: n('lim.once') }),
+      n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.03 })] }),
+    ],
+    success: n('cond.inArea', { what: n('ref.target'), area: coopArea(n), count: 1 }),
+    fail: null,
+    seed: 808, maxTicks: 60,
+    learner: { skill: 'Herd', template: 'sense', focus: 'chicken', episodes: 8000,
+      senses: [n('sense.nearest', { what: n('ref.target') }), n('sense.areaFrom', { what: n('ref.target'), area: coopArea(n) })] },
+    evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.6 },
+  };
+}
+
+/** Loophole experiment: herd the chicken, plus a treat for every shoo with no limit. */
+function shooLoophole(): StageSpec {
+  const s = herdChicken();
+  const n = maker('sl');
+  s.id = 'stage-shoo-loophole';
+  s.name = 'Treat for every shoo';
+  s.recipeId = 'shoo-loophole';
+  s.blurb = 'An experiment: herd the chicken — and get a treat every time you shoo it.';
+  s.rules = [
+    n('rule', { label: 'Good shoo', when: n('ev.shoo', { actor: pet(n), what: n('ref.target') }), then: [n('eff.reward', { amount: 1 })], limit: n('lim.every') }),
+    ...s.rules,
+  ];
+  s.learner = { ...s.learner, skill: 'Herd (loophole)' };
+  s.seed = 909;
+  return s;
+}
+
 export interface Recipe {
   id: string;
   name: string;
@@ -223,6 +269,8 @@ export const RECIPES: Recipe[] = [
   { id: 'wait-for-it', name: 'Wait for it', blurb: 'Your own skill: go to the target and stay put.', skill: 'Wait for it', unlock: 'custom', optional: true, build: waitForIt },
   { id: 'keep-clear', name: 'Keep clear', blurb: 'Your own skill: stay away from the pond until time is up.', skill: 'Keep clear', unlock: 'custom', optional: true, build: keepClear },
   { id: 'water-garden', name: 'Water the garden', blurb: 'Your own skill: fill up at the well, water the dry patches.', skill: 'Water the garden', unlock: 'custom', optional: true, build: waterGarden },
+  { id: 'herd-chicken', name: 'Herd a chicken', blurb: 'Your own skill: shoo a chicken into the coop.', skill: 'Herd', unlock: 'custom', optional: true, build: herdChicken },
+  { id: 'shoo-loophole', name: 'Treat for every shoo', blurb: 'Experiment: a herding reward with a loophole.', skill: 'Herd (loophole)', unlock: 'custom', optional: true, build: shooLoophole },
   { id: 'pay-per-pickup', name: 'Treat for every pickup', blurb: 'Experiment: a reward with a loophole.', skill: 'Fetch', unlock: 'fetch', optional: true, build: payPerPickup },
 ];
 

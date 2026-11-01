@@ -6,7 +6,7 @@ import { OBJECT_BY_ID } from '../domain/packs/farm';
  * One step = one action by the pet = one tick. Every tick returns an event list
  * that drives rewards, diagnostics, animation and the journal.
  */
-export type Action = 'N' | 'E' | 'S' | 'W' | 'pick' | 'drop' | 'wait' | 'water';
+export type Action = 'N' | 'E' | 'S' | 'W' | 'pick' | 'drop' | 'wait' | 'water' | 'shoo';
 export const MOVES: Action[] = ['N', 'E', 'S', 'W'];
 export const DIRS: Record<string, [number, number]> = { N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0] };
 
@@ -34,6 +34,18 @@ export interface PetBody {
 
 export const WATER_CAPACITY = 3;
 
+export interface Area {
+  name: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export function inArea(a: Area, x: number, y: number): boolean {
+  return x >= a.x && y >= a.y && x < a.x + a.w && y < a.y + a.h;
+}
+
 export interface World {
   w: number;
   h: number;
@@ -44,9 +56,15 @@ export interface World {
   delivered: Record<string, number>;
   /** Night-time (set from the pen's Time of day card or the farm clock). */
   night?: boolean;
+  /** Named areas (coop, garden…). */
+  areas?: Area[];
+  /** PRNG state for creatures (mulberry32), so creature motion is deterministic. */
+  rng?: number;
+  /** Running counters (e.g. pecks). */
+  counts?: Record<string, number>;
 }
 
-export type SimEventType = 'tick' | 'move' | 'bump' | 'reach' | 'enter' | 'pickup' | 'drop' | 'deliver' | 'fumble' | 'stay' | 'fill' | 'water';
+export type SimEventType = 'tick' | 'move' | 'bump' | 'reach' | 'enter' | 'pickup' | 'drop' | 'deliver' | 'fumble' | 'stay' | 'fill' | 'water' | 'shoo' | 'scare' | 'peck' | 'enterArea' | 'leaveArea';
 
 export interface SimEvent {
   type: SimEventType;
@@ -55,6 +73,7 @@ export interface SimEvent {
   kind?: string;
   objId?: number;
   into?: string;
+  area?: string;
 }
 
 export function def(kind: string): ObjectDef {
@@ -73,6 +92,8 @@ export function cloneWorld(w: World): World {
     objects: w.objects.map((o) => ({ ...o })),
     pet: { ...w.pet },
     delivered: { ...w.delivered },
+    ...(w.areas ? { areas: w.areas.map((a) => ({ ...a })) } : {}),
+    ...(w.counts ? { counts: { ...w.counts } } : {}),
   };
 }
 
@@ -182,6 +203,21 @@ export function step(w: World, action: Action): SimEvent[] {
       p.water = (p.water ?? 0) - 1;
       events.push({ type: 'water', x: p.x, y: p.y, kind: plot.kind, objId: plot.id });
     } else events.push({ type: 'fumble', x: p.x, y: p.y });
+  } else if (action === 'shoo') {
+    const near = w.objects.filter((o) => onGround(o) && def(o.kind).mover && Math.abs(o.x - p.x) + Math.abs(o.y - p.y) <= 1).sort((a, b) => a.id - b.id);
+    if (!near.length) events.push({ type: 'fumble', x: p.x, y: p.y });
+    for (const o of near) {
+      if (def(o.kind).mover === 'crow') {
+        o.delivered = true; // flies off
+        events.push({ type: 'scare', x: o.x, y: o.y, kind: o.kind, objId: o.id });
+        continue;
+      }
+      const nx = o.x + (o.x - p.x), ny = o.y + (o.y - p.y);
+      const before = { x: o.x, y: o.y };
+      if (creatureCanEnter(w, nx, ny)) { o.x = nx; o.y = ny; }
+      events.push({ type: 'shoo', x: o.x, y: o.y, kind: o.kind, objId: o.id });
+      areaEvents(w, o, before, events);
+    }
   } else if (action === 'drop') {
     const c = p.carrying !== null ? w.objects.find((o) => o.id === p.carrying) : undefined;
     if (c) {
@@ -198,8 +234,83 @@ export function step(w: World, action: Action): SimEvent[] {
       }
     } else events.push({ type: 'fumble', x: p.x, y: p.y });
   }
+  moveCreatures(w, events);
   w.tick++;
   return events;
+}
+
+/** Deterministic creature PRNG (mulberry32 on world.rng). */
+function crand(w: World): number {
+  let t = (w.rng = ((w.rng ?? 0x2545f491) + 0x6d2b79f5) >>> 0);
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+function hasCreature(w: World, x: number, y: number): boolean {
+  return w.objects.some((o) => onGround(o) && o.x === x && o.y === y && !!def(o.kind).mover);
+}
+
+/** Chickens walk; they never step onto the pet, walls, hazards or other creatures. */
+export function creatureCanEnter(w: World, x: number, y: number): boolean {
+  return inBounds(w, x, y) && !isSolidAt(w, x, y) && !isHazardAt(w, x, y) && !(w.pet.x === x && w.pet.y === y) && !hasCreature(w, x, y);
+}
+
+export function areaOf(w: World, x: number, y: number): Area[] {
+  return (w.areas ?? []).filter((a) => inArea(a, x, y));
+}
+
+function areaEvents(w: World, o: Obj, before: { x: number; y: number }, events: SimEvent[]) {
+  for (const a of w.areas ?? []) {
+    const was = inArea(a, before.x, before.y), now = inArea(a, o.x, o.y);
+    if (!was && now) events.push({ type: 'enterArea', x: o.x, y: o.y, kind: o.kind, objId: o.id, area: a.name });
+    if (was && !now) events.push({ type: 'leaveArea', x: o.x, y: o.y, kind: o.kind, objId: o.id, area: a.name });
+  }
+}
+
+const CROPS = ['berry', 'carrot'];
+
+function moveCreatures(w: World, events: SimEvent[]) {
+  const movers = w.objects.filter((o) => onGround(o) && def(o.kind).mover).sort((a, b) => a.id - b.id);
+  for (const o of movers) {
+    if (!onGround(o)) continue;
+    const before = { x: o.x, y: o.y };
+    if (def(o.kind).mover === 'wander') {
+      // Chickens like their coop: they wander less once inside one.
+      const homey = (w.areas ?? []).some((a) => a.name === 'coop' && inArea(a, o.x, o.y));
+      if (crand(w) >= (homey ? 0.06 : 0.25)) continue;
+      const dirs = MOVES.filter((m) => creatureCanEnter(w, o.x + DIRS[m][0], o.y + DIRS[m][1]));
+      if (!dirs.length) continue;
+      const m = dirs[Math.floor(crand(w) * dirs.length)];
+      o.x += DIRS[m][0];
+      o.y += DIRS[m][1];
+      areaEvents(w, o, before, events);
+    } else {
+      // Crows flap toward the nearest crop every other tick (flying over walls), keeping clear of scarecrows.
+      if (crand(w) >= 0.5) continue;
+      const scary = w.objects.filter((s) => onGround(s) && def(s.kind).traits.includes('Scary'));
+      const safe = (x: number, y: number) => !scary.some((s) => Math.abs(s.x - x) + Math.abs(s.y - y) <= 2);
+      let target: Obj | null = null, bd = Infinity;
+      for (const c of w.objects) {
+        if (!onGround(c) || !CROPS.includes(c.kind) || !safe(c.x, c.y)) continue;
+        const d = Math.abs(c.x - o.x) + Math.abs(c.y - o.y);
+        if (d < bd) { bd = d; target = c; }
+      }
+      if (!target) continue;
+      if (bd > 0) {
+        const opts = MOVES.map((m) => [o.x + DIRS[m][0], o.y + DIRS[m][1]] as const)
+          .filter(([x, y]) => inBounds(w, x, y) && !(w.pet.x === x && w.pet.y === y) && safe(x, y) && !w.objects.some((c) => onGround(c) && c !== o && c.x === x && c.y === y && def(c.kind).mover))
+          .sort((a, b) => (Math.abs(a[0] - target!.x) + Math.abs(a[1] - target!.y)) - (Math.abs(b[0] - target!.x) + Math.abs(b[1] - target!.y)));
+        if (opts.length && Math.abs(opts[0][0] - target.x) + Math.abs(opts[0][1] - target.y) < bd) { o.x = opts[0][0]; o.y = opts[0][1]; }
+      }
+      if (o.x === target.x && o.y === target.y) {
+        target.delivered = true;
+        w.counts = { ...(w.counts ?? {}), pecks: (w.counts?.pecks ?? 0) + 1 };
+        events.push({ type: 'peck', x: o.x, y: o.y, kind: target.kind, objId: target.id });
+        o.delivered = true; // flies off with its prize
+      }
+    }
+  }
 }
 
 /** BFS path length (or -1) over non-solid tiles, optionally avoiding hazards. */

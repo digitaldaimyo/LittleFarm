@@ -3,7 +3,7 @@ import { isNode, paramOf } from '../domain/spec';
 import { kindOfCard } from '../domain/registry';
 import { Rng, hashSeed } from './rng';
 import type { Obj, SimEvent, World } from './world';
-import { addObject, bfsDistance, def, distTo, emptyWorld, inBounds, nearest, objectsAt, onGround } from './world';
+import { addObject, bfsDistance, def, distTo, emptyWorld, inArea, inBounds, nearest, objectsAt, onGround } from './world';
 
 export interface RuleHit {
   ruleId: string;
@@ -66,6 +66,10 @@ export function resolveKind(v: unknown, target = currentTarget): string {
   return kindOfCard(v.cardId) ?? '';
 }
 const kindArg = (n: SpecNode, key: string): string => resolveKind(n.args[key]);
+export const areaArg = (n: SpecNode, key: string): string => {
+  const v = n.args[key];
+  return isNode(v) ? String(v.args.name ?? '') : '';
+};
 const nodeArg = (n: SpecNode, key: string): SpecNode | null => {
   const v = n.args[key];
   return isNode(v) ? v : null;
@@ -84,6 +88,8 @@ function compileQuantity(n: SpecNode): Quantity {
         return Number.isFinite(d) ? d : 99;
       };
     }
+    case 'q.pecks':
+      return ({ w }) => w.counts?.pecks ?? 0;
     case 'q.count': {
       const k = kindArg(n, 'what');
       return ({ w }) => w.objects.filter((o) => o.kind === k && onGround(o)).length;
@@ -130,6 +136,19 @@ export function compileCondition(n: SpecNode): Cond {
       const k = kindArg(n, 'what');
       const c = paramOf(n, 'count', 1);
       return ({ w }) => w.objects.filter((o) => o.kind === k && o.wet && onGround(o)).length >= c;
+    }
+    case 'cond.inArea': {
+      const k = kindArg(n, 'what');
+      const a = areaArg(n, 'area');
+      const c = paramOf(n, 'count', 1);
+      return ({ w }) => {
+        const ar = w.areas?.find((x) => x.name === a);
+        return !!ar && w.objects.filter((o) => o.kind === k && onGround(o) && inArea(ar, o.x, o.y)).length >= c;
+      };
+    }
+    case 'cond.petInArea': {
+      const a = areaArg(n, 'area');
+      return ({ w }) => { const ar = w.areas?.find((x) => x.name === a); return !!ar && inArea(ar, w.pet.x, w.pet.y); };
     }
     case 'cond.hasWater':
       return ({ w }) => (w.pet.water ?? 0) > 0;
@@ -179,6 +198,10 @@ function compileEvent(n: SpecNode): (e: SimEvent) => boolean {
     case 'ev.bump': return (e) => e.type === 'bump';
     case 'ev.stay': return (e) => e.type === 'stay';
     case 'ev.fill': return (e) => e.type === 'fill';
+    case 'ev.shoo': return (e) => (e.type === 'shoo' || e.type === 'scare') && e.kind === k;
+    case 'ev.peck': return (e) => e.type === 'peck' && e.kind === k;
+    case 'ev.entersArea': { const a = areaArg(n, 'area'); return (e) => e.type === 'enterArea' && e.kind === k && e.area === a; }
+    case 'ev.leavesArea': { const a = areaArg(n, 'area'); return (e) => e.type === 'leaveArea' && e.kind === k && e.area === a; }
     case 'ev.water': return (e) => e.type === 'water' && e.kind === k;
     default:
       throw new Error(`Cannot compile event ${n.cardId}`);
@@ -224,8 +247,18 @@ export function generateWorld(spec: StageSpec, seed: number): World {
   let last: World | null = null;
   for (let attempt = 0; attempt < 40; attempt++) {
     const w = emptyWorld(W, H);
+    w.rng = hashSeed(seed, 0xc4ea7);
     const occupied = new Set<number>();
     const key = (x: number, y: number) => y * W + x;
+    const areaTiles = new Set<number>();
+    for (const z of spec.environment) {
+      if (z.cardId !== 'zone.rect') continue;
+      const aw = Math.max(1, Math.min(W, paramOf(z, 'w', 2))), ah = Math.max(1, Math.min(H, paramOf(z, 'h', 2)));
+      let ax = Math.min(W - aw, paramOf(z, 'x', 0)), ay = Math.min(H - ah, paramOf(z, 'y', 0));
+      if (paramOf(z, 'where', 'fixed') === 'random') { ax = rng.int(W - aw + 1); ay = rng.int(H - ah + 1); }
+      (w.areas ??= []).push({ name: paramOf(z, 'name', 'coop'), x: ax, y: ay, w: aw, h: ah });
+      for (let yy = ay; yy < ay + ah; yy++) for (let xx = ax; xx < ax + aw; xx++) areaTiles.add(key(xx, yy));
+    }
     for (const p of spec.environment) {
       if (p.cardId !== 'place.fixed') continue;
       const k = resolveKind(p.args.kind, spec.learner.focus);
@@ -237,7 +270,7 @@ export function generateWorld(spec: StageSpec, seed: number): World {
     const petNode = spec.environment.find((p) => p.cardId === 'place.pet');
     const freeTiles = (region: string) => {
       const out: [number, number][] = [];
-      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (!occupied.has(key(x, y)) && regionOk(region, x, y, W, H)) out.push([x, y]);
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (!occupied.has(key(x, y)) && !areaTiles.has(key(x, y)) && regionOk(region, x, y, W, H)) out.push([x, y]);
       return out;
     };
     if (petNode && paramOf(petNode, 'mode', 'random') === 'fixed') {

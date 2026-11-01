@@ -11,6 +11,8 @@ interface Ctx {
   out: Diagnostic[];
   /** What “the target” means in this stage (its traits decide which sockets it fits). */
   target?: string;
+  /** Area names defined in the pen (null → don't check). */
+  areas?: Set<string>;
 }
 
 /** The type a card produces here; “the target” takes on the traits of whatever the skill is aimed at. */
@@ -38,6 +40,9 @@ export function validateNode(n: SpecNode, expected: TypeExpr, ctx: Ctx): void {
   }
   if (card.id === 'ref.it' && !ctx.itBound) {
     ctx.out.push({ severity: 'error', code: 'scope', nodeId: n.id, message: '“It” only means something inside a rule whose WHEN event is about an object (reach, pick up, put down, deliver).' });
+  }
+  if (card.id === 'area.named' && ctx.areas && !ctx.areas.has(String(n.args.name ?? ''))) {
+    ctx.out.push({ severity: 'error', code: 'missing-reference', nodeId: n.id, message: `There is no area called “${String(n.args.name ?? '')}” in the pen. Add one with the Area card (on the farm, the coop is called “coop”).` });
   }
   const kind = kindOfCard(card.id);
   if (kind && ctx.placed && !ctx.placed.has(kind)) {
@@ -103,6 +108,7 @@ function limitOf(rule: SpecNode): string {
 export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlocks?: Set<string>): Diagnostic[] {
   const out: Diagnostic[] = [];
   const placed = placedKinds(stage);
+  const areas = new Set(stage.environment.filter((p) => p.cardId === 'zone.rect').map((p) => String(p.args.name ?? 'coop')));
   const envCtx: Ctx = { reg, itBound: false, placed: null, out, target: stage.learner.focus };
   if (stage.size.w < 4 || stage.size.h < 4 || stage.size.w > 16 || stage.size.h > 16) out.push({ severity: 'error', code: 'bad-size', message: 'Pens must be between 4×4 and 16×16 tiles.' });
   for (const p of stage.environment) {
@@ -119,7 +125,10 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
       if ((p.cardId === 'place.fixed' || paramOf(p, 'mode', 'random') === 'fixed') && (x >= stage.size.w || y >= stage.size.h)) out.push({ severity: 'error', code: 'out-of-bounds', nodeId: p.id, message: 'That tile is outside the pen.' });
     }
   }
-  const ruleCtx: Ctx = { reg, itBound: false, placed, out, target: stage.learner.focus };
+  const names = stage.environment.filter((p) => p.cardId === 'zone.rect').map((p) => String(p.args.name ?? ''));
+  if (new Set(names).size !== names.length) out.push({ severity: 'error', code: 'duplicate-area', message: 'Two areas share a name — give each area its own name.' });
+  if (names.some((n) => !n.trim())) out.push({ severity: 'error', code: 'unnamed-area', message: 'Every area needs a name.' });
+  const ruleCtx: Ctx = { reg, itBound: false, placed, out, target: stage.learner.focus, areas };
   for (const r of stage.rules) {
     if (r.cardId !== 'rule') {
       out.push({ severity: 'error', code: 'type-mismatch', nodeId: r.id, message: 'Only Rule cards go on the rule mat.' });
@@ -138,7 +147,7 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
     const senses = L.senses ?? [];
     if (L.senses && senses.length === 0) out.push({ severity: 'error', code: 'no-senses', message: 'Pick at least one Sense — otherwise the pet is learning blindfolded.' });
     if (senses.length > 5) out.push({ severity: 'error', code: 'too-many-senses', message: 'At most 5 senses per skill.' });
-    const senseCtx: Ctx = { reg, itBound: false, placed: null, out, target: L.focus };
+    const senseCtx: Ctx = { reg, itBound: false, placed: null, out, target: L.focus, areas };
     let size = 1;
     for (const sn of senses) {
       validateNode(sn, nominal('Sense'), senseCtx);
@@ -167,16 +176,16 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
     const label = paramOf(r, 'label', 'rule');
     const ends = effectsOf(r).some((e) => e.cardId === 'eff.end') || lim === 'lim.once' || lim === 'lim.perObject';
     if (ev.cardId === 'ev.tick' && reward > 0 && !ends && stage.outcome !== 'survive') out.push({ severity: 'warning', code: 'unbounded-reward', nodeId: r.id, message: `“${label}” pays every step. The pet can earn it forever by dawdling.`, repair: { label: 'Make it a nudge (−)', action: 'flip-tick', ruleId: r.id } });
-    if ((ev.cardId === 'ev.pickup' || ev.cardId === 'ev.drop' || ev.cardId === 'ev.reach') && reward > 0 && (lim === 'lim.every' || lim === 'lim.cooldown')) {
+    if (['ev.pickup', 'ev.drop', 'ev.reach', 'ev.shoo', 'ev.entersArea', 'ev.leavesArea', 'ev.stay'].includes(ev.cardId) && ev.cardId !== 'ev.stay' && reward > 0 && (lim === 'lim.every' || lim === 'lim.cooldown')) {
       const repeat = ev.cardId === 'ev.reach' ? effectsOf(r).some((e) => e.cardId === 'eff.end') ? false : true : true;
       if (repeat) out.push({ severity: 'warning', code: 'repeatable-reward', nodeId: r.id, message: `“${label}” can pay again and again for the same thing. The pet may learn to repeat it instead of finishing the job.`, repair: { label: 'Limit: once per object', action: 'limit-per-object', ruleId: r.id } });
     }
     if (ev.cardId === 'ev.pickup' && reward > 0 && lim !== 'lim.once' && lim !== 'lim.perObject') pickPay = true;
     if (ev.cardId === 'ev.drop' && reward > 0 && lim !== 'lim.once' && lim !== 'lim.perObject') dropPay = true;
     const fetchT = (L.template ?? (L.skill === 'Fetch' ? 'fetch' : 'sense')) === 'fetch';
-    const needs: Record<string, string> = { 'ev.pickup': 'pickup', 'ev.drop': 'drop', 'ev.deliver': 'drop', 'ev.stay': 'stay', 'ev.fill': 'water', 'ev.water': 'water' };
+    const needs: Record<string, string> = { 'ev.pickup': 'pickup', 'ev.drop': 'drop', 'ev.deliver': 'drop', 'ev.stay': 'stay', 'ev.fill': 'water', 'ev.water': 'water', 'ev.shoo': 'shoo' };
     const need = needs[ev.cardId];
-    if (need && !fetchT && !stage.abilities.includes(need)) out.push({ severity: 'info', code: 'unusable-event', nodeId: r.id, message: `“${label}” needs the ${need === 'pickup' ? 'Pick up' : need === 'drop' ? 'Put down' : need === 'water' ? 'Water' : 'Stay'} ability, which ${L.skill} doesn’t have — it will never fire.` });
+    if (need && !fetchT && !stage.abilities.includes(need)) out.push({ severity: 'info', code: 'unusable-event', nodeId: r.id, message: `“${label}” needs the ${need === 'pickup' ? 'Pick up' : need === 'drop' ? 'Put down' : need === 'water' ? 'Water' : need === 'shoo' ? 'Shoo' : 'Stay'} ability, which ${L.skill} doesn’t have — it will never fire.` });
     const conds = r.args.if;
     const hasCloser = (Array.isArray(conds) ? conds : []).some((c) => isNode(c) && c.cardId === 'cond.closer');
     if (hasCloser && reward > 0 && !stage.rules.some((o) => rewardTotal(o) < 0)) out.push({ severity: 'warning', code: 'shaping-loop', nodeId: r.id, message: `“${label}” pays for getting closer but nothing costs moving away — wiggling back and forth may pay.`, repair: { label: 'Add a step nudge', action: 'add-tick-penalty' } });

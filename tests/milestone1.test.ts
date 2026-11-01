@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { parseGame } from '../src/persistence/save';
+import { SAVE_VERSION } from '../src/game/types';
 import { recipeStage } from '../src/domain/recipes';
 import { compileStage } from '../src/sim/compile';
 import { FetchController, FetchRun, isDone } from '../src/learning/policies';
@@ -30,11 +31,12 @@ function train(stage: StageSpec) {
 
 describe('M1: v1 saves keep working', () => {
   const r = parseGame(fixture);
-  it('migrates v1 → current (v2 templates, v3 well)', () => {
+  it('migrates v1 → current (v2 templates, v3 well, v4 coop)', () => {
     expect(r.ok).toBe(true);
     expect(r.diagnostics.some((d) => d.includes('v2'))).toBe(true);
     const g = r.game!;
-    expect(g.version).toBe(3);
+    expect(g.version).toBe(SAVE_VERSION);
+    expect(g.farm.world.areas?.map((a) => a.name)).toEqual(['coop']);
     expect(g.farm.world.objects.filter((o) => o.kind === 'well').length).toBe(1);
     expect(g.stages.every((s) => s.learner.template)).toBe(true);
     expect(g.pets[0].skills.map((k) => k.template)).toEqual(['sense', 'fetch']);
