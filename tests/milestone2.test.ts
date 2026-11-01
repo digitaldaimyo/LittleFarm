@@ -141,6 +141,26 @@ describe('M2: the farm comes alive', () => {
     expect(g.journal.some((j) => j.kind === 'first-crow')).toBe(true);
   });
 
+  it('a learned Herd skill, run on the farm, brings in the stray even when another chicken is already home', () => {
+    const g = newGame();
+    const pet = adoptPet(g, 'Pip', 'meadow');
+    pet.traits = { curiosity: 0.5, persistence: 0.5, caution: 0.5 };
+    trainAndSave(g, pet, recipeStage('herd-chicken'));
+    const w = g.farm.world;
+    const home = { id: w.nextId++, kind: 'chicken', x: 0, y: 5, carried: false, delivered: false };
+    const stray = { id: w.nextId++, kind: 'chicken', x: 6, y: 6, carried: false, delivered: false };
+    w.objects.push(home, stray);
+    pet.assignment = { mode: 'job', job: 'skill', navigator: 'Approach', skillName: 'Herd', target: 'chicken' };
+    const rt = createRuntime(g.farm);
+    let allHome = false;
+    for (let t = 0; t < 600 && !allHome; t++) {
+      farmTick(g, rt);
+      allHome = [home, stray].every((c) => c.x <= 1 && c.y >= 5 && c.y <= 6);
+    }
+    expect(allHome).toBe(true);
+    expect(g.journal.some((j) => j.kind === 'first-herd')).toBe(true);
+  });
+
   it('a v3 save gains the coop area on load', () => {
     const g = newGame();
     delete g.farm.world.areas;

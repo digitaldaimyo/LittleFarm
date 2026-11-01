@@ -145,6 +145,50 @@ export function ObjectGlyph({ kind }: { kind: string }) {
           <rect x="17" y="19" width="6" height="4" rx="1" fill="#9A6A3A" />
         </g>
       );
+    case 'chicken':
+      return (
+        <g>
+          <ellipse cx="20" cy="35" rx="9" ry="2" fill="rgba(0,0,0,0.15)" />
+          <path d="M16 33 v3 M23 33 v3" stroke="#D98E04" strokeWidth="1.6" />
+          <ellipse cx="20" cy="25" rx="11" ry="9" fill="#FFFDF5" stroke="#D6CFBE" />
+          <path d="M9 22 q-5 -2 -3 -7 q4 3 5 6" fill="#FFFDF5" stroke="#D6CFBE" />
+          <circle cx="27" cy="15" r="6" fill="#FFFDF5" stroke="#D6CFBE" />
+          <path d="M25 9 q2 -4 4 0 q2 -3 3 1" fill="#E04848" />
+          <path d="M32 15 l4 1.5 -4 1.5 z" fill="#F2A71B" />
+          <circle cx="28.5" cy="14" r="1.2" fill="#2B2B2B" />
+          <path d="M14 25 q5 4 10 0" stroke="#E6DFCC" strokeWidth="2" fill="none" />
+        </g>
+      );
+    case 'crow':
+      return (
+        <g>
+          <path d="M4 18 q8 -10 16 2 q8 -12 16 -2 q-8 2 -12 8 h-8 q-4 -6 -12 -8z" fill="#2E2F38" />
+          <ellipse cx="20" cy="24" rx="6" ry="7" fill="#3A3B46" />
+          <circle cx="20" cy="17" r="4.5" fill="#3A3B46" />
+          <path d="M20 18 l5 2 -5 1z" fill="#E0A62B" />
+          <circle cx="21.5" cy="16" r="1" fill="#fff" />
+        </g>
+      );
+    case 'egg':
+      return (
+        <g>
+          <ellipse cx="20" cy="34" rx="7" ry="2" fill="rgba(0,0,0,0.12)" />
+          <path d="M20 9 C27 9 30 22 30 26 C30 32 25 35 20 35 C15 35 10 32 10 26 C10 22 13 9 20 9Z" fill="#F7EBD8" stroke="#D9C7A8" />
+          <ellipse cx="16" cy="19" rx="2.5" ry="4" fill="#fff" opacity="0.7" />
+        </g>
+      );
+    case 'scarecrow':
+      return (
+        <g>
+          <path d="M20 14 v22" stroke="#7F5427" strokeWidth="3" />
+          <path d="M6 19 h28" stroke="#7F5427" strokeWidth="3" />
+          <path d="M12 18 h16 l-2 10 h-12z" fill="#5B8BC4" />
+          <circle cx="20" cy="11" r="6" fill="#E8C68E" />
+          <path d="M12 7 h16 l-3 -5 h-10z" fill="#9A6A3A" />
+          <path d="M17 11 h2 M21 11 h2 M18 14 q2 1.5 4 0" stroke="#3B2A1A" strokeWidth="1.2" />
+          <path d="M6 19 l-2 3 M34 19 l2 3" stroke="#E2C15C" strokeWidth="2" />
+        </g>
+      );
     case 'firefly':
       return (
         <g className="firefly">

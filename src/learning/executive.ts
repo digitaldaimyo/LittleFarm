@@ -42,7 +42,7 @@ export function describeContext(c: ExecContext): string {
   p.push(c.energyLow ? 'tired' : 'rested');
   if (c.carrying) p.push('carrying something');
   if (c.berry) p.push('berries ripe');
-  if (c.carrot) p.push('carrots ready');
+  if (c.carrot) p.push('carrots/eggs ready');
   if (c.firefly) p.push('fireflies out');
   if (c.recentFail) p.push('just had a setback');
   return p.join(', ');
@@ -84,7 +84,7 @@ export function updateExecutive(table: ExecutiveTable, c: ExecContext, b: Behavi
 
 export const BEHAVIOR_LABEL: Record<BehaviorId, string> = {
   forage: 'Forage berries',
-  deliver: 'Deliver carrots',
+  deliver: 'Deliver carrots & eggs',
   rest: 'Nap',
   wander: 'Wander',
   manual: 'Follow your lead',

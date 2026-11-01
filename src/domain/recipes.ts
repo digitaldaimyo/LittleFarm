@@ -125,11 +125,11 @@ function herdChicken(): StageSpec {
       n('rule', { label: 'Home to roost', when: n('ev.entersArea', { what: n('ref.target'), area: coopArea(n) }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'success' })], limit: n('lim.once') }),
       n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.03 })] }),
     ],
-    success: n('cond.inArea', { what: n('ref.target'), area: coopArea(n), count: 1 }),
+    success: n('cond.allInArea', { what: n('ref.target'), area: coopArea(n) }),
     fail: null,
     seed: 808, maxTicks: 60,
     learner: { skill: 'Herd', template: 'sense', focus: 'chicken', episodes: 8000,
-      senses: [n('sense.nearest', { what: n('ref.target') }), n('sense.areaFrom', { what: n('ref.target'), area: coopArea(n) })] },
+      senses: [n('sense.outside', { what: n('ref.target'), area: coopArea(n) }), n('sense.areaFrom', { what: n('ref.target'), area: coopArea(n) })] },
     evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.6 },
   };
 }

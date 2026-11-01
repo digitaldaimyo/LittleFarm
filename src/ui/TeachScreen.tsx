@@ -122,6 +122,19 @@ function PenView({ stage, pet }: { stage: StageSpec; pet: Pet }) {
   const onTile = (x: number, y: number) => {
     if (showingReplay) return;
     const placing = s.ui.placing;
+    if (placing === 'zone.rect') {
+      // Two taps paint a rectangle: first corner, then the opposite corner.
+      const a = s.ui.zoneStart;
+      if (!a) { s.setUi({ zoneStart: { x, y } }); return; }
+      const names = new Set(stage.environment.filter((p) => p.cardId === 'zone.rect').map((p) => String(p.args.name)));
+      const name = !names.has('coop') ? 'coop' : (prompt('Name this area', 'garden') ?? '').trim().slice(0, 16);
+      if (!name || names.has(name)) { s.setUi({ zoneStart: null }); if (name) store.toast(`There is already an area called “${name}”.`, 'warn'); return; }
+      const z = node('zone.rect', { name, where: s.ui.placeMode === 'random' ? 'random' : 'fixed', x: Math.min(a.x, x), y: Math.min(a.y, y), w: Math.abs(a.x - x) + 1, h: Math.abs(a.y - y) + 1 });
+      withSnapshot(stage.id, (st) => { st.environment.push(z); });
+      s.setUi({ zoneStart: null, placing: null, slot: { parentId: z.id, socket: 'kind', index: null } });
+      store.toast(s.ui.placeMode === 'random' ? `Area “${name}” painted — it keeps its size but moves to a random spot each try.` : `Area “${name}” painted.`, 'good');
+      return;
+    }
     if (placing) {
       withSnapshot(stage.id, (st) => {
         if (placing === 'place.pet') {
@@ -151,6 +164,7 @@ function PenView({ stage, pet }: { stage: StageSpec; pet: Pet }) {
         <WorldView world={world} palette={pet.palette} mood={mood} ghostIds={showingReplay ? undefined : ghosts} trail={showingReplay ? replay.trail : undefined}
           label={showingReplay ? `Replay: ${traceBadge(trace)}` : `Pen preview, layout ${s.ui.previewSeed}`}
           onTile={showingReplay ? undefined : onTile}
+          highlight={s.ui.zoneStart}
           tileLabel={(x, y) => s.ui.placing ? `Place at ${x},${y}` : `Tile ${x},${y}`} />
       </div>
       <div className="pen-foot">
@@ -165,7 +179,7 @@ function PenView({ stage, pet }: { stage: StageSpec; pet: Pet }) {
           </>
         ) : (
           <>
-            <span className="small">{s.ui.placing ? `Tap a tile to place ${cardOf(node(s.ui.placing))?.presentation.title ?? 'it'}` : 'Dashed = scattered (moves every try)'}</span>
+            <span className="small">{s.ui.placing === 'zone.rect' ? (s.ui.zoneStart ? 'Now tap the opposite corner' : 'Tap one corner of the area') : s.ui.placing ? `Tap a tile to place ${cardOf(node(s.ui.placing))?.presentation.title ?? 'it'}` : 'Dashed = scattered (moves every try)'}</span>
             <button className="btn ghost small" onClick={() => s.setUi({ previewSeed: s.ui.previewSeed + 1 })}>Roll layout</button>
           </>
         )}
@@ -230,6 +244,7 @@ function EnvironmentBinder({ stage }: { stage: StageSpec }) {
       <div className="hand-row wrap">
         {all.map((h) => <HandCardView key={h.card.id} h={h} selected={s.ui.placing === h.card.id} onPick={() => s.setUi({ placing: s.ui.placing === h.card.id ? null : h.card.id, slot: null })} />)}
         <button className={`card g-obj ${s.ui.placing === 'place.pet' ? 'sel' : ''}`} onClick={() => s.setUi({ placing: s.ui.placing === 'place.pet' ? null : 'place.pet', slot: null })}><span className="card-title">Pet start</span><span className="card-sub">placement</span></button>
+        <button className={`card g-obj ${s.ui.placing === 'zone.rect' ? 'sel' : ''}`} onClick={() => s.setUi({ placing: s.ui.placing === 'zone.rect' ? null : 'zone.rect', zoneStart: null, slot: null })}><span className="card-title">Area</span><span className="card-sub">paint 2 corners</span></button>
         <button className="card g-obj" onClick={() => {
           let id = stage.environment.find((p) => p.cardId === 'place.time')?.id;
           if (!id) { const t = node('place.time', { mode: 'night' }); id = t.id; update((st) => { st.environment.push(t); }); }
@@ -245,7 +260,7 @@ function EnvironmentBinder({ stage }: { stage: StageSpec }) {
             <li key={p.id} className={s.ui.slot?.parentId === p.id ? 'sel' : ''}>
               {kind && <ObjectIcon kind={kind} size={22} />}
               <button className="link" onClick={() => s.setUi({ slot: { parentId: p.id, socket: 'kind', index: null } })}>
-                {p.cardId === 'place.time' ? `Time of day: ${paramOf(p, 'mode', 'day') === 'random' ? 'day or night (random each try)' : paramOf(p, 'mode', 'day')}` : p.cardId === 'place.pet' ? `Pet starts at ${paramOf(p, 'mode', 'random') === 'random' ? 'a random spot' : `(${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`}` : p.cardId === 'place.random' ? `${paramOf(p, 'count', 1)} × ${REGISTRY.objects.get(kind ?? '')?.name ?? '?'} scattered (${paramOf(p, 'region', 'anywhere')})` : `${REGISTRY.objects.get(kind ?? '')?.name ?? '?'} at (${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`}
+                {p.cardId === 'zone.rect' ? `Area “${paramOf(p, 'name', 'coop')}” ${paramOf(p, 'w', 2)}×${paramOf(p, 'h', 2)} ${paramOf(p, 'where', 'fixed') === 'random' ? '(random spot each try)' : `at (${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`}` : p.cardId === 'place.time' ? `Time of day: ${paramOf(p, 'mode', 'day') === 'random' ? 'day or night (random each try)' : paramOf(p, 'mode', 'day')}` : p.cardId === 'place.pet' ? `Pet starts at ${paramOf(p, 'mode', 'random') === 'random' ? 'a random spot' : `(${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`}` : p.cardId === 'place.random' ? `${paramOf(p, 'count', 1)} × ${REGISTRY.objects.get(kind ?? '')?.name ?? '?'} scattered (${paramOf(p, 'region', 'anywhere')})` : `${REGISTRY.objects.get(kind ?? '')?.name ?? '?'} at (${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`}
               </button>
               <span className="chip">{card?.presentation.title}</span>
               <button className="icon-btn small" aria-label="Remove" onClick={() => { update((st) => { st.environment = st.environment.filter((x) => x.id !== p.id); }); s.setUi({ slot: null }); }}>✕</button>
@@ -270,6 +285,7 @@ function PlacementSleeve({ stage, id }: { stage: StageSpec; id: string }) {
         {(card.params ?? []).map((pd) => {
           const v = p.args[pd.id] ?? pd.default;
           if (pd.kind === 'choice') return <label key={pd.id} className="param-edit">{pd.label}<select value={String(v)} onChange={(e) => set(pd.id, e.target.value)}>{pd.choices!.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}</select></label>;
+          if (pd.kind === 'text') return <label key={pd.id} className="param-edit">{pd.label}<input value={String(v)} maxLength={16} onChange={(e) => set(pd.id, e.target.value)} /></label>;
           const max = pd.id === 'x' ? stage.size.w - 1 : pd.id === 'y' ? stage.size.h - 1 : pd.max;
           return <label key={pd.id} className="param-edit">{pd.label}<input type="number" min={pd.min} max={max} value={Number(v)} onChange={(e) => set(pd.id, Math.max(pd.min ?? 0, Math.min(max ?? 99, Number(e.target.value) || 0)))} /></label>;
         })}
@@ -358,7 +374,7 @@ function Diagnostics({ stage }: { stage: StageSpec }) {
 
 function PetBinder({ stage, pet }: { stage: StageSpec; pet: Pet }) {
   const s = useStore();
-  const kinds = [...placedKinds(stage)].filter((k) => !REGISTRY.objects.get(k)?.solid);
+  const kinds = [...placedKinds(stage)].filter((k) => !REGISTRY.objects.get(k)?.solid || !!REGISTRY.objects.get(k)?.mover);
   const update = (fn: (st: StageSpec) => void) => withSnapshot(stage.id, fn);
   const skills: string[] = ['Approach', 'Avoid', 'Fetch'];
   const custom = !isPreset(stage.learner.skill);

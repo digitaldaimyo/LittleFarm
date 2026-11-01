@@ -6,7 +6,7 @@ import { effectiveOutput } from './validate';
 import { placedKinds } from './spec';
 
 /** Unlock ids sold in the shop (kept here to avoid a domain → game import). */
-const SHOP_UNLOCKS = new Set(['trees', 'fences', 'bushes', 'bed', 'patch2']);
+const SHOP_UNLOCKS = new Set(['trees', 'fences', 'bushes', 'bed', 'patch2', 'chickens', 'scarecrow']);
 
 export interface HandContext {
   socket: TypeExpr;

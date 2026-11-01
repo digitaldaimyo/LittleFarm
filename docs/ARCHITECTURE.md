@@ -42,6 +42,13 @@ The same simulator runs pens, evaluation and the farm. Fixed seed + fixed action
 - `ref.target` now takes on the traits of the kind it is aimed at (`effectiveOutput`), so "the target" fits `Kind<Plot>` sockets when a skill is aimed at a patch.
 - Saves are v3. The v2 → v3 migration adds a well to existing farms.
 
+### Creatures and areas (Milestone 2)
+- Creatures are objects whose `ObjectDef.mover` is `wander` (chicken, solid) or `crow` (flies, not solid). After the pet acts, `moveCreatures` runs in id order using `world.rng`. Crows step toward the nearest crop (avoiding scarecrow radius 2) and `peck` it on arrival (`world.counts.pecks`).
+- `shoo` (ability `shoo`) acts on creatures within 1 tile. A chicken is pushed one tile directly away if the tile is free (`shoo` event). A crow leaves (`scare`). Movement that crosses an area boundary emits `enterArea` / `leaveArea` with the area name.
+- `World.areas: {name,x,y,w,h}[]` come from `zone.rect` placements (fixed or random each try). Random placements skip area tiles. On the farm, the coop is `{coop, 0,5, 2×2}`.
+- Cards: `area.named(name)` (type `Area`; validation errors on unknown names); `ev.shoo(it)`, `ev.peck(it)`, `ev.entersArea(it)`, `ev.leavesArea(it)`; `cond.inArea(count)`, `cond.allInArea`, `cond.petInArea`; `q.pecks`; senses `sense.area` (27), `sense.outside` (nearest one outside an area, 27) and `sense.areaFrom` (direction from that one to the area, 27).
+- Farm: `updateCreatures` handles egg laying (coop only) and crow arrivals and departures. Deliver/Fetch picks the nearest carrot or egg. Saves are v4 (adds the coop area and creature PRNG).
+
 ## Learning
 
 ### Templates, senses and abilities (Milestone 1)

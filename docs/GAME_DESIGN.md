@@ -22,6 +22,7 @@ A novice reaches a training run in 4 taps from the farm (Teach → Curriculum �
 | Deliver a carrot (Fetch) | 3 |
 | Deliver a berry to the bin | 2 |
 | Catch a firefly (night only, walk into it) | 1 |
+| Deliver an egg (Fetch) | 2 |
 
 Berry bushes regrow in 28 ticks and carrots in 44. **Watered** plots grow twice as fast, and the soil dries out when the next crop appears. Watering takes a learned skill: fill up at the well, then find dry plots.
 
@@ -33,6 +34,8 @@ Berry bushes regrow in 28 ticks and carrots in 44. **Watered** plots grow twice 
 | Unlock | How |
 |---|---|
 | Your own skills | A certified Approach |
+| Chickens, Scarecrow (shop) | After *Your own skills* |
+| Crow visits | Day 2+, after *Your own skills* |
 | Fetch lessons | Certified Approach + 5 coins earned |
 | Carrot patches | A certified Fetch |
 | Avoid lessons | 12 coins earned (after Fetch) |
@@ -42,6 +45,11 @@ Unlocks add **vocabulary** (new cards and skills) and **problems** (carrots need
 
 ## Reward hacking as discovery
 The *Treat for every pickup* recipe pays +3 per pickup with no limit. Pets reliably learn to pick up and put down the berry over and over: about 30 pickups per try and 0% deliveries, while treats per try climb as success falls. The report says **Loophole found!**, shows a replay of the worst try, explains which rule paid, and offers the repair card *Pay only once per object*. After the repair, retraining delivers most of the time (the test suite requires at least +40 points). Nothing is ever lost: the stage has Undo, and saving an uncertified revision never replaces a certified active one.
+
+## Creatures and areas
+- **Coop** (farm area, 2×2, bottom left). **Chickens** (shop, 10 coins, after *Your own skills*) wander 25% of ticks, but only 6% inside the coop. Each one inside the coop lays an egg on a free coop tile with probability 1/90 per tick (max 4 eggs). They block movement, so pets must **Shoo** them, which pushes them one tile directly away.
+- **Crows** arrive by day from day 2 (at most one; spawn chance 1/250 per tick at the map edge). They fly to the nearest crop every other tick, ignoring walls, and peck it: the crop is gone and regrows normally. Shoo scares a crow off. Night sends crows away. The **Scarecrow** (shop, 8 coins) keeps them out of a radius of 2.
+- The herding lesson shows why the choice of senses matters. "Where is chicken" + "where is coop" plateaus around 55–70%, but "where is a stray" + "the coop seen from the chicken" reaches ~85%.
 
 ## Your own skills
 Players invent behaviors by combining **senses**, **abilities** and **rules**. A small catalog of senses with visible costs (the "situations to learn" meter) is the core trade-off: more attention means a smarter pet that needs more practice. Two example lessons (*Wait for it*, *Keep clear*) show "do a thing and hold it" and "keep doing something until time's up". A custom skill keeps its own revision history, signature and provenance. On the farm, **Run a skill** points it at any object. A skill trained to wait on a target will happily wait on the bin.
@@ -55,5 +63,5 @@ Entries are grounded templates filled from real events: adoption, skill learned 
 ## Content
 - Two-plus pet palettes (Meadow, Plum, Sky, Moss) and seven name suggestions.
 - Objects: berry, carrot, target, bin, pond, rock, tree, fence, plus farm-only home, berry bush and carrot patch.
-- Objects added with watering and day/night: well, firefly. Berry bushes, carrot patches and home can now go in pens.
-- Recipes: *Go to the berry*, *Bring it home*, *Avoid the pond*, *Treat for every pickup* (experiment), and custom-skill examples *Wait for it*, *Keep clear* and *Water the garden*.
+- Objects added with watering and day/night: well, firefly. With Milestone 2: chicken, crow, egg, scarecrow, and the Area card. Berry bushes, carrot patches and home can now go in pens.
+- Recipes: *Go to the berry*, *Bring it home*, *Avoid the pond*, *Treat for every pickup* (experiment), and custom-skill examples *Wait for it*, *Keep clear*, *Water the garden* and *Herd a chicken*, and the experiment *Treat for every shoo*.

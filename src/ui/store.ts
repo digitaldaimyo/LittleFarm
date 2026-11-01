@@ -37,6 +37,8 @@ export interface UiState {
   /** Placement card chosen in the Environment binder waiting for a tile tap. */
   placing: string | null;
   placeMode: 'random' | 'fixed';
+  /** First corner while painting an area. */
+  zoneStart: { x: number; y: number } | null;
   previewSeed: number;
   modal: null | 'adopt' | 'shop' | 'confirm-reset';
   toasts: Toast[];
@@ -52,7 +54,7 @@ class GameStore {
   state: GameState = newGame();
   runtime: FarmRuntime = createRuntime(this.state.farm);
   ui: UiState = {
-    screen: 'farm', binder: 'environment', slot: null, placing: null, placeMode: 'random', previewSeed: 1,
+    screen: 'farm', binder: 'environment', slot: null, placing: null, placeMode: 'random', zoneStart: null, previewSeed: 1,
     modal: null, toasts: [], fx: [], training: null, penReplay: null, farmPaused: false, loadDiagnostics: [],
   };
   version = 0;

@@ -10,6 +10,7 @@
 | `tests/save.test.ts` | Export/import round-trip of pets, policies, stages, templates, farm, progress and unknown fields; restored policies act identically; unknown cards reported not dropped; garbage and newer versions rejected |
 | `tests/milestone1.test.ts` | v1 → v2 migration of a real v1 fixture save; the preset encoder equals the legacy index; v1 skills act move-for-move identically (Approach, Avoid layouts, Fetch); *Wait for it* and *Keep clear* beat random by ≥ 30 points; a "surprise" skill (*Shadow the bin*) written only from cards learns; state-budget, no-senses and wrong-card validation; a custom skill saved with its senses runs re-aimed on the farm |
 | `tests/water-night.test.ts` | Fill/water mechanics and charges; *Water the garden* valid and ≥ 30 points over random; "the target" trait typing; watered farm plots regrow ≤ half the ticks and dry afterwards; clock boundaries; fireflies appear at night, get caught for coins and leave at dawn; night-preferring rules executive; Time of day card, *Is night* condition; v2 save gains a well |
+| `tests/milestone2.test.ts` | Determinism with chickens/crows; shoo pushes into an area (events) and scares crows; crows peck but avoid scarecrows; scattered things avoid areas; unknown area names rejected; **gate:** *Herd a chicken* ≥ 60% held-out and ≥ 30 points over random; *Treat for every shoo* statically warned, flagged after training (> 10 shoos per try) and repaired by "once per object"; shop chickens lay eggs only in the coop and Fetch delivers them; crows arrive by day 2; a learned Herd brings in a stray on the farm while another chicken is already home; v3 saves gain the coop |
 | `tests/farm.test.ts` | Trained pet produces coins where an untrained pet produces none; independent repertoires and rollback; full first-hour flow (adopt → pen → train → save → deploy → earn → Fetch unlocked, tutorial complete); Fetch delivers carrots on the farm; 3000-tick runs keep producing (no permanent stuck loops) with both executives |
 
 ## Benchmark protocol (`npm run bench`)
@@ -27,6 +28,8 @@ Hardware: Intel Xeon @ 2.10 GHz, 4 threads, Node 22 (a cloud container, no GPU).
 | *Wait for it* (custom: move+stay; where is target, walls, heading, patience) | 2500 | 0% | **88%** | 70% | 80–100% | ~250 ms |
 | *Keep clear* (custom, survive; where is target=pond, walls, hazards) | 2000 | 10% | **85%** | 80% | 80–100% | ~200 ms |
 | *Water the garden* (custom: move+water; where is well, where is a dry patch, has water) | 10000 | 0% | **78%** | 70% | 50–80% | ~1.2 s |
+| *Herd a chicken* (custom: move+shoo; where is a stray chicken, coop seen from it) | 8000 | 25% | **85%** | 70% | 70–100% | ~0.6 s |
+| *Treat for every shoo* (loophole) | 8000 | 25% | 18% (flagged 5/5, ~30 shoos per try) | — | — | ~0.9 s |
 
 Per-run rows are printed by the script. In the browser, *Normal* speed adds small delays so training is watchable (Approach takes a few seconds). *Fast* is close to the raw numbers above.
 

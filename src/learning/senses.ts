@@ -3,7 +3,7 @@ import { REGISTRY } from '../domain/registry';
 import { node } from '../domain/spec';
 import { resolveKind } from '../sim/compile';
 import type { Action, World } from '../sim/world';
-import { DIRS, MOVES, def, isHazardAt, isSolidAt, nearest, objectsAt } from '../sim/world';
+import { DIRS, MOVES, def, inArea, isHazardAt, isSolidAt, nearest, objectsAt, type Area } from '../sim/world';
 
 /**
  * Compiles player-chosen Sense cards into a mixed-radix state encoder.
@@ -81,11 +81,21 @@ function senseFn(n: SpecNode, target: string): (w: World) => number {
         return ((Math.sign(dx) + 1) * 3 + (Math.sign(dy) + 1)) * 3 + (d <= 1 ? 0 : d <= 3 ? 1 : 2);
       };
     }
+    case 'sense.outside': {
+      const a = isNodeArea(n);
+      return (w) => {
+        const ar = w.areas?.find((x) => x.name === a);
+        const t = ar ? nearestOutside(w, kind, ar) : nearest(w, kind);
+        if (!t) return 4 * 3 + 2;
+        const dx = t.x - w.pet.x, dy = t.y - w.pet.y, d = Math.abs(dx) + Math.abs(dy);
+        return ((Math.sign(dx) + 1) * 3 + (Math.sign(dy) + 1)) * 3 + (d <= 1 ? 0 : d <= 3 ? 1 : 2);
+      };
+    }
     case 'sense.areaFrom': {
       const a = isNodeArea(n);
       return (w) => {
         const ar = w.areas?.find((x) => x.name === a);
-        const t = nearest(w, kind);
+        const t = ar ? nearestOutside(w, kind, ar) : null;
         if (!ar || !t) return 4 * 3 + 2;
         const tx = Math.max(ar.x, Math.min(ar.x + ar.w - 1, t.x)), ty = Math.max(ar.y, Math.min(ar.y + ar.h - 1, t.y));
         const dx = tx - t.x, dy = ty - t.y, d = Math.abs(dx) + Math.abs(dy);
@@ -131,6 +141,16 @@ function senseFn(n: SpecNode, target: string): (w: World) => number {
     default:
       throw new Error(`Unknown sense ${n.cardId}`);
   }
+}
+
+function nearestOutside(w: World, kind: string, ar: Area) {
+  let best: ReturnType<typeof nearest> = null, bd = Infinity;
+  for (const o of w.objects) {
+    if (o.kind !== kind || o.carried || o.delivered || inArea(ar, o.x, o.y)) continue;
+    const d = Math.abs(o.x - w.pet.x) + Math.abs(o.y - w.pet.y);
+    if (d < bd || (d === bd && best && o.id < best.id)) { bd = d; best = o; }
+  }
+  return best;
 }
 
 function isNodeArea(n: SpecNode): string {

@@ -71,7 +71,16 @@ Example skills that become possible:
 
 ---
 
-## Milestone 2: Areas and moving creatures (a world worth teaching about)
+## Milestone 2: Areas and moving creatures (a world worth teaching about) — ✅ shipped
+
+> **Status:** done. Differences from the plan below:
+> - Creatures are ordinary objects with a `mover` (not a separate `Entity` type), so every existing sense, condition, event and save path works on them. Their random moves use a seeded PRNG stored in the world (`world.rng`), so runs stay deterministic.
+> - Movers shipped: chickens `wander` (less inside the coop), and crows fly to the nearest crop and peck it, avoiding scarecrows. No generic `flee` mover yet.
+> - Areas are placed with an **Area** card (paint two corners; fixed or random spot each try) and referenced by name (`area.named`). Scattered things never start inside an area.
+> - Herding needed one extra sense: **Area seen from…** (which way the coop lies *from the chicken*). With it, a single lesson reaches the gate, so no two-stage curriculum was needed. Plain "where is chicken + where is coop" plateaued at 55–70%.
+> - Farm runs exposed that "nearest chicken" can be one that's already home, so herding uses **Where is a stray…** (nearest one outside the area) and the goal **All in area**.
+> - The loophole gate uses **a treat for every shoo**. "A treat for every coop visit" turned out to be a weak loophole (in/out cycles need lots of walking: 1.4–2.9 visits per try, flagged on only 2 of 3 seeds). The static checker now also warns about repeatable rewards on shoo and area events.
+> - Eggs reuse Fetch: the Deliver job carries carrots *or* eggs.
 
 **Player-facing:** Paint **areas** in the pen and on the farm (coop, garden, porch). Two gentle creatures arrive: **chickens** that wander and lay eggs, and a **crow** that drifts toward ripe crops. A new ability, **Shoo**, gently pushes an adjacent creature one tile away.
 
@@ -89,9 +98,9 @@ New behaviors players can invent:
 **Content:** chicken, egg (carryable), crow, coop (container for chickens, by area), scarecrow (crows avoid it; decoration with a gameplay effect).
 
 **Gate**
-- [ ] Determinism test extended to worlds with entities.
-- [ ] *Herd one chicken into the coop* is trainable with the card system alone and reaches ≥ 60% held-out. If it can't, ship it as a two-stage curriculum (approach the chicken → shoo toward the area).
-- [ ] Loophole check: rewarding "chicken enters coop" with no limit lets the pet learn to shoo a chicken in and out repeatedly. The existing exploit detector must flag it, and the per-object limit must repair it.
+- [x] Determinism test extended to worlds with chickens and crows.
+- [x] *Herd a chicken* is trainable with cards alone: **85% mean held-out (min 70%) vs 25% random**, 70–100% on bigger unseen pens, across 5 seeds. On the farm it brings in a stray even when another chicken is already home.
+- [x] Loophole check (as *a treat for every shoo*): about 30 shoos per try at 15–20% success, flagged on 5 of 5 seeds. "Once per object" repairs it to 80–90%.
 
 **Risk:** herding is genuinely hard for local senses. Mitigation: the `sense.nearestEntity` direction plus `sense.area(direction to area)`. Present it as an advanced lesson with a scripted demo first.
 

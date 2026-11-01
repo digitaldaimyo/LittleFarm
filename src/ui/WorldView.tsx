@@ -50,6 +50,12 @@ export function WorldView({ world, palette, mood = 'idle', label, onTile, tileLa
   return (
     <svg className={`world ${className ?? ''}`} viewBox={`0 0 ${W} ${H}`} role="group" aria-label={label}>
       {tiles}
+      {(world.areas ?? []).map((a) => (
+        <g key={`area-${a.name}`} pointerEvents="none" className="area">
+          <rect x={a.x * C + 2} y={a.y * C + 2} width={a.w * C - 4} height={a.h * C - 4} rx="8" className="area-rect" />
+          <text x={a.x * C + 6} y={a.y * C + 13} className="area-label">{a.name}</text>
+        </g>
+      ))}
       {highlight && <rect x={highlight.x * C + 2} y={highlight.y * C + 2} width={C - 4} height={C - 4} rx="6" className="tile-hl" />}
       {trail && trail.length > 1 && (
         <polyline className="trail" points={trail.map((p) => `${p.x * C + C / 2},${p.y * C + C / 2}`).join(' ')} />
@@ -84,6 +90,8 @@ export function WorldView({ world, palette, mood = 'idle', label, onTile, tileLa
           {f.type === 'splash' && <text textAnchor="middle" className="fx-splash">splash!</text>}
           {f.type === 'confused' && <text textAnchor="middle" className="fx-confused">?</text>}
           {f.type === 'drop' && f.text && <text textAnchor="middle" className="fx-water">{f.text === 'filled' ? 'filled up' : 'splash'}</text>}
+          {f.text === 'shoo!' && <text textAnchor="middle" className="fx-coin">shoo!</text>}
+          {f.text === 'pecked' && <text textAnchor="middle" className="fx-splash" dy="-10">peck!</text>}
         </g>
       ))}
     </svg>

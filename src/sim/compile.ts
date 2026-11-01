@@ -146,6 +146,14 @@ export function compileCondition(n: SpecNode): Cond {
         return !!ar && w.objects.filter((o) => o.kind === k && onGround(o) && inArea(ar, o.x, o.y)).length >= c;
       };
     }
+    case 'cond.allInArea': {
+      const k = kindArg(n, 'what');
+      const a = areaArg(n, 'area');
+      return ({ w }) => {
+        const ar = w.areas?.find((x) => x.name === a);
+        return !!ar && w.objects.every((o) => o.kind !== k || !onGround(o) || inArea(ar, o.x, o.y));
+      };
+    }
     case 'cond.petInArea': {
       const a = areaArg(n, 'area');
       return ({ w }) => { const ar = w.areas?.find((x) => x.name === a); return !!ar && inArea(ar, w.pet.x, w.pet.y); };

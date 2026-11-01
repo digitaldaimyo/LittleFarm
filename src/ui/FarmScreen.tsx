@@ -5,7 +5,7 @@ import { PetSprite, type PetMood } from './art';
 import { activePet, activeRevision, customSkills, getSkill, isCertified, petById } from '../game/pets';
 import { OBJECT_BY_ID } from '../domain/packs/farm';
 
-const FARM_TARGETS = ['berry', 'carrot', 'firefly', 'bin', 'home', 'well', 'pond', 'bush', 'patch', 'rock', 'tree'];
+const FARM_TARGETS = ['berry', 'carrot', 'egg', 'chicken', 'crow', 'firefly', 'bin', 'home', 'well', 'pond', 'bush', 'patch', 'rock', 'tree'];
 import { DAY_TICKS, dayInfo, queueManual, queueManualPath, recentProduction, TIRED } from '../game/farm';
 import { nextUnlock } from '../game/progression';
 import { BEHAVIOR_LABEL } from '../learning/executive';
@@ -35,7 +35,7 @@ function jobCards(pet: Pet, unlocks: string[]): JobCard[] {
   return [
     { id: 'auto', title: 'Auto', blurb: `${pet.name} decides using their executive — napping at night, unless there are fireflies to catch.` },
     { id: 'forage', title: BEHAVIOR_LABEL.forage, blurb: 'Approach a ripe berry, then gather it. +1 coin.', needs: 'Approach', locked: hasNav ? undefined : 'Needs a saved Approach skill' },
-    { id: 'deliver', title: BEHAVIOR_LABEL.deliver, blurb: 'Fetch a carrot to the bin. +3 coins.', needs: 'Fetch', locked: !unlocks.includes('carrots') ? 'Unlocks with a certified Fetch' : hasFetch ? undefined : 'Needs a saved Fetch skill' },
+    { id: 'deliver', title: BEHAVIOR_LABEL.deliver, blurb: 'Fetch carrots (+3) and eggs (+2) to the bin.', needs: 'Fetch', locked: hasFetch ? undefined : 'Needs a saved Fetch skill' },
     { id: 'rest', title: 'Nap', blurb: 'Rest to refill energy.' },
     { id: 'skill', title: 'Run a skill', blurb: 'Run one of your own skills, aimed at anything on the farm.', locked: customSkills(pet).length ? undefined : unlocks.includes('custom') ? 'Invent a skill in the pen first (Pet binder → New skill)' : 'Unlocks with a certified Approach' },
     { id: 'manual', title: 'Steer', blurb: 'Guide them yourself: tap tiles or use arrow keys.' },
@@ -58,7 +58,7 @@ export function FarmScreen() {
 
   useEffect(() => {
     if (!manual) return;
-    const keys: Record<string, Action> = { ArrowUp: 'N', ArrowRight: 'E', ArrowDown: 'S', ArrowLeft: 'W', ' ': 'pick', p: 'pick', d: 'drop', w: 'water' };
+    const keys: Record<string, Action> = { ArrowUp: 'N', ArrowRight: 'E', ArrowDown: 'S', ArrowLeft: 'W', ' ': 'pick', p: 'pick', d: 'drop', w: 'water', x: 'shoo' };
     const h = (e: KeyboardEvent) => {
       const a = keys[e.key];
       if (!a || (e.target as HTMLElement)?.tagName === 'INPUT') return;
@@ -128,8 +128,9 @@ export function FarmScreen() {
               <button className="wide" onClick={() => queueManual(store.runtime, 'pick')}>Pick up (P)</button>
               <button className="wide" onClick={() => queueManual(store.runtime, 'drop')}>Put down (D)</button>
               <button className="wide" onClick={() => queueManual(store.runtime, 'water')}>Water (W)</button>
+              <button className="wide" onClick={() => queueManual(store.runtime, 'shoo')}>Shoo (X)</button>
             </div>
-            <p className="muted small">Tap a tile to walk there. Berries go straight into the basket; carrots must be dropped in the bin. Water at the well to fill up, then on a bush or patch — watered plots regrow twice as fast. Walk into fireflies at night to catch them.</p>
+            <p className="muted small">Tap a tile to walk there. Berries go straight into the basket; carrots must be dropped in the bin. Water at the well to fill up, then on a bush or patch — watered plots regrow twice as fast. Walk into fireflies at night to catch them. Shoo pushes a next-door chicken one tile away and sends crows flying. Chickens only lay eggs inside the coop.</p>
           </div>
         )}
       </section>
@@ -223,6 +224,7 @@ export function FarmScreen() {
             <span><b>{g.resources.berries}</b> berries</span>
             <span><b>{g.resources.carrots}</b> carrots</span>
             {(g.resources.fireflies ?? 0) > 0 && <span><b>{g.resources.fireflies}</b> fireflies</span>}
+            {(g.resources.eggs ?? 0) > 0 && <span><b>{g.resources.eggs}</b> eggs</span>}
           </div>
           {next ? (
             <div className="unlock">

@@ -329,3 +329,6 @@ button.node { padding: 2px 9px; font-weight: 600; }
 @keyframes flicker { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
 .clock { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--val-tint); color: var(--val-ink); }
 .clock.night { background: #1F2B48; color: #F3E9B5; }
+
+.area-rect { fill: rgba(240, 180, 76, .16); stroke: #C27C0E; stroke-width: 2; stroke-dasharray: 6 4; }
+.area-label { font-size: 10px; font-weight: 700; fill: #7A4800; text-transform: uppercase; letter-spacing: .05em; }

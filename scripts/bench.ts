@@ -36,6 +36,8 @@ for (const seed of SEEDS) {
     ['Wait*', { ...recipeStage('wait-for-it'), seed }, undefined],
     ['Clear*', { ...recipeStage('keep-clear'), seed }, undefined],
     ['Water*', { ...recipeStage('water-garden'), seed }, undefined],
+    ['Herd*', { ...recipeStage('herd-chicken'), seed }, undefined],
+    ['ShooLoop', { ...recipeStage('shoo-loophole'), seed }, undefined],
   ];
   for (const [name, stage, nav] of jobs) {
     const res = name === 'Approach' ? a : train(stage, nav);

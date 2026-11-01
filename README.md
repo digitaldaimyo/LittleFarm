@@ -49,7 +49,9 @@ Try the optional **Treat for every pickup** recipe to watch a pet discover a rew
 
 A farm day lasts about 5½ minutes at 1×, and the last 30% is **night**. At night the farm darkens, pets on Auto prefer to nap (night naps are deeper, night work is more tiring), and **fireflies** appear. Pets catch them by walking into them (+1 coin each), and the uncaught ones leave at dawn. In pens, the **Time of day** card sets day, night or a coin flip each try. *Is night* (a condition) and *Day or night* (a sense) let you teach skills that behave differently after dark.
 
-The farm keeps running while you're in other screens. Use **Steer** to guide a pet by hand (tap tiles, or use the arrow keys, P to pick up, D to put down and W to water).
+**Chickens, crows and areas.** The farm has a **coop** area. Buy **two chickens** in the shop: they wander, and they lay eggs (2 coins each when delivered by Fetch) *only while inside the coop*. From day 2, **crows** fly in by day to peck ripe crops. A pet with the new **Shoo** ability pushes a next-door chicken one tile away or sends a crow flying, and a **Scarecrow** keeps crows 2 tiles away. In pens, the **Area** card paints a named area (two taps; a fixed spot or a random spot each try). Senses like *Where is a stray…* and *Area seen from…* make herding learnable. Try the *Herd a chicken* example, and the *Treat for every shoo* loophole experiment.
+
+The farm keeps running while you're in other screens. Use **Steer** to guide a pet by hand (tap tiles, or use the arrow keys, P to pick up, D to put down, W to water and X to shoo).
 
 ## Performance
 
@@ -58,7 +60,7 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 ## Limitations (honest list)
 
 - Only one pet works on the farm at a time (the "on duty" pet); others nap and recover.
-- No sound. Night is gentle: fireflies only, no crows or other creatures yet (Milestone 2).
+- No sound. Crows only visit by day and at most one at a time. Guarding crops means running a skill you taught (there's no built-in guard job yet).
 - Thumbs up/down feedback applies to movement skills (Approach/Avoid), not to the Fetch controller.
 - Templates are immutable named revisions you can instantiate. "Exposed parameters" are stored but have no editing UI yet.
 - Avoid is the hardest skill: about 82% mean held-out success, with occasional runs at 75%. Use *Refine* to train more.
