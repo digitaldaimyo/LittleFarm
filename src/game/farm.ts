@@ -1,5 +1,5 @@
 import type { Action, SimEvent, World } from '../sim/world';
-import { addObject, bfsPath, emptyWorld, inArea, nearest, nudgeableGate, objectsAt, onGround, step } from '../sim/world';
+import { addObject, bfsPath, emptyWorld, inArea, nearest, nudgeableGate, objectsAt, onGround, step, type StepOptions } from '../sim/world';
 import { nightfallRequests, postRequests, trackRequests } from './requests';
 import { Rng } from '../sim/rng';
 import { FetchController, FetchRun, NavRun, SkillRun, isDone, randomMove, type ExecStep } from '../learning/policies';
@@ -82,13 +82,17 @@ export interface FarmRuntime {
   jitter: number;
   /** Farm-plan memory: row starts (for the anti-dithering guard), fire counts, switches. */
   plan: PlanRuntime;
+  /** Object this pet is heading for (hidden from the other pet on duty). */
+  claim: number | null;
+  /** Runtime of the second pet on duty (created on demand). */
+  second?: FarmRuntime;
   rng: Rng;
 }
 
 export function createRuntime(f: FarmState): FarmRuntime {
   const rng = new Rng(1);
   rng.state = f.rngState >>> 0;
-  return { exec: null, inv: null, ctx: null, startCoins: 0, startEnergy: 0, startTick: 0, manual: [], recentFail: false, jitter: 0, plan: newPlanRuntime(), rng };
+  return { exec: null, inv: null, ctx: null, startCoins: 0, startEnergy: 0, startTick: 0, manual: [], recentFail: false, jitter: 0, plan: newPlanRuntime(), claim: null, rng };
 }
 
 function plotUnlocked(s: GameState, p: Plot): boolean {
@@ -510,28 +514,99 @@ export function farmTick(s: GameState, rt: FarmRuntime): TickResult {
   updateWeather(s, rt, fx);
   updateCreatures(s, rt, fx);
   const pet = petById(s, f.dutyPetId);
+  const pet2 = f.duty2PetId && f.duty2PetId !== f.dutyPetId ? petById(s, f.duty2PetId) : null;
   for (const p of s.pets) {
-    if (p.id !== f.dutyPetId) p.energy = Math.min(100, p.energy + 0.5); // off-duty pets nap at home
+    if (p.id !== f.dutyPetId && p.id !== pet2?.id) p.energy = Math.min(100, p.energy + 0.5); // off-duty pets nap at home
   }
   if (!pet) {
     f.rngState = rt.rng.state;
     return { fx, unlocked: checkUnlocks(s) };
   }
+  if (pet2) {
+    f.world.pet2 ??= { x: f.world.pet.x, y: Math.min(f.world.h - 1, f.world.pet.y + 1), carrying: null, facing: 'S' };
+    rt.second ??= createSecondRuntime(f);
+  } else if (f.world.pet2) {
+    delete f.world.pet2;
+    rt.second = undefined;
+  }
+  withOtherPet(s, rt.second, () => petTurn(s, pet, rt, fx, {}));
+  f.rngState = rt.rng.state;
+  if (pet2 && rt.second) secondTurn(s, pet2, rt, fx);
+  if (f.production.length && f.tick - f.production[0].tick > 2400) f.production = f.production.filter((p) => f.tick - p.tick <= 2400);
+  return { fx, unlocked: checkUnlocks(s) };
+}
+
+function createSecondRuntime(f: FarmState): FarmRuntime {
+  const r = createRuntime(f);
+  r.rng.state = (f.rngState2 ?? 0x5ec0d) >>> 0;
+  return r;
+}
+
+/**
+ * While one pet acts, the other is a solid obstacle and whatever it's heading for is hidden,
+ * so the two never chase the same berry.
+ */
+function withOtherPet(s: GameState, other: FarmRuntime | undefined, fn: () => void, otherBody = s.farm.world.pet2): void {
+  const w = s.farm.world;
+  if (!other || !otherBody) { fn(); return; }
+  const buddy = addObject(w, 'buddy', otherBody.x, otherBody.y);
+  const claimed = other.claim !== null ? w.objects.find((o) => o.id === other.claim && !o.carried && !o.delivered) : undefined;
+  if (claimed) claimed.hidden = true;
+  try { fn(); } finally {
+    if (claimed) delete claimed.hidden;
+    w.objects = w.objects.filter((o) => o !== buddy);
+  }
+}
+
+/** The second pet's turn: swap its body, job, stun and queue into the primary slots and reuse the same logic. */
+function secondTurn(s: GameState, pet2: Pet, rt: FarmRuntime, fx: FarmFx[]): void {
+  const f = s.farm;
+  const w = f.world;
+  const rt2 = rt.second!;
+  const swap = () => {
+    [w.pet, w.pet2] = [w.pet2!, w.pet];
+    [f.current, f.current2] = [f.current2 ?? null, f.current];
+    [f.stun, f.stun2] = [f.stun2 ?? 0, f.stun];
+    [f.queue, f.queue2] = [f.queue2 ?? [], f.queue];
+  };
+  swap();
+  try {
+    withOtherPet(s, rt, () => petTurn(s, pet2, rt2, fx, { advance: false }), w.pet2);
+  } finally {
+    swap();
+  }
+  f.rngState2 = rt2.rng.state;
+}
+
+function claimFor(w: World, inv: Invocation | null): number | null {
+  if (!inv) return null;
+  const kinds = inv.behaviorId === 'forage' ? ['berry'] : inv.behaviorId === 'catch' ? ['firefly'] : inv.behaviorId === 'goto' ? [inv.args.target ?? ''] : inv.behaviorId === 'deliver' && w.pet.carrying === null ? ['carrot', 'egg'] : [];
+  let best: number | null = null, bd = Infinity;
+  for (const k of kinds) {
+    const o = nearest(w, k);
+    if (!o) continue;
+    const d = Math.abs(o.x - w.pet.x) + Math.abs(o.y - w.pet.y);
+    if (d < bd) { bd = d; best = o.id; }
+  }
+  return best;
+}
+
+/** One pet's decision + action for this tick (the original single-pet logic, unchanged). */
+function petTurn(s: GameState, pet: Pet, rt: FarmRuntime, fx: FarmFx[], opts: StepOptions): void {
+  const f = s.farm;
   pet.mood += (60 - pet.mood) * 0.002;
   f.world.petEnergy = pet.energy;
   if (f.stun > 0) {
     f.stun--;
-    f.rngState = rt.rng.state;
-    return { fx, unlocked: checkUnlocks(s) };
+    return;
   }
   // Mode change → drop current activity.
   if (rt.inv && ((pet.assignment.mode === 'manual') !== (rt.inv.behaviorId === 'manual'))) { rt.exec = null; rt.inv = null; f.current = null; }
   if (!rt.exec && rt.jitter > 0 && pet.assignment.mode !== 'manual') {
     rt.jitter--;
     f.current = { behaviorId: 'wander', args: {}, intention: 'Confused after getting stuck — sniffing around before trying again', timeout: 1, chosenBy: 'rules' };
-    handleEvents(s, pet, step(f.world, randomMove(f.world, rt.rng)), rt, fx);
-    f.rngState = rt.rng.state;
-    return { fx, unlocked: checkUnlocks(s) };
+    handleEvents(s, pet, step(f.world, randomMove(f.world, rt.rng), opts), rt, fx);
+    return;
   }
   if (!rt.exec) {
     const inv = chooseInvocation(s, pet, rt);
@@ -548,18 +623,16 @@ export function farmTick(s: GameState, rt: FarmRuntime): TickResult {
   if (isDone(st)) {
     finishInvocation(s, pet, rt, st.done, st.reason, fx);
   } else {
-    const events = step(f.world, st);
+    const events = step(f.world, st, opts);
     handleEvents(s, pet, events, rt, fx);
   }
+  rt.claim = claimFor(f.world, rt.inv);
   const resting = rt.inv?.behaviorId === 'rest';
   const bed = s.purchases.includes('bed') ? 2 : 1;
   const nightK = f.world.night ? 1.5 : 1; // night work is tiring, night naps are deep
   if (resting) pet.energy = Math.min(100, pet.energy + 1.5 * bed * nightK);
   else if (st !== 'wait' && rt.inv?.behaviorId !== 'manual') pet.energy = Math.max(0, pet.energy - 0.12 * nightK);
   else if (rt.inv?.behaviorId === 'manual' && st !== 'wait') pet.energy = Math.max(0, pet.energy - 0.05);
-  if (f.production.length && f.tick - f.production[0].tick > 2400) f.production = f.production.filter((p) => f.tick - p.tick <= 2400);
-  f.rngState = rt.rng.state;
-  return { fx, unlocked: checkUnlocks(s) };
 }
 
 /** Coins earned over the last `window` ticks. */
@@ -594,7 +667,10 @@ export function applyPlan(s: GameState, rt: FarmRuntime, petId: string): void {
   rt.recentFail = false;
   rt.manual = [];
   rt.plan = newPlanRuntime();
+  rt.claim = null;
   rt.rng.state = s.farm.rngState >>> 0;
+  // The second pet starts its current decision afresh too, so previews from here match reality.
+  if (rt.second) { rt.second = undefined; s.farm.current2 = null; }
 }
 
 export interface PlanPreview {

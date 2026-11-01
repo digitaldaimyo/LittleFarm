@@ -1,6 +1,7 @@
 import type { LearnerTemplate, SkillName, SpecNode, StageSpec, Template } from '../domain/types';
 import type { SenseSkillDef } from '../learning/policies';
 import type { FarmRequest } from './requests';
+import type { BehaviorSummary } from '../learning/summary';
 import type { SerializedQ } from '../learning/qtable';
 import type { Traits } from '../learning/episodes';
 import type { ExecutiveTable, Invocation } from '../learning/executive';
@@ -55,6 +56,8 @@ export interface SkillRevision {
   uses?: { skill: string; rev: number }[];
   /** …and a copy of its lesson (options, watched conditions, size), needed to run it anywhere. */
   stage?: StageSpec;
+  /** What it actually did on the held-out layouts (heatmap, action mix, endings…). */
+  summary?: BehaviorSummary;
 }
 
 export interface Skill {
@@ -155,6 +158,12 @@ export interface FarmState {
   current: Invocation | null;
   production: { tick: number; coins: number }[];
   manualMode: boolean;
+  /** A second pet on duty, with its own current job, stun and decisions. */
+  duty2PetId?: string | null;
+  current2?: Invocation | null;
+  stun2?: number;
+  queue2?: Invocation[];
+  rngState2?: number;
   /** Neighbours' requests board. */
   requests?: FarmRequest[];
   /** Current shower: raining until this tick; the temporary pond tiles it made. */

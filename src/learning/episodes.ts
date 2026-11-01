@@ -5,6 +5,7 @@ import type { Action, World } from '../sim/world';
 import { bfsPath, cloneWorld, legalActions, nearest, objectsAt, step } from '../sim/world';
 import { FetchController, FetchRun, NavPolicy, SensePolicy, isDone, type ExecStep, type SenseSkillDef } from './policies';
 import { legalActionIdx } from './senses';
+import { summarize, type BehaviorSummary } from './summary';
 import { RoutineRun, compileRoutine, type RoutineController, type SubSkills } from './routine';
 import { templateOf } from './skilldef';
 
@@ -50,6 +51,8 @@ export interface EvalResult {
   ledger: LedgerEntry[];
   traces: EpisodeTrace[];
   seeds: number[];
+  /** What the policy actually did across all these episodes. */
+  summary?: BehaviorSummary;
 }
 
 export interface Traits {
@@ -214,10 +217,12 @@ export function evaluate(stage: StageSpec, p: PolicySpec, seeds: number[], label
   const firstBad = all.find((t) => !t.success);
   for (const t of [firstOk, firstBad, ...all]) if (t && !traces.includes(t) && traces.length < keepTraces) traces.push(t);
   const n = Math.max(1, seeds.length);
+  const ledgerList = [...ledger.values()];
   return {
     label, episodes: seeds.length, successes, successRate: successes / n, failRate: fails / n,
     meanReward: reward / n, meanTicks: ticks / n,
-    ledger: [...ledger.values()], traces, seeds,
+    ledger: ledgerList, traces, seeds,
+    summary: label === 'evaluation' ? summarize(stage, all, ledgerList) : undefined,
   };
 }
 

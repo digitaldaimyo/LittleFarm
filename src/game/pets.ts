@@ -200,6 +200,7 @@ export function saveRevision(s: GameState, pet: Pet, input: SaveRevisionInput): 
       simTicks: input.simTicks,
       resumedFrom: input.resumedFrom,
     },
+    ...(input.report.after.summary ? { summary: input.report.after.summary } : {}),
     ...(routine ? { uses: input.uses ?? [], stage: structuredClone(input.stage), focus: input.stage.learner.focus, maxTicks: input.stage.maxTicks } : {}),
     ...(sense ? {
       learner: senseDefFor(input.stage),

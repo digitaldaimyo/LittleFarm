@@ -21,6 +21,8 @@ export interface Obj {
   wet?: boolean;
   /** Gates: open (walkable) or closed (solid). Undefined = closed. */
   open?: boolean;
+  /** Transient: claimed by the other pet on duty during this pet's turn (never saved as true). */
+  hidden?: boolean;
 }
 
 export interface PetBody {
@@ -54,6 +56,8 @@ export interface World {
   tick: number;
   objects: Obj[];
   pet: PetBody;
+  /** A second pet on duty (farm only). */
+  pet2?: PetBody;
   nextId: number;
   delivered: Record<string, number>;
   /** Night-time (set from the pen's Time of day card or the farm clock). */
@@ -99,6 +103,7 @@ export function cloneWorld(w: World): World {
     ...w,
     objects: w.objects.map((o) => ({ ...o })),
     pet: { ...w.pet },
+    ...(w.pet2 ? { pet2: { ...w.pet2 } } : {}),
     delivered: { ...w.delivered },
     ...(w.areas ? { areas: w.areas.map((a) => ({ ...a })) } : {}),
     ...(w.counts ? { counts: { ...w.counts } } : {}),
@@ -113,7 +118,7 @@ export function addObject(w: World, kind: string, x: number, y: number): Obj {
 
 /** Objects lying on the grid (not carried, not delivered). */
 export function onGround(o: Obj): boolean {
-  return !o.carried && !o.delivered;
+  return !o.carried && !o.delivered && !o.hidden;
 }
 
 export function objectsAt(w: World, x: number, y: number): Obj[] {
@@ -185,7 +190,12 @@ export function distTo(w: World, kind: string, x = w.pet.x, y = w.pet.y): number
 }
 
 /** Advance the world by one tick. Mutates `w`; returns the tick's events. */
-export function step(w: World, action: Action): SimEvent[] {
+export interface StepOptions {
+  /** Move creatures and advance the clock (false for a second pet's turn within the same tick). */
+  advance?: boolean;
+}
+
+export function step(w: World, action: Action, opts: StepOptions = {}): SimEvent[] {
   const p = w.pet;
   const events: SimEvent[] = [{ type: 'tick', x: p.x, y: p.y }];
   if (action === 'wait') {
@@ -265,8 +275,10 @@ export function step(w: World, action: Action): SimEvent[] {
       }
     } else events.push({ type: 'fumble', x: p.x, y: p.y });
   }
-  moveCreatures(w, events);
-  w.tick++;
+  if (opts.advance !== false) {
+    moveCreatures(w, events);
+    w.tick++;
+  }
   return events;
 }
 

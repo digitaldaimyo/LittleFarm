@@ -22,6 +22,7 @@ export const FARM_OBJECTS: ObjectDef[] = [
   { id: 'egg', name: 'Egg', plural: 'eggs', traits: ['Carryable', 'Produce'], solid: false, hazard: false, carryable: true, container: false, penPlaceable: true, hint: 'Fresh from the coop. Worth 2 coins in the bin.' },
   { id: 'scarecrow', name: 'Scarecrow', plural: 'scarecrows', traits: ['Solid', 'Scary'], solid: true, hazard: false, carryable: false, container: false, penPlaceable: true, unlock: 'scarecrow', hint: 'Crows won’t come within 2 tiles of it.' },
   { id: 'gate', name: 'Gate', plural: 'gates', traits: ['Gate'], solid: false, hazard: false, carryable: false, container: false, penPlaceable: true, hint: 'Blocks the way while closed. Nudge it open or shut from next to it.' },
+  { id: 'buddy', name: 'Other pet', plural: 'other pets', traits: ['Solid', 'Pet'], solid: true, hazard: false, carryable: false, container: false, penPlaceable: false, hint: 'The other pet on duty.' },
   { id: 'firefly', name: 'Firefly', plural: 'fireflies', traits: ['Glow'], solid: false, hazard: false, carryable: false, container: false, penPlaceable: true, hint: 'Appears at night. Walk into it to catch it.' },
 ];
 
