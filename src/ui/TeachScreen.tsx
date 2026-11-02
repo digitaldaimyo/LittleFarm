@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Trainer } from '../learning/trainer';
+import { TRAIT_AIMS } from '../sim/world';
 import { cloneWorld, legalActions, step, type Action, type World } from '../sim/world';
 import { probeField, probePath } from '../learning/probe';
 import { audio } from '../audio/engine';
@@ -356,6 +357,16 @@ function EnvironmentBinder({ stage }: { stage: StageSpec }) {
           if (!id) { const t = node('place.obstacles', { amount: 'few', kind: 'rocks' }); id = t.id; update((st) => { st.environment.push(t); }); audio.play('pen.place'); }
           s.setUi({ placing: null, slot: { parentId: id, socket: 'kind', index: null } });
         }}><span className="card-title">Obstacles</span><span className="card-sub">{(() => { const t = stage.environment.find((p) => p.cardId === 'place.obstacles'); return t ? `${paramOf(t, 'amount', 'few')} ${paramOf(t, 'kind', 'rocks')}` : 'none yet'; })()}</span></button>
+        <button className="card g-obj" data-tut="env-energy" onClick={() => {
+          let id = stage.environment.find((p) => p.cardId === 'place.energy')?.id;
+          if (!id) { const t = node('place.energy', { level: 30, vary: 'random' }); id = t.id; update((st) => { st.environment.push(t); }); audio.play('pen.place'); }
+          s.setUi({ placing: null, slot: { parentId: id, socket: 'kind', index: null } });
+        }}><span className="card-title">Energy</span><span className="card-sub">{(() => { const t = stage.environment.find((p) => p.cardId === 'place.energy'); return t ? (paramOf(t, 'vary', 'exact') === 'random' ? '10–100 each try' : `${paramOf(t, 'level', 30)} at the start`) : 'none (no tiredness)'; })()}</span></button>
+        <button className="card g-obj" data-tut="env-purse" onClick={() => {
+          let id = stage.environment.find((p) => p.cardId === 'place.purse')?.id;
+          if (!id) { const t = node('place.purse', { coins: 5 }); id = t.id; update((st) => { st.environment.push(t); }); audio.play('pen.place'); }
+          s.setUi({ placing: null, slot: { parentId: id, socket: 'kind', index: null } });
+        }}><span className="card-title">Seed money</span><span className="card-sub">{(() => { const t = stage.environment.find((p) => p.cardId === 'place.purse'); return t ? `${paramOf(t, 'coins', 5)} coins` : 'none (seeds free)'; })()}</span></button>
         <button className="card g-obj" data-tut="env-stocked" onClick={() => {
           const t = node('place.stocked', { kind: node('kind:bin'), item: node(`kind:${stage.learner.focus && stage.learner.focus !== 'bin' ? stage.learner.focus : 'berry'}`), count: 3, vary: 'exact', region: 'anywhere' });
           update((st) => { st.environment.push(t); }); audio.play('pen.place');
@@ -402,6 +413,8 @@ function placementText(stage: StageSpec, p: SpecNode): string {
   if (p.cardId === 'place.random') return `Scatter ${t}`;
   if (p.cardId === 'place.obstacles') return `Obstacles: ${t}`;
   if (p.cardId === 'place.stocked') return `Stocked: ${t}`;
+  if (p.cardId === 'place.energy') return `Energy: ${t}`;
+  if (p.cardId === 'place.purse') return `Seed money: ${t}`;
   if (p.cardId === 'place.fixed') return `Place ${t}`;
   if (p.cardId === 'zone.rect') return `Area “${paramOf(p, 'name', 'coop')}” ${paramOf(p, 'w', 2)}×${paramOf(p, 'h', 2)} ${paramOf(p, 'where', 'fixed') === 'random' ? '(random spot each try)' : `at (${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`}`;
   if (p.cardId === 'place.pet' && paramOf(p, 'mode', 'random') === 'fixed') return `Pet starts at (${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`;
@@ -664,7 +677,7 @@ function PetBinder({ stage, pet }: { stage: StageSpec; pet: Pet }) {
       )}
       <label className="param-edit">Aimed at <span className="small muted">(“the target” in cards — re-aim it later without retraining)</span>
         <select value={stage.learner.focus} onChange={(e) => update((st) => { st.learner.focus = e.target.value; })}>
-          {[...new Set([stage.learner.focus, ...kinds])].map((k) => <option key={k} value={k}>{REGISTRY.objects.get(k)?.name ?? k}</option>)}
+          {[...new Set([stage.learner.focus, ...Object.keys(TRAIT_AIMS), ...kinds])].map((k) => <option key={k} value={k}>{REGISTRY.objects.get(k)?.name ?? REGISTRY.cards.get(`kind:${k}`)?.presentation.title ?? k}</option>)}
         </select>
       </label>
       {template === 'sense' && <SenseEditor stage={stage} update={update} custom={custom} />}
@@ -760,6 +773,7 @@ function RoutineEditor({ stage, pet, update }: { stage: StageSpec; pet: Pet; upd
                 <>
                   <select aria-label="Aimed at" value={aim} onChange={(e) => setOpt(i, (x) => { x.args.aim = node(e.target.value); })}>
                     <option value="ref.target">→ the target</option>
+                    {Object.keys(TRAIT_AIMS).map((kk) => <option key={kk} value={`kind:${kk}`}>→ {REGISTRY.cards.get(`kind:${kk}`)?.presentation.title ?? kk}</option>)}
                     {kinds.map((kk) => <option key={kk} value={`kind:${kk}`}>→ {REGISTRY.objects.get(kk)?.name ?? kk}</option>)}
                   </select>
                   <span className={`chip ${k ? '' : 'bad'}`}>{k ? `r${k.activeRev}` : 'missing'}</span>

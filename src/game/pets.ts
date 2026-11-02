@@ -5,6 +5,7 @@ import type { TrainingReport } from '../learning/report';
 import type { GameState, NavigatorName, PaletteId, Pet, Skill, SkillRevision } from './types';
 import { addJournal, addJournalOnce, pct } from './journal';
 import { Rng, hashSeed } from '../sim/rng';
+import type { World } from '../sim/world';
 import { REGISTRY } from '../domain/registry';
 import { senseDefFor, templateOf } from '../learning/skilldef';
 import { ABILITY_LABELS } from '../learning/senses';
@@ -130,15 +131,23 @@ export function staleUses(p: Pet, rev: SkillRevision | null): { skill: string; t
 }
 
 /** Runtime controller for a routine revision, wired to the pet's current sub-skill revisions. */
-export function routineRunFor(p: Pet, rev: SkillRevision, target: string | undefined, rng: Rng, timeout: number): RoutineRun | null {
+export function routineRunFor(p: Pet, rev: SkillRevision, target: string | undefined, rng: Rng, timeout: number, startWorld?: World): RoutineRun | null {
   if (!rev.stage) return null;
-  const compiled = compileRoutine(rev.stage, subskillsFor(p), p.traits, target);
+  const compiled = compileRoutine(rev.stage, subskillsFor(p), p.traits, target, startWorld ? deployExplore(p) : 0);
   const ctrl = RoutineController.from(rev.policy, compiled);
   const aim = target ?? rev.stage.learner.focus;
   const survive = rev.stage.outcome === 'survive';
   const goal = rev.stage.success && !survive ? withTarget(aim, () => compileCondition(rev.stage!.success!)) : null;
   const fail = survive && rev.stage.fail ? withTarget(aim, () => compileCondition(rev.stage!.fail!)) : null;
-  return new RoutineRun(compiled, ctrl, rng, timeout, goal ? (w) => goal({ w, prev: w.pet }) : null, survive ? (w) => !fail?.({ w, prev: w.pet }) : null);
+  // On the farm, deliveries made before this run started don't count toward its goal.
+  const before = startWorld ? { ...startWorld.delivered } : null;
+  const since = (w: World): World => (before ? { ...w, delivered: Object.fromEntries(Object.entries(w.delivered).map(([k, v]) => [k, v - (before[k] ?? 0)])) } : w);
+  return new RoutineRun(compiled, ctrl, rng, timeout, goal ? (w) => goal({ w: since(w), prev: w.pet }) : null, survive ? (w) => !fail?.({ w, prev: w.pet }) : null);
+}
+
+/** On the farm, a learned walk takes a random step now and then (2–8%, more for curious pets), so it can't loop forever. */
+export function deployExplore(p: Pet): number {
+  return 0.02 + 0.06 * p.traits.curiosity;
 }
 
 export function customSkills(p: Pet): Skill[] {

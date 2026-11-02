@@ -247,6 +247,51 @@ function fetchAsRoutine(): StageSpec {
   return s;
 }
 
+/**
+ * Harvest as a learned routine (learned-farm roadmap): walk to any ripe crop, pick it up, carry it to the house, put
+ * it down — built from cards over the pet's own Approach. Trained in a farm-like pen, it runs on the farm unchanged.
+ */
+function harvestRoutine(): StageSpec {
+  const n = maker('hv');
+  const carrying = () => n('cond.carryingAny', { actor: pet(n) });
+  return {
+    id: 'stage-harvest', name: 'Harvest', recipeId: 'harvest', version: 1,
+    blurb: 'A routine from cards: Approach → any ripe crop, pick up, Approach → the house, put down. Coins come from the house.',
+    size: { w: 10, h: 10 },
+    environment: [
+      n('place.pet', { mode: 'random', x: 0, y: 0 }),
+      n('place.random', { kind: n('kind:@crop'), count: 2, region: 'anywhere', vary: 'more1' }),
+      n('place.random', { kind: k(n, 'home'), count: 1, region: 'anywhere' }),
+      n('place.obstacles', { amount: 'few', kind: 'rocks' }),
+    ],
+    abilities: ['move', 'pickup', 'drop'],
+    rules: [
+      n('rule', { label: 'Sold at the house', when: n('ev.deliver', { what: n('ref.target'), into: k(n, 'home') }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'judge' })], limit: n('lim.once') }),
+      n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.02 })] }),
+    ],
+    success: n('cond.delivered', { what: n('ref.target'), into: k(n, 'home'), count: 1 }),
+    fail: null,
+    seed: 515, maxTicks: 120,
+    learner: {
+      skill: 'Harvest', template: 'routine', focus: '@crop', destination: 'home', episodes: 600,
+      routine: {
+        options: [
+          n('opt.skill', { skill: 'Approach', aim: n('ref.target'), when: n('cond.not', { inner: carrying() }) }),
+          n('opt.skill', { skill: 'Approach', aim: k(n, 'home'), when: carrying() }),
+          n('opt.action', { action: 'pick' }),
+          n('opt.action', { action: 'drop' }),
+        ],
+        watch: [
+          carrying(),
+          n('cond.at', { actor: pet(n), what: n('ref.target') }),
+          n('cond.at', { actor: pet(n), what: k(n, 'home') }),
+        ],
+      },
+    },
+    evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.7 },
+  };
+}
+
 /** A routine built from two player-made skills: herd the chicken home, water the garden, and nap when done. */
 function morningChores(): StageSpec {
   const n = maker('mc');
@@ -439,6 +484,7 @@ export const RECIPES: Recipe[] = [
   { id: 'water-garden', name: 'Water the garden', blurb: 'Your own skill: fill up at the well, water the dry patches.', skill: 'Water the garden', unlock: 'custom', optional: true, build: waterGarden },
   { id: 'empty-basket', name: 'Empty the basket', blurb: 'Your own skill: carry a stocked basket to the house and empty it there (uses Lift).', skill: 'Empty the basket', unlock: 'custom', optional: true, build: emptyBasket },
   { id: 'patrol', name: 'Patrol', blurb: 'Your own skill with a note: well, house, well again (the note remembers which leg).', skill: 'Patrol', unlock: 'custom', optional: true, build: () => patrol() },
+  { id: 'harvest', name: 'Harvest', blurb: 'A routine: walk to any ripe crop, pick it up, carry it to the house (uses your Approach).', skill: 'Harvest', unlock: 'custom', optional: true, build: harvestRoutine },
   { id: 'herd-chicken', name: 'Herd a chicken', blurb: 'Your own skill: shoo a chicken into the coop.', skill: 'Herd', unlock: 'custom', optional: true, build: herdChicken },
   { id: 'shoo-loophole', name: 'Treat for every shoo', blurb: 'Experiment: a herding reward with a loophole.', skill: 'Herd (loophole)', unlock: 'custom', optional: true, build: shooLoophole },
   { id: 'open-gate', name: 'Open the gate', blurb: 'Your own skill: find a gate and nudge it open.', skill: 'Open the gate', unlock: 'custom', optional: true, build: openGate },

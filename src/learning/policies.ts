@@ -77,12 +77,15 @@ export class NavRun {
     private focus: string,
     private timeout: number,
     private rng: Rng,
+    /** Deployed (farm) only: a small chance of a random step, set by Curiosity, so a greedy loop can't repeat forever. */
+    private explore = 0,
   ) {}
   next(w: World): ExecStep {
     if (atFocus(w, this.focus)) return { done: 'success', reason: 'arrived' };
     if (!nearest(w, this.focus)) return { done: 'fail', reason: 'nothing to approach' };
     if (this.ticks >= this.timeout) return { done: 'timeout', reason: 'timeout' };
     this.ticks++;
+    if (this.explore > 0 && this.rng.next() < this.explore) return randomMove(w, this.rng);
     return this.policy ? this.policy.act(w, this.focus) : randomMove(w, this.rng);
   }
 }
@@ -198,6 +201,8 @@ export class SkillRun {
     private noteRunner: NoteRunner | null = null,
     /** *Survive* skills: at time-up, did it survive (its FAIL never held)? Absent = time-up is a timeout. */
     private survived: ((w: World) => boolean) | null = null,
+    /** Deployed (farm) only: Curiosity's small chance of a random step (see NavRun). */
+    private explore: { eps: number; rng: Rng } | null = null,
   ) {}
   /** Lend the run's notes to the shared farm world while it reads or writes them. */
   private withNotes<T>(w: World, fn: () => T): T {
@@ -211,6 +216,7 @@ export class SkillRun {
       if (this.ticks > 0 && this.done?.(w, this.base)) return { done: 'success', reason: 'goal reached' };
       if (this.ticks >= this.timeout) return this.survived ? (this.survived(w) ? { done: 'success', reason: 'survived' } : { done: 'fail', reason: 'did not survive' }) : { done: 'timeout', reason: 'time up' };
       this.ticks++;
+      if (this.explore && this.explore.rng.next() < this.explore.eps) return randomMove(w, this.explore.rng);
       return this.policy.act(w, this.target, this.base);
     });
   }

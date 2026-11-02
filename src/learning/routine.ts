@@ -71,7 +71,8 @@ function atLeastOneTick(inner: { next(w: World): ExecStep }) {
   };
 }
 
-export function compileRoutine(stage: StageSpec, subs: SubSkills, traits: Traits, targetOverride?: string): CompiledRoutine {
+/** `explore`: deployed runs only (the farm) — Curiosity's small chance of a random step inside walking sub-skills. */
+export function compileRoutine(stage: StageSpec, subs: SubSkills, traits: Traits, targetOverride?: string, explore = 0): CompiledRoutine {
   const target = targetOverride ?? stage.learner.focus;
   const r = stage.learner.routine ?? { options: [], watch: [] };
   const watch = r.watch.slice(0, MAX_WATCH).map((n) => cond(n, target)!).filter(Boolean);
@@ -106,7 +107,7 @@ export function compileRoutine(stage: StageSpec, subs: SubSkills, traits: Traits
       return {
         label: `${name}(${aim})`,
         legal: (w) => (!when || when(w)) && !!nearest(w, aim) && !atFocus(w, aim),
-        makeRun: (rng) => atLeastOneTick(new NavRun(policy, aim, tmo, rng)),
+        makeRun: (rng) => atLeastOneTick(new NavRun(policy, aim, tmo, rng, explore)),
       };
     }
     const doneC = sub.success && sub.outcome !== 'survive' ? cond(sub.success, aim) : null;
@@ -114,7 +115,7 @@ export function compileRoutine(stage: StageSpec, subs: SubSkills, traits: Traits
     return {
       label: `${name}(${aim})`,
       legal: (w) => (!when || when(w)) && !(doneC && doneC(w)),
-      makeRun: () => atLeastOneTick(new SkillRun(policy, aim, limit, doneC)),
+      makeRun: (rng) => atLeastOneTick(new SkillRun(policy, aim, limit, doneC, null, null, explore > 0 ? { eps: explore, rng } : null)),
     };
   });
   return {

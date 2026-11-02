@@ -177,6 +177,9 @@ function senseFn(n: SpecNode, target: string): (w: World, base?: Tally) => numbe
         const n = storeCount(s), st = def(s.kind).storage;
         return n === 0 ? 0 : st && n >= st.slots * st.perSlot ? 2 : 1;
       };
+    case 'sense.tired':
+      // 0 rested (60+), 1 fine, 2 tired (below 25); no energy at all reads as rested.
+      return (w) => { const e = w.petEnergy ?? 100; return e >= 60 ? 0 : e >= 25 ? 1 : 2; };
     case 'sense.note': {
       const name = String(n.args.name ?? 'note').trim() || 'note';
       const cap = Math.max(1, Math.min(9, Number(n.args.cap ?? 1) || 1));

@@ -3,7 +3,7 @@ import { isNode, paramOf } from '../domain/spec';
 import { kindOfCard } from '../domain/registry';
 import { Rng, hashSeed } from './rng';
 import type { Obj, SimEvent, Tally, World } from './world';
-import { addObject, aimIs, objIs, bfsDistance, blocks, def, distTo, emptyStore, emptyWorld, eventOfKey, inArea, inBounds, isSolidAt, nearest, objectsAt, onGround, seedPrice } from './world';
+import { TRAIT_CROPS, addObject, aimIs, objIs, bfsDistance, blocks, def, distTo, emptyStore, emptyWorld, eventOfKey, inArea, inBounds, isSolidAt, nearest, objectsAt, onGround, seedPrice } from './world';
 
 /** How a rule's End try judges the try: by SUCCESS (default), or it counts as a success ✓ / a miss ✗ outright. */
 export type EndOutcome = 'judge' | 'success' | 'fail';
@@ -151,7 +151,7 @@ export function compileCondition(n: SpecNode): Cond {
     case 'cond.delivered': {
       const k = kindArg(n, 'what');
       const c = paramOf(n, 'count', 1);
-      return ({ w }) => (w.delivered[k] ?? 0) >= c;
+      return ({ w }) => (k.startsWith('@') ? Object.entries(w.delivered).reduce((a, [kind, v]) => a + (aimIs(kind, k) ? v : 0), 0) : w.delivered[k] ?? 0) >= c;
     }
     case 'cond.closer': {
       const k = kindArg(n, 'what');
@@ -414,12 +414,18 @@ export function generateWorld(spec: StageSpec, seed: number): World {
       (w.areas ??= []).push({ name: paramOf(z, 'name', 'coop'), x: ax, y: ay, w: aw, h: ah });
       for (let yy = ay; yy < ay + ah; yy++) for (let xx = ax; xx < ax + aw; xx++) areaTiles.add(key(xx, yy));
     }
+    /** Place a thing; a trait aim becomes a real kind each try (any ripe crop → one of the crops; storage → an empty basket). */
+    const put = (k: string, x: number, y: number) => {
+      if (k === '@crop') return addObject(w, TRAIT_CROPS[rng.int(TRAIT_CROPS.length)], x, y);
+      if (k === '@storage') { const b = addObject(w, 'bin', x, y); b.store = emptyStore('bin'); return b; }
+      return addObject(w, k, x, y);
+    };
     for (const p of spec.environment) {
       if (p.cardId !== 'place.fixed') continue;
       const k = resolveKind(p.args.kind, spec.learner.focus);
       const x = paramOf(p, 'x', 0), y = paramOf(p, 'y', 0);
       if (!k || !inBounds(w, x, y)) continue;
-      addObject(w, k, x, y);
+      put(k, x, y);
       occupied.add(key(x, y));
     }
     const petNode = spec.environment.find((p) => p.cardId === 'place.pet');
@@ -440,7 +446,7 @@ export function generateWorld(spec: StageSpec, seed: number): World {
       }
       if (region === 'nextTo' || region === 'awayFrom') {
         const k = resolveKind(n.args.ref, spec.learner.focus);
-        const refs = w.objects.filter((o) => o.kind === k);
+        const refs = w.objects.filter((o) => objIs(w, o, k));
         if (!refs.length) return out;
         const away = Math.max(3, Math.floor((W + H) / 4));
         for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -503,14 +509,15 @@ export function generateWorld(spec: StageSpec, seed: number): World {
         const t2 = t.length ? t : freeTiles('anywhere');
         if (!t2.length) continue;
         const [x, y] = rng.pick(t2);
-        const o = addObject(w, k, x, y);
+        const o = put(k, x, y);
         occupied.add(key(x, y));
-        const st = def(k).storage;
-        if (st && item) {
-          o.store = emptyStore(k);
+        const st = def(o.kind).storage;
+        const itemKind = item === '@crop' ? TRAIT_CROPS[rng.int(TRAIT_CROPS.length)] : item;
+        if (st && itemKind) {
+          o.store = emptyStore(o.kind);
           const max = Math.max(1, paramOf(p, 'count', 3));
           let n = paramOf(p, 'vary', 'exact') === 'upTo' ? 1 + rng.int(max) : max;
-          for (const slot of o.store!) { const put = Math.min(n, st.perSlot); if (put <= 0) break; slot.kind = item; slot.n = put; n -= put; }
+          for (const slot of o.store!) { const fill = Math.min(n, st.perSlot); if (fill <= 0) break; slot.kind = itemKind; slot.n = fill; n -= fill; }
         }
         continue;
       }
@@ -527,10 +534,17 @@ export function generateWorld(spec: StageSpec, seed: number): World {
         if (!t.length) t = freeTiles('anywhere');
         if (!t.length) break;
         const [x, y] = rng.pick(t);
-        addObject(w, k, x, y);
+        put(k, x, y);
         occupied.add(key(x, y));
       }
     }
+    const energy = spec.environment.find((p) => p.cardId === 'place.energy');
+    if (energy) {
+      w.energyPen = true;
+      w.petEnergy = paramOf(energy, 'vary', 'exact') === 'random' ? 10 + rng.int(91) : Math.max(0, Math.min(100, paramOf(energy, 'level', 30)));
+    }
+    const purse = spec.environment.find((p) => p.cardId === 'place.purse');
+    if (purse) w.seedCoins = Math.max(0, paramOf(purse, 'coins', 5));
     if (!petPlaced) {
       const t = relTiles('awayFrom', petNode!) ?? [];
       const t2 = t.length ? t : freeTiles('anywhere');

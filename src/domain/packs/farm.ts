@@ -51,8 +51,15 @@ const kindCards: CardDef[] = FARM_OBJECTS.map((o) =>
   }),
 );
 
+/** Trait aims (learned-farm roadmap): "any ripe crop", "storage with room" — usable wherever a thing goes. */
+const traitAimCards: CardDef[] = [
+  N({ id: 'kind:@crop', output: generic('Kind', 'Carryable', 'Crop'), evaluator: 'kind', presentation: { title: 'Any ripe crop', group: 'kind', sheet: 'Things', hint: 'Whichever ripe crop is nearest — berry, carrot, pumpkin or sunflower. Placed in a pen, it’s a different crop each try, so skills learn crops in general.', icon: 'berry' } }),
+  N({ id: 'kind:@storage', output: generic('Kind', 'Container'), evaluator: 'kind', presentation: { title: 'Storage with room', group: 'kind', sheet: 'Things', hint: 'The nearest basket or shed with room for what the pet is carrying. Placed in a pen, it’s an empty basket.', icon: 'bin' } }),
+];
+
 export const FARM_CARDS: CardDef[] = [
   ...kindCards,
+  ...traitAimCards,
   N({ id: 'actor.pet', output: A, evaluator: 'actor', presentation: { title: 'Your pet', group: 'actor', sheet: 'Who', hint: 'The pet being trained.', icon: 'pet' } }),
   N({ id: 'ref.target', output: KIND, evaluator: 'ref.target', presentation: { title: 'The target', group: 'reference', sheet: 'Who', hint: 'Whatever this skill is aimed at. Re-aim it later (e.g. berry → carrot) without retraining.', phrase: 'the target' } }),
   N({ id: 'area.named', output: nominal('Area'), evaluator: 'area.named',
@@ -130,6 +137,15 @@ export const FARM_CARDS: CardDef[] = [
   N({ id: 'place.weather', output: nominal('Placement'), evaluator: 'place.weather',
     params: [{ id: 'mode', label: 'Weather', kind: 'choice', default: 'dry', choices: [{ value: 'dry', label: 'dry' }, { value: 'rain', label: 'rain' }, { value: 'random', label: 'random each try' }] }],
     presentation: { title: 'Weather', group: 'placement', sheet: 'Placement', hint: 'Rain waters every bush and patch.', phrase: 'weather: {mode}' } }),
+  N({ id: 'place.energy', output: nominal('Placement'), evaluator: 'place.energy',
+    params: [
+      { id: 'level', label: 'Energy at the start', kind: 'number', default: 30, min: 0, max: 100, step: 5 },
+      { id: 'vary', label: 'Each try', kind: 'choice', default: 'exact', choices: [{ value: 'exact', label: 'exactly that' }, { value: 'random', label: 'anywhere from 10 to 100' }] },
+    ],
+    presentation: { title: 'Energy', group: 'placement', sheet: 'Placement', hint: 'The pet has energy in this pen, as on the farm: every step of work costs 0.12, staying put restores 1.5. Lets you teach “rest when tired” (with the Tired? sense or Energy below).', phrase: 'energy {level} ({vary})' } }),
+  N({ id: 'place.purse', output: nominal('Placement'), evaluator: 'place.purse',
+    params: [{ id: 'coins', label: 'Seed money', kind: 'number', default: 5, min: 0, max: 50, step: 1 }],
+    presentation: { title: 'Seed money', group: 'placement', sheet: 'Placement', hint: 'Planting costs the seed, as on the farm (carrot 1, sunflower 2, pumpkin 3); when the money runs out, Plant does nothing. Without this card, planting in pens is free.', phrase: '{coins} coins for seeds' } }),
   N({ id: 'place.time', output: nominal('Placement'), evaluator: 'place.time',
     params: [{ id: 'mode', label: 'Time', kind: 'choice', default: 'day', choices: [{ value: 'day', label: 'daytime' }, { value: 'night', label: 'night' }, { value: 'random', label: 'random each try' }] }],
     presentation: { title: 'Time of day', group: 'placement', sheet: 'Placement', hint: 'Day, night, or a coin flip each try.', phrase: 'time: {mode}' } }),
@@ -347,6 +363,8 @@ export const FARM_CARDS: CardDef[] = [
     presentation: { title: 'Patience', group: 'sense', sheet: 'Senses', hint: 'How long it has stayed still (0, 1–4, 5+ steps).', phrase: 'how long it has waited' } }),
   N({ id: 'sense.stock', output: nominal('Sense'), evaluator: 'sense.stock', radix: 3,
     presentation: { title: 'Stock', group: 'sense', sheet: 'Senses', hint: 'How full the nearest basket or shed is (or the basket it carries): empty, some, full.', phrase: 'how full the nearest storage is' } }),
+  N({ id: 'sense.tired', output: nominal('Sense'), evaluator: 'sense.tired', radix: 3,
+    presentation: { title: 'Tired?', group: 'sense', sheet: 'Senses', hint: 'How much energy the pet has: rested (60+), fine, or tired (below 25). On the farm it reads the pet’s real energy; in a pen, the Energy card’s.', phrase: 'how tired it is' } }),
   N({ id: 'sense.note', output: nominal('Sense'), evaluator: 'sense.note', radix: 2,
     params: [
       { id: 'name', label: 'Note', kind: 'text', default: 'note' },
@@ -399,7 +417,7 @@ export const FARM_CARDS: CardDef[] = [
     presentation: { title: 'Run skill', group: 'job', sheet: 'Jobs', hint: 'Run one of your own skills or routines.', phrase: 'run {skill} → {aim}' } }),
   N({ id: 'cond.energyBelow', output: nominal('Condition'), evaluator: 'cond.energyBelow',
     params: [{ id: 'value', label: 'Energy', kind: 'number', default: 25, min: 1, max: 100, step: 5 }],
-    presentation: { title: 'Energy below', group: 'condition', sheet: 'Conditions', hint: 'The working pet’s energy (farm only; always false in pens).', phrase: 'energy below {value}' } }),
+    presentation: { title: 'Energy below', group: 'condition', sheet: 'Conditions', hint: 'The working pet’s energy (on the farm, or in a pen with the Energy card; otherwise always false).', phrase: 'energy below {value}' } }),
   N({ id: 'cond.carryingAny', output: nominal('Condition'), evaluator: 'cond.carryingAny',
     sockets: [{ id: 'actor', label: 'Who', type: A, required: true }],
     presentation: { title: 'Carrying something', group: 'condition', sheet: 'Conditions', phrase: '{actor} carries something' } }),

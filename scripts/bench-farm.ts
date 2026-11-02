@@ -13,12 +13,13 @@ import { startLayout, move, place, applyLayout } from '../src/game/layout';
 import { recipeStage } from '../src/domain/recipes';
 import type { GameState, Pet } from '../src/game/types';
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
-import { trainAndSave } from '../tests/helpers';
+import { trainAndSave, trainAndSaveRoutine } from '../tests/helpers';
 
 const SEEDS = [101, 202, 303];
 const TICKS = 2400; // two farm days
-type Setup = 'auto-rules' | 'auto-learned' | 'starter-plan' | 'harvest-job' | 'two-pets';
-const SETUPS: Setup[] = ['auto-rules', 'auto-learned', 'starter-plan', 'harvest-job', 'two-pets'];
+type Setup = 'auto-rules' | 'auto-learned' | 'starter-plan' | 'harvest-job' | 'two-pets' | 'learned-harvest';
+/** `learned-harvest` (phase 2): the Harvest *routine* trained in a pen, aimed at any ripe crop — no scripted job. */
+const SETUPS: Setup[] = ['auto-rules', 'auto-learned', 'starter-plan', 'harvest-job', 'two-pets', 'learned-harvest'];
 
 function skilledPet(g: GameState, name: string, seed: number): Pet {
   const p = adoptPet(g, name, 'meadow');
@@ -50,6 +51,11 @@ function run(setup: Setup, seed: number, layout: 'standard' | 'held-out') {
   if (setup === 'auto-learned') a.executive.mode = 'learned';
   if (setup === 'starter-plan') { a.plan = starterPlan(); a.assignment.mode = 'plan'; }
   if (setup === 'harvest-job') a.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' };
+  if (setup === 'learned-harvest') {
+    const hv = recipeStage('harvest'); hv.seed = seed;
+    trainAndSaveRoutine(g, a, hv);
+    a.assignment = { mode: 'job', job: 'skill', navigator: 'Approach', skillName: 'Harvest', target: '@crop' };
+  }
   if (setup === 'two-pets') {
     const b = skilledPet(g, 'Mochi', seed);
     b.assignment = { mode: 'job', job: 'deliver', navigator: 'Approach' };

@@ -21,6 +21,8 @@ export function effectiveOutput(reg: Registry, card: CardDef, target?: string): 
   if (card.id === 'ref.target' && target) {
     const o = reg.objects.get(target);
     if (o) return generic('Kind', ...o.traits);
+    const aim = reg.cards.get(`kind:${target}`); // trait aims ("any ripe crop") carry their traits on their card
+    if (aim) return aim.output;
   }
   return card.output;
 }
@@ -37,7 +39,7 @@ export function validateNode(n: SpecNode, expected: TypeExpr, ctx: Ctx): void {
   }
   const outT = effectiveOutput(ctx.reg, card, ctx.target);
   if (!fits(expected, outT)) {
-    ctx.out.push({ severity: 'error', code: 'type-mismatch', nodeId: n.id, message: card.id === 'ref.target' ? `“The target” is aimed at ${ctx.reg.objects.get(ctx.target ?? '')?.name ?? 'something'}, which doesn't fit a ${typeToString(expected)} slot.` : `“${card.presentation.title}” makes a ${typeToString(outT)}, but this slot needs a ${typeToString(expected)}.` });
+    ctx.out.push({ severity: 'error', code: 'type-mismatch', nodeId: n.id, message: card.id === 'ref.target' ? `“The target” is aimed at ${ctx.reg.objects.get(ctx.target ?? '')?.name ?? ctx.reg.cards.get(`kind:${ctx.target}`)?.presentation.title ?? 'something'}, which doesn't fit a ${typeToString(expected)} slot.` : `“${card.presentation.title}” makes a ${typeToString(outT)}, but this slot needs a ${typeToString(expected)}.` });
   }
   if (card.id === 'ref.it' && !ctx.itBound) {
     ctx.out.push({ severity: 'error', code: 'scope', nodeId: n.id, message: '“It” only means something inside a rule whose WHEN event is about an object (reach, pick up, put down, deliver).' });

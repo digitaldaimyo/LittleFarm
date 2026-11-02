@@ -1,8 +1,8 @@
 import type { GameState, Pet, Skill, SkillRevision } from './types';
-import { activeRevision, getSkill, isCertified, navPolicyFor, routineRunFor, sensePolicyOf, staleUses } from './pets';
+import { activeRevision, deployExplore, getSkill, isCertified, navPolicyFor, routineRunFor, sensePolicyOf, staleUses } from './pets';
 import { FetchController, FetchRun, SkillRun, type ExecStep, type NoteRunner } from '../learning/policies';
 import { compileCondition, compileStage, withTarget } from '../sim/compile';
-import { TRAIT_AIMS, nearest, def, type SimEvent, type World } from '../sim/world';
+import { TRAIT_AIMS, nearest, def, type SimEvent, type Tally, type World } from '../sim/world';
 import { walk } from '../domain/spec';
 import type { SpecNode, StageSpec } from '../domain/types';
 import type { Rng } from '../sim/rng';
@@ -105,6 +105,19 @@ export function noteRunnerFor(stage: StageSpec | undefined, target: string): Not
   return compileStage({ ...stage, rules, learner: { ...stage.learner, focus: target } });
 }
 
+/**
+ * A run's goal is judged from when the run started: deliveries counted before it began don't count for it (the
+ * farm's totals keep growing all day; a pen starts from zero every try).
+ */
+export function sinceStart(w: World, cond: (ctx: { w: World; prev: World['pet']; base?: Tally }) => boolean): (world: World, base?: Tally) => boolean {
+  const before = { ...w.delivered };
+  return (world, base) => {
+    const delivered: Record<string, number> = {};
+    for (const [k, v] of Object.entries(world.delivered)) delivered[k] = v - (before[k] ?? 0);
+    return cond({ w: { ...world, delivered }, prev: world.pet, base });
+  };
+}
+
 /** Start a capability: one runtime for skills, Fetch and routines. */
 export function runCapability(s: GameState, p: Pet, name: string, aim: string | undefined, rng: Rng, timeout: number): CapabilityRunner {
   const k = getSkill(p, name);
@@ -113,7 +126,7 @@ export function runCapability(s: GameState, p: Pet, name: string, aim: string | 
   if (!k || !rev) return missing('skill missing');
   const kind = kindOfSkill(k);
   const target = aim || defaultAim(k);
-  if (kind === 'routine') return routineRunFor(p, rev, target, rng, timeout) ?? missing('routine missing');
+  if (kind === 'routine') return routineRunFor(p, rev, target, rng, timeout, s.farm.world) ?? missing('routine missing');
   if (kind === 'fetch') {
     const w = s.farm.world;
     const nav = navPolicyFor(p, k.navigator ?? 'Approach');
@@ -127,5 +140,5 @@ export function runCapability(s: GameState, p: Pet, name: string, aim: string | 
   const goal = rev.success && !survive ? withTarget(target, () => compileCondition(rev.success!)) : null;
   const failNode = rev.stage?.fail ?? null;
   const fail = survive && failNode ? withTarget(target, () => compileCondition(failNode)) : null;
-  return new SkillRun(policy, target, timeout, goal ? (world, base) => goal({ w: world, prev: world.pet, base }) : null, noteRunnerFor(rev.stage, target), survive ? (world) => !fail?.({ w: world, prev: world.pet }) : null);
+  return new SkillRun(policy, target, timeout, goal ? sinceStart(s.farm.world, goal) : null, noteRunnerFor(rev.stage, target), survive ? (world) => !fail?.({ w: world, prev: world.pet }) : null, { eps: deployExplore(p), rng });
 }

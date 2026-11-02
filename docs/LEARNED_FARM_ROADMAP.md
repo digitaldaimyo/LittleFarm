@@ -14,7 +14,18 @@ Status: **official roadmap**, decisions settled (section 8). **Phase 0 done:**
 - **UI:** Pets → each skill: *On the farm* (usable when certified / always / never) and *Runs* (the active revision or pinned to rN). Farm → *Run a skill* lists every skill and routine and the trait aims, and says why one can't run now.
 - **Tests:** `tests/capability.test.ts`; the phase-0 defect tests now pass as ordinary tests. The farm baseline is unchanged (`npm run bench:farm`).
 
-Next: phase 2 (pen ↔ farm parity).
+**Phase 2 done:**
+- **Pens express the farm:**
+  - *Any ripe crop* and *Storage with room* are cards. Placed in a pen they become a real crop (different each try) or an empty basket. *The target* can be aimed at them, and routine options too.
+  - The **Energy** placement card: work drains 0.12, Stay restores 1.5, like the farm. The **Tired?** sense, and *Energy below* now works in pens.
+  - **Seed money:** planting pays the seed and runs out.
+- **Gate met:** a full harvest → sell cycle runs on the farm with only learned capabilities. The **Harvest** routine recipe (Approach → any ripe crop, pick up, Approach → house, put down), trained in a pen, earns 96% of the scripted Harvest job on the held-out farm and 80% on the standard one (TESTING.md).
+- **Found and fixed on the way:**
+  - A run's goal is judged from the run's start; farm delivery totals had made every run "succeed" after one tick.
+  - Deployed walks take Curiosity's occasional random step (2–8%), so a greedy loop beside an obstacle can't repeat forever. It's the learned replacement for the scripted stuck recovery. Training is unchanged.
+- **Moved to phase 3:** the "clear tile by the crops" aim (it belongs with the Basket-run routine). Also there: the weak-Approach-near-rocks case (seed 303), likely fixed by training Approach with *Obstacles: some*.
+
+Next: phase 3 (the learned repertoire).
 
 **The commitment.** Everything a pet does on its own on the farm comes from a skill or routine the player taught it in the pen. No hidden job scripts. The farm executive is promoted from a fixed rule list to a learned, two-level decision-maker:
 - the **upper level** reads the farm and picks what to work on next (a responsibility);

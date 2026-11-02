@@ -120,8 +120,10 @@ export interface World {
    * "Done … yet?" sense. Moves and ticks aren't counted (too frequent, never asked about).
    */
   tally?: Tally;
-  /** Farm: coins available for seed (set each tick by the farm). Unset in pens, where planting is free. */
+  /** Coins available for seed: set each tick by the farm, or by a pen's Seed money card. Unset = planting is free. */
   seedCoins?: number;
+  /** Pens with the Energy card: work drains `petEnergy` and staying put restores it (the farm keeps its own). */
+  energyPen?: boolean;
   /** Items sold (dropped at a container that sells, i.e. the farm's house). */
   sold?: number;
   /** Notes your rules wrote this try (flags and counters, 0–9). Absent until a rule writes one. */
@@ -267,6 +269,8 @@ export function legalActions(_w: World, abilities: string[]): Action[] {
  * the pet carries. They're written `@crop` / `@storage` wherever a kind goes.
  */
 export const TRAIT_AIMS: Record<string, string> = { '@crop': 'any ripe crop', '@storage': 'storage with room' };
+/** The crops "any ripe crop" stands for. */
+export const TRAIT_CROPS = ['berry', 'carrot', 'pumpkin', 'sunflower'];
 
 /** Is this kind what the aim means? (Kind level: "any crop" / "any storage"; plain aims are one kind.) */
 export function aimIs(kind: string | undefined, aim: string): boolean {
@@ -379,6 +383,7 @@ export function step(w: World, action: Action, opts: StepOptions = {}): SimEvent
     if (soil) {
       soil.kind = 'patch';
       soil.wet = false;
+      if (w.seedCoins !== undefined) w.seedCoins -= seedPrice(soil.crop ?? 'carrot'); // pens with Seed money (the farm resets it each tick)
       events.push({ type: 'plant', x: p.x, y: p.y, kind: soil.crop ?? 'carrot', objId: soil.id });
     } else events.push({ type: 'fumble', x: p.x, y: p.y });
   } else if (action === 'nudge') {
@@ -428,6 +433,8 @@ export function step(w: World, action: Action, opts: StepOptions = {}): SimEvent
       }
     } else events.push({ type: 'fumble', x: p.x, y: p.y });
   }
+  // Pens with the Energy card: the same economy as the farm's (work costs 0.12, staying put restores 1.5).
+  if (w.energyPen && w.petEnergy !== undefined) w.petEnergy = Math.max(0, Math.min(100, w.petEnergy + (action === 'wait' ? 1.5 : -0.12)));
   if (opts.advance !== false) {
     moveCreatures(w, events);
     w.tick++;
