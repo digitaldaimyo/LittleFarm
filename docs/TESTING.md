@@ -1,7 +1,7 @@
 # Testing and benchmarks
 
 ## Automated suites (`npm test`)
-206 tests in 26 files. CI-style check before every push: `npm run typecheck && npm run lint && npm test && npm run build`.
+208 tests (+2 to-do) in 27 files. CI-style check before every push: `npm run typecheck && npm run lint && npm test && npm run build`.
 
 | File | Covers |
 |---|---|
@@ -23,6 +23,7 @@
 | `tests/teaching.test.ts` | Teaching polish: the event tally (per try, cloned, no moves or ticks); *Has done…* with counts, *Just…*, *Any of*; the *Done … yet?* sense before vs after, and a farm skill run counting from its own start; End try *judged by SUCCESS / counts as a success / counts as a miss*; no recipe ends a try "as a miss" while SUCCESS holds (so recipe scores are unchanged); **gate:** "end on shoo chicken" built from cards learns ≥ 30 points over random (held out); your original setup is caught by the measured check and its repair works; measured checks stay quiet on every recipe; the random baseline uses every ability; memory validation (sense suggestion and its repair, *every step*, plans); the hand ranks *Shoos* / *Has done…* first in a Shoo lesson and groups More cards; every recipe reads as sentences; v4 → v5 save and v1 → v2 skill-card migrations |
 | `tests/pens.test.ts` | Better pens: *next to* (one of the 8 tiles around), *away from* and *far from the pet* keep their distances, *inside* an area (things and the pet's start), the pet starting *away from* something; counts that vary stay in range and really vary; *sometimes* appears on 25–75% of tries; varying pen size covers 6×6 to 10×10; obstacles scale with the pen (rocks, fences, mixed); new options are deterministic; conditional sockets are required only when used; fence obstacles need the shop's fences; placements read as sentences; *Next to* counts diagonals but not standing on it; *Thing near thing*; *Time in try*; switched-off rules never run and checks ignore them |
 | `tests/cards.test.ts` | Your cards: a saved rule with a blank leaves the thing empty and points the editor at it, and keeps its name on placed copies; a named condition is offered for conditions only and works in a farm plan row and as a routine's watched condition; saves keep cards, blanks and names. Lesson cards: every recipe round-trips with fresh ids, the same rules and exactly the same layouts; renamed on clash; a Field Guide pen becomes an ordinary lesson; bad JSON, wrong format, unknown cards, out-of-range sizes or times and oversized files are rejected without half-adding. Farm plans: "IF has done… picks up a berry DO nap" alternates forage → nap → forage → nap (memory counts from each job's start); plans without memory never create a farm tally |
+| `tests/phase0.test.ts` | Learned-farm roadmap phase 0: defects pinned with `it.fails` until phase 1 fixes them — a routine (1a) and a reach skill (1b) that run out of time report success; to-dos for duration-aware option learning (2) and trait aims (3) |
 | `tests/notes.test.ts` | Notes: write ops and clamping, the conditions, the sense (value and size), rules writing notes when they fire and notes starting empty each try; validation (never written with a suggestion, rules use it but the pet can't sense it, more than 4); new note cards take the lesson's note name; *Patrol* learns with the note (≥ 60%, measured 70–80%) and not without (≤ 35%, measured 10–20%); on the farm the skill keeps its own notebook (the farm world never holds notes or a verdict); lesson 11's offering and steps (including *Counts up to* 2) |
 | `tests/limits.test.ts` | Looser limits: a sparse table computes exactly what the dense one does (20,000 random updates, decisions and serialisation); a 6-sense lesson (279,936 situations) is refused by a Standard brain and learns with a Big one (≥ 55% at 30,000 tries, measured 70%), with a bounded learning curve; more than 8 senses is refused even for Big; a Big skill keeps only its two newest tables, older revisions can't be rolled back to, and it exports as a skill card; limits and lesson-card ranges |
 | `tests/baskets.test.ts` | Baskets: lift carries the basket and its contents, pick still takes one item; put down at the house it empties (every item sells) and stays held; at a shed as much as fits; refused on a crop, set down on open ground; old pen baskets lift but have nothing to empty; *Stocked storage* fills (and varies) the amount, *Stock* and *all empty* read it; the *Empty the basket* recipe trains to ≥ 60% (random < 10%); on the farm the starting basket is carried next to the crops and runs happen; with two baskets a harvest goes to the one with room; a pet holding a basket finishes the run first, even when tired |
@@ -101,6 +102,29 @@ Before farm life (coins at the bush): one forager 178, two foragers 183, forager
 | Auto + Haul | 208 | 18 | 30 |
 
 The Harvest job doesn't plant, so once the first carrots are picked their plots sit empty: a farm with nobody on Auto, Plant or a plan with a Plant row lives on berries alone. The coaching tip "field plots are empty" says so. With a planter, the fields (not the walking) limit the farm, so a second pet adds less than before.
+
+## Farm baseline (learned-farm roadmap, phase 0): `npm run bench:farm`
+
+Today's controllers with scripted jobs, one pet with Approach + Fetch (carrots unlocked) unless noted, 2,400 ticks (two farm days), training seeds 101 / 202 / 303. *Held-out* is a farm layout no earlier measurement used (bushes and a carrot plot moved, two more carrot plots). Raw rows (including per-job counts) go to `bench/farm-baseline.json`. **Phase 3 bar (decision 3): learned jobs must reach ≥ 80% of these coins.**
+
+| Setup | Layout | Coins per seed | Sold | Jobs | Jobs ok | Timeouts | Switches / min | Resting | Idle | ms / tick |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Auto (rules) | standard | 290 / 282 / 223 | 174 | 596 | 98% | 4 | 17.7 | 25% | 9% | 0.08 |
+| Auto (learned chooser) | standard | 124 / 138 / 90 | 105 | 407 | 94% | 20 | 12.1 | 7% | 22% | 0.05 |
+| Starter plan | standard | 290 / 282 / 223 | 174 | 596 | 98% | 4 | 17.7 | 25% | 9% | 0.07 |
+| Harvest job only | standard | 127 / 159 / 70 | 156 | 184 | 93% | 13 | 5.5 | 4% | 4% | 0.03 |
+| Two pets (Auto + Haul) | standard | 340 / 340 / 206 | 198 | 614 | 98% | 5 | 18.2 | 26% | 9% | 0.12 |
+| Auto (rules) | held-out | 219 / 237 / 202 | 130 | 524 | 98% | 3 | 15.6 | 24% | 7% | 0.05 |
+| Auto (learned chooser) | held-out | 81 / 86 / 63 | 57 | 696 | 98% | 12 | 20.7 | 9% | 56% | 0.04 |
+| Starter plan | held-out | 219 / 237 / 202 | 130 | 524 | 98% | 3 | 15.6 | 24% | 7% | 0.05 |
+| Harvest job only | held-out | 237 / 237 / 196 | 300 | 332 | 99% | 0 | 9.8 | 5% | 5% | 0.05 |
+| Two pets (Auto + Haul) | held-out | 311 / 330 / 224 | 189 | 570 | 97% | 9 | 16.9 | 22% | 9% | 0.11 |
+
+**What it shows:**
+- The starter plan equals the rules tick for tick, as designed.
+- The **learned chooser** (today's coin-rewarded bandit over fixed jobs) earns about half of the rules. On the held-out farm it idles 56% of the time and switches 21 times a minute. That's the baseline the phase-5 executive has to beat.
+- On the held-out layout, Harvest alone (berries straight to the house, no replanting needed for bushes next to it) outearns Auto.
+- "Jobs ok" counts a job's own success. Several scripted jobs succeed by definition, so it isn't a goal measure: phase 1's outcome protocol replaces it.
 
 ## Baskets (after phase D), 2,400 ticks
 

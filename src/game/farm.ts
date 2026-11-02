@@ -89,6 +89,8 @@ export interface FarmRuntime {
   plan: PlanRuntime;
   /** Object this pet is heading for (hidden from the other pets on duty). */
   claim: number | null;
+  /** Benchmarks only: per-job outcome counts (absent in play; never affects behaviour). */
+  stats?: Record<string, { started: number; ok: number; fail: number; timeout: number; ticks: number }>;
   /** Runtimes of the helpers on duty (`FarmState.helpers`, same order; created on demand). */
   crew: FarmRuntime[];
   rng: Rng;
@@ -678,6 +680,11 @@ function finishInvocation(s: GameState, pet: Pet, rt: FarmRuntime, result: 'succ
   const coins = s.resources.coins - rt.startCoins;
   const ticks = s.farm.tick - rt.startTick;
   rt.recentFail = result === 'fail';
+  if (rt.stats) {
+    const st = (rt.stats[inv.behaviorId] ??= { started: 0, ok: 0, fail: 0, timeout: 0, ticks: 0 });
+    st.started++; st.ticks += ticks;
+    if (result === 'success') st.ok++; else if (reason === 'timeout') st.timeout++; else st.fail++;
+  }
   if (inv.chosenBy === 'learned' && rt.ctx) {
     let r = coins - 0.01 * ticks;
     if (inv.behaviorId === 'rest') r += rt.ctx.energyLow ? 1.5 : -0.5;

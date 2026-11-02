@@ -1,6 +1,11 @@
 # Learned farm roadmap: every job is a learned skill, and the executive learns too
 
-Status: **official roadmap**, decisions settled (section 8). Next: phase 0.
+Status: **official roadmap**, decisions settled (section 8). **Phase 0 done:**
+- `npm run bench:farm` writes the baseline (TESTING.md → *Farm baseline*);
+- `tests/phase0.test.ts` pins defects 1a/1b, with to-dos for 2 and 3;
+- `FarmRuntime.stats` counts job outcomes, for benchmarks only.
+
+Next: phase 1.
 
 **The commitment.** Everything a pet does on its own on the farm comes from a skill or routine the player taught it in the pen. No hidden job scripts. The farm executive is promoted from a fixed rule list to a learned, two-level decision-maker:
 - the **upper level** reads the farm and picks what to work on next (a responsibility);
