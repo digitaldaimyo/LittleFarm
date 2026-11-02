@@ -11,7 +11,7 @@ import { node } from '../src/domain/spec';
 import type { SpecNode } from '../src/domain/types';
 import { newGame } from '../src/game/state';
 import { activeRevision, adoptPet, getSkill } from '../src/game/pets';
-import { createRuntime, farmTick, setOnDuty, type FarmRuntime } from '../src/game/farm';
+import { createRuntime, farmTick, practiseExecutive, setOnDuty, type FarmRuntime } from '../src/game/farm';
 import { starterPlan } from '../src/game/plan';
 import { startLayout, move, place, applyLayout } from '../src/game/layout';
 import { recipeStage } from '../src/domain/recipes';
@@ -60,7 +60,7 @@ function run(setup: Setup, seed: number, layout: 'standard' | 'held-out') {
   g.resources.coins = 30;
   g.farm.dutyPetId = a.id;
   a.assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' };
-  if (setup === 'auto-learned') a.executive.mode = 'learned';
+  if (setup === 'auto-learned') a.executive.mode = 'learned'; // practised below, once the farm is set up
   if (setup === 'starter-plan') { a.plan = starterPlan(); a.assignment.mode = 'plan'; }
   if (setup === 'harvest-job') a.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' };
   if (setup === 'learned-harvest') {
@@ -74,6 +74,7 @@ function run(setup: Setup, seed: number, layout: 'standard' | 'held-out') {
     setOnDuty(g, b.id, true);
   }
   if (layout === 'held-out') heldOut(g);
+  if (setup === 'auto-learned') practiseExecutive(g, a.id, 4); // an executive lesson: 4 farm days on copies
   const rt: FarmRuntime = createRuntime(g.farm);
   rt.stats = {};
   const c0 = g.progress.totalCoins, sold0 = g.farm.world.sold ?? 0;

@@ -6,7 +6,7 @@ import { NavRun, SkillRun, isDone, randomMove, type ExecStep, type Outcome } fro
 import { navTimeout } from '../learning/episodes';
 import { atFocus } from '../learning/features';
 import {
-  BEHAVIOR_LABEL, describeContext, learnedSelect, updateExecutive,
+  BEHAVIOR_LABEL,
   type BehaviorId, type ExecContext, type Invocation,
 } from '../learning/executive';
 import type { FarmPlan, FarmState, GameState, Helper, Pet, Plot } from './types';
@@ -14,7 +14,7 @@ import { getSkill, navPolicyFor, petById, sensePolicyOf } from './pets';
 import { deployedRevision, jobCapability, runCapability } from './capability';
 import { addJournal, addJournalOnce } from './journal';
 import { checkUnlocks } from './progression';
-import { GUARD_HOLD, afterDutyJob, chooseDuty, compilePlan, newPlanRuntime, planUsesMemory, starterPlan, traceDecision, updatePlanValue, type PlanRuntime } from './plan';
+import { GUARD_HOLD, afterDutyJob, chooseDuty, compilePlan, deployExploreExec, execValues, newPlanRuntime, planUsesMemory, starterPlan, traceDecision, type ExecHow, type PlanRuntime } from './plan';
 
 export const FARM_W = 12;
 export const FARM_H = 9;
@@ -78,6 +78,8 @@ export interface FarmRuntime {
   inv: Invocation | null;
   ctx: ExecContext | null;
   startCoins: number;
+  /** Overrides how Auto chooses (executive practice and comparisons); unset on the real farm. */
+  execHow?: ExecHow;
   /** What the world looked like (work done) when the current job started: progress is measured from the world. */
   startWork?: string;
   startEnergy: number;
@@ -489,13 +491,11 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
   }
   // Auto: the responsibility executive (phase 4) — needs first, then the pet's responsibilities (or the starter ones).
   pet.executive.decisions++;
-  if (pet.assignment.mode === 'auto' && pet.executive.mode === 'learned') {
-    const { choice, explored } = learnedSelect(ctx, eligible, pet.executive.table, rt.rng, pet.traits.curiosity);
-    return mk(choice, 'learned', `${explored ? 'Trying something (curious)' : 'Best so far'} — ${describeContext(ctx)}`);
-  }
   const plan = (pet.plan ??= starterPlan());
   const rows = compilePlan(plan);
-  const d = chooseDuty(s, pet, plan, rows, ctx, rt.plan, rt.rng);
+  // Learned (phase 5): learned values, exploring with Curiosity; practice and comparisons set their own (rt.execHow).
+  const how: ExecHow = rt.execHow ?? (pet.executive.mode === 'learned' ? { mode: 'learned', eps: deployExploreExec(pet) } : { mode: 'rules', eps: 0 });
+  const d = chooseDuty(s, pet, plan, rows, ctx, rt.plan, rt.rng, how);
   if (d.guarded) rt.plan.guarded++;
   traceDecision(rt.plan, s.farm.tick, d.row ? `${d.row.label} → ${d.job!.label}: ${d.why}` : d.why);
   if (!d.row) return d.guarded && !d.need ? { ...mk('rest', 'plan', d.why), timeout: GUARD_HOLD } : mk('rest', 'plan', d.why);
@@ -515,7 +515,6 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
 
 function finishInvocation(s: GameState, pet: Pet, rt: FarmRuntime, result: Outcome, reason: string, fx: FarmFx[]): void {
   const inv = rt.inv!;
-  const coins = s.resources.coins - rt.startCoins;
   const ticks = s.farm.tick - rt.startTick;
   rt.recentFail = result !== 'success';
   if (rt.stats) {
@@ -523,19 +522,7 @@ function finishInvocation(s: GameState, pet: Pet, rt: FarmRuntime, result: Outco
     st.started++; st.ticks += ticks;
     if (result === 'success') st.ok++; else if (result === 'timeout') st.timeout++; else st.fail++;
   }
-  if (inv.chosenBy === 'learned' && rt.ctx) {
-    let r = coins - 0.01 * ticks;
-    if (inv.behaviorId === 'rest') r += rt.ctx.energyLow ? 1.5 : -0.5;
-    if (result !== 'success') r -= 0.3;
-    updateExecutive(pet.executive.table, rt.ctx, inv.behaviorId, r);
-  }
-  if (inv.chosenBy === 'plan' && inv.args.row && pet.plan) afterDutyJob(pet, rt.plan, compilePlan(pet.plan), inv.args, result === 'success', ticks, s.farm.tick, workDone(s.farm.world) !== rt.startWork);
-  if (inv.chosenBy === 'plan' && inv.args.learned && pet.plan && rt.ctx && inv.args.row) {
-    let r = coins - 0.01 * ticks;
-    if (inv.behaviorId === 'rest') r += rt.ctx.energyLow ? 1.5 : -0.5;
-    if (result !== 'success') r -= 0.3;
-    updatePlanValue(pet.plan, rt.ctx, inv.args.row, r);
-  }
+  if (inv.chosenBy === 'plan' && inv.args.row && pet.plan) afterDutyJob(pet, rt.plan, compilePlan(pet.plan), inv.args, result === 'success', ticks, s.farm.tick, workDone(s.farm.world) !== rt.startWork, s.farm.world);
   const w = s.farm.world;
   if (result !== 'success' && inv.behaviorId !== 'wander') {
     fx.push({ type: 'confused', x: w.pet.x, y: w.pet.y, text: reason });
@@ -943,7 +930,7 @@ function petTurn(s: GameState, pet: Pet, rt: FarmRuntime, fx: FarmFx[], opts: St
   }
   if (!rt.exec) {
     // Plans with "Has done…" rows need the farm to remember events; they count from each job's start.
-    const remembers = (pet.assignment.mode === 'plan' || (pet.assignment.mode === 'auto' && pet.executive.mode === 'rules')) && !!pet.plan && planUsesMemory(pet.plan);
+    const remembers = (pet.assignment.mode === 'plan' || pet.assignment.mode === 'auto') && !!pet.plan && planUsesMemory(pet.plan);
     if (remembers) f.world.tally ??= {};
     const inv = chooseInvocation(s, pet, rt);
     if (remembers) rt.plan.base = cloneTally(f.world.tally);
@@ -1059,4 +1046,73 @@ export function previewPlan(s: GameState, petId: string, plan: FarmPlan, ticks =
     dips: p.stats.dips - dips0,
     final: { coins: copy.resources.coins, tick: copy.farm.tick, petX: copy.farm.world.pet.x, petY: copy.farm.world.pet.y },
   };
+}
+
+/**
+ * Executive lessons (learned-farm phase 5). Practice and comparisons run on copies of the farm with only this pet on
+ * duty, each copy with its own seed (weather, creatures, the pet's own random steps), so nothing on the real farm
+ * changes except the pet's learned executive values.
+ */
+function executiveCopy(s: GameState, petId: string, seed: number, how: ExecHow): { g: GameState; rt: FarmRuntime; p: Pet } {
+  const g: GameState = structuredClone(s);
+  const p = petById(g, petId)!;
+  p.plan ??= starterPlan();
+  p.assignment.mode = 'auto';
+  g.farm.dutyPetId = petId;
+  delete g.farm.helpers;
+  delete g.farm.world.crew;
+  g.farm.current = null;
+  g.farm.queue = [];
+  g.farm.rngState = seed >>> 0;
+  g.farm.world.rng = (Math.imul(seed, 2654435761) >>> 0) || 1;
+  const rt = createRuntime(g.farm);
+  rt.execHow = how;
+  return { g, rt, p };
+}
+
+/** Practise deciding: `days` farm days on copies, exploring with Curiosity; the values learned are kept. */
+export function practiseExecutive(s: GameState, petId: string, days = 4): { ticks: number; updates: number } {
+  const pet = petById(s, petId);
+  if (!pet) return { ticks: 0, updates: 0 };
+  const v0 = execValues(pet);
+  const before = v0.updates;
+  for (let d = 0; d < days; d++) {
+    const seed = 1000 + v0.practised / DAY_TICKS + d * 7919;
+    const { g, rt, p } = executiveCopy(s, petId, seed, { mode: 'learned', eps: 0.1 + 0.3 * pet.traits.curiosity });
+    p.executive.values = execValues(pet);
+    for (let t = 0; t < DAY_TICKS; t++) farmTick(g, rt);
+    pet.executive.values = structuredClone(execValues(p));
+    pet.executive.values.practised += DAY_TICKS;
+  }
+  return { ticks: days * DAY_TICKS, updates: execValues(pet).updates - before };
+}
+
+export interface ExecComparisonRow {
+  mode: ExecHow['mode'];
+  coins: number;
+  /** Jobs started while tired (other than resting, finishing a basket run, or sniffing around): a safety check (should be 0). */
+  tiredWork: number;
+  switchesPerMin: number;
+}
+/** Held-out farm seeds for comparisons (practice never uses them). */
+export const EXEC_EVAL_SEEDS = [900101, 900202, 900303];
+
+/** Compare the player's order, the learned values and random picks on held-out copies of the farm (no exploring). */
+export function compareExecutives(s: GameState, petId: string, ticks = DAY_TICKS, seeds = EXEC_EVAL_SEEDS): ExecComparisonRow[] {
+  return (['rules', 'learned', 'random'] as const).map((mode) => {
+    let coins = 0, tiredWork = 0, switches = 0;
+    for (const seed of seeds) {
+      const { g, rt, p } = executiveCopy(s, petId, seed, { mode, eps: 0 });
+      const c0 = g.progress.totalCoins;
+      for (let t = 0; t < ticks; t++) {
+        const before = g.farm.current;
+        farmTick(g, rt);
+        const cur = g.farm.current;
+        if (cur && cur !== before && p.energy < TIRED && !['rest', 'tote', 'wander'].includes(cur.behaviorId)) tiredWork++;
+      }
+      coins += g.progress.totalCoins - c0;
+      switches += rt.plan.switches;
+    }
+    return { mode, coins, tiredWork, switchesPerMin: Math.round(((switches * 214) / (ticks * seeds.length)) * 10) / 10 };
+  });
 }

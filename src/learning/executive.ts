@@ -1,10 +1,8 @@
-import { Rng } from '../sim/rng';
 
 /**
  * Tiny executive: chooses which behavior to run at option boundaries.
- * The deterministic choice is the responsibility executive (game/plan.ts, `chooseDuty`; it replaced the old rule
- * list in learned-farm phase 4). This file keeps the shared invocation contract and the learned bandit (phase 5
- * replaces it).
+ * Choices are made by the responsibility executive (game/plan.ts, `chooseDuty`): in the player's order (phase 4) or
+ * by learned values (phase 5; it replaced the old contextual bandit). This file keeps the shared invocation contract.
  */
 export type BehaviorId = 'forage' | 'deliver' | 'rest' | 'wander' | 'manual' | 'skill' | 'catch' | 'goto' | 'gate' | 'plant' | 'tote';
 
@@ -55,28 +53,6 @@ export function describeContext(c: ExecContext): string {
   if (c.firefly) p.push('fireflies out');
   if (c.recentFail) p.push('just had a setback');
   return p.join(', ');
-}
-
-export function learnedSelect(c: ExecContext, eligible: BehaviorId[], table: ExecutiveTable, rng: Rng, curiosity: number): { choice: BehaviorId; explored: boolean } {
-  const eps = 0.05 + 0.25 * curiosity;
-  if (rng.next() < eps) return { choice: eligible[rng.int(eligible.length)], explored: true };
-  const k = contextKey(c);
-  let best = eligible[0];
-  let bv = -Infinity;
-  for (const b of eligible) {
-    const e = table[`${k}|${b}`];
-    const v = e ? e.v : 1.0; // optimistic for untried behaviors
-    if (v > bv) { bv = v; best = b; }
-  }
-  return { choice: best, explored: false };
-}
-
-export function updateExecutive(table: ExecutiveTable, c: ExecContext, b: BehaviorId, reward: number): void {
-  const key = `${contextKey(c)}|${b}`;
-  const e = table[key] ?? { n: 0, v: 0 };
-  e.n++;
-  e.v += (reward - e.v) / Math.min(e.n, 30);
-  table[key] = e;
 }
 
 export const BEHAVIOR_LABEL: Record<BehaviorId, string> = {

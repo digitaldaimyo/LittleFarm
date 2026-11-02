@@ -18,7 +18,7 @@ const runnable = (p: Pet): Skill[] => p.skills.filter((k) => !!deployedRevision(
 import { OBJECT_BY_ID } from '../domain/packs/farm';
 
 const FARM_TARGETS = ['berry', 'carrot', 'egg', 'chicken', 'crow', 'firefly', 'gate', 'bin', 'home', 'well', 'pond', 'bush', 'patch', 'rock', 'tree'];
-import { DAY_TICKS, MAX_ON_DUTY, crewSummary, dayInfo, describeTile, dutyPets, makeLead, petActivity, queueManual, queueManualPath, recentProduction, restartPet, setOnDuty, TIRED } from '../game/farm';
+import { DAY_TICKS, MAX_ON_DUTY, compareExecutives, practiseExecutive, type ExecComparisonRow, crewSummary, dayInfo, describeTile, dutyPets, makeLead, petActivity, queueManual, queueManualPath, recentProduction, restartPet, setOnDuty, TIRED } from '../game/farm';
 import { RosterStrip, toggleDuty, leadPet, petStatus } from './Roster';
 import { nextUnlock } from '../game/progression';
 import { BEHAVIOR_LABEL } from '../learning/executive';
@@ -284,14 +284,15 @@ export function FarmScreen() {
           )}
           {selected === 'auto' && (
             <div className="sleeve-inline">
-              <span className="small">Executive</span>
+              <span className="small">Picks</span>
               <div className="seg" role="radiogroup" aria-label="Executive selector">
                 {(['rules', 'learned'] as const).map((m) => (
-                  <button key={m} role="radio" aria-checked={pet.executive.mode === m} className={pet.executive.mode === m ? 'on' : ''} onClick={() => store.mutate((st) => { st.pets.find((x) => x.id === pet.id)!.executive.mode = m; })}>{m === 'rules' ? 'Responsibilities' : 'Learns from results'}</button>
+                  <button key={m} data-tut={`exec-${m}`} role="radio" aria-checked={pet.executive.mode === m} className={pet.executive.mode === m ? 'on' : ''} onClick={() => store.mutate((st) => { st.pets.find((x) => x.id === pet.id)!.executive.mode = m; })}>{m === 'rules' ? 'In your order' : 'Learns what pays off'}</button>
                 ))}
               </div>
             </div>
           )}
+          {selected === 'auto' && pet.executive.mode === 'learned' && <ExecutiveLesson pet={pet} />}
           {f.queue.length > 0 && (
             <details className="queue">
               <summary>Recent decisions</summary>
@@ -359,6 +360,46 @@ function RequestsBoard() {
         ))}
       </ul>
       <p className="small muted">New requests arrive each dawn. Missing one costs nothing.</p>
+    </div>
+  );
+}
+
+/**
+ * Executive lessons (learned-farm phase 5): practise deciding on copies of the farm, then compare the player's order,
+ * the learned picks and random picks on farms the pet hasn't practised on.
+ */
+function ExecutiveLesson({ pet }: { pet: Pet }) {
+  const [cmp, setCmp] = useState<ExecComparisonRow[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const v = pet.executive.values;
+  const practise = () => {
+    setBusy(true);
+    // Let the button show "Practising…" before the (synchronous) practice runs.
+    setTimeout(() => {
+      store.mutate((g) => { practiseExecutive(g, pet.id, 4); });
+      const rows = compareExecutives(store.state, pet.id);
+      setCmp(rows);
+      store.mutate((g) => { g.progress.flags.execCompared = true; });
+      setBusy(false);
+    }, 20);
+  };
+  const label = { rules: 'In your order', learned: 'Learned picks', random: 'Random picks (baseline)' } as const;
+  return (
+    <div className="exec-lesson" data-tut="exec-lesson">
+      <p className="small muted">
+        {pet.name} learns, for each situation, which responsibility (and which job for it) actually gets something done — weighted by your order, so the top of the list still matters most.
+        Needs, cooldowns and commitments still apply. {v ? `Practised ${Math.round(v.practised / DAY_TICKS)} farm day${Math.round(v.practised / DAY_TICKS) === 1 ? '' : 's'}; ${Object.keys(v.upper).length} situations learned.` : 'Nothing learned yet: it starts out picking in your order.'}
+      </p>
+      <div className="row gap wrap">
+        <button className="btn small" data-tut="exec-practise" disabled={busy} onClick={practise}>{busy ? 'Practising…' : 'Practise deciding (4 farm days)'}</button>
+        {v && <button className="btn ghost small" onClick={() => { if (confirm(`Forget what ${pet.name} learned about choosing? Skills are kept.`)) { store.mutate((g) => { delete g.pets.find((x) => x.id === pet.id)!.executive.values; }); setCmp(null); } }}>Forget what it learned</button>}
+      </div>
+      {cmp && (
+        <table className="small compare" data-tut="exec-compare">
+          <thead><tr><th>On 3 farms it hasn’t practised on (1 day each)</th><th>coins</th><th>switches/min</th><th>jobs started tired</th></tr></thead>
+          <tbody>{cmp.map((r) => <tr key={r.mode}><td>{label[r.mode]}</td><td className="num">{r.coins}</td><td className="num">{r.switchesPerMin}</td><td className="num">{r.tiredWork}</td></tr>)}</tbody>
+        </table>
+      )}
     </div>
   );
 }

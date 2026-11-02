@@ -1,3 +1,4 @@
+import { jobCapability } from './capability';
 import type { GameState } from './types';
 import type { SpecNode, StageSpec } from '../domain/types';
 import { activePet, getSkill } from './pets';
@@ -375,6 +376,16 @@ export const CHAPTERS: Chapter[] = [
       { id: 'retrain', title: 'Train it again', text: 'Same pen, same rules, same practice.', screen: 'teach', highlight: 'train-btn', done: (s) => hasVariant(s, NOTES_STAGE, 'note') },
       { id: 'compare', title: 'Compare', text: 'Check the comparison in the Guide.', why: 'Measured on 5 training seeds: 10–20% without the note, 70–80% with it. Notes written by rules also run on the farm, so the skill keeps track of its legs there too.', screen: 'guide', highlight: 'guide-compare', ack: true, done: (s) => flag(s, ackFlag('notes', 'compare')) },
       { id: 'save', title: 'Keep Patrol', text: 'In Teach, save the version that reads the note.', screen: 'teach', highlight: 'save-skill', done: (s) => s.pets.some((p) => !!getSkill(p, 'Patrol')?.revisions.some((r) => r.stageId === NOTES_STAGE && r.learner?.senses.some((n) => n.cardId === 'sense.note'))) },
+    ],
+  },
+  {
+    id: 'choose', title: 'Let them choose', blurb: 'Your pet learns which responsibility — and which job for it — actually gets something done.', minutes: 4, opensWhen: 'Opens after “Responsibilities”, once a pet can harvest.',
+    offered: (s) => ['done', 'skipped'].includes(guideStatus(s, 'plans') ?? '') && s.pets.some((p) => !!jobCapability(p, 'forage')),
+    start: (s) => { delete s.progress.flags.execCompared; },
+    steps: [
+      { id: 'switch', title: 'Let it learn to pick', text: 'On the Farm, put your pet on Auto and choose “Learns what pays off” (under Picks).', why: 'It keeps your responsibilities and needs, but learns — for each situation — which one, and which job for it, gets something done. It starts out picking in your order.', screen: 'farm', highlight: 'exec-learned', done: (s) => { const p = activePet(s); return !!p && p.executive.mode === 'learned' && (p.assignment.mode === 'auto' || p.assignment.mode === 'plan'); } },
+      { id: 'practise', title: 'Practise deciding', text: 'Press “Practise deciding”. Your pet works 4 farm days on copies of your farm (nothing real changes), then the three ways of picking are compared on farms it hasn’t practised on.', screen: 'farm', highlight: 'exec-practise', done: (s) => flag(s, 'execCompared') },
+      { id: 'read', title: 'Read the comparison', text: 'Compare “Learned picks” with “In your order” and “Random picks”. With a good order the two are close; the learned picks shine when the order has a mistake in it (e.g. “Otherwise wander” at the top: in your order the pet just wanders; learned, it works).', why: 'Measured on 2 farms × 3 held-out seeds: a good order 235–378 coins, learned 234–364, random 207–221; with “wander” first, your order 20, learned 220–345. No job is started while tired either way — needs and cooldowns still apply.', screen: 'farm', highlight: 'exec-compare', ack: true, done: (s) => flag(s, ackFlag('choose', 'read')) },
     ],
   },
 ];

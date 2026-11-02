@@ -87,7 +87,34 @@ Status: **official roadmap**, decisions settled (section 8). **Phase 0 done:**
   - a commitment holds against a more important responsibility within 60 ticks.
 - **Farm output stays ≥ 80% of the phase-0 baseline everywhere** (`bench:farm --learned`): Auto 690 vs 795 (87%) on the standard farm and 674 vs 658 (102%) held-out; two pets 84% / 87%; the Harvest job 121% / 97%.
 
-Next: phase 5 (the learned executive: option values per responsibility, executive lessons).
+**Phase 5 done (the learned executive):**
+- **Auto → "Learns what pays off"** keeps everything that makes the fixed order safe: needs, cooldowns, the 60-tick commitment and the anti-flip-flop guard. What it learns is the choice:
+  - **upper level:** which responsibility, per compact farm situation;
+  - **lower level:** which of its jobs.
+  - The values (`ExecValues`, on `Pet.executive.values`) are separate from skills and can be forgotten.
+- **Reward:** progress on the responsibility plus completion, measured in the world (the phase-4 fingerprint), weighted by the responsibility's place in the list, discounted by the job's duration (γ = 0.995 per tick), minus a failure penalty. Coins are not the reward. Jobs that get nothing done (wandering, napping) earn nothing, wherever they are listed.
+- **Untrained values follow the player's order,** so a new learner picks exactly like the fixed order. It learns away from that only when a choice doesn't get things done. Ties between jobs go to the farm-wide evidence.
+- **Exploration is Curiosity:** 2–10% on the farm, 10–40% in practice, 0 when measuring. It only ever picks among eligible choices.
+- **What didn't work (measured):**
+  - *Bootstrapped values* (r + γ^ticks · max next, plain or with an average-reward time charge). A quick job that gets nothing done (wander, 6 ticks) scored almost as well as harvesting (about 25 ticks). Practice then made the farm worse: on a good order, 141–173 coins against 235 for the fixed order.
+  - *Completion credit for any finished job:* naps and wanders "completed", so naps won.
+  - *Unweighted progress:* quick planting outranked harvesting.
+  - Values are therefore one-step (option-level, duration-discounted), with progress weighted by the order.
+- **Executive lesson** (Farm → Auto → Learns what pays off → **Practise deciding**): 4 farm days on copies of the farm (only executive values change), then a comparison on 3 held-out farm seeds of *In your order*, *Learned picks* and *Random picks*: coins, switches per minute, and jobs started while tired.
+- **Field Guide lesson 14, *Let them choose*:** switch, practise, read the comparison.
+- **Retired:** the old contextual bandit (`learnedSelect`, `updateExecutive`) and the plan's *Learn among matches* chooser.
+- **Gate (tests/executive.test.ts and measurements; 3 held-out seeds, 1 farm day each):**
+
+| Order | In your order | Learned (after 4 practice days) | Random picks | Jobs started tired |
+|---|---|---|---|---|
+| Good (starter set), farm 101 | 378 | 364 | 221 | 0 |
+| Good (starter set), farm 202 | 235 | 234 | 207 | 0 |
+| Good, held-out layout, 101 / 202 | 316 / 245 | 313 / 246 | 221 / 229 | 0 |
+| "Otherwise wander" first, 101 / 202 | 20 / 20 | 331–345 / 220–285 | 232 / 175 | 0 |
+
+  The learned executive beats random picks everywhere and stays within 4% of a good order. It rescues a bad one, and never starts a job while tired. It doesn't beat a good order: the starter set is already close to the best this reward can see.
+
+Next: phase 6 (retire and polish: direct job cards, the stuck-recovery sniffing, capability readiness in the Pet binder, an executive inspector).
 
 **The commitment.** Everything a pet does on its own on the farm comes from a skill or routine the player taught it in the pen. No hidden job scripts. The farm executive is promoted from a fixed rule list to a learned, two-level decision-maker:
 - the **upper level** reads the farm and picks what to work on next (a responsibility);

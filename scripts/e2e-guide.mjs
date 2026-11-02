@@ -380,8 +380,24 @@ try {
     await nav('Teach');
     await page.click('[data-tut="save-skill"]');
     await lessonDone('Give your pet a notebook');
+
+    // Lesson 14: Let them choose (learned-farm phase 5: the learned executive)
+    await start('Let them choose');
+    await nav('Farm');
+    await page.click('[data-tut="job-auto"]');
+    await page.click('[data-tut="exec-learned"]');
+    await step('Practise deciding', 'L14: “Learns what pays off” chosen');
+    await page.click('[data-tut="exec-practise"]');
+    const cmpShown = await page.waitForSelector('[data-tut="exec-compare"]', { timeout: 60000 }).then(() => true, () => false);
+    check(cmpShown, 'L14: practice runs and the comparison appears');
+    const cmpText = cmpShown ? (await page.textContent('[data-tut="exec-compare"]')).replace(/\s+/g, ' ') : '';
+    console.log('   L14 comparison:', cmpText.slice(0, 200));
+    check(/In your order/.test(cmpText) && /Learned picks/.test(cmpText) && /Random picks/.test(cmpText), 'L14: comparison shows your order, learned picks and random picks');
+    await step('Read the comparison', 'L14: asks to read the comparison');
+    await looked();
+    await lessonDone('Let them choose');
     await nav('Guide');
-    check((await page.locator('.guide-item.done').count()) === 12, 'all 12 Field Guide lessons done');
+    check((await page.locator('.guide-item.done').count()) === 13, 'all 13 Field Guide lessons done');
 
     // Pet roster (farm life D): tap the house, adopt a second pet, put it on duty, see its card, tap a basket.
     await nav('Farm');

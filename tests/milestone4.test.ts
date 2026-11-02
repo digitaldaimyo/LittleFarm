@@ -103,17 +103,4 @@ describe('M4: plans in play', () => {
     const napOnly = previewPlan(g, pid, { chooser: 'first', guard: true, rows: [node('plan.row', { label: 'Nap', if: [], do: node('job.nap') })] }, 600);
     expect(napOnly.coins).toBe(0);
   });
-
-  it('the learned chooser picks among applicable rows and remembers what paid', () => {
-    const g = busyFarm();
-    const pid = g.pets[0].id;
-    const plan = starterPlan();
-    plan.chooser = 'learned';
-    const rt = createRuntime(g.farm);
-    g.pets[0].plan = plan;
-    applyPlan(g, rt, pid);
-    for (let t = 0; t < 1500; t++) farmTick(g, rt);
-    expect(Object.keys(g.pets[0].plan!.table ?? {}).length).toBeGreaterThan(2);
-    expect(g.resources.coins).toBeGreaterThan(30);
-  });
 });

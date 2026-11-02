@@ -115,6 +115,7 @@ The **First lesson** banner (lesson 1 of the Field Guide) walks you through this
   - **Commitment:** with UNTIL, the pet sticks with a responsibility until it holds; only a need, or a failed job after 60 ticks, pulls it away. Without UNTIL, each finished job counts.
   - **Evidence:** among the jobs a responsibility may use, the pet picks the one that has worked best for it (untried ones get a turn). A job that makes no progress in the world 3 times in a row rests for 200 ticks; an UNTIL responsibility with no progress for 400 ticks is set aside.
   - **Why…** under the list explains each decision ("Storage at most half full → Haul: sticking with it — not done yet"). **Preview 300 ticks** shows exactly what would happen. *Has done…* counts from when the current job started. The **starter set** is what Auto does until you edit it.
+  - **Picks: In your order / Learns what pays off.** Learned, the pet learns per situation which responsibility (and which job for it) actually gets something done, starting from your order; **Practise deciding** runs 4 farm days on copies of the farm and compares your order, the learned picks and random picks on farms it hasn't practised on. A bad order (e.g. wander first) earns 20 coins in a day, learned picks 220–345; a good order 235–378, learned 234–364.
 - **Your pets on the farm:** tap a pet for its **card** (energy, mood, what it's doing and why, its job, *Move with*, on/off duty, *Make lead*, links to its skills and to Teach). Tap the **house** for the **roster**: every pet, who's on duty and doing what ("2 harvesting, 1 hauling"), rename, put on or take off duty, adopt. Tap anything else to see what it is (a basket's contents, a plot's stage and time to ripe). A strip of pets under the farm switches cards.
 - **Up to 4 pets on duty.** They never chase the same thing (but may share the house and storage tiles), and a resting pet naps at the house rather than in someone's way. The **lead** is the pet you can steer. More pets earn more when there's work for them: over two farm days on the starting farm, 1 pet 191–247 coins, 4 pets 262–395 (more fields help more pets).
 
@@ -133,6 +134,7 @@ The **Guide** tab offers short, free lessons on setting up training that works, 
 10. *Responsibilities* (what Auto looks after, in what order; preview, fix a shadowed one)
 11. *Lay out the farm* (a basket by the bushes vs a crop moved next to the house, in preview)
 12. *Give your pet a notebook* (Patrol without and with the Note sense)
+13. *Let them choose* (the learned executive: practise deciding, then compare your order, learned picks and random picks)
 
 It also holds the **Trainer's notebook** (a checklist built from measured results) and a **glossary**. **Coaching tips** appear in reports and on the farm when the evidence suggests a common mistake, each linking to its lesson.
 

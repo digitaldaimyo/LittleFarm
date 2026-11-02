@@ -7,6 +7,7 @@ import type { GuideRun, GuideState } from './tutorial';
 import type { SerializedQ } from '../learning/qtable';
 import type { Traits } from '../learning/episodes';
 import type { ExecutiveTable, Invocation } from '../learning/executive';
+import type { ExecValues } from './plan';
 import type { World } from '../sim/world';
 
 export const SAVE_VERSION = 9;
@@ -138,7 +139,11 @@ export interface Pet {
   energy: number;
   mood: number;
   skills: Skill[];
-  executive: { mode: 'rules' | 'learned'; table: ExecutiveTable; decisions: number };
+  /**
+   * How Auto picks among responsibilities: the player's order ('rules'), or learned values ('learned', phase 5).
+   * `table` is the retired bandit's (kept so old saves load); `values` are the learned executive's.
+   */
+  executive: { mode: 'rules' | 'learned'; table: ExecutiveTable; decisions: number; values?: ExecValues };
   /** Which learned skill or routine does each farm job (learned-farm phase 3); absent = the job's own recipe/name. */
   jobSkills?: Partial<Record<string, string>>;
   feedback: Record<string, Record<string, number>>;
