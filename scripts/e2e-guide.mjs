@@ -76,12 +76,25 @@ try {
   check((await banner()).includes('Read the report'), 'report step after training');
   await page.click('.tutorial button:has-text("I’ve looked")');
   await page.click('[data-tut="save-skill"]');
+  const waitBanner = (t) => page.waitForFunction((x) => document.querySelector('.tutorial')?.textContent?.includes(x), t, { timeout: 5000 }).then(() => true, () => false);
+  check(await waitBanner('Next: teach it a job'), 'Chapter 1 ends by pointing to the first job');
+  await page.click('.nav-btn:has-text("Farm")');
+  check(await page.isDisabled('[data-tut="job-forage"]'), 'Harvest job locked until Harvest is taught (no built-in jobs)');
+  await page.click('.tutorial button:has-text("I’ve looked")');
+  // Teach a job: Harvest (learned farm) — a routine from cards, trained in its own pen.
+  check(await waitBanner('A routine from cards'), 'Harvest lesson starts after the first lesson');
+  await page.click('.nav-btn:has-text("Teach")');
+  await page.click('[data-tut="train-btn"]');
+  await report();
+  await page.click('[data-tut="save-skill"]');
+  check(await waitBanner('Put it to work'), 'Harvest saved; the lesson asks to put it to work');
   await page.click('.tutorial button:has-text("Go to the Farm")');
+  check(!(await page.isDisabled('[data-tut="job-forage"]')), 'Harvest job available once Harvest is taught');
   await page.click('[data-tut="job-forage"]');
   await page.click('.speed button:has-text("4×")');
   // (The "Earn 5 coins" step itself mentions the Field Guide, so wait for the lesson-finished banner's button.)
   await page.waitForSelector('.tutorial button:has-text("Open the Guide")', { timeout: 120000 });
-  check(true, 'Chapter 1 finished after earning 5 coins; a new lesson is offered');
+  check(true, 'Harvest lesson finished after earning 5 coins with the learned Harvest; a new lesson is offered');
 
   // Lesson: practice
   await page.click('.tutorial button:has-text("Open the Guide")');
@@ -367,7 +380,7 @@ try {
     await page.click('[data-tut="save-skill"]');
     await lessonDone('Give your pet a notebook');
     await nav('Guide');
-    check((await page.locator('.guide-item.done').count()) === 11, 'all 11 Field Guide lessons done');
+    check((await page.locator('.guide-item.done').count()) === 12, 'all 12 Field Guide lessons done');
 
     // Pet roster (farm life D): tap the house, adopt a second pet, put it on duty, see its card, tap a basket.
     await nav('Farm');

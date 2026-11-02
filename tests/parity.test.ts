@@ -7,6 +7,7 @@ import { validateStage } from '../src/domain/validate';
 import { newGame } from '../src/game/state';
 import { adoptPet, activeRevision, getSkill } from '../src/game/pets';
 import { createRuntime, farmTick, type FarmRuntime } from '../src/game/farm';
+import { jobCapability, jobSkill } from '../src/game/capability';
 import { applyLayout, move, place, startLayout } from '../src/game/layout';
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import { NavRun } from '../src/learning/policies';
@@ -121,5 +122,38 @@ describe('pen → farm transfer: a Harvest routine trained in a pen runs the far
     const steps = (r: NavRun) => Array.from({ length: 20 }, () => r.next(w));
     expect(steps(never).every((a) => a === 'N')).toBe(true);
     expect(steps(always).some((a) => a !== 'N')).toBe(true);
+  });
+});
+
+describe('learned jobs (phase 3): no skill, no job', () => {
+  it('a pet without a Harvest skill can’t harvest — Auto never does, the job isn’t possible, nothing sells by day', () => {
+    const g = newGame();
+    const p = adoptPet(g, 'Pip', 'meadow');
+    p.traits = { ...DEFAULT_TRAITS };
+    trainAndSave(g, p, recipeStage('go-to-berry'));
+    g.farm.dutyPetId = p.id;
+    p.assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' };
+    const { coins, rt } = runFarm(g, 800); // daytime only (no fireflies yet)
+    expect(coins).toBe(0);
+    expect(rt.stats!.forage).toBeUndefined();
+    expect(jobCapability(p, 'forage')).toBeNull();
+  });
+
+  it('Harvest is bound to the pet’s Harvest routine, or to any skill the player picks; uncertified ones need opting in', () => {
+    const g = newGame();
+    const p = adoptPet(g, 'Pip', 'meadow');
+    p.traits = { ...DEFAULT_TRAITS };
+    trainAndSave(g, p, recipeStage('go-to-berry'));
+    trainAndSaveRoutine(g, p, recipeStage('harvest'));
+    expect(jobSkill(p, 'forage')?.name).toBe('Harvest');
+    expect(jobCapability(p, 'forage')).toMatchObject({ name: 'Harvest', aim: '@crop' });
+    p.jobSkills = { forage: 'Approach' };
+    expect(jobSkill(p, 'forage')?.name).toBe('Approach');
+    const k = getSkill(p, 'Harvest')!;
+    p.jobSkills = {};
+    k.revisions.forEach((r) => { r.eval.passed = false; });
+    expect(jobCapability(p, 'forage')).toBeNull(); // uncertified: the farm won't use it on its own…
+    k.farmUse = 'on';
+    expect(jobCapability(p, 'forage')?.name).toBe('Harvest'); // …until the player opts in
   });
 });

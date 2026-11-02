@@ -21,7 +21,7 @@ npm run dev        # http://localhost:5173
 | `npm test` | Vitest: 158 tests in 21 files (sim, registry, learning, saves, farm, every milestone gate, the Field Guide, the card editor, sound, teaching polish, pens, cards, farm life, and a layout fingerprint that keeps existing lessons' layouts fixed) |
 | `npm run bench` | Trains every starter skill under 5 seeds and prints held-out results, hardware and timings |
 | `npm run evidence` | Reproduces the measurements behind the Field Guide and the Trainer's notebook |
-| `npm run e2e` | Browser test that plays all eleven Field Guide lessons and the newer editor features with real clicks, about a minute (run `npm run build` first; needs Playwright with Chromium). `npm run e2e -- --from=4` skips lessons 1–3 |
+| `npm run e2e` | Browser test that plays all twelve Field Guide lessons and the newer editor features with real clicks, about a minute (run `npm run build` first; needs Playwright with Chromium). `npm run e2e -- --from=4` skips lessons 1–3 |
 
 Requires Node 18+ (developed on Node 22). Needs no secrets or environment variables.
 
@@ -100,7 +100,7 @@ The **First lesson** banner (lesson 1 of the Field Guide) walks you through this
 - **Crops and replanting.** Berry bushes regrow by themselves; carrot, sunflower and pumpkin plots go back to empty soil after each harvest and must be **planted** again, buying a seed (1, 2 or 3 coins). A farm can't get stuck: bushes are free, and a neighbour's seed packet arrives at dawn when nothing is growing and seeds are unaffordable.
 - **Your layout.** **Layout…** on the Farm pauses the farm and opens a draft: place berry bushes (4), carrot (3), sunflower (5) and pumpkin (6) patches, baskets (6), sheds (25), scarecrows (8) and fences (1); move things (free) or remove them (half the price back). Every change is checked as you go: the house's door stays clear, the coop stays whole, and everything must stay reachable from the house. **Preview half a day** races the farm as it is against the draft from the same moment, then **Apply** pays. Up to 8 crop plots (14 with the orchard).
 - **Carrying baskets.** A pet can **lift** a basket with whatever is in it (a carried basket can't be filled). Put down at the house or a shed, it's emptied there; on open ground, it's set down. Pets with Fetch on Auto carry a basket next to the crops and, once it's half full, empty it at the house six at a time (**Basket run**). Over two farm days that lifts a one-pet farm with Fetch and carrots from about 247 to 271 coins.
-- **Jobs:** Auto, **Harvest** (pick a ripe crop, carry it to storage with room, or the house), **Plant** (empty soil, paying for the seed), **Basket run**, **Haul** (Fetch: eggs and stored goods to the house), Nap, **Run a skill** (any of your skills or routines, aimed at anything), and **Steer** (tap tiles, or arrow keys, P pick up, D put down, W water, X shoo, G nudge a gate, L plant, B lift a basket). The farm keeps running while you're on other screens.
+- **Jobs:** Auto, **Harvest** (runs the pet's own learned Harvest routine, aimed at any ripe crop, selling at the house; locked until it's taught), **Plant** (empty soil, paying for the seed), **Basket run**, **Haul** (Fetch: eggs and stored goods to the house), Nap, **Run a skill** (any of your skills or routines, aimed at anything), and **Steer** (tap tiles, or arrow keys, P pick up, D put down, W water, X shoo, G nudge a gate, L plant, B lift a basket). The farm keeps running while you're on other screens.
 - **Day and night:** a day lasts about 5½ minutes at 1×, and the last 30% is night. Night darkens the farm, pets on Auto prefer to nap, and **fireflies** appear (+1 coin each, gone at dawn).
 - **Watering:** a pet with *Water* fills up at the **well** (3 splashes) and waters dry bushes or patches, which then regrow twice as fast.
 - **Creatures:**
@@ -120,17 +120,18 @@ The **First lesson** banner (lesson 1 of the Field Guide) walks you through this
 ## The Field Guide
 
 The **Guide** tab offers short, free lessons on setting up training that works, mostly by trying something the wrong way first and comparing your own pet's numbers. Each opens when it becomes useful (a locked lesson says what opens it):
-1. *First lesson*
-2. *Read the report: practice* (300 vs 1,500 tries)
-3. *Scatter, don't pin*
-4. *Pay for results, not effort* (a loophole and its repair)
-5. *Practise where it works* (Approach vs Avoid with ponds)
-6. *Invent a skill* (what one sense too many costs)
-7. *See what your pet learned*
-8. *Combine skills* (a routine is only as good as what it watches)
-9. *Plan the farm*
-10. *Lay out the farm* (a basket by the bushes vs a crop moved next to the house, in preview)
-11. *Give your pet a notebook* (Patrol without and with the Note sense)
+1. *First lesson* (Approach)
+2. *Teach a job: Harvest* (a routine from cards; the farm's first coins)
+3. *Read the report: practice* (300 vs 1,500 tries)
+4. *Scatter, don't pin*
+5. *Pay for results, not effort* (a loophole and its repair)
+6. *Practise where it works* (Approach vs Avoid with ponds)
+7. *Invent a skill* (what one sense too many costs)
+8. *See what your pet learned*
+9. *Combine skills* (a routine is only as good as what it watches)
+10. *Plan the farm*
+11. *Lay out the farm* (a basket by the bushes vs a crop moved next to the house, in preview)
+12. *Give your pet a notebook* (Patrol without and with the Note sense)
 
 It also holds the **Trainer's notebook** (a checklist built from measured results) and a **glossary**. **Coaching tips** appear in reports and on the farm when the evidence suggests a common mistake, each linking to its lesson.
 

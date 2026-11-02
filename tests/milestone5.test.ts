@@ -13,7 +13,7 @@ import { buy } from '../src/game/progression';
 import { applyPlan, createRuntime, farmTick, previewPlan, DAY_TICKS } from '../src/game/farm';
 import { BIG_H, BIG_W, ORCHARD_GATE } from '../src/game/expand';
 import { describeRequest, trackRequests } from '../src/game/requests';
-import { trainAndSave } from './helpers';
+import { trainAndSave, giveHarvest } from './helpers';
 import type { GameState } from '../src/game/types';
 
 function farmWithPet(): GameState {
@@ -21,6 +21,7 @@ function farmWithPet(): GameState {
   const pet = adoptPet(g, 'Pip', 'meadow');
   pet.traits = { ...DEFAULT_TRAITS };
   const ap = trainAndSave(g, pet, recipeStage('go-to-berry'));
+  giveHarvest(g, pet);
   trainAndSave(g, pet, recipeStage('bring-it-home'), ap.policy);
   g.progress.unlocks.push('custom', 'fetch', 'carrots');
   return g;

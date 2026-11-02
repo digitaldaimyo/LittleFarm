@@ -4,7 +4,7 @@ import { adoptPet, getSkill, activeRevision, rollbackSkill } from '../src/game/p
 import { createRuntime, farmTick, recentProduction } from '../src/game/farm';
 import { ackStep, advanceTutorial, currentStep, recordGuideRun } from '../src/game/tutorial';
 import { trainingCost } from '../src/game/state';
-import { recipeStage, trainAndSave } from './helpers';
+import { recipeStage, trainAndSave, giveHarvest, trainAndSaveRoutine } from './helpers';
 import { node } from '../src/domain/spec';
 import { suggestedRules } from '../src/domain/recipes';
 
@@ -22,6 +22,7 @@ describe('farm', () => {
     const p = adoptPet(trained, 'Pip', 'meadow');
     p.traits = { curiosity: 0.5, persistence: 0.5, caution: 0.5 };
     trainAndSave(trained, p, recipeStage('go-to-berry'));
+    giveHarvest(trained, p);
     p.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' };
     expect(runFarm(untrained, 800)).toBe(0);
     expect(runFarm(trained, 800)).toBeGreaterThanOrEqual(8);
@@ -40,7 +41,7 @@ describe('farm', () => {
     expect(activeRevision(getSkill(a, 'Approach'))?.rev).toBe(1);
   });
 
-  it('first-hour flow: adopt → build pen and rules → train → read report → save → deploy → earn → Fetch unlocked', () => {
+  it('first-hour flow: adopt → build pen and rules → train → read report → save → teach Harvest → deploy → earn → Fetch unlocked', () => {
     const s = newGame();
     expect(currentStep(s)?.id).toBe('adopt');
     const pet = adoptPet(s, 'Pip', 'meadow');
@@ -68,28 +69,41 @@ describe('farm', () => {
     const rev = trainAndSave(s, pet, tut); // …then the player saves it
     advanceTutorial(s);
     expect(rev.eval.passed).toBe(true);
+    expect(currentStep(s)?.id).toBe('next');
+    ackStep(s);
+    // Learned farm: the first lesson ends there and "Teach a job: Harvest" starts by itself.
+    expect(s.progress.tutorialDone).toBe(true);
+    expect(currentStep(s)?.chapter.id).toBe('harvest');
+    expect(s.activeStageId).toBe('stage-guide-harvest');
+    expect(currentStep(s)?.id).toBe('train');
+    const hv = s.stages.find((x) => x.id === 'stage-guide-harvest')!;
+    recordGuideRun(s, hv, 600, 0.9, 0.2, 0.8);
+    advanceTutorial(s);
+    expect(currentStep(s)?.id).toBe('save');
+    trainAndSaveRoutine(s, pet, hv);
+    advanceTutorial(s);
     expect(currentStep(s)?.id).toBe('assign');
     pet.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' };
     s.progress.flags.assignedJob = true;
     runFarm(s, 900);
     advanceTutorial(s);
     expect(s.progress.unlocks).toContain('fetch');
-    expect(s.progress.tutorialDone).toBe(true);
+    expect(s.progress.guide?.status.harvest).toBe('done');
     expect(s.progress.guide?.status.practice).toBe('offered');
     expect(s.journal.some((j) => j.kind === 'first-berry')).toBe(true);
   });
 
-  it('with Fetch, carrots are harvested into the basket and hauled to the house, where they sell', () => {
+  it('with Fetch and a learned Harvest, carrots are harvested and sold at the house', () => {
     const s = newGame();
     const pet = adoptPet(s, 'Pip', 'meadow');
     pet.traits = { curiosity: 0.5, persistence: 0.5, caution: 0.5 };
     const ap = trainAndSave(s, pet, recipeStage('go-to-berry'));
+    giveHarvest(s, pet);
     trainAndSave(s, pet, recipeStage('bring-it-home'), ap.policy);
     s.progress.unlocks.push('fetch', 'carrots');
     pet.assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' };
     runFarm(s, 1200);
-    expect(s.resources.carrots).toBeGreaterThan(2); // sold at the house
-    expect(s.journal.some((j) => j.kind === 'first-store')).toBe(true); // via the basket
+    expect(s.resources.carrots).toBeGreaterThan(2); // sold at the house (the learned Harvest takes crops home)
   });
 });
 
@@ -100,6 +114,7 @@ describe('farm robustness', () => {
       const pet = adoptPet(s, 'Pip', 'meadow');
       pet.traits = { curiosity: 0.5, persistence: 0.5, caution: 0.5 };
       const ap = trainAndSave(s, pet, { ...recipeStage('go-to-berry'), seed });
+      giveHarvest(s, pet);
       trainAndSave(s, pet, { ...recipeStage('bring-it-home'), seed }, ap.policy);
       s.progress.unlocks.push('fetch', 'carrots');
       pet.executive.mode = seed === 202 ? 'learned' : 'rules';

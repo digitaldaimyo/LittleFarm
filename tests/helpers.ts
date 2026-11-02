@@ -26,4 +26,24 @@ export function trainAndSaveRoutine(s: GameState, pet: Pet, stage: StageSpec) {
   return saveRevision(s, pet, { stage, policy: t.policy(), report, episodes: stage.learner.episodes, durationMs: 1, simTicks: 0, uses });
 }
 
+/**
+ * Learned-farm phase 3: farm jobs are learned. Give a pet that knows Approach the Harvest routine (trained in its pen,
+ * like a player would), so it can harvest on the farm. Cached by Approach policy: same Approach → same Harvest.
+ */
+const harvestCache = new Map<string, Parameters<typeof saveRevision>[2]>();
+export function giveHarvest(s: GameState, pet: Pet) {
+  const ap = pet.skills.find((k) => k.name === 'Approach');
+  const key = JSON.stringify(ap?.revisions.find((r) => r.rev === ap.activeRev)?.policy ?? null) + JSON.stringify(pet.traits);
+  const hit = harvestCache.get(key);
+  if (hit) return saveRevision(s, pet, structuredClone(hit));
+  const stage = recipeStage('harvest');
+  const subs = subskillsFor(pet);
+  const t = new Trainer({ stage, episodes: stage.learner.episodes, traits: pet.traits, subskills: subs });
+  while (!t.done) t.runChunk(1000, false);
+  const report = buildReport(stage, pet.traits, null, t.policy(), null, undefined, subs);
+  const input = { stage, policy: t.policy(), report, episodes: stage.learner.episodes, durationMs: 1, simTicks: 0, uses: [{ skill: 'Approach', rev: ap?.activeRev ?? 1 }] };
+  harvestCache.set(key, structuredClone(input));
+  return saveRevision(s, pet, input);
+}
+
 export { recipeStage, DEFAULT_TRAITS };

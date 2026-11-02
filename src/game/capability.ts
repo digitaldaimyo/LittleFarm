@@ -142,3 +142,27 @@ export function runCapability(s: GameState, p: Pet, name: string, aim: string | 
   const fail = survive && failNode ? withTarget(target, () => compileCondition(failNode)) : null;
   return new SkillRun(policy, target, timeout, goal ? sinceStart(s.farm.world, goal) : null, noteRunnerFor(rev.stage, target), survive ? (world) => !fail?.({ w: world, prev: world.pet }) : null, { eps: deployExplore(p), rng });
 }
+
+/**
+ * Farm jobs done by learned skills (learned-farm roadmap, phase 3). A job is *bound* to one of the pet's skills or
+ * routines: the player's choice (`Pet.jobSkills`), else the one taught by the job's recipe or named after it. A job
+ * with no bound skill can't run — there is no scripted fallback.
+ */
+export const LEARNED_JOBS: Record<string, { label: string; recipe: string; aim: string }> = {
+  forage: { label: 'Harvest', recipe: 'harvest', aim: '@crop' },
+};
+
+export function jobSkill(p: Pet, job: string): Skill | null {
+  const spec = LEARNED_JOBS[job];
+  if (!spec) return null;
+  const chosen = p.jobSkills?.[job];
+  if (chosen) return getSkill(p, chosen) && deployedRevision(getSkill(p, chosen)) ? getSkill(p, chosen) : null;
+  return p.skills.find((k) => deployedRevision(k) && (k.name.toLowerCase() === spec.label.toLowerCase() || deployedRevision(k)?.stage?.recipeId === spec.recipe)) ?? null;
+}
+
+/** The learned capability that does a farm job, if the pet has one the farm may use. */
+export function jobCapability(p: Pet, job: string): Capability | null {
+  const k = jobSkill(p, job);
+  if (!k || !allowedOnFarm(k)) return null;
+  return capabilityOf(k, LEARNED_JOBS[job].aim);
+}

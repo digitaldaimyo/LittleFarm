@@ -139,6 +139,8 @@ export interface Pet {
   mood: number;
   skills: Skill[];
   executive: { mode: 'rules' | 'learned'; table: ExecutiveTable; decisions: number };
+  /** Which learned skill or routine does each farm job (learned-farm phase 3); absent = the job's own recipe/name. */
+  jobSkills?: Partial<Record<string, string>>;
   feedback: Record<string, Record<string, number>>;
   stats: PetStats;
   assignment: Assignment;

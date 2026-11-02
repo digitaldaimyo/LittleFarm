@@ -10,7 +10,7 @@ import {
 } from '../learning/executive';
 import type { FarmPlan, FarmState, GameState, Helper, Pet, Plot } from './types';
 import { activeRevision, getSkill, navPolicyFor, petById, sensePolicyOf } from './pets';
-import { deployedRevision, runCapability } from './capability';
+import { deployedRevision, jobCapability, runCapability } from './capability';
 import { addJournal, addJournalOnce } from './journal';
 import { checkUnlocks } from './progression';
 import { GUARD_HOLD, choosePlanRow, compilePlan, newPlanRuntime, planInvocation, planUsesMemory, starterPlan, updatePlanValue, type PlanRuntime } from './plan';
@@ -217,10 +217,6 @@ export function toteTarget(s: GameState): Obj | null {
   return stray && cropSpot(s) ? stray : null;
 }
 
-/** Is this object still a valid destination (on the ground)? */
-function storeCountOf(w: World, o: Obj): boolean {
-  return onGround(o) && w.objects.includes(o);
-}
 
 /** Hide the other objects of a kind while `fn` runs, so a learned walk heads for this one. */
 function only<T>(w: World, kind: string, id: number, fn: () => T): T {
@@ -373,7 +369,8 @@ export function eligibleBehaviors(pet: Pet, ctx: ExecContext): BehaviorId[] {
   const fetch = !!activeRevision(getSkill(pet, 'Fetch'));
   // Harvest: pick something ripe, or (without Fetch) finish carrying it home.
   // (A pet holding something can always finish carrying it; with Fetch, Auto prefers hauling it.)
-  if (nav && ((ctx.berry && !ctx.carrying) || (ctx.carrying && !ctx.basket))) out.push('forage');
+  // Harvest is a learned job: it needs a Harvest skill or routine (no scripted fallback).
+  if (jobCapability(pet, 'forage') && ((ctx.berry && !ctx.carrying) || (ctx.carrying && !ctx.basket))) out.push('forage');
   if (fetch && nav && ((ctx.carrot && !ctx.carrying) || (ctx.carrying && !ctx.basket))) out.push('deliver');
   // Baskets: a pet holding one finishes the run; otherwise a run when a basket is half full or away from the crops.
   if (fetch && nav && (ctx.basket || (ctx.tote && !ctx.carrying))) out.push('tote');
@@ -390,38 +387,10 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
   const tmo = navTimeout(w.w, w.h, pet.traits.persistence);
   switch (inv.behaviorId) {
     case 'forage': {
-      // Harvest: walk to the nearest ripe crop, pick it, carry it to storage with room (or the house), drop it.
-      const hasFetch = !!activeRevision(getSkill(pet, 'Fetch'));
-      const crop = CROPS.map((k) => nearest(w, k)).filter((o): o is NonNullable<typeof o> => !!o)
-        .sort((a, b) => (Math.abs(a.x - w.pet.x) + Math.abs(a.y - w.pet.y)) - (Math.abs(b.x - w.pet.x) + Math.abs(b.y - w.pet.y)))[0];
-      let phase: 'go' | 'pick' | 'carry' | 'drop' = w.pet.carrying !== null ? 'carry' : 'go';
-      // Farm trips are longer now (from the house to the crops and back), so each leg gets a little more patience.
-      const leg = Math.round(tmo * 1.5);
-      let run: FarmWalk | null = phase === 'go' ? new FarmWalk(nav, crop?.kind ?? 'berry', leg, rt.rng) : null;
-      let dest: Obj | undefined;
-      const toStore = (world: World) => {
-        const kind = world.objects.find((o) => o.id === world.pet.carrying)?.kind ?? '';
-        dest = harvestTarget(world, kind, hasFetch);
-        run = new FarmWalk(nav, dest?.kind ?? 'home', leg, rt.rng);
-        phase = 'carry';
-      };
-      if (phase === 'carry') toStore(w);
-      return {
-        next(world) {
-          if (phase === 'drop') return { done: 'success', reason: 'stored' };
-          if (phase === 'pick') {
-            if (world.pet.carrying === null) return { done: 'fail', reason: 'missed it' };
-            toStore(world);
-          }
-          // Carrying: head for the chosen storage, not just the nearest of its kind (there may be several baskets).
-          const st = phase === 'carry' && dest && storeCountOf(world, dest) ? only(world, dest.kind, dest.id, () => run!.next(world)) : run!.next(world);
-          if (!isDone(st)) return st;
-          if (st.done !== 'success') return st;
-          if (phase === 'go') { phase = 'pick'; return 'pick'; }
-          phase = 'drop';
-          return 'drop';
-        },
-      };
+      // Harvest: the pet's own Harvest skill or routine, aimed at any ripe crop (learned-farm phase 3).
+      const cap = jobCapability(pet, 'forage');
+      if (!cap) return { next: () => ({ done: 'fail', reason: 'no Harvest skill' }) };
+      return runCapability(s, pet, cap.name, cap.aim, rt.rng, inv.timeout);
     }
     case 'goto':
       return new NavRun(nav, inv.args.target ?? 'home', tmo, rt.rng);
@@ -584,7 +553,8 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
   rt.ctx = ctx;
   const w = s.farm.world;
   const tmo = navTimeout(w.w, w.h, pet.traits.persistence);
-  const timeouts: Record<BehaviorId, number> = { forage: tmo * 3 + 6, // farm life: walk to the crop, then carry it to storage or the house
+  const harvestRev = deployedRevision(jobCapability(pet, 'forage') ? getSkill(pet, jobCapability(pet, 'forage')!.name) : null);
+  const timeouts: Record<BehaviorId, number> = { forage: Math.max(tmo * 3 + 6, Math.round((harvestRev?.stage?.maxTicks ?? 0) * (1 + pet.traits.persistence))), // a whole harvest trip (the routine's own time per try)
     deliver: tmo * 3, plant: Math.round(tmo * 1.5) + 4, tote: tmo * 4 + 10, rest: 30, wander: 6, manual: 1e9, skill: 60, catch: tmo, goto: tmo, gate: tmo + 2 };
   const custom = pet.assignment.skillName ? deployedRevision(getSkill(pet, pet.assignment.skillName)) : null;
   if (custom) timeouts.skill = Math.round((custom.maxTicks ?? 40) * (1 + pet.traits.persistence));
@@ -637,6 +607,7 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
     if (eligible.includes(j)) return mk(j, 'player', `You asked for: ${BEHAVIOR_LABEL[j]}`);
     if (ctx.energyLow) return mk('rest', 'rules', 'Tired — resting before the job');
     const why = j === 'rest' ? 'Napping as asked'
+      : j === 'forage' && !jobCapability(pet, 'forage') ? `${pet.name} hasn’t learned to harvest — teach Harvest in the Field Guide`
       : j === 'forage' && !ctx.berry ? 'Nothing ripe yet — resting while crops regrow'
       : j === 'deliver' && !ctx.carrot ? 'Nothing to haul — the basket and shed are empty'
       : j === 'tote' && !activeRevision(getSkill(pet, 'Fetch')) ? 'Basket runs need a saved Fetch skill'

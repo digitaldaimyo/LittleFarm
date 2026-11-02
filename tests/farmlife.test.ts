@@ -12,7 +12,7 @@ import { parseGame, serializeGame } from '../src/persistence/save';
 import { addObject, emptyStore, emptyWorld, seedPrice, step, storeCount, type World } from '../src/sim/world';
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import type { GameState } from '../src/game/types';
-import { recipeStage, trainAndSave } from './helpers';
+import { recipeStage, trainAndSave, giveHarvest } from './helpers';
 
 /** A tiny world: the pet stands on a container with a crop in its paws. */
 function holding(kind: string, container: string, store = true): { w: World; c: ReturnType<typeof addObject> } {
@@ -32,6 +32,7 @@ function farmGame(opts: { fetch?: boolean; mode?: 'auto' | 'forage' | 'deliver' 
   const p = adoptPet(s, 'Pip', 'meadow');
   p.traits = { ...DEFAULT_TRAITS };
   trainAndSave(s, p, recipeStage('go-to-berry'));
+  giveHarvest(s, p);
   if (opts.fetch) trainAndSave(s, p, recipeStage('bring-it-home'), activeRevision(getSkill(p, 'Approach'))!.policy);
   p.assignment = opts.mode === 'auto' || !opts.mode ? { mode: 'auto', job: 'forage', navigator: 'Approach' } : { mode: 'job', job: opts.mode, navigator: 'Approach' };
   s.farm.dutyPetId = p.id;
@@ -102,11 +103,14 @@ describe('produce travels; the house sells', () => {
     expect(harvestDestination(w, 'berry', true)).toBe('home'); // full
   });
 
-  it('a pet with Fetch on Auto harvests into the basket and hauls it to the house, where it sells', () => {
+  it('a pet with Fetch on Auto harvests with its learned Harvest (selling at the house) and hauls stored goods', () => {
+    // Learned-farm phase 3: Harvest is the pet's own routine, which sells at the house; storage is filled by hand here
+    // (a learned "harvest into storage" comes with the haul and basket jobs).
     const s = farmGame({ fetch: true });
     s.progress.unlocks.push('carrots');
+    basket(s).store = [{ kind: 'carrot', n: 4 }];
     run(s, 1500);
-    expect(s.journal.some((j) => j.kind === 'first-store')).toBe(true);
+    expect(storeCount(basket(s))).toBeLessThan(4);
     expect(s.resources.carrots + s.resources.berries).toBeGreaterThan(10);
     expect(s.progress.totalCoins).toBeGreaterThan(40);
   });

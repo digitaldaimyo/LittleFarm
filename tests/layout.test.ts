@@ -11,13 +11,14 @@ import { nominal } from '../src/domain/typecheck';
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import { objectsAt } from '../src/sim/world';
 import type { GameState } from '../src/game/types';
-import { recipeStage, trainAndSave } from './helpers';
+import { recipeStage, trainAndSave, giveHarvest } from './helpers';
 
 function farm(coins = 100, unlocks: string[] = []): GameState {
   const s = newGame();
   const p = adoptPet(s, 'Pip', 'meadow');
   p.traits = { ...DEFAULT_TRAITS };
   trainAndSave(s, p, recipeStage('go-to-berry'));
+  giveHarvest(s, p);
   p.assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' };
   s.farm.dutyPetId = p.id;
   s.resources.coins = coins;

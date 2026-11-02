@@ -9,7 +9,7 @@ import { store, useStore } from './store';
 import { WorldView } from './WorldView';
 import { PetSprite, type PetMood } from './art';
 import { activePet, activeRevision, getSkill, isCertified, petById } from '../game/pets';
-import { capabilityOf, deployedRevision, eligibility, kindOfSkill } from '../game/capability';
+import { capabilityOf, deployedRevision, eligibility, jobCapability, kindOfSkill } from '../game/capability';
 import { TRAIT_AIMS } from '../sim/world';
 import type { Skill } from '../game/types';
 
@@ -48,7 +48,7 @@ function jobCards(pet: Pet): JobCard[] {
   return [
     { id: 'auto', title: 'Auto', blurb: `${pet.name} decides using their executive — napping at night, unless there are fireflies to catch.` },
     { id: 'plan', title: 'Farm plan', blurb: 'Your own IF/DO rows decide which skill runs when. Preview before applying.' },
-    { id: 'forage', title: BEHAVIOR_LABEL.forage, blurb: 'Pick ripe crops and carry them to storage or the house, where they sell (berry +2, carrot +5, sunflower +7, pumpkin +12).', needs: 'Approach', locked: hasNav ? undefined : 'Needs a saved Approach skill' },
+    { id: 'forage', title: BEHAVIOR_LABEL.forage, blurb: `Runs ${pet.name}’s own Harvest${jobCapability(pet, 'forage') ? ` (${jobCapability(pet, 'forage')!.name} r${jobCapability(pet, 'forage')!.rev})` : ''}: any ripe crop to the house, where it sells (berry +2, carrot +5, sunflower +7, pumpkin +12).`, needs: 'Harvest', locked: jobCapability(pet, 'forage') ? undefined : 'Needs a Harvest skill — teach it in the Field Guide (Teach a job: Harvest)' },
     { id: 'deliver', title: BEHAVIOR_LABEL.deliver, blurb: 'Fetch eggs and whatever is in the basket or shed to the house, where it sells.', needs: 'Fetch', locked: hasFetch ? undefined : 'Needs a saved Fetch skill' },
     { id: 'plant', title: BEHAVIOR_LABEL.plant, blurb: 'Plant empty soil: carrots (seed 1), sunflowers (2), pumpkins (3). Seeds are paid from your coins.', needs: 'Approach', locked: hasNav ? undefined : 'Needs a saved Approach skill' },
     { id: 'tote', title: BEHAVIOR_LABEL.tote, blurb: 'Lift a basket that’s half full, empty it at the house or a shed, and set it down by the crops — six crops in one trip. Also moves an empty basket next to the fields.', needs: 'Fetch', locked: hasFetch ? undefined : 'Needs a saved Fetch skill' },

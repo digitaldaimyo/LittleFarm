@@ -13,7 +13,7 @@ import { activeRevision, adoptPet, getSkill } from '../src/game/pets';
 import { exportSkillCard, importSkillCard } from '../src/game/skillcard';
 import { createRuntime, farmTick, setOnDuty } from '../src/game/farm';
 import { parseGame, serializeGame } from '../src/persistence/save';
-import { trainAndSave } from './helpers';
+import { trainAndSave, giveHarvest } from './helpers';
 import type { StageSpec } from '../src/domain/types';
 
 function trained(stage: StageSpec) {
@@ -116,12 +116,12 @@ describe('M6: two pets on duty', () => {
     const g = newGame();
     const a = adoptPet(g, 'Pip', 'meadow');
     const b = adoptPet(g, 'Mochi', 'plum');
-    for (const p of [a, b]) { p.traits = { ...DEFAULT_TRAITS }; trainAndSave(g, p, recipeStage('go-to-berry')); p.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' }; }
-    // Farm life: Pip (on Auto) plants and harvests into the basket (knowing Fetch, it stores rather than walking
-    // home), Mochi hauls the basket to the house. Two different jobs.
+    for (const p of [a, b]) { p.traits = { ...DEFAULT_TRAITS }; trainAndSave(g, p, recipeStage('go-to-berry')); giveHarvest(g, p); p.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' }; }
+    // Both on Auto with their learned Harvest (learned-farm phase 3: harvests sell at the house, so a dedicated
+    // hauler has little to do until a learned "harvest into storage" exists).
     for (const p of [a, b]) trainAndSave(g, p, recipeStage('bring-it-home'), activeRevision(getSkill(p, 'Approach'))!.policy);
     a.assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' }; // harvests and replants
-    b.assignment = { mode: 'job', job: 'deliver', navigator: 'Approach' };
+    b.assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' };
     g.farm.dutyPetId = a.id;
     if (second) setOnDuty(g, b.id, true);
     g.resources.coins = 30;

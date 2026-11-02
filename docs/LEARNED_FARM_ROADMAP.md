@@ -25,7 +25,15 @@ Status: **official roadmap**, decisions settled (section 8). **Phase 0 done:**
   - Deployed walks take Curiosity's occasional random step (2–8%), so a greedy loop beside an obstacle can't repeat forever. It's the learned replacement for the scripted stuck recovery. Training is unchanged.
 - **Moved to phase 3:** the "clear tile by the crops" aim (it belongs with the Basket-run routine). Also there: the weak-Approach-near-rocks case (seed 303), likely fixed by training Approach with *Obstacles: some*.
 
-Next: phase 3 (the learned repertoire).
+**Phase 3a done (Harvest is fully learned):**
+- **Job bindings** (`LEARNED_JOBS`, `jobSkill`, `jobCapability`): a farm job is done by one of the pet's skills or routines. That's the player's pick (`Pet.jobSkills`), else the one taught by the job's recipe or named after it. Only certified or opted-in skills count.
+- **The scripted Harvest executor is gone.** The Harvest job, Auto and plan rows run the bound skill through `runCapability`, aimed at any ripe crop. With no Harvest skill, the job is locked and Auto never harvests.
+- **Field Guide:** the first lesson ends once Approach is saved, then **Teach a job: Harvest** starts by itself (train the routine, save, assign, earn 5 coins → Fetch). *See what your pet learned* now opens on an invented sense skill, not a routine.
+- **Tests:** farm tests give pets a trained Harvest (`giveHarvest` in tests/helpers). Expectations that relied on the scripted harvest *filling baskets* changed: the learned Harvest sells at the house, so basket tests stock baskets directly until a learned "harvest into storage" exists (3b). The two-pet test now runs both pets on Auto.
+- **Finding:** training Approach with *Obstacles: some* and 3,000 tries makes the learned Harvest beat the scripted one on every seed (158 / 160 / 159 vs 127 / 159 / 70). The Harvest lesson says so.
+- **Still scripted** (next slices): Haul, Basket run, Plant, fireflies, the gate, Rest's walk home, Wander. Also to come: the v9 save migration.
+
+Next: phase 3b (Haul and storage, Basket run).
 
 **The commitment.** Everything a pet does on its own on the farm comes from a skill or routine the player taught it in the pen. No hidden job scripts. The farm executive is promoted from a fixed rule list to a learned, two-level decision-maker:
 - the **upper level** reads the farm and picks what to work on next (a responsibility);

@@ -5,7 +5,7 @@ import { MAX_ON_DUTY, createRuntime, crewSummary, describeTile, dutyPets, farmTi
 import { parseGame, serializeGame } from '../src/persistence/save';
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import type { GameState } from '../src/game/types';
-import { recipeStage, trainAndSave } from './helpers';
+import { recipeStage, trainAndSave, giveHarvest } from './helpers';
 
 const NAMES = ['Pip', 'Mochi', 'Bean', 'Juniper', 'Clover'] as const;
 const PALS = ['meadow', 'plum', 'sky', 'moss', 'meadow'] as const;
@@ -15,6 +15,7 @@ function crewFarm(n: number): GameState {
   const pets = NAMES.slice(0, n).map((name, i) => adoptPet(g, name, PALS[i]));
   for (const p of pets) p.traits = { ...DEFAULT_TRAITS }; // adoptPet's temperament is random
   const ap = trainAndSave(g, pets[0], recipeStage('go-to-berry'));
+  giveHarvest(g, pets[0]);
   const fe = trainAndSave(g, pets[0], recipeStage('bring-it-home'), ap.policy);
   for (const [i, p] of pets.entries()) {
     if (i > 0) {

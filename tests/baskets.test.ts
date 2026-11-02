@@ -9,7 +9,7 @@ import { createRuntime, cropSpot, farmTick, harvestTarget, heldBasket, toteTarge
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import { Trainer } from '../src/learning/trainer';
 import { buildReport } from '../src/learning/report';
-import { recipeStage, trainAndSave } from './helpers';
+import { recipeStage, trainAndSave, giveHarvest } from './helpers';
 
 /** A basket with stock under the pet, a house two steps east and a shed three steps south. */
 function yard(stock = 4) {
@@ -116,6 +116,7 @@ function basketFarm() {
   const p = adoptPet(s, 'Pip', 'meadow');
   p.traits = { ...DEFAULT_TRAITS };
   trainAndSave(s, p, recipeStage('go-to-berry'));
+  giveHarvest(s, p);
   trainAndSave(s, p, recipeStage('bring-it-home'), activeRevision(getSkill(p, 'Approach'))!.policy);
   p.assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' };
   s.farm.dutyPetId = p.id;
@@ -129,6 +130,7 @@ describe('basket runs on the farm', () => {
     const w = s.farm.world;
     const b = w.objects.find((o) => o.kind === 'bin')!;
     expect(toteTarget(s)?.id).toBe(b.id); // the starting basket by the house is away from the crops
+    b.store = [{ kind: 'berry', n: 3 }]; // half full (learned Harvest sells at the house, so stock it by hand)
     const spot = cropSpot(s)!;
     expect(spot).toBeTruthy();
     const rt = createRuntime(s.farm);

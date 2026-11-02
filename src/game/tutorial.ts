@@ -83,6 +83,7 @@ export const AVOID_STAGE = 'stage-guide-ponds';
 export const INVENT_STAGE = 'stage-guide-invent';
 export const ROUTINE_STAGE = 'stage-guide-routine';
 export const NOTES_STAGE = 'stage-guide-notes';
+export const HARVEST_STAGE = 'stage-guide-harvest';
 /** Id of the deliberately shadowed row the plans lesson adds to the pet's plan. */
 export const LESSON_ROW = 'guide-row-well';
 
@@ -118,7 +119,7 @@ function guideStage(id: string, name: string, tweak: (s: StageSpec) => void): St
 
 export const CHAPTERS: Chapter[] = [
   {
-    id: 'first', title: 'First lesson', blurb: 'Teach your first skill and put it to work.', minutes: 4,
+    id: 'first', title: 'First lesson', blurb: 'Teach your first skill: walking to a berry.', minutes: 3,
     offered: () => true,
     start: (s) => {
       // Replaying: a fresh, empty practice pen and the pen-building steps again.
@@ -139,7 +140,27 @@ export const CHAPTERS: Chapter[] = [
       { id: 'train', title: 'Train Approach', text: 'Press Train. Your pet really practises — around 1,500 tries.', why: 'Lessons in the Field Guide are free: they cost no energy.', screen: 'teach', highlight: 'train-btn', done: (s) => runs(s, TUT).length > 0 },
       { id: 'read-report', title: 'Read the report', text: 'Look at the highlighted rows: “Before” and “Random wandering” vs “After”, and “Transfer” (bigger pens it never saw).', why: 'Every number comes from layouts your pet never practised on. A skill is only as good as its score there — that’s why scattering mattered.', screen: 'teach', highlight: 'report-compare', ack: true, done: (s) => flag(s, ackFlag('first', 'read-report')) },
       { id: 'save', title: 'Save the skill', text: 'Press “Save skill”.', screen: 'teach', highlight: 'save-skill', done: (s) => { const p = activePet(s); return !!p && !!getSkill(p, 'Approach')?.revisions.some((r) => r.stageId === TUT && r.createdAt >= (runs(s, TUT)[0]?.at ?? 0)); } },
-      { id: 'assign', title: 'Put it to work', text: 'On the Farm, pick the “Harvest” job.', why: 'Skills are for the farm. Harvest uses the Approach you just taught to walk to ripe berries.', screen: 'farm', highlight: 'job-forage', done: (s) => flag(s, 'assignedJob') },
+      { id: 'next', title: 'Next: teach it a job', text: 'Approach walks to things — but on the farm, a pet only does what it has learned. Its first job, Harvest, is the next lesson.', why: 'There are no built-in jobs: every job your pet does on the farm is a skill or routine you taught it.', ack: true, done: (s) => flag(s, ackFlag('first', 'next')) },
+    ],
+  },
+  {
+    id: 'harvest', title: 'Teach a job: Harvest', blurb: 'Build your pet’s first farm job from cards: walk to any ripe crop, pick it up, carry it to the house.', minutes: 4, opensWhen: 'Opens after the first lesson.',
+    offered: (s) => ['done', 'skipped'].includes(guideStatus(s, 'first') ?? ''),
+    start: (s) => {
+      const st = recipeStage('harvest');
+      st.id = HARVEST_STAGE;
+      st.name = 'Field guide: Harvest';
+      st.recipeId = 'guide';
+      st.extensions = { guide: true };
+      upsertStage(s, st);
+      s.activeStageId = HARVEST_STAGE;
+      delete s.progress.flags.assignedJob;
+      delete s.progress.guideRuns?.[HARVEST_STAGE];
+    },
+    steps: [
+      { id: 'train', title: 'A routine from cards', text: 'This pen teaches Harvest. In the Pet binder, look at its options — Approach → any ripe crop, Pick up, Approach → the house, Put down — then press Train.', why: 'A routine reuses skills your pet already has (its Approach) and learns which option to use when. “Any ripe crop” is a different crop each try, so it learns crops in general.', screen: 'teach', highlight: 'train-btn', done: (s) => runs(s, HARVEST_STAGE).length > 0 },
+      { id: 'save', title: 'Save Harvest', text: 'Press “Save skill”.', why: 'A saved, certified skill is something the farm may use. Harvest is only as good as the Approach it walks with: practising Approach with “Obstacles: some” and 3,000 tries made it sturdier on the farm in our tests.', screen: 'teach', highlight: 'save-skill', done: (s) => s.pets.some((p) => !!getSkill(p, 'Harvest')?.revisions.some((r) => r.stageId === HARVEST_STAGE)) },
+      { id: 'assign', title: 'Put it to work', text: 'On the Farm, pick the “Harvest” job.', why: 'The Harvest job runs your Harvest routine — the one you just taught — aimed at any ripe crop.', screen: 'farm', highlight: 'job-forage', done: (s) => flag(s, 'assignedJob') },
       { id: 'earn', title: 'Earn 5 coins', text: 'Each berry sells for 2 coins once your pet carries it to the house — coins only come from the house. Five coins unlocks Fetch lessons (with Fetch, pets can also store crops in the basket and haul them home later) — and the Field Guide has more lessons waiting.', screen: 'farm', done: (s) => s.progress.unlocks.includes('fetch') },
     ],
   },
@@ -258,7 +279,7 @@ export const CHAPTERS: Chapter[] = [
   },
   {
     id: 'read', title: 'See what your pet learned', blurb: 'Summaries, the “What does Pip do?” probe, curiosities and skill cards.', minutes: 5, opensWhen: 'Opens once you’ve saved a skill you invented.',
-    offered: (s) => s.pets.some((p) => p.skills.some((k) => k.custom && k.revisions.length > 0)),
+    offered: (s) => s.pets.some((p) => p.skills.some((k) => k.custom && k.kind !== 'routine' && k.template !== 'routine' && k.revisions.length > 0)),
     start: (s) => {
       for (const k of ['viewedSummaryPreset', 'viewedSummaryCustom', 'probed', 'probePath', 'exportedCard']) delete s.progress.flags[k];
       if (stage(s, TUT)) s.activeStageId = TUT;
@@ -394,6 +415,8 @@ export function advanceTutorial(s: GameState): boolean {
       addJournal(s, activePet(s)?.id ?? null, `guide-${ch.id}`, `Field Guide lesson finished: “${ch.title}”.`, ch.id === 'first');
       moved = true;
     }
+    // The first job follows straight on from the first lesson: without it the farm earns nothing.
+    if (ch.id === 'first' && g.status.first === 'done' && !g.status.harvest) { startChapter(s, 'harvest'); return true; }
   }
   for (const c of CHAPTERS) {
     if (!g.status[c.id] && c.offered(s)) { g.status[c.id] = 'offered'; moved = true; }
