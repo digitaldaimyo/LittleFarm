@@ -85,7 +85,7 @@ Status: **official roadmap**, decisions settled (section 8). **Phase 0 done:**
   - no thrash: under 25 switches a minute on three farms, and the guard is never needed;
   - no endless retry: a job that can never work is tried at most 3 times per cooldown;
   - a commitment holds against a more important responsibility within 60 ticks.
-- **Farm output stays ≥ 80% of the phase-0 baseline everywhere** (`bench:farm --learned`; see TESTING).
+- **Farm output stays ≥ 80% of the phase-0 baseline everywhere** (`bench:farm --learned`): Auto 690 vs 795 (87%) on the standard farm and 674 vs 658 (102%) held-out; two pets 84% / 87%; the Harvest job 121% / 97%.
 
 Next: phase 5 (the learned executive: option values per responsibility, executive lessons).
 
