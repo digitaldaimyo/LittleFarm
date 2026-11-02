@@ -279,7 +279,8 @@ function harvestRoutine(): StageSpec {
           n('opt.skill', { skill: 'Approach', aim: n('ref.target'), when: n('cond.not', { inner: carrying() }) }),
           n('opt.skill', { skill: 'Approach', aim: k(n, 'home'), when: carrying() }),
           n('opt.action', { action: 'pick' }),
-          n('opt.action', { action: 'drop' }),
+          // Put it down only at the house: anywhere else it's just picked up again.
+          n('opt.action', { action: 'drop', when: n('cond.at', { actor: pet(n), what: k(n, 'home') }) }),
         ],
         watch: [
           carrying(),
@@ -289,6 +290,104 @@ function harvestRoutine(): StageSpec {
       },
     },
     evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.7 },
+  };
+}
+
+/**
+ * Harvest into storage (learned-farm phase 3b): like Harvest, but the crop goes into a basket or shed with room
+ * instead of the house — a hauler (Fetch) or a Basket run takes it on from there.
+ */
+function harvestStoreRoutine(): StageSpec {
+  const n = maker('hs');
+  const carrying = () => n('cond.carryingAny', { actor: pet(n) });
+  return {
+    id: 'stage-harvest-store', name: 'Harvest to storage', recipeId: 'harvest-store', version: 1,
+    blurb: 'A routine from cards: Approach → any ripe crop, pick up, Approach → storage with room, put down.',
+    size: { w: 10, h: 10 },
+    environment: [
+      n('place.pet', { mode: 'random', x: 0, y: 0 }),
+      n('place.random', { kind: n('kind:@crop'), count: 2, region: 'anywhere', vary: 'more1' }),
+      n('place.random', { kind: n('kind:@storage'), count: 1, region: 'anywhere' }),
+      n('place.obstacles', { amount: 'few', kind: 'rocks' }),
+    ],
+    abilities: ['move', 'pickup', 'drop'],
+    rules: [
+      n('rule', { label: 'Stored', when: n('ev.deliver', { what: n('ref.target'), into: n('kind:@storage') }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'judge' })], limit: n('lim.once') }),
+      n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.02 })] }),
+    ],
+    success: n('cond.delivered', { what: n('ref.target'), into: n('kind:@storage'), count: 1 }),
+    fail: null,
+    seed: 525, maxTicks: 120,
+    learner: {
+      skill: 'Harvest to storage', template: 'routine', focus: '@crop', destination: '@storage', episodes: 600,
+      routine: {
+        options: [
+          n('opt.skill', { skill: 'Approach', aim: n('ref.target'), when: n('cond.not', { inner: carrying() }) }),
+          n('opt.skill', { skill: 'Approach', aim: n('kind:@storage'), when: carrying() }),
+          n('opt.action', { action: 'pick', when: n('cond.at', { actor: pet(n), what: n('ref.target') }) }),
+          n('opt.action', { action: 'drop', when: n('cond.at', { actor: pet(n), what: n('kind:@storage') }) }),
+        ],
+        watch: [
+          carrying(),
+          n('cond.at', { actor: pet(n), what: n('ref.target') }),
+          n('cond.at', { actor: pet(n), what: n('kind:@storage') }),
+        ],
+      },
+    },
+    evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.7 },
+  };
+}
+
+/**
+ * Basket run as a learned routine (learned-farm phase 3b): lift a basket, empty it at the house if anything is in
+ * it, carry it back to the crops and set it down beside one (step aside off the crop, put down).
+ */
+function basketRunRoutine(): StageSpec {
+  const n = maker('br');
+  const carrying = () => n('cond.carryingAny', { actor: pet(n) });
+  const stocked = () => n('cond.storage', { level: 'basket' });
+  const not = (inner: SpecNode) => n('cond.not', { inner });
+  const byCrops = () => n('cond.kindNear', { what: k(n, 'bin'), near: n('kind:@crop'), dist: 1 });
+  const done = () => n('cond.and', { all: [not(carrying()), not(stocked()), byCrops()] });
+  const atHome = () => n('cond.at', { actor: pet(n), what: k(n, 'home') });
+  const atCrop = () => n('cond.at', { actor: pet(n), what: n('kind:@crop') });
+  const nextToCrop = () => n('cond.nextTo', { actor: pet(n), what: n('kind:@crop') });
+  return {
+    id: 'stage-basket-run', name: 'Basket run', recipeId: 'basket-run', version: 1,
+    blurb: 'A routine from cards: lift the basket, empty it at the house, set it down again beside the crops.',
+    size: { w: 10, h: 10 },
+    environment: [
+      n('place.pet', { mode: 'random', x: 0, y: 0 }),
+      n('place.stocked', { kind: k(n, 'bin'), item: k(n, 'berry'), count: 3, vary: 'upTo', region: 'anywhere' }),
+      n('place.random', { kind: k(n, 'home'), count: 1, region: 'anywhere' }),
+      n('place.random', { kind: n('kind:@crop'), count: 2, region: 'anywhere' }),
+      n('place.obstacles', { amount: 'few', kind: 'rocks' }),
+    ],
+    abilities: ['move', 'drop', 'lift'],
+    rules: [
+      n('rule', { label: 'Emptied at the house', when: n('ev.empty', { what: k(n, 'bin'), into: k(n, 'home') }), then: [n('eff.reward', { amount: 4 })], limit: n('lim.once') }),
+      n('rule', { label: 'Set down by the crops', when: n('ev.tick'), if: [done()], then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'judge' })], limit: n('lim.once') }),
+      n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.02 })] }),
+    ],
+    success: done(),
+    fail: null,
+    seed: 535, maxTicks: 160,
+    learner: {
+      skill: 'Basket run', template: 'routine', focus: 'bin', destination: 'home', episodes: 1200,
+      routine: {
+        options: [
+          n('opt.skill', { skill: 'Approach', aim: k(n, 'bin'), when: not(carrying()) }),
+          n('opt.action', { action: 'lift' }),
+          n('opt.skill', { skill: 'Approach', aim: k(n, 'home'), when: carrying() }),
+          n('opt.skill', { skill: 'Approach', aim: n('kind:@crop'), when: carrying() }),
+          n('opt.action', { action: 'aside', when: n('cond.and', { all: [carrying(), atCrop()] }) }),
+          // Put down only where it helps: at the house to empty it, or beside a crop once it's empty.
+          n('opt.action', { action: 'drop', when: n('cond.any', { any: [n('cond.and', { all: [stocked(), atHome()] }), n('cond.and', { all: [not(stocked()), nextToCrop(), not(atCrop())] })] }) }),
+        ],
+        watch: [carrying(), stocked(), atHome(), nextToCrop()],
+      },
+    },
+    evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.6 },
   };
 }
 
@@ -485,6 +584,8 @@ export const RECIPES: Recipe[] = [
   { id: 'empty-basket', name: 'Empty the basket', blurb: 'Your own skill: carry a stocked basket to the house and empty it there (uses Lift).', skill: 'Empty the basket', unlock: 'custom', optional: true, build: emptyBasket },
   { id: 'patrol', name: 'Patrol', blurb: 'Your own skill with a note: well, house, well again (the note remembers which leg).', skill: 'Patrol', unlock: 'custom', optional: true, build: () => patrol() },
   { id: 'harvest', name: 'Harvest', blurb: 'A routine: walk to any ripe crop, pick it up, carry it to the house (uses your Approach).', skill: 'Harvest', unlock: 'custom', optional: true, build: harvestRoutine },
+  { id: 'harvest-store', name: 'Harvest to storage', blurb: 'A routine: walk to any ripe crop, pick it up, put it in a basket or shed with room (uses your Approach).', skill: 'Harvest to storage', unlock: 'fetch', optional: true, build: harvestStoreRoutine },
+  { id: 'basket-run', name: 'Basket run', blurb: 'A routine: lift a basket, empty it at the house, set it down beside the crops (uses your Approach).', skill: 'Basket run', unlock: 'fetch', optional: true, build: basketRunRoutine },
   { id: 'herd-chicken', name: 'Herd a chicken', blurb: 'Your own skill: shoo a chicken into the coop.', skill: 'Herd', unlock: 'custom', optional: true, build: herdChicken },
   { id: 'shoo-loophole', name: 'Treat for every shoo', blurb: 'Experiment: a herding reward with a loophole.', skill: 'Herd (loophole)', unlock: 'custom', optional: true, build: shooLoophole },
   { id: 'open-gate', name: 'Open the gate', blurb: 'Your own skill: find a gate and nudge it open.', skill: 'Open the gate', unlock: 'custom', optional: true, build: openGate },

@@ -3,8 +3,12 @@
  * starter plan, a fixed Harvest job and two pets — on the standard farm and a held-out layout, over three
  * training seeds and two farm days. Later phases must reach ≥ 80% of these numbers with learned jobs.
  * Run: npm run bench:farm   (writes bench/farm-baseline.json)
+ *      npm run bench:farm -- --learned   (learned farm, phase 3+: every pet also trains Harvest, Harvest to storage
+ *      and Basket run in pens, as a player would; writes bench/farm-learned.json and compares with the baseline)
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { node } from '../src/domain/spec';
+import type { SpecNode } from '../src/domain/types';
 import { newGame } from '../src/game/state';
 import { activeRevision, adoptPet, getSkill } from '../src/game/pets';
 import { createRuntime, farmTick, setOnDuty, type FarmRuntime } from '../src/game/farm';
@@ -16,6 +20,7 @@ import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import { trainAndSave, trainAndSaveRoutine } from '../tests/helpers';
 
 const SEEDS = [101, 202, 303];
+const LEARNED = process.argv.includes('--learned');
 const TICKS = 2400; // two farm days
 type Setup = 'auto-rules' | 'auto-learned' | 'starter-plan' | 'harvest-job' | 'two-pets' | 'learned-harvest';
 /** `learned-harvest` (phase 2): the Harvest *routine* trained in a pen, aimed at any ripe crop — no scripted job. */
@@ -25,9 +30,16 @@ function skilledPet(g: GameState, name: string, seed: number): Pet {
   const p = adoptPet(g, name, 'meadow');
   p.traits = { ...DEFAULT_TRAITS };
   const st = recipeStage('go-to-berry'); st.seed = seed;
+  if (LEARNED) {
+    // As the Harvest lesson advises: practise Approach among some obstacles, 3,000 tries (sturdier walks on the farm).
+    st.environment = st.environment.filter((e) => !(e.cardId === 'place.random' && (e.args.kind as SpecNode | undefined)?.cardId === 'kind:rock'));
+    st.environment.push(node('place.obstacles', { amount: 'some', kind: 'rocks' }));
+    st.learner.episodes = 3000;
+  }
   trainAndSave(g, p, st);
   const fe = recipeStage('bring-it-home'); fe.seed = seed;
   trainAndSave(g, p, fe, activeRevision(getSkill(p, 'Approach'))!.policy);
+  if (LEARNED) for (const id of ['harvest', 'harvest-store', 'basket-run']) { const st = recipeStage(id); st.seed = seed; trainAndSaveRoutine(g, p, st); }
   return p;
 }
 
@@ -53,7 +65,7 @@ function run(setup: Setup, seed: number, layout: 'standard' | 'held-out') {
   if (setup === 'harvest-job') a.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' };
   if (setup === 'learned-harvest') {
     const hv = recipeStage('harvest'); hv.seed = seed;
-    trainAndSaveRoutine(g, a, hv);
+    if (!LEARNED) trainAndSaveRoutine(g, a, hv);
     a.assignment = { mode: 'job', job: 'skill', navigator: 'Approach', skillName: 'Harvest', target: '@crop' };
   }
   if (setup === 'two-pets') {
@@ -88,8 +100,8 @@ function run(setup: Setup, seed: number, layout: 'standard' | 'held-out') {
   };
 }
 
-const rows = [];
-console.log(`Farm baseline — ${TICKS} ticks, seeds ${SEEDS.join('/')}\n`);
+const rows: ReturnType<typeof run>[] = [];
+console.log(`Farm ${LEARNED ? 'learned' : 'baseline'} — ${TICKS} ticks, seeds ${SEEDS.join('/')}\n`);
 console.log('setup          layout    coins (per seed)     sold  jobs  ok%  timeouts  switch/min  rest%  idle%  ms/tick');
 for (const layout of ['standard', 'held-out'] as const) for (const setup of SETUPS) {
   const r = SEEDS.map((seed) => run(setup, seed, layout));
@@ -99,5 +111,16 @@ for (const layout of ['standard', 'held-out'] as const) for (const setup of SETU
   console.log(`${setup.padEnd(14)} ${layout.padEnd(9)} ${r.map((x) => String(x.coins).padStart(4)).join(' /').padEnd(20)} ${String(sum('sold')).padStart(5)} ${String(sum('jobs')).padStart(5)} ${String(Math.round((100 * sum('ok')) / Math.max(1, sum('jobs')))).padStart(4)} ${String(sum('timeouts')).padStart(9)} ${String(avg('switchesPerMin')).padStart(11)} ${String(avg('restShare')).padStart(6)} ${String(avg('idleShare')).padStart(6)} ${Math.max(...r.map((x) => x.msPerTick)).toFixed(3).padStart(8)}`);
 }
 mkdirSync('bench', { recursive: true });
-writeFileSync('bench/farm-baseline.json', JSON.stringify({ ticks: TICKS, seeds: SEEDS, rows }, null, 1));
-console.log('\nWrote bench/farm-baseline.json');
+const out = LEARNED ? 'bench/farm-learned.json' : 'bench/farm-baseline.json';
+if (LEARNED && existsSync('bench/farm-baseline.json')) {
+  // The ≥ 80% gate: learned coins vs the phase-0 baseline, per setup and layout (summed over seeds).
+  const base = JSON.parse(readFileSync('bench/farm-baseline.json', 'utf8')).rows as typeof rows;
+  console.log('\nvs phase-0 baseline (coins, all seeds):');
+  for (const layout of ['standard', 'held-out'] as const) for (const setup of SETUPS) {
+    const sum = (rs: typeof rows) => rs.filter((r) => r.setup === setup && r.layout === layout).reduce((a, r) => a + r.coins, 0);
+    const b = sum(base), l = sum(rows);
+    console.log(`${setup.padEnd(14)} ${layout.padEnd(9)} ${String(l).padStart(5)} vs ${String(b).padStart(5)}  ${b ? Math.round((100 * l) / b) : '–'}%`);
+  }
+}
+writeFileSync(out, JSON.stringify({ ticks: TICKS, seeds: SEEDS, rows }, null, 1));
+console.log(`\nWrote ${out}`);

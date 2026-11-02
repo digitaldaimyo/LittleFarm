@@ -46,4 +46,21 @@ export function giveHarvest(s: GameState, pet: Pet) {
   return saveRevision(s, pet, input);
 }
 
+/** Any routine recipe, trained over the pet's skills and cached like `giveHarvest`. */
+const routineCache = new Map<string, Parameters<typeof saveRevision>[2]>();
+export function giveRoutine(s: GameState, pet: Pet, recipe: string) {
+  const subs = subskillsFor(pet);
+  const key = recipe + JSON.stringify(Object.values(subs).map((x) => x.policy)) + JSON.stringify(pet.traits);
+  const hit = routineCache.get(key);
+  if (hit) return saveRevision(s, pet, structuredClone(hit));
+  const stage = recipeStage(recipe);
+  const t = new Trainer({ stage, episodes: stage.learner.episodes, traits: pet.traits, subskills: subs });
+  while (!t.done) t.runChunk(1000, false);
+  const report = buildReport(stage, pet.traits, null, t.policy(), null, undefined, subs);
+  const uses = Object.values(subs).filter((x) => stage.learner.routine!.options.some((o) => o.args.skill === x.name)).map((x) => ({ skill: x.name, rev: x.rev }));
+  const input = { stage, policy: t.policy(), report, episodes: stage.learner.episodes, durationMs: 1, simTicks: 0, uses };
+  routineCache.set(key, structuredClone(input));
+  return saveRevision(s, pet, input);
+}
+
 export { recipeStage, DEFAULT_TRAITS };

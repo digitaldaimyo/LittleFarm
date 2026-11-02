@@ -145,7 +145,10 @@ export function makeChooser(stage: StageSpec, p: PolicySpec, seed: number, trait
     return (w) => {
       if (ctrl) {
         run ??= new RoutineRun(r, ctrl, rng, stage.maxTicks, null);
-        return run.next(w);
+        const st = run.next(w);
+        // In a pen the try's own clock decides: with nothing to do, the pet just waits (as before).
+        if (isDone(st) && st.reason === 'no option applies') { const t = run.ticks; run = new RoutineRun(r, ctrl, rng, stage.maxTicks, null); run.ticks = t + 1; return 'wait'; }
+        return st;
       }
       for (let guard = 0; guard < 4; guard++) {
         if (!cur) {

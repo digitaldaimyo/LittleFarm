@@ -33,7 +33,31 @@ Status: **official roadmap**, decisions settled (section 8). **Phase 0 done:**
 - **Finding:** training Approach with *Obstacles: some* and 3,000 tries makes the learned Harvest beat the scripted one on every seed (158 / 160 / 159 vs 127 / 159 / 70). The Harvest lesson says so.
 - **Still scripted** (next slices): Haul, Basket run, Plant, fireflies, the gate, Rest's walk home, Wander. Also to come: the v9 save migration.
 
-Next: phase 3b (Haul and storage, Basket run).
+**Phase 3b done (Haul, Basket run and Harvest to storage are learned):**
+- **Two new routine recipes** (Train, once Fetch is unlocked):
+  - **Harvest to storage:** Approach → any ripe crop, pick up, Approach → storage with room, put down.
+  - **Basket run:** Approach → basket, lift, Approach → the house, put down (it empties), Approach → a crop, step aside, put down. The routine scores 90–95% in its pen.
+  - New "Do action" choices: *lift a basket*, *plant*, *nudge* and *step aside* (onto a clear tile next to the pet).
+  - New Storage level: *basket has anything* (the one carried, if any).
+  - *Thing near thing* and the *deliver*/*empty* events accept "any crop" / "storage with room".
+- **Bindings:**
+  - Haul runs the pet's Fetch (it must be certified, or opted in). It is still aimed at eggs or the fullest storage, and counts sales at the house.
+  - Basket run runs the Basket run routine. The job is done once a basket it lifted is set down.
+  - Harvest picks *Harvest to storage* only when storage with room is nearer than the house and someone on duty can empty it (Fetch or Basket run). Otherwise it uses *Harvest*.
+- **The built-in basket-run code is gone.** Haul's built-in Fetch setup is gone too: it now starts through `runCapability`.
+- **A routine with nothing it may do gives up** ("no option applies") instead of waiting out its time. This happens, for example, when the pet holds a berry and the only basket holds carrots. The farm then chooses again. Survive routines and pen tries still wait.
+- **Recipe fix:** Harvest's *put down* is now "only at the house". Before, after a stuck walk home, it could pick up and put down on the spot until time ran out.
+- **The ≥ 80% gate passes for every setup.** `npm run bench:farm -- --learned` gives every pet Approach, Fetch, Harvest, Harvest to storage and Basket run, all trained in pens; Approach is practised with *Obstacles: some* and 3,000 tries, as the lesson advises. Coins over three seeds vs the phase-0 baseline (all scripted jobs):
+
+| Setup | Standard farm | Held-out farm |
+|---|---|---|
+| Auto (rules) | 724 vs 795 (91%) | 651 vs 658 (99%) |
+| Auto (learned) | 471 vs 352 (134%) | 276 vs 230 (120%) |
+| Starter plan | 724 vs 795 (91%) | 651 vs 658 (99%) |
+| Harvest job | 431 vs 356 (121%) | 650 vs 670 (97%) |
+| Two pets | 776 vs 886 (88%) | 761 vs 865 (88%) |
+
+Next: phase 3c (Plant, Go home / Rest, fireflies, the gate).
 
 **The commitment.** Everything a pet does on its own on the farm comes from a skill or routine the player taught it in the pen. No hidden job scripts. The farm executive is promoted from a fixed rule list to a learned, two-level decision-maker:
 - the **upper level** reads the farm and picks what to work on next (a responsibility);

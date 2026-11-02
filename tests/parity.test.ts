@@ -5,16 +5,16 @@ import { addObject, aimIs, emptyWorld, step } from '../src/sim/world';
 import { compileEncoder } from '../src/learning/senses';
 import { validateStage } from '../src/domain/validate';
 import { newGame } from '../src/game/state';
-import { adoptPet, activeRevision, getSkill } from '../src/game/pets';
+import { adoptPet, activeRevision, getSkill, routineRunFor } from '../src/game/pets';
 import { createRuntime, farmTick, type FarmRuntime } from '../src/game/farm';
 import { jobCapability, jobSkill } from '../src/game/capability';
 import { applyLayout, move, place, startLayout } from '../src/game/layout';
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
-import { NavRun } from '../src/learning/policies';
+import { NavRun, isDone } from '../src/learning/policies';
 import { Rng } from '../src/sim/rng';
 import type { GameState } from '../src/game/types';
 import type { StageSpec } from '../src/domain/types';
-import { recipeStage, trainAndSave, trainAndSaveRoutine } from './helpers';
+import { giveRoutine, recipeStage, trainAndSave, trainAndSaveRoutine } from './helpers';
 
 const withEnv = (extra: ReturnType<typeof node>[]): StageSpec => { const st = recipeStage('go-to-berry'); st.environment.push(...extra); return st; };
 
@@ -98,9 +98,7 @@ function runFarm(g: GameState, ticks = 2400): { coins: number; rt: FarmRuntime }
 describe('pen → farm transfer: a Harvest routine trained in a pen runs the farm', () => {
   it('sells crops on a held-out farm using only learned capabilities, ≥ 80% of the scripted Harvest job', () => {
     const seed = 202;
-    const scripted = farmFor(seed, true);
-    scripted.pets[0].assignment = { mode: 'job', job: 'forage', navigator: 'Approach' };
-    const base = runFarm(scripted).coins;
+    const base = 237; // the scripted Harvest job on this farm and seed, recorded in phase 0 (bench/farm-baseline.json); it no longer exists
     const g = farmFor(seed, true);
     const p = g.pets[0];
     const hv = recipeStage('harvest'); hv.seed = seed;
@@ -156,4 +154,38 @@ describe('learned jobs (phase 3): no skill, no job', () => {
     k.farmUse = 'on';
     expect(jobCapability(p, 'forage')?.name).toBe('Harvest'); // …until the player opts in
   });
+});
+
+describe('learned jobs (phase 3b): Haul, Basket run, Harvest to storage', () => {
+  it('Haul runs the pet’s Fetch, Basket run its Basket run routine; Harvest prefers storage only when it’s nearer than the house', () => {
+    const g = farmFor(101, false);
+    const p = g.pets[0];
+    expect(jobCapability(p, 'deliver')?.name).toBe('Fetch');
+    expect(jobCapability(p, 'tote')).toBeNull(); // no Basket run routine yet
+    giveRoutine(g, p, 'harvest');
+    giveRoutine(g, p, 'harvest-store');
+    giveRoutine(g, p, 'basket-run');
+    expect(jobCapability(p, 'tote')?.name).toBe('Basket run');
+    const w = g.farm.world;
+    const bin = w.objects.find((o) => o.kind === 'bin')!;
+    const home = w.objects.find((o) => o.kind === 'home')!;
+    for (const o of w.objects.filter((x) => aimIs(x.kind, '@crop'))) o.delivered = true; // one ripe berry, by the basket
+    const berry = addObject(w, 'berry', bin.x + 1, bin.y);
+    expect(jobCapability(p, 'forage', g)?.name).toBe('Harvest to storage');
+    berry.x = home.x; berry.y = home.y + 1; // now the house is nearer
+    expect(jobCapability(p, 'forage', g)?.name).toBe('Harvest');
+  }, 60000);
+
+  it('a routine with nothing it may do gives up (so the farm can choose again) instead of waiting out its time', () => {
+    const g = farmFor(101, false);
+    const p = g.pets[0];
+    giveRoutine(g, p, 'harvest-store');
+    const rev = activeRevision(getSkill(p, 'Harvest to storage'))!;
+    const w = emptyWorld(5, 5);
+    const c = addObject(w, 'berry', 0, 0); c.carried = true; w.pet.carrying = c.id; // a berry in paws, no storage anywhere
+    const run = routineRunFor(p, rev, '@crop', new Rng(1), 100, w)!;
+    let st = run.next(w);
+    for (let i = 0; i < 5 && !isDone(st); i++) st = run.next(w);
+    expect(isDone(st) && st).toMatchObject({ done: 'fail', reason: 'no option applies' });
+  }, 60000);
 });

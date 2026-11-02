@@ -44,14 +44,15 @@ interface JobCard {
 
 function jobCards(pet: Pet): JobCard[] {
   const hasNav = !!activeRevision(getSkill(pet, 'Approach')) || !!activeRevision(getSkill(pet, 'Avoid'));
-  const hasFetch = !!activeRevision(getSkill(pet, 'Fetch'));
+  const cap = (job: string) => jobCapability(pet, job);
+  const runs = (job: string) => (cap(job) ? ` (${cap(job)!.name} r${cap(job)!.rev})` : '');
   return [
     { id: 'auto', title: 'Auto', blurb: `${pet.name} decides using their executive — napping at night, unless there are fireflies to catch.` },
     { id: 'plan', title: 'Farm plan', blurb: 'Your own IF/DO rows decide which skill runs when. Preview before applying.' },
-    { id: 'forage', title: BEHAVIOR_LABEL.forage, blurb: `Runs ${pet.name}’s own Harvest${jobCapability(pet, 'forage') ? ` (${jobCapability(pet, 'forage')!.name} r${jobCapability(pet, 'forage')!.rev})` : ''}: any ripe crop to the house, where it sells (berry +2, carrot +5, sunflower +7, pumpkin +12).`, needs: 'Harvest', locked: jobCapability(pet, 'forage') ? undefined : 'Needs a Harvest skill — teach it in the Field Guide (Teach a job: Harvest)' },
-    { id: 'deliver', title: BEHAVIOR_LABEL.deliver, blurb: 'Fetch eggs and whatever is in the basket or shed to the house, where it sells.', needs: 'Fetch', locked: hasFetch ? undefined : 'Needs a saved Fetch skill' },
+    { id: 'forage', title: BEHAVIOR_LABEL.forage, blurb: `Runs ${pet.name}’s own Harvest${runs('forage')}: any ripe crop to the house, where it sells (berry +2, carrot +5, sunflower +7, pumpkin +12). With a Harvest to storage routine too, crops go into a basket or shed with room while someone can empty it.`, needs: 'Harvest', locked: cap('forage') ? undefined : 'Needs a Harvest skill — teach it in the Field Guide (Teach a job: Harvest)' },
+    { id: 'deliver', title: BEHAVIOR_LABEL.deliver, blurb: `Runs ${pet.name}’s own Fetch${runs('deliver')}: eggs and whatever is in the basket or shed to the house, where it sells.`, needs: 'Fetch', locked: cap('deliver') ? undefined : 'Needs a certified Fetch skill' },
     { id: 'plant', title: BEHAVIOR_LABEL.plant, blurb: 'Plant empty soil: carrots (seed 1), sunflowers (2), pumpkins (3). Seeds are paid from your coins.', needs: 'Approach', locked: hasNav ? undefined : 'Needs a saved Approach skill' },
-    { id: 'tote', title: BEHAVIOR_LABEL.tote, blurb: 'Lift a basket that’s half full, empty it at the house or a shed, and set it down by the crops — six crops in one trip. Also moves an empty basket next to the fields.', needs: 'Fetch', locked: hasFetch ? undefined : 'Needs a saved Fetch skill' },
+    { id: 'tote', title: BEHAVIOR_LABEL.tote, blurb: `Runs ${pet.name}’s own Basket run${runs('tote')}: lift a basket that’s half full, empty it at the house, and set it down beside the crops — six crops in one trip. Also moves an empty basket next to the fields.`, needs: 'Basket run', locked: cap('tote') ? undefined : 'Needs a Basket run routine — train the Basket run recipe in Train' },
     { id: 'rest', title: 'Nap', blurb: 'Rest to refill energy.' },
     { id: 'skill', title: 'Run a skill', blurb: 'Run any skill or routine it has learned, aimed at anything on the farm — or at any ripe crop, or storage with room.', locked: runnable(pet).length ? undefined : 'Teach a skill in the pen first' },
     { id: 'manual', title: 'Steer', blurb: 'Guide them yourself: tap tiles or use arrow keys.' },

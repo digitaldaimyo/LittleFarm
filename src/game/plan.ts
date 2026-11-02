@@ -90,8 +90,8 @@ export function jobPossible(p: Pet, w: World, ctx: ExecContext, job: CompiledRow
     case 'rest': return true;
     case 'wander': return !ctx.energyLow;
     case 'forage': return !!jobCapability(p, 'forage') && ((ctx.berry && !ctx.carrying) || (ctx.carrying && !ctx.basket));
-    case 'deliver': return !!activeRevision(getSkill(p, 'Fetch')) && !!nav && ((ctx.carrot && !ctx.carrying) || (ctx.carrying && !ctx.basket));
-    case 'tote': return !!activeRevision(getSkill(p, 'Fetch')) && !!nav && (!!ctx.basket || (!!ctx.tote && !ctx.carrying));
+    case 'deliver': return !!jobCapability(p, 'deliver') && !!nav && ((ctx.carrot && !ctx.carrying) || (ctx.carrying && !ctx.basket));
+    case 'tote': return !!jobCapability(p, 'tote') && (!!ctx.basket || (!!ctx.tote && !ctx.carrying));
     case 'catch': return !!nav && !!ctx.firefly && !ctx.carrying;
     case 'plant': return !!nav && !!ctx.soil && !ctx.carrying;
     case 'goto': return !!nav && !!nearest(w, job.args.target) && !atFocus(w, job.args.target);

@@ -119,20 +119,28 @@ export function sinceStart(w: World, cond: (ctx: { w: World; prev: World['pet'];
 }
 
 /** Start a capability: one runtime for skills, Fetch and routines. */
-export function runCapability(s: GameState, p: Pet, name: string, aim: string | undefined, rng: Rng, timeout: number): CapabilityRunner {
+export interface RunOptions {
+  /** The job's own idea of done (replaces the skill's goal), e.g. a Basket run is done once the basket is set down. */
+  goal?: (w: World) => boolean;
+  /** Fetch: where to deliver, and how to count deliveries (the farm's Haul counts sales at the house). */
+  dest?: string;
+  count?: (w: World) => number;
+}
+
+export function runCapability(s: GameState, p: Pet, name: string, aim: string | undefined, rng: Rng, timeout: number, opts: RunOptions = {}): CapabilityRunner {
   const k = getSkill(p, name);
   const rev = deployedRevision(k);
   const missing = (reason: string): CapabilityRunner => ({ next: () => ({ done: 'fail', reason }) });
   if (!k || !rev) return missing('skill missing');
   const kind = kindOfSkill(k);
   const target = aim || defaultAim(k);
-  if (kind === 'routine') return routineRunFor(p, rev, target, rng, timeout, s.farm.world) ?? missing('routine missing');
+  if (kind === 'routine') return routineRunFor(p, rev, target, rng, timeout, s.farm.world, opts.goal) ?? missing('routine missing');
   if (kind === 'fetch') {
     const w = s.farm.world;
     const nav = navPolicyFor(p, k.navigator ?? 'Approach');
     const ctrl = FetchController.from(rev.policy) ?? new FetchController();
-    const dest = rev.stage?.learner.destination ?? 'home';
-    return new FetchRun(ctrl, nav ? sensePolicyOf(nav.rev) : null, target, dest, navTimeout(w.w, w.h, p.traits.persistence), timeout, rng, w.delivered[target] ?? 0);
+    const dest = opts.dest ?? rev.stage?.learner.destination ?? 'home';
+    return new FetchRun(ctrl, nav ? sensePolicyOf(nav.rev) : null, target, dest, navTimeout(w.w, w.h, p.traits.persistence), timeout, rng, opts.count ? opts.count(w) : w.delivered[target] ?? 0, opts.count);
   }
   const policy = sensePolicyOf(rev);
   if (!policy) return missing('skill missing');
@@ -148,21 +156,61 @@ export function runCapability(s: GameState, p: Pet, name: string, aim: string | 
  * routines: the player's choice (`Pet.jobSkills`), else the one taught by the job's recipe or named after it. A job
  * with no bound skill can't run — there is no scripted fallback.
  */
-export const LEARNED_JOBS: Record<string, { label: string; recipe: string; aim: string }> = {
-  forage: { label: 'Harvest', recipe: 'harvest', aim: '@crop' },
+export interface LearnedJob {
+  label: string;
+  /** Recipes that teach a skill for this job, preferred first. */
+  recipes: string[];
+  aim: string;
+  /** Names a skill for this job may have (besides being taught by one of the recipes). */
+  names: string[];
+}
+export const LEARNED_JOBS: Record<string, LearnedJob> = {
+  forage: { label: 'Harvest', recipes: ['harvest-store', 'harvest'], aim: '@crop', names: ['Harvest to storage', 'Harvest'] },
+  deliver: { label: 'Haul', recipes: ['bring-it-home'], aim: 'bin', names: ['Fetch'] },
+  tote: { label: 'Basket run', recipes: ['basket-run'], aim: 'bin', names: ['Basket run'] },
 };
 
-export function jobSkill(p: Pet, job: string): Skill | null {
-  const spec = LEARNED_JOBS[job];
-  if (!spec) return null;
-  const chosen = p.jobSkills?.[job];
-  if (chosen) return getSkill(p, chosen) && deployedRevision(getSkill(p, chosen)) ? getSkill(p, chosen) : null;
-  return p.skills.find((k) => deployedRevision(k) && (k.name.toLowerCase() === spec.label.toLowerCase() || deployedRevision(k)?.stage?.recipeId === spec.recipe)) ?? null;
+/** Which recipe (if any) taught this skill's deployed revision, or which of the job's names it has. */
+function servesJob(k: Skill, spec: LearnedJob): number {
+  const r = deployedRevision(k);
+  if (!r) return -1;
+  const byRecipe = spec.recipes.indexOf(r.stage?.recipeId ?? '');
+  if (byRecipe >= 0) return byRecipe;
+  const byName = spec.names.findIndex((x) => x.toLowerCase() === k.name.toLowerCase());
+  return byName >= 0 ? byName : -1;
 }
 
-/** The learned capability that does a farm job, if the pet has one the farm may use. */
-export function jobCapability(p: Pet, job: string): Capability | null {
-  const k = jobSkill(p, job);
-  if (!k || !allowedOnFarm(k)) return null;
+/** Every skill of the pet that can do a job (the player's pick alone, if they made one), preferred first. */
+export function jobSkills(p: Pet, job: string): Skill[] {
+  const spec = LEARNED_JOBS[job];
+  if (!spec) return [];
+  const chosen = p.jobSkills?.[job];
+  if (chosen) { const k = getSkill(p, chosen); return k && deployedRevision(k) ? [k] : []; }
+  return p.skills.map((k) => ({ k, i: servesJob(k, spec) })).filter((x) => x.i >= 0).sort((a, b) => a.i - b.i).map((x) => x.k);
+}
+
+export function jobSkill(p: Pet, job: string): Skill | null {
+  return jobSkills(p, job)[0] ?? null;
+}
+
+/**
+ * The learned capability that does a farm job, if the pet has one the farm may use. Harvest has two forms: into
+ * storage (when there's storage with room and someone on the farm can empty it) or straight to the house.
+ */
+export function jobCapability(p: Pet, job: string, s?: GameState): Capability | null {
+  const ks = jobSkills(p, job).filter(allowedOnFarm);
+  if (!ks.length) return null;
+  let k = ks[0];
+  if (job === 'forage' && s && ks.length > 1 && deployedRevision(k)?.stage?.recipeId === 'harvest-store') {
+    const w = s.farm.world;
+    // Storage only when it's nearer than the house (from the crop in paws, or the nearest ripe crop).
+    const from = w.pet.carrying !== null ? w.pet : nearest(w, '@crop') ?? w.pet;
+    const store = nearest(w, '@storage', from.x, from.y), home = nearest(w, 'home', from.x, from.y);
+    const d = (o: { x: number; y: number } | null) => (o ? Math.abs(o.x - from.x) + Math.abs(o.y - from.y) : Infinity);
+    const room = !!store && d(store) < d(home);
+    const haulers = s.pets.filter((q) => q.id === s.farm.dutyPetId || s.farm.helpers?.some((h) => h.petId === q.id));
+    const emptied = haulers.some((q) => jobSkills(q, 'deliver').some(allowedOnFarm) || jobSkills(q, 'tote').some(allowedOnFarm));
+    if (!room || !emptied) k = ks[1];
+  }
   return capabilityOf(k, LEARNED_JOBS[job].aim);
 }

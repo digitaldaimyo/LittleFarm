@@ -2,14 +2,14 @@ import type { Action, Obj, PetBody, SimEvent, World } from '../sim/world';
 import { addObject, inBounds, isSolidAt, bfsPath, cloneTally, def, emptyStore, emptyWorld, seedPrice, storeAccepts, storeCount, inArea, nearest, nudgeableGate, objectsAt, onGround, step, type StepOptions } from '../sim/world';
 import { nightfallRequests, postRequests, trackRequests } from './requests';
 import { Rng } from '../sim/rng';
-import { FetchController, FetchRun, NavRun, SkillRun, isDone, randomMove, type ExecStep, type Outcome } from '../learning/policies';
+import { NavRun, SkillRun, isDone, randomMove, type ExecStep, type Outcome } from '../learning/policies';
 import { navTimeout } from '../learning/episodes';
 import {
   BEHAVIOR_LABEL, describeContext, learnedSelect, rulesSelect, updateExecutive,
   type BehaviorId, type ExecContext, type Invocation,
 } from '../learning/executive';
 import type { FarmPlan, FarmState, GameState, Helper, Pet, Plot } from './types';
-import { activeRevision, getSkill, navPolicyFor, petById, sensePolicyOf } from './pets';
+import { getSkill, navPolicyFor, petById, sensePolicyOf } from './pets';
 import { deployedRevision, jobCapability, runCapability } from './capability';
 import { addJournal, addJournalOnce } from './journal';
 import { checkUnlocks } from './progression';
@@ -218,13 +218,6 @@ export function toteTarget(s: GameState): Obj | null {
 }
 
 
-/** Hide the other objects of a kind while `fn` runs, so a learned walk heads for this one. */
-function only<T>(w: World, kind: string, id: number, fn: () => T): T {
-  const hid = w.objects.filter((o) => o.kind === kind && o.id !== id && onGround(o));
-  for (const o of hid) o.hidden = true;
-  try { return fn(); } finally { for (const o of hid) delete o.hidden; }
-}
-
 /** Everything sold at the house so far (the haul job is done when this goes up). */
 function totalSold(w: World): number {
   return w.sold ?? 0;
@@ -240,7 +233,7 @@ export function farmContext(s: GameState, pet: Pet, recentFail: boolean): ExecCo
     storeHalf: storeHalfFull(w),
     soil: canPlantSomewhere(w),
     ...(heldBasket(w) ? { basket: true } : {}),
-    ...(activeRevision(getSkill(pet, 'Fetch')) && toteTarget(s) ? { tote: true } : {}),
+    ...(jobCapability(pet, 'tote') && toteTarget(s) ? { tote: true } : {}),
     carrying: w.pet.carrying !== null,
     recentFail,
     night: !!w.night,
@@ -366,14 +359,13 @@ function updateClock(s: GameState, rt: FarmRuntime, fx: FarmFx[]): void {
 export function eligibleBehaviors(pet: Pet, ctx: ExecContext): BehaviorId[] {
   const out: BehaviorId[] = ['rest'];
   const nav = navPolicyFor(pet, pet.assignment.navigator);
-  const fetch = !!activeRevision(getSkill(pet, 'Fetch'));
   // Harvest: pick something ripe, or (without Fetch) finish carrying it home.
   // (A pet holding something can always finish carrying it; with Fetch, Auto prefers hauling it.)
   // Harvest is a learned job: it needs a Harvest skill or routine (no scripted fallback).
   if (jobCapability(pet, 'forage') && ((ctx.berry && !ctx.carrying) || (ctx.carrying && !ctx.basket))) out.push('forage');
-  if (fetch && nav && ((ctx.carrot && !ctx.carrying) || (ctx.carrying && !ctx.basket))) out.push('deliver');
+  if (jobCapability(pet, 'deliver') && nav && ((ctx.carrot && !ctx.carrying) || (ctx.carrying && !ctx.basket))) out.push('deliver');
   // Baskets: a pet holding one finishes the run; otherwise a run when a basket is half full or away from the crops.
-  if (fetch && nav && (ctx.basket || (ctx.tote && !ctx.carrying))) out.push('tote');
+  if (jobCapability(pet, 'tote') && (ctx.basket || (ctx.tote && !ctx.carrying))) out.push('tote');
   if (nav && ctx.soil && !ctx.carrying) out.push('plant');
   if (nav && ctx.firefly && !ctx.carrying) out.push('catch');
   if (!ctx.energyLow) out.push('wander');
@@ -388,83 +380,20 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
   switch (inv.behaviorId) {
     case 'forage': {
       // Harvest: the pet's own Harvest skill or routine, aimed at any ripe crop (learned-farm phase 3).
-      const cap = jobCapability(pet, 'forage');
+      const cap = jobCapability(pet, 'forage', s);
       if (!cap) return { next: () => ({ done: 'fail', reason: 'no Harvest skill' }) };
       return runCapability(s, pet, cap.name, cap.aim, rt.rng, inv.timeout);
     }
     case 'goto':
       return new NavRun(nav, inv.args.target ?? 'home', tmo, rt.rng);
     case 'tote': {
-      // Basket run: lift a basket, empty it at the house (or a shed with room) if it holds anything, then set it
-      // down by the crops. Walks use the learned movement skill; the last step onto the chosen tile is instinct.
-      const held0 = heldBasket(w);
-      const basketId = held0?.id ?? toteTarget(s)?.id ?? null;
-      let phase: 'fetch' | 'unload' | 'place' | 'placed' = held0 ? (storeCount(held0) > 0 ? 'unload' : 'place') : 'fetch';
-      let walk: FarmWalk | null = null;
-      let walkFor = '';
-      let spot: { x: number; y: number; plot: Obj } | null = null;
-      let fumbles = 0;
-      const walkTo = (world: World, kind: string, id: number, tag: string): ExecStep => {
-        if (walkFor !== tag) { walk = new FarmWalk(nav, kind, tmo, rt.rng); walkFor = tag; }
-        return only(world, kind, id, () => walk!.next(world));
-      };
-      return {
-        next(world) {
-          for (let guard = 0; guard < 4; guard++) {
-            if (basketId === null) return { done: 'fail', reason: 'no basket to carry' };
-            const b = world.objects.find((o) => o.id === basketId);
-            if (!b || b.delivered) return { done: 'fail', reason: 'basket gone' };
-            if (phase === 'fetch') {
-              if (!onGround(b)) return { done: 'fail', reason: 'someone else has it' };
-              if (world.pet.x === b.x && world.pet.y === b.y) { phase = storeCount(b) > 0 ? 'unload' : 'place'; return 'lift'; }
-              const st = walkTo(world, b.kind, b.id, `b${b.id}`);
-              if (isDone(st) && st.done !== 'success') return st;
-              if (isDone(st)) continue;
-              return st;
-            }
-            if (phase === 'unload') {
-              if (world.pet.carrying !== b.id) return { done: 'fail', reason: 'dropped the basket' };
-              if (storeCount(b) === 0) { phase = 'place'; continue; }
-              const kinds = (b.store ?? []).filter((x) => x.n > 0).map((x) => x.kind!);
-              const dests = world.objects.filter((o) => onGround(o) && (o.kind === 'home' || (o.store && !def(o.kind).portable && kinds.some((k) => storeAccepts(o, k))))); // the house or a shed, never another basket
-              dests.sort((a2, b2) => (Math.abs(a2.x - world.pet.x) + Math.abs(a2.y - world.pet.y)) - (Math.abs(b2.x - world.pet.x) + Math.abs(b2.y - world.pet.y)));
-              const dest = dests[0];
-              if (!dest) return { done: 'fail', reason: 'nowhere to empty it' };
-              if (world.pet.x === dest.x && world.pet.y === dest.y) return 'drop';
-              const st = walkTo(world, dest.kind, dest.id, `d${dest.id}`);
-              if (isDone(st) && st.done !== 'success') return st;
-              if (isDone(st)) continue;
-              return st;
-            }
-            if (phase === 'place') {
-              if (world.pet.carrying !== b.id) return { done: 'success', reason: 'basket set down' };
-              spot ??= cropSpot(s);
-              if (!spot) {
-                // Nowhere by the crops: set it down on the first clear tile nearby.
-                const path = bfsPath(world, world.pet.x, world.pet.y, (x, y) => !objectsAt(world, x, y).length && !(x === 1 && y === 2), true);
-                if (!path) return { done: 'fail', reason: 'nowhere to set it down' };
-                if (!path.length) { phase = 'placed'; return 'drop'; }
-                return path[0];
-              }
-              if (world.pet.x === spot.x && world.pet.y === spot.y) { phase = 'placed'; return 'drop'; }
-              if (chebyshev(world.pet, spot) <= 1 || (world.pet.x === spot.plot.x && world.pet.y === spot.plot.y)) {
-                const target = spot;
-                const path = bfsPath(world, world.pet.x, world.pet.y, (x, y) => x === target.x && y === target.y, true);
-                if (path?.length) return path[0];
-              }
-              const st = walkTo(world, spot.plot.kind, spot.plot.id, `p${spot.plot.id}`);
-              if (isDone(st) && st.done !== 'success') return st;
-              if (isDone(st)) { walkFor = 'arrived'; const target = spot; const path = bfsPath(world, world.pet.x, world.pet.y, (x, y) => x === target.x && y === target.y, true); if (path?.length) return path[0]; spot = null; continue; }
-              return st;
-            }
-            // placed: the drop either worked (done) or the tile was taken — find another spot.
-            if (world.pet.carrying !== b.id) return { done: 'success', reason: 'basket set down by the crops' };
-            if (++fumbles > 3) return { done: 'fail', reason: 'couldn’t set the basket down' };
-            spot = null; walkFor = ''; phase = 'place';
-          }
-          return 'wait';
-        },
-      };
+      // Basket run: the pet's own Basket run routine (learned-farm phase 3b). The job is done once a basket it
+      // lifted is set down again (the routine's own goal also needs every basket empty, which a farm rarely is).
+      const cap = jobCapability(pet, 'tote');
+      if (!cap) return { next: () => ({ done: 'fail', reason: 'no Basket run skill' }) };
+      let lifted = !!heldBasket(w);
+      const goal = (world: World) => { if (heldBasket(world)) lifted = true; return lifted && world.pet.carrying === null; };
+      return runCapability(s, pet, cap.name, cap.aim, rt.rng, inv.timeout, { goal });
     }
     case 'plant': {
       // Walk to empty soil, sow it (the farm pays for the seed).
@@ -502,13 +431,12 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
       return new NavRun(nav, 'firefly', tmo, rt.rng);
     }
     case 'deliver': {
-      // Haul: with the learned Fetch controller, take eggs or stored goods (fullest storage first) to the house.
-      const fetch = activeRevision(getSkill(pet, 'Fetch'));
-      const ctrl = FetchController.from(fetch?.policy) ?? new FetchController();
+      // Haul: the pet's own Fetch, aimed at eggs or stored goods (fullest storage first), delivered to the house.
+      const cap = jobCapability(pet, 'deliver');
+      if (!cap) return { next: () => ({ done: 'fail', reason: 'no Fetch skill' }) };
       const fullest = w.objects.filter((o) => o.store && storeCount(o) > 0).sort((a, b) => storeCount(b) - storeCount(a))[0];
       const item = w.pet.carrying !== null ? (w.objects.find((o) => o.id === w.pet.carrying)?.kind ?? 'carrot') : nearest(w, 'egg') ? 'egg' : fullest?.kind ?? 'bin';
-      const soldBefore = totalSold(w);
-      return new FetchRun(ctrl, nav, item, 'home', tmo, inv.timeout, rt.rng, soldBefore, totalSold);
+      return runCapability(s, pet, cap.name, item, rt.rng, inv.timeout, { dest: 'home', count: totalSold });
     }
     case 'skill':
       // One runtime for every learned skill, routine or Fetch (direct jobs and plan rows alike).
@@ -610,7 +538,8 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
       : j === 'forage' && !jobCapability(pet, 'forage') ? `${pet.name} hasn’t learned to harvest — teach Harvest in the Field Guide`
       : j === 'forage' && !ctx.berry ? 'Nothing ripe yet — resting while crops regrow'
       : j === 'deliver' && !ctx.carrot ? 'Nothing to haul — the basket and shed are empty'
-      : j === 'tote' && !activeRevision(getSkill(pet, 'Fetch')) ? 'Basket runs need a saved Fetch skill'
+      : j === 'deliver' && !jobCapability(pet, 'deliver') ? `${pet.name} hasn’t learned Fetch — teach it in the Field Guide`
+      : j === 'tote' && !jobCapability(pet, 'tote') ? `${pet.name} hasn’t learned a Basket run — teach the Basket run routine in Train`
       : j === 'tote' ? 'No basket needs a run — none is half full or away from the crops'
       : j === 'plant' && ctx.carrying ? 'Hands full — put it down before planting'
       : j === 'plant' ? 'Nothing to plant — no empty soil, or not enough coins for its seed'

@@ -9,7 +9,7 @@ import { createRuntime, cropSpot, farmTick, harvestTarget, heldBasket, toteTarge
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import { Trainer } from '../src/learning/trainer';
 import { buildReport } from '../src/learning/report';
-import { recipeStage, trainAndSave, giveHarvest } from './helpers';
+import { recipeStage, trainAndSave, giveHarvest, giveRoutine } from './helpers';
 
 /** A basket with stock under the pet, a house two steps east and a shed three steps south. */
 function yard(stock = 4) {
@@ -118,6 +118,7 @@ function basketFarm() {
   trainAndSave(s, p, recipeStage('go-to-berry'));
   giveHarvest(s, p);
   trainAndSave(s, p, recipeStage('bring-it-home'), activeRevision(getSkill(p, 'Approach'))!.policy);
+  giveRoutine(s, p, 'basket-run');
   p.assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' };
   s.farm.dutyPetId = p.id;
   s.progress.unlocks.push('fetch', 'carrots');
@@ -135,9 +136,11 @@ describe('basket runs on the farm', () => {
     expect(spot).toBeTruthy();
     const rt = createRuntime(s.farm);
     let moved = false, emptied = 0;
+    const plots = s.farm.plots;
     for (let t = 0; t < 1200; t++) {
       const r = farmTick(s, rt);
-      if (!moved && !b.carried && Math.max(Math.abs(b.x - spot.x), Math.abs(b.y - spot.y)) <= 1) moved = true;
+      // The learned Basket run sets it down beside a crop (any plot, not necessarily the scripted best spot).
+      if (!moved && !b.carried && plots.some((q) => Math.max(Math.abs(b.x - q.x), Math.abs(b.y - q.y)) <= 1)) moved = true;
       emptied += r.fx.filter((f) => f.type === 'sound' && f.text === 'emptied').length;
       expect(w.objects.filter((o) => o.kind === 'bin')).toHaveLength(1);
     }
@@ -156,6 +159,34 @@ describe('basket runs on the farm', () => {
     far.store = emptyStore('bin');
     w.pet.x = near.x; w.pet.y = near.y;
     expect(harvestTarget(w, 'berry', true)?.id).not.toBe(near.id);
+  });
+
+  it('with Harvest to storage and a Basket run, crops go into the basket and baskets are emptied at the house', () => {
+    const s = basketFarm();
+    const p = s.pets[0];
+    giveRoutine(s, p, 'harvest-store');
+    const rt = createRuntime(s.farm);
+    rt.stats = {};
+    let stored = 0, emptied = 0;
+    for (let t = 0; t < 1600; t++) {
+      const r = farmTick(s, rt);
+      emptied += r.fx.filter((f) => f.type === 'sound' && f.text === 'emptied').length;
+      stored = Math.max(stored, storeCount(s.farm.world.objects.find((o) => o.kind === 'bin')!));
+    }
+    expect(stored).toBeGreaterThan(0); // a harvest went into the basket
+    expect(emptied).toBeGreaterThan(0); // and a Basket run took it to the house
+    expect(rt.stats!.tote?.ok ?? 0).toBeGreaterThan(0);
+    expect(s.progress.totalCoins).toBeGreaterThan(40);
+  });
+
+  it('without a Basket run skill there are no basket runs', () => {
+    const s = basketFarm();
+    const p = s.pets[0];
+    p.skills = p.skills.filter((k) => k.name !== 'Basket run');
+    const rt = createRuntime(s.farm);
+    rt.stats = {};
+    for (let t = 0; t < 600; t++) farmTick(s, rt);
+    expect(rt.stats!.tote).toBeUndefined();
   });
 
   it('a pet holding a basket finishes the run before anything else, even when tired', () => {

@@ -2,7 +2,7 @@ import type { SpecNode, StageSpec } from '../domain/types';
 import { isNode, paramOf } from '../domain/spec';
 import { compileCondition, resolveKind, withTarget } from '../sim/compile';
 import type { Action, Tally, World } from '../sim/world';
-import { nearest } from '../sim/world';
+import { nearest, objectsAt } from '../sim/world';
 import type { Rng } from '../sim/rng';
 import type { SerializedQ } from './qtable';
 import { DoubleQ } from './qtable';
@@ -58,6 +58,13 @@ function cond(n: SpecNode | undefined, target: string): Cond | null {
   return (w, base) => c({ w, prev: w.pet, base });
 }
 
+const STEPS: [Action, number, number][] = [['N', 0, -1], ['E', 1, 0], ['S', 0, 1], ['W', -1, 0]];
+/** Moves onto an adjacent clear tile (in bounds, passable, nothing on it). */
+export function asideMoves(w: World): Action[] {
+  const legal = legalActionIdx(w, [...STEPS.map((s) => s[0]), 'wait']); // 'wait' is always legal: no all-illegal fallback
+  return STEPS.filter(([, dx, dy], i) => legal.includes(i) && !objectsAt(w, w.pet.x + dx, w.pet.y + dy).length).map((s) => s[0]);
+}
+
 /** Ensure every option consumes at least one tick, so loops always cost time. */
 function atLeastOneTick(inner: { next(w: World): ExecStep }) {
   let stepped = false;
@@ -81,6 +88,17 @@ export function compileRoutine(stage: StageSpec, subs: SubSkills, traits: Traits
   const uses = new Map<string, number>();
   const options: CompiledOption[] = r.options.slice(0, MAX_OPTIONS).map((o) => {
     const when = cond(o.args.when as SpecNode | undefined, target);
+    if (o.cardId === 'opt.action' && paramOf(o, 'action', 'pick') === 'aside') {
+      // Step aside: one step onto a clear tile next to the pet (nothing there), e.g. to set a basket down beside a crop.
+      return {
+        label: 'aside',
+        legal: (w) => (!when || when(w)) && asideMoves(w).length > 0,
+        makeRun: (rng) => {
+          let done = false;
+          return { next: (w) => { if (done) return { done: 'success', reason: 'stepped aside' }; done = true; const m = asideMoves(w); return m.length ? m[rng.int(m.length)] : 'wait'; } };
+        },
+      };
+    }
     if (o.cardId === 'opt.action') {
       const a = paramOf(o, 'action', 'pick') as Action;
       return {
@@ -145,6 +163,7 @@ export class RoutineController {
 /** Executes a learned routine: picks the best legal option at each boundary; idles a tick if none is possible. */
 export class RoutineRun {
   ticks = 0;
+  private stuck = 0;
   private cur: { next(w: World): ExecStep } | null = null;
   current: string | null = null;
   constructor(
@@ -162,7 +181,13 @@ export class RoutineRun {
     for (let guard = 0; guard < 4; guard++) {
       if (!this.cur) {
         const legal = this.r.legal(w);
-        if (!legal.length) { this.ticks++; this.current = null; return 'wait'; }
+        if (!legal.length) {
+          // Nothing applies (e.g. carrying a crop no storage takes): give up so the farm can choose again — unless
+          // this is a *survive* routine, where staying put until time-up is the point.
+          if (!this.survived && ++this.stuck >= 3) return { done: 'fail', reason: 'no option applies' };
+          this.ticks++; this.current = null; return 'wait';
+        }
+        this.stuck = 0;
         const o = this.ctrl.q.greedy(this.r.observe(w), legal);
         this.current = this.r.options[o].label;
         this.cur = this.r.options[o].makeRun(this.rng);

@@ -228,6 +228,12 @@ export function compileCondition(n: SpecNode): Cond {
     case 'cond.storage': {
       // Any basket or shed with something in it / at least half full / full.
       const level = paramOf(n, 'level', 'any');
+      if (level === 'basket') return ({ w }) => {
+        // The basket in the pet's paws, else any basket on the ground: is anything in it?
+        const held = w.pet.carrying !== null ? w.objects.find((o) => o.id === w.pet.carrying) : undefined;
+        if (held && def(held.kind).portable) return (held.store ?? []).some((s) => s.n > 0);
+        return w.objects.some((o) => def(o.kind).portable && !!o.store && onGround(o) && o.store.some((s) => s.n > 0));
+      };
       if (level === 'empty') return ({ w }) => !w.objects.some((o) => !!o.store && !o.delivered && o.store.some((s) => s.n > 0));
       return ({ w }) => w.objects.some((o) => {
         if (!o.store) return false;
@@ -244,8 +250,8 @@ export function compileCondition(n: SpecNode): Cond {
       const a = kindArg(n, 'what'), b = kindArg(n, 'near');
       const d = paramOf(n, 'dist', 1);
       return ({ w }) => {
-        const bs = w.objects.filter((o) => o.kind === b && onGround(o));
-        return w.objects.some((o) => o.kind === a && onGround(o) && bs.some((q) => q !== o && Math.abs(q.x - o.x) + Math.abs(q.y - o.y) <= d));
+        const bs = w.objects.filter((o) => aimIs(o.kind, b) && onGround(o));
+        return w.objects.some((o) => aimIs(o.kind, a) && onGround(o) && bs.some((q) => q !== o && Math.abs(q.x - o.x) + Math.abs(q.y - o.y) <= d));
       };
     }
     case 'cond.time': {
@@ -302,7 +308,7 @@ export function compileEvent(n: SpecNode): (e: SimEvent) => boolean {
     case 'ev.drop': return (e) => e.type === 'drop' && aimIs(e.kind, k);
     case 'ev.deliver': {
       const into = kindArg(n, 'into');
-      return (e) => e.type === 'deliver' && aimIs(e.kind, k) && e.into === into;
+      return (e) => e.type === 'deliver' && aimIs(e.kind, k) && aimIs(e.into, into);
     }
     case 'ev.tick': return (e) => e.type === 'tick';
     case 'ev.bump': return (e) => e.type === 'bump';
@@ -318,7 +324,7 @@ export function compileEvent(n: SpecNode): (e: SimEvent) => boolean {
     case 'ev.lift': return (e) => e.type === 'lift' && aimIs(e.kind, k);
     case 'ev.empty': {
       const into = kindArg(n, 'into');
-      return (e) => e.type === 'empty' && aimIs(e.kind, k) && e.into === into;
+      return (e) => e.type === 'empty' && aimIs(e.kind, k) && aimIs(e.into, into);
     }
     default:
       throw new Error(`Cannot compile event ${n.cardId}`);

@@ -283,7 +283,7 @@ export const FARM_CARDS: CardDef[] = [
     sockets: [{ id: 'inner', label: 'Condition', type: nominal('Condition'), required: true }],
     presentation: { title: 'Not', group: 'condition', sheet: 'Conditions', phrase: 'not ({inner})' } }),
   N({ id: 'cond.storage', output: nominal('Condition'), evaluator: 'cond.storage',
-    params: [{ id: 'level', label: 'Storage', kind: 'choice', default: 'any', choices: [{ value: 'any', label: 'has anything in it' }, { value: 'half', label: 'is at least half full' }, { value: 'full', label: 'is full' }, { value: 'empty', label: 'is all empty' }] }],
+    params: [{ id: 'level', label: 'Storage', kind: 'choice', default: 'any', choices: [{ value: 'any', label: 'has anything in it' }, { value: 'half', label: 'is at least half full' }, { value: 'full', label: 'is full' }, { value: 'empty', label: 'is all empty' }, { value: 'basket', label: 'basket has anything (the one carried, if any)' }] }],
     presentation: { title: 'Storage', group: 'condition', sheet: 'Conditions', hint: 'Baskets and sheds (on the farm, or stocked in a pen): anything waiting to be hauled to the house? “All empty” holds when nothing is stored anywhere.', phrase: 'storage {level}' } }),
   N({ id: 'cond.nextTo', output: nominal('Condition'), evaluator: 'cond.nextTo',
     sockets: [{ id: 'actor', label: 'Who', type: A, required: true }, { id: 'what', label: 'What', type: KIND, required: true }],
@@ -383,7 +383,8 @@ export const FARM_CARDS: CardDef[] = [
   N({ id: 'opt.action', output: nominal('Option'), evaluator: 'opt.action',
     sockets: [{ id: 'when', label: 'Only when', type: nominal('Condition'), required: false }],
     params: [{ id: 'action', label: 'Action', kind: 'choice', default: 'pick', choices: [
-      { value: 'pick', label: 'pick up' }, { value: 'drop', label: 'put down' }, { value: 'water', label: 'water' }, { value: 'shoo', label: 'shoo' }, { value: 'wait', label: 'stay a moment' } ] }],
+      { value: 'pick', label: 'pick up' }, { value: 'drop', label: 'put down' }, { value: 'water', label: 'water' }, { value: 'shoo', label: 'shoo' }, { value: 'wait', label: 'stay a moment' },
+      { value: 'lift', label: 'lift a basket' }, { value: 'plant', label: 'plant' }, { value: 'nudge', label: 'nudge' }, { value: 'aside', label: 'step aside' } ] }],
     presentation: { title: 'Do action', group: 'option', sheet: 'Options', hint: 'One step of a basic action.', phrase: '{action} {when}' } }),
 
   // Farm plan (Milestone 4)

@@ -406,7 +406,7 @@ try {
     await page.click('[data-tut="duty-toggle"]');
     check((await page.locator('.world [aria-label="Mochi"]').count()) === 0, 'roster: off duty, Mochi goes home');
     await page.click('.roster-chip:has-text("Pip")');
-    check(await page.isEnabled('[data-tut="job-tote"]'), 'baskets: the Basket run job is available to a pet with Fetch');
+    check(!(await page.isEnabled('[data-tut="job-tote"]')) && /Basket run routine/.test(await page.textContent('[data-tut="job-tote"]')), 'baskets: the Basket run job waits for a Basket run routine (Fetch alone isn’t enough: no built-in jobs)');
     await page.click('[data-tut="pet-card"] button:has-text("Teach Pip")'); // Pip is the active pet again for what follows
 
     // Teaching polish (phase A): build "end on shoo chicken" the old way, get warned, repair it, train it.

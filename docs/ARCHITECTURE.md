@@ -201,7 +201,7 @@ Saves are v2. The v1 → v2 migration adds templates and explicit preset senses.
 
 ### Learned jobs (learned-farm phase 3)
 
-`src/game/capability.ts` binds farm jobs to learned skills: `LEARNED_JOBS` (today `forage` → the Harvest routine, aimed at `@crop`), `jobSkill(pet, job)` (the player's pick in `Pet.jobSkills`, else the skill taught by the job's recipe or named after it) and `jobCapability` (null unless the farm may use it). The forage executor in `farm.ts` simply calls `runCapability`; with no bound skill the job isn't eligible and the job card is locked. There is no scripted fallback.
+`src/game/capability.ts` binds farm jobs to learned skills: `LEARNED_JOBS` (`forage` → Harvest to storage / Harvest, aimed at `@crop`; `deliver` → Fetch; `tote` → Basket run), `jobSkills`/`jobSkill(pet, job)` (the player's pick in `Pet.jobSkills`, else skills taught by the job's recipes or named after it, preferred first) and `jobCapability(pet, job, state?)` (null unless the farm may use it; with the state, Harvest picks storage only when it's nearer than the house and someone can empty it). The job executors in `farm.ts` call `runCapability`, which takes `RunOptions` (`goal` replaces the skill's own goal, e.g. "the basket is set down"; `dest`/`count` for Fetch); with no bound skill the job isn't eligible and the job card is locked. There is no scripted fallback.
 
 ## Persistence
 
