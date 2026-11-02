@@ -134,6 +134,44 @@ function emptyBasket(): StageSpec {
   };
 }
 
+/**
+ * Example player-style skill with a note: visit the well, then the house, then the well again. The pet can't tell
+ * its first well visit from its second by looking — a note (“leg”, counted by the rules) lets it.
+ */
+function patrol(withNote = true): StageSpec {
+  const n = maker('pt');
+  const leg = (test: string, value: number) => n('cond.note', { name: 'leg', test, value });
+  const write = (value: number) => n('eff.note', { name: 'leg', op: 'set', value });
+  return {
+    id: 'stage-patrol', name: 'Patrol', recipeId: 'patrol', version: 1,
+    blurb: 'A custom skill with a note: well, then house, then well again.',
+    size: { w: 8, h: 8 },
+    environment: [
+      n('place.pet', { mode: 'random', x: 0, y: 0 }),
+      n('place.random', { kind: k(n, 'well'), count: 1, region: 'anywhere' }),
+      n('place.random', { kind: k(n, 'home'), count: 1, region: 'anywhere' }),
+      n('place.random', { kind: k(n, 'rock'), count: 2, region: 'anywhere' }),
+    ],
+    abilities: ['move'],
+    rules: [
+      n('rule', { label: 'Well first', when: n('ev.reach', { actor: pet(n), what: k(n, 'well') }), if: [leg('eq', 0)], then: [write(1), n('eff.reward', { amount: 2 })], limit: n('lim.once') }),
+      n('rule', { label: 'Then the house', when: n('ev.reach', { actor: pet(n), what: k(n, 'home') }), if: [leg('eq', 1)], then: [write(2), n('eff.reward', { amount: 2 })], limit: n('lim.once') }),
+      n('rule', { label: 'Back to the well', when: n('ev.reach', { actor: pet(n), what: k(n, 'well') }), if: [leg('eq', 2)], then: [write(3), n('eff.reward', { amount: 4 }), n('eff.end', { outcome: 'judge' })] }),
+      n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.03 })] }),
+    ],
+    success: leg('gte', 3),
+    fail: null,
+    seed: 4242, maxTicks: 80,
+    learner: { skill: 'Patrol', template: 'sense', focus: 'well', episodes: 10000,
+      senses: [n('sense.nearest', { what: k(n, 'well') }), n('sense.nearest', { what: k(n, 'home') }), ...(withNote ? [n('sense.note', { name: 'leg', cap: 2 })] : [])] },
+    evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.6 },
+  };
+}
+/** The same patrol without the Note sense (the Field Guide's experiment). */
+export function patrolWithoutNote(): StageSpec {
+  return patrol(false);
+}
+
 const coopArea = (n: Mk) => n('area.named', { name: 'coop' });
 
 /** Example player-style skill: shoo a chicken into a coop that sits somewhere new each try. */
@@ -400,6 +438,7 @@ export const RECIPES: Recipe[] = [
   { id: 'keep-clear', name: 'Keep clear', blurb: 'Your own skill: stay away from the pond until time is up.', skill: 'Keep clear', unlock: 'custom', optional: true, build: keepClear },
   { id: 'water-garden', name: 'Water the garden', blurb: 'Your own skill: fill up at the well, water the dry patches.', skill: 'Water the garden', unlock: 'custom', optional: true, build: waterGarden },
   { id: 'empty-basket', name: 'Empty the basket', blurb: 'Your own skill: carry a stocked basket to the house and empty it there (uses Lift).', skill: 'Empty the basket', unlock: 'custom', optional: true, build: emptyBasket },
+  { id: 'patrol', name: 'Patrol', blurb: 'Your own skill with a note: well, house, well again (the note remembers which leg).', skill: 'Patrol', unlock: 'custom', optional: true, build: () => patrol() },
   { id: 'herd-chicken', name: 'Herd a chicken', blurb: 'Your own skill: shoo a chicken into the coop.', skill: 'Herd', unlock: 'custom', optional: true, build: herdChicken },
   { id: 'shoo-loophole', name: 'Treat for every shoo', blurb: 'Experiment: a herding reward with a loophole.', skill: 'Herd (loophole)', unlock: 'custom', optional: true, build: shooLoophole },
   { id: 'open-gate', name: 'Open the gate', blurb: 'Your own skill: find a gate and nudge it open.', skill: 'Open the gate', unlock: 'custom', optional: true, build: openGate },

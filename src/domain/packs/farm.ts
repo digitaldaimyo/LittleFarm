@@ -193,6 +193,13 @@ export const FARM_CARDS: CardDef[] = [
   N({ id: 'ev.empty', output: nominal('Event'), evaluator: 'ev.empty', bindsIt: true,
     sockets: [{ id: 'what', label: 'What', type: generic('Kind', 'Portable'), required: true }, { id: 'into', label: 'Into', type: generic('Kind', 'Container'), required: true }],
     presentation: { title: 'Empties', group: 'event', sheet: 'Events', hint: 'A carried basket is put down at the house or a shed, and what was in it goes in there (as much as fits).', phrase: '{what} is emptied into {into}' } }),
+  N({ id: 'cond.note', output: nominal('Condition'), evaluator: 'cond.note',
+    params: [
+      { id: 'name', label: 'Note', kind: 'text', default: 'note' },
+      { id: 'test', label: 'Is', kind: 'choice', default: 'on', choices: [{ value: 'on', label: 'on (1 or more)' }, { value: 'off', label: 'off (0)' }, { value: 'gte', label: 'at least' }, { value: 'eq', label: 'exactly' }, { value: 'lt', label: 'below' }] },
+      { id: 'value', label: 'Value', kind: 'number', default: 1, min: 0, max: 9, step: 1 },
+    ],
+    presentation: { title: 'Note says', group: 'condition', sheet: 'Conditions', hint: 'Tests a note written by your rules this try (Write a note).', phrase: 'note “{name}” is {test} {value}' } }),
   N({ id: 'cond.canAfford', output: nominal('Condition'), evaluator: 'cond.canAfford',
     presentation: { title: 'Can afford seeds', group: 'condition', sheet: 'Conditions', hint: 'There are coins for the seed of some empty plot (always true in pens, where seed is free).', phrase: 'can afford seeds' } }),
   N({ id: 'ev.gate', output: nominal('Event'), evaluator: 'ev.gate', bindsIt: true,
@@ -340,6 +347,12 @@ export const FARM_CARDS: CardDef[] = [
     presentation: { title: 'Patience', group: 'sense', sheet: 'Senses', hint: 'How long it has stayed still (0, 1–4, 5+ steps).', phrase: 'how long it has waited' } }),
   N({ id: 'sense.stock', output: nominal('Sense'), evaluator: 'sense.stock', radix: 3,
     presentation: { title: 'Stock', group: 'sense', sheet: 'Senses', hint: 'How full the nearest basket or shed is (or the basket it carries): empty, some, full.', phrase: 'how full the nearest storage is' } }),
+  N({ id: 'sense.note', output: nominal('Sense'), evaluator: 'sense.note', radix: 2,
+    params: [
+      { id: 'name', label: 'Note', kind: 'text', default: 'note' },
+      { id: 'cap', label: 'Counts up to', kind: 'number', default: 1, min: 1, max: 9, step: 1 },
+    ],
+    presentation: { title: 'Note', group: 'sense', sheet: 'Senses', hint: 'Lets the pet read a note your rules write (Write a note): on/off, or a count up to “Counts up to” (higher counts read as that). Each extra count multiplies the situations.', phrase: 'note “{name}” (0–{cap})' } }),
   N({ id: 'sense.did', output: nominal('Sense'), evaluator: 'sense.did', radix: 2,
     sockets: [{ id: 'event', label: 'What happened', type: nominal('Event'), required: true }],
     presentation: { title: 'Done … yet?', group: 'sense', sheet: 'Senses', hint: 'Whether something has happened yet this try. Lets a pet tell “before” from “after”.', phrase: 'done yet: {event}' } }),
@@ -411,6 +424,13 @@ export const FARM_CARDS: CardDef[] = [
   N({ id: 'eff.end', output: nominal('Effect'), evaluator: 'eff.end',
     params: [{ id: 'outcome', label: 'Counts as', kind: 'choice', default: 'judge', choices: [{ value: 'judge', label: 'judged by SUCCESS' }, { value: 'success', label: 'a success ✓' }, { value: 'fail', label: 'a miss ✗' }] }],
     presentation: { title: 'End try', group: 'effect', sheet: 'Effects', hint: 'Finish this try. By default SUCCESS decides whether it counted; you can also make it count as a success or a miss outright.', phrase: 'end try ({outcome})' } }),
+  N({ id: 'eff.note', output: nominal('Effect'), evaluator: 'eff.note',
+    params: [
+      { id: 'name', label: 'Note', kind: 'text', default: 'note' },
+      { id: 'op', label: 'Do', kind: 'choice', default: 'on', choices: [{ value: 'on', label: 'turn on' }, { value: 'off', label: 'turn off / reset' }, { value: 'add', label: 'count up by' }, { value: 'sub', label: 'count down by' }, { value: 'set', label: 'set to' }] },
+      { id: 'value', label: 'By / to', kind: 'number', default: 1, min: 0, max: 9, step: 1 },
+    ],
+    presentation: { title: 'Write a note', group: 'effect', sheet: 'Effects', hint: 'Your pet’s notebook for this try: a flag (on/off) or a counter (0–9). Notes start at 0 every try; the pet can sense them with the Note sense, and rules can test them. Rules that write notes also run on the farm.', phrase: 'note “{name}”: {op} {value}' } }),
 
   // Limits
   N({ id: 'lim.every', output: nominal('Limit'), evaluator: 'lim.every',

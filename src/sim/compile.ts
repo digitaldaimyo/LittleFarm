@@ -46,6 +46,8 @@ interface CompiledRule {
   conds: Cond[];
   reward: number;
   end: EndOutcome | null;
+  /** Notes this rule writes when it fires. */
+  notes: { name: string; op: string; value: number }[];
   limit: { kind: string; ticks: number };
 }
 
@@ -213,6 +215,13 @@ export function compileCondition(n: SpecNode): Cond {
       const fs = listArg(n, 'all').map(compileCondition);
       return (c) => fs.every((f) => f(c));
     }
+    case 'cond.note': {
+      const name = noteName(n), test = paramOf(n, 'test', 'on'), v = paramOf(n, 'value', 1);
+      return ({ w }) => {
+        const x = w.notes?.[name] ?? 0;
+        return test === 'on' ? x >= 1 : test === 'off' ? x === 0 : test === 'gte' ? x >= v : test === 'eq' ? x === v : x < v;
+      };
+    }
     case 'cond.canAfford':
       // Coins for at least one empty plot's seed (pens don't track coins: always true).
       return ({ w }) => w.seedCoins === undefined || w.objects.some((o) => o.kind === 'soil' && onGround(o) && w.seedCoins! >= seedPrice(o.crop ?? 'carrot'));
@@ -320,7 +329,9 @@ function compileRule(n: SpecNode): CompiledRule {
   const ev = nodeArg(n, 'when');
   let reward = 0;
   let end: CompiledRule['end'] = null;
+  const notes: CompiledRule['notes'] = [];
   for (const e of listArg(n, 'then')) {
+    if (e.cardId === 'eff.note') notes.push({ name: noteName(e), op: paramOf(e, 'op', 'on'), value: paramOf(e, 'value', 1) });
     if (e.cardId === 'eff.reward') reward += paramOf(e, 'amount', 0);
     else if (e.cardId === 'eff.penalty') reward -= paramOf(e, 'amount', 0);
     else if (e.cardId === 'eff.end') { const o = paramOf(e, 'outcome', 'judge'); end = o === 'success' || o === 'fail' ? o : 'judge'; }
@@ -333,8 +344,26 @@ function compileRule(n: SpecNode): CompiledRule {
     conds: listArg(n, 'if').map(compileCondition),
     reward,
     end,
+    notes,
     limit: { kind: lim?.cardId ?? 'lim.every', ticks: lim ? paramOf(lim, 'ticks', 10) : 0 },
   };
+}
+
+/** A note's name as written on its card (trimmed; empty = "note"). */
+export function noteName(n: SpecNode): string {
+  return String(n.args.name ?? 'note').trim() || 'note';
+}
+export const NOTE_MAX = 9;
+
+/** Apply a rule's note writes to the world's notebook. */
+export function writeNotes(w: World, ops: { name: string; op: string; value: number }[]): void {
+  if (!ops.length) return;
+  const notes = (w.notes ??= {});
+  for (const { name, op, value } of ops) {
+    const cur = notes[name] ?? 0;
+    const v = op === 'on' ? Math.max(1, cur) : op === 'off' ? 0 : op === 'add' ? cur + value : op === 'sub' ? cur - value : value;
+    notes[name] = Math.max(0, Math.min(NOTE_MAX, Math.round(v)));
+  }
 }
 
 function regionOk(region: string, x: number, y: number, w: number, h: number): boolean {
@@ -567,6 +596,7 @@ function compileStageInner(spec: StageSpec): CompiledStage {
           rs.fired.set(r.id, fired + 1);
           rs.lastTick.set(r.id, w.tick);
           reward += r.reward;
+          writeNotes(w, r.notes);
           if (r.end && !end) {
             end = r.end;
             if (r.end !== 'judge') w.verdict = r.end;

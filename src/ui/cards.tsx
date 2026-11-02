@@ -6,7 +6,7 @@ import { typeToString } from '../domain/typecheck';
 import { ObjectIcon } from './art';
 import type { SlotRef } from './store';
 import { store, useStore } from './store';
-import { createNode, placeTemplate, saveTemplate, setSlot, slotInfo, slotRole, templatesFor } from './edit';
+import { createNode, noteNames, placeTemplate, saveTemplate, setSlot, slotInfo, slotRole, templatesFor } from './edit';
 import { describe } from '../domain/describe';
 import { snapshotStage } from '../game/state';
 import { audio } from '../audio/engine';
@@ -143,6 +143,10 @@ export function Sleeve({ stage, onChange }: { stage: StageSpec; onChange: (fn: (
                 </label>
               );
             }
+            if (p.id === 'name' && card.id.endsWith('.note')) {
+              // Notes: offer the names this lesson already uses.
+              return <label key={p.id} className="param-edit">{p.label}<input value={String(v)} maxLength={16} list="note-names" onChange={(e) => set(e.target.value)} /><datalist id="note-names">{noteNames(stage).map((nm) => <option key={nm} value={nm} />)}</datalist></label>;
+            }
             return <label key={p.id} className="param-edit">{p.label}<input value={String(v)} maxLength={40} onChange={(e) => set(e.target.value)} /></label>;
           })}
         </div>
@@ -185,7 +189,7 @@ export function Hand({ stage, slot, onPick }: { stage: StageSpec; slot: SlotRef;
   return (
     <div className="hand" aria-label="Your hand">
       <div className="eyebrow">Recommended</div>
-      <div className="hand-row">{hand.recommended.map((h) => <HandCardView key={h.card.id} h={h} onPick={() => onPick(createNode(h.card.id))} />)}</div>
+      <div className="hand-row">{hand.recommended.map((h) => <HandCardView key={h.card.id} h={h} onPick={() => onPick(createNode(h.card.id, stage))} />)}</div>
       {tpls.length > 0 && (
         <>
           <div className="eyebrow">Your cards</div>
@@ -198,7 +202,7 @@ export function Hand({ stage, slot, onPick }: { stage: StageSpec; slot: SlotRef;
           {Object.entries(hand.bySheet).map(([sheet, cards]) => (
             <div key={sheet}>
               <div className="eyebrow">{sheet}</div>
-              <div className="hand-row wrap">{cards.map((h) => <HandCardView key={h.card.id} h={h} onPick={() => onPick(createNode(h.card.id))} />)}</div>
+              <div className="hand-row wrap">{cards.map((h) => <HandCardView key={h.card.id} h={h} onPick={() => onPick(createNode(h.card.id, stage))} />)}</div>
             </div>
           ))}
         </details>

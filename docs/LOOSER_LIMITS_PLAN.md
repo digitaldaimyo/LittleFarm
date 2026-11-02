@@ -1,6 +1,12 @@
 # Looser limits plan: bigger brains, longer practice, and notes the pet can sense
 
-Status: **phase A shipped; phase B in progress.** Decisions: all recommendations, and **phase C (the network) is dropped** as not worth it.
+Status: **phases A and B shipped.** Decisions: all recommendations, and **phase C (the network) is dropped** as not worth it.
+
+### Phase B: what shipped
+- Notes: *Write a note*, *Note says*, the *Note* sense; up to 4 notes per skill, 0–9, reset every try; note-writing rules also run on the farm in the skill run's own notebook.
+- Validation (never written with a suggestion, never read, used but not sensed, too many); note cards start with the lesson's note name and offer used names; the hand recommends the Note sense once rules write a note.
+- *Patrol* recipe and Field Guide lesson 11, *Give your pet a notebook*: 10–20% without the note vs 70–80% with it (5 seeds).
+- **Changes from the plan:** one note card set (effects, a condition, a sense) rather than separate flag and counter cards; a counter's sense size is chosen with *Counts up to*; a "used but not sensed" hint was added (it is exactly what the lesson teaches). **Not done:** notes in farm plans (decision 5: later), notes shown in replays, notes inside routines' sub-skills.
 
 ### Phase A: what shipped
 - Big brain (sparse table, 8 senses, 2,000,000 situations), practice to 100,000 tries (composite 20,000), time per try to 400 steps, typed-in exact values, a training-time estimate, the save-size line in Settings, and keeping only the two newest tables of Big skills.

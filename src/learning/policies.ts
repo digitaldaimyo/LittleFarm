@@ -1,4 +1,5 @@
-import type { Action, World } from '../sim/world';
+import type { Action, SimEvent, World } from '../sim/world';
+import type { CompiledStage, RuleState } from '../sim/compile';
 import { MOVES, isSolidAt, DIRS, nearest, cloneTally, type Tally } from '../sim/world';
 import type { SpecNode } from '../domain/types';
 import { compileEncoder, legalActionIdx, presetSenses, stateSpaceSize, type SenseEncoder } from './senses';
@@ -178,17 +179,42 @@ export class SkillRun {
   ticks = 0;
   /** What had already happened when this run started: "Has …" and "Done … yet?" count from here. */
   private base: Tally | undefined;
+  /** This run's notebook (notes start empty each run, as each try starts empty in the pen). */
+  private notes: Record<string, number> = {};
+  private noteRules: RuleState | null = null;
   constructor(
     private policy: SensePolicy,
     private target: string,
     private timeout: number,
     private done: ((w: World, base?: Tally) => boolean) | null,
+    /** The skill's rules that write notes: they run on the farm too (their treats don't). */
+    private noteRunner: NoteRunner | null = null,
   ) {}
+  /** Lend the run's notes to the shared farm world while it reads or writes them. */
+  private withNotes<T>(w: World, fn: () => T): T {
+    const before = w.notes;
+    w.notes = this.notes;
+    try { return fn(); } finally { this.notes = w.notes ?? {}; if (before === undefined) delete w.notes; else w.notes = before; }
+  }
   next(w: World): ExecStep {
     if (this.ticks === 0) { w.tally ??= {}; this.base = cloneTally(w.tally); } // start remembering from here
-    if (this.ticks > 0 && this.done?.(w, this.base)) return { done: 'success', reason: 'goal reached' };
-    if (this.ticks >= this.timeout) return { done: 'success', reason: 'time up' };
-    this.ticks++;
-    return this.policy.act(w, this.target, this.base);
+    return this.withNotes(w, () => {
+      if (this.ticks > 0 && this.done?.(w, this.base)) return { done: 'success', reason: 'goal reached' };
+      if (this.ticks >= this.timeout) return { done: 'success', reason: 'time up' };
+      this.ticks++;
+      return this.policy.act(w, this.target, this.base);
+    });
+  }
+  /** After the farm stepped: run the note-writing rules on what happened. */
+  observe(w: World, prev: { x: number; y: number }, events: SimEvent[]): void {
+    if (!this.noteRunner) return;
+    this.noteRules ??= this.noteRunner.newRuleState();
+    const rs = this.noteRules;
+    const verdict = w.verdict;
+    this.withNotes(w, () => this.noteRunner!.evalStep(w, prev, events, rs));
+    if (verdict === undefined) delete w.verdict; else w.verdict = verdict; // ending a try means nothing on the farm
   }
 }
+
+/** The part of a compiled lesson that writes notes (see SkillRun). */
+export type NoteRunner = Pick<CompiledStage, 'newRuleState' | 'evalStep'>;

@@ -21,7 +21,7 @@ npm run dev        # http://localhost:5173
 | `npm test` | Vitest: 158 tests in 21 files (sim, registry, learning, saves, farm, every milestone gate, the Field Guide, the card editor, sound, teaching polish, pens, cards, farm life, and a layout fingerprint that keeps existing lessons' layouts fixed) |
 | `npm run bench` | Trains every starter skill under 5 seeds and prints held-out results, hardware and timings |
 | `npm run evidence` | Reproduces the measurements behind the Field Guide and the Trainer's notebook |
-| `npm run e2e` | Browser test that plays all ten Field Guide lessons and the newer editor features with real clicks, about a minute (run `npm run build` first; needs Playwright with Chromium). `npm run e2e -- --from=4` skips lessons 1–3 |
+| `npm run e2e` | Browser test that plays all eleven Field Guide lessons and the newer editor features with real clicks, about a minute (run `npm run build` first; needs Playwright with Chromium). `npm run e2e -- --from=4` skips lessons 1–3 |
 
 Requires Node 18+ (developed on Node 22). Needs no secrets or environment variables.
 
@@ -78,13 +78,14 @@ The **First lesson** banner (lesson 1 of the Field Guide) walks you through this
   - its **senses**, a meter showing how many situations it must learn:
     - *Where is…*, *How far is…*, *Standing on…*, *Walls nearby*, *Hazards nearby*, *Last heading*;
     - *Carrying?*, *Patience*, *Where is a dry…*, *Has water?*, *Day or night*;
-    - *Where is area…*, *Where is a stray…*, *Area seen from…*, *Gate state*, *Rain*, *Done … yet?*, *Stock*.
+    - *Where is area…*, *Where is a stray…*, *Area seen from…*, *Gate state*, *Rain*, *Done … yet?*, *Stock*, *Note*.
+  - **notes**: rules can *Write a note* (turn on/off, count up/down, set; up to 4 notes, 0–9, reset every try), conditions can test them (*Note says*), and the *Note* sense lets the pet read them. Rules that write notes also run when the skill works on the farm.
   - its **brain**: *Standard* (up to 5 senses and 100,000 situations) or *Big* (up to 8 senses and 2,000,000 situations, keeping only the ones the pet meets; it needs much more practice).
   - its **abilities**: Move, Stay, Pick up, Put down, Water, Shoo, Nudge gate, Plant, Lift basket.
   - **practice** up to 100,000 tries (Fetch and routines 20,000) and **time per try** up to 400 steps, with a training-time estimate for this device.
   - whether success ends the try or is **judged when time is up**.
 
-  Write its rules with *the target* meaning "whatever this skill is aimed at". Examples in the Curriculum: *Wait for it*, *Keep clear*, *Water the garden*, *Herd a chicken*, *Open the gate*, *Empty the basket*.
+  Write its rules with *the target* meaning "whatever this skill is aimed at". Examples in the Curriculum: *Wait for it*, *Keep clear*, *Water the garden*, *Herd a chicken*, *Open the gate*, *Empty the basket*, *Patrol* (uses a note).
 - **Routines** (a certified Approach and two saved skills) choose between your skills (*Use skill*, aimed at anything, with an optional *only when…*) and actions (*Do action*). They **watch** up to 4 conditions and learn which option fits which situation. Options always call each skill's *current* revision, and the game flags routines certified with an older one. Examples: *Bring it home (routine)*, *Morning chores*.
 - **Seeing what your pet learned:**
   - Every report and skill has **What it actually did**: a heatmap around the target, action mix, endings, and which rules paid.
@@ -129,6 +130,7 @@ The **Guide** tab offers short, free lessons on setting up training that works, 
 8. *Combine skills* (a routine is only as good as what it watches)
 9. *Plan the farm*
 10. *Lay out the farm* (a basket by the bushes vs a crop moved next to the house, in preview)
+11. *Give your pet a notebook* (Patrol without and with the Note sense)
 
 It also holds the **Trainer's notebook** (a checklist built from measured results) and a **glossary**. **Coaching tips** appear in reports and on the farm when the evidence suggests a common mistake, each linking to its lesson.
 
@@ -172,5 +174,5 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 | `docs/TUTORIAL_PLAN.md` | The Field Guide's design, the evidence behind each lesson, and what shipped |
 | `docs/TEACHING_PLAN.md` | Polishing rules, conditions and pens: the plan, and what phases A–C shipped |
 | `docs/FARM_LIFE_PLAN.md` | Farm life: storage and selling at the house (A), replanting with seed costs (B) and your own layout (C) shipped; next, a pet roster (D) |
-| `docs/LOOSER_LIMITS_PLAN.md` | Plan: a bigger brain, longer practice and more steps, and notes (counters and flags) that rules write and pets sense |
+| `docs/LOOSER_LIMITS_PLAN.md` | Looser limits (shipped): a Big brain, longer practice and more steps, and notes (flags and counters) that rules write and pets sense |
 | `docs/SOUND_PLAN.md` | Sound effects, ambience, music and settings: the plan, and what phases A–C shipped |

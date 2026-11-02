@@ -346,8 +346,28 @@ try {
     } else await looked();
     await looked();
     await lessonDone('Lay out the farm');
+
+    // Lesson 11: Give your pet a notebook (looser limits, phase B)
+    await start('Give your pet a notebook');
+    await nav('Teach');
+    await train();
+    await step('Lost at the well', 'L11: trained Patrol without the note');
+    await looked();
+    await tab('Pet');
+    await page.click('[data-tut="senses"] .slot:has-text("+ sense")');
+    await page.click('.sleeve .card:has-text("Note")');
+    check((await page.inputValue('.sleeve input[list="note-names"]')) === 'leg', 'L11: the new Note sense is already named “leg”');
+    await page.click('.sleeve button[aria-label="Increase Counts up to"]');
+    await step('Train it again', 'L11: Note sense “leg” counting up to 2 added');
+    await train();
+    const c11 = await compareInGuide();
+    console.log('   L11 comparison:', c11.slice(0, 170));
+    check(c11.includes('Can’t read the note') && c11.includes('Reads the note'), 'L11: comparison shows without vs with the note');
+    await nav('Teach');
+    await page.click('[data-tut="save-skill"]');
+    await lessonDone('Give your pet a notebook');
     await nav('Guide');
-    check((await page.locator('.guide-item.done').count()) === 10, 'all 10 Field Guide lessons done');
+    check((await page.locator('.guide-item.done').count()) === 11, 'all 11 Field Guide lessons done');
 
     // Pet roster (farm life D): tap the house, adopt a second pet, put it on duty, see its card, tap a basket.
     await nav('Farm');

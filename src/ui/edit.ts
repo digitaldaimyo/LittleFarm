@@ -6,11 +6,13 @@ import type { SlotRef } from './store';
 import type { SlotRole } from '../domain/hand';
 
 /** New node from a card with default params; the only Actor (the pet) is filled in automatically. */
-export function createNode(cardId: string): SpecNode {
+export function createNode(cardId: string, stage?: StageSpec): SpecNode {
   const card = REGISTRY.cards.get(cardId);
   const n = node(cardId);
   if (!card) return n;
   for (const p of card.params ?? []) n.args[p.id] = p.default;
+  // Note cards start with a note name the lesson already uses (so a typo can't quietly start a second note).
+  if (NOTE_CARDS.includes(cardId) && stage) { const used = noteNames(stage); if (used.length) n.args.name = used[0]; }
   for (const s of card.sockets) {
     if (s.type.name === 'Actor' && s.required) n.args[s.id] = node('actor.pet');
     if (s.many) n.args[s.id] = [];
@@ -41,6 +43,16 @@ function stageList(stage: StageSpec, parentId: string): SpecNode[] {
 }
 
 /** Is `it` bound at this node? (inside a rule whose WHEN binds an object) */
+const NOTE_CARDS = ['eff.note', 'cond.note', 'sense.note'];
+
+/** Note names used anywhere in a lesson (rules, SUCCESS/FAIL, senses), first-written first. */
+export function noteNames(stage: StageSpec): string[] {
+  const out: string[] = [];
+  const roots = [...stage.rules, ...(stage.success ? [stage.success] : []), ...(stage.fail ? [stage.fail] : []), ...(stage.learner.senses ?? [])];
+  for (const r of roots) walk(r, (x) => { if (NOTE_CARDS.includes(x.cardId)) { const nm = String(x.args.name ?? '').trim(); if (nm && !out.includes(nm)) out.push(nm); } });
+  return out;
+}
+
 export function itBoundAt(stage: StageSpec, nodeId: string): boolean {
   for (const r of stage.rules) {
     let inside = false;

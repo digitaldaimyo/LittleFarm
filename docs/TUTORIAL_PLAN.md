@@ -4,6 +4,11 @@
 
 Status: **All three phases shipped.** Sections 1–9 below are the original plan, kept for the reasoning and evidence; the phase notes here record what actually shipped. **Numbering:** the Guide numbers lessons 1–9 in the order used here (lesson 1 is the First lesson), so *Invent a skill* is lesson 6. Shipped: Chapter 1 revised; Field Guide engine and screen; lessons 2–9; notebook; glossary; coaching tips; requests-board side quests; a browser test (`npm run e2e`).
 
+### Looser limits (phase B): lesson 11, Give your pet a notebook
+- **Offered** after *Invent a skill*. The pen is *Patrol* (well → house → well); its rules count the legs in the note “leg” and SUCCESS is “leg at least 3”, but the pet can't sense the note.
+- **Steps:** train it (it rarely finishes) → read why (at the well it can't tell starting from coming back) → add the *Note* sense (it arrives already named “leg”; set *Counts up to* 2) → retrain → compare → save.
+- **Measured:** 10–20% without the note vs 70–80% with it on 5 training seeds; in the browser test 20% → 75%.
+
 ### Farm life (phase C): lesson 10, Lay out the farm
 - **Offered** once a pet has a saved Fetch skill (layouts matter once there's storage and hauling).
 - **Steps:** open Layout… (the farm pauses) → experiment: a basket by the bushes → *Preview half a day* → bring a crop closer (remove the basket, free since it was placed in this draft; move a bush or patch nearer the house) and preview again → apply the better farm (or say you've looked) → a note on the plot budget.

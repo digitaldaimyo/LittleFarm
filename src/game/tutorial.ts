@@ -2,7 +2,7 @@ import type { GameState } from './types';
 import type { SpecNode, StageSpec } from '../domain/types';
 import { activePet, getSkill } from './pets';
 import { isNode, node, placedKinds } from '../domain/spec';
-import { buildTutorialStage, recipeStage } from '../domain/recipes';
+import { buildTutorialStage, patrolWithoutNote, recipeStage } from '../domain/recipes';
 import { addJournal } from './journal';
 import { starterPlan } from './plan';
 import { evaluate } from '../learning/episodes';
@@ -82,6 +82,7 @@ export const LOOPHOLE_STAGE = 'stage-guide-loophole';
 export const AVOID_STAGE = 'stage-guide-ponds';
 export const INVENT_STAGE = 'stage-guide-invent';
 export const ROUTINE_STAGE = 'stage-guide-routine';
+export const NOTES_STAGE = 'stage-guide-notes';
 /** Id of the deliberately shadowed row the plans lesson adds to the pet's plan. */
 export const LESSON_ROW = 'guide-row-well';
 
@@ -332,6 +333,29 @@ export const CHAPTERS: Chapter[] = [
       { id: 'room', title: 'Room to grow', text: 'The farm holds 8 crop plots (14 after the orchard expansion). Bushes are free to keep; field crops cost a seed each time. Fences, scarecrows and sheds go anywhere that leaves everything reachable from the house.', screen: 'farm', ack: true, done: (s) => flag(s, ackFlag('layout', 'room')) },
     ],
   },
+  {
+    id: 'notes', title: 'Give your pet a notebook', blurb: 'Rules can write notes (flags and counters) that the pet senses — memory for jobs with several legs.', minutes: 5, opensWhen: 'Opens after “Invent a skill”.',
+    offered: (s) => ['done', 'skipped'].includes(guideStatus(s, 'invent') ?? ''),
+    start: (s) => {
+      const st = patrolWithoutNote();
+      st.id = NOTES_STAGE;
+      st.name = 'Field guide: Patrol';
+      st.recipeId = 'guide';
+      st.extensions = { guide: true };
+      upsertStage(s, st);
+      s.activeStageId = NOTES_STAGE;
+      delete s.progress.guideRuns?.[NOTES_STAGE];
+    },
+    compare: { stage: NOTES_STAGE, rows: [{ variant: 'no-note', label: 'Can’t read the note' }, { variant: 'note', label: 'Reads the note' }], note: 'Same pen, same rules, same practice: only the Note sense changed.' },
+    steps: [
+      { id: 'look', title: 'A job with three legs', text: 'This pen teaches Patrol: the well, then the house, then the well again. Open Rules: each leg writes the note “leg” (1, 2, 3), and SUCCESS is “leg is at least 3”. Train it.', why: 'Rules can write notes: flags and counters that start at 0 every try. Here they count the legs.', screen: 'teach', highlight: 'train-btn', done: (s) => hasVariant(s, NOTES_STAGE, 'no-note') },
+      { id: 'read', title: 'Lost at the well', text: 'It rarely finishes. Standing at the well, it can’t tell whether it’s just starting or coming back — both look the same.', why: 'A pet only knows what it senses. The rules know which leg it’s on; the pet doesn’t.', screen: 'teach', highlight: 'report-compare', ack: true, done: (s) => flag(s, ackFlag('notes', 'read')) },
+      { id: 'sense', title: 'Let it read the note', text: 'In the Pet binder, press “+ sense”, pick “Note” — it’s already named “leg” — and set “Counts up to” to 2.', why: 'The Note sense reads a note your rules write: 0, 1 or 2 here (higher counts read as 2). That’s 3× the situations, and worth it.', screen: 'teach', highlight: 'senses', done: (s) => !!stage(s, NOTES_STAGE)?.learner.senses?.some((n) => n.cardId === 'sense.note' && String(n.args.name ?? '').trim() === 'leg' && Number(n.args.cap ?? 1) >= 2) },
+      { id: 'retrain', title: 'Train it again', text: 'Same pen, same rules, same practice.', screen: 'teach', highlight: 'train-btn', done: (s) => hasVariant(s, NOTES_STAGE, 'note') },
+      { id: 'compare', title: 'Compare', text: 'Check the comparison in the Guide.', why: 'Measured on 5 training seeds: 10–20% without the note, 70–80% with it. Notes written by rules also run on the farm, so the skill keeps track of its legs there too.', screen: 'guide', highlight: 'guide-compare', ack: true, done: (s) => flag(s, ackFlag('notes', 'compare')) },
+      { id: 'save', title: 'Keep Patrol', text: 'In Teach, save the version that reads the note.', screen: 'teach', highlight: 'save-skill', done: (s) => s.pets.some((p) => !!getSkill(p, 'Patrol')?.revisions.some((r) => r.stageId === NOTES_STAGE && r.learner?.senses.some((n) => n.cardId === 'sense.note'))) },
+    ],
+  },
 ];
 
 function upsertStage(s: GameState, st: StageSpec) {
@@ -439,6 +463,7 @@ export function guideVariant(st: StageSpec): string | undefined {
   if (st.id === AVOID_STAGE) return 'avoid';
   if (st.id === INVENT_STAGE) return `senses:${(st.learner.senses ?? []).map((n) => n.cardId).join(',')}`;
   if (st.id === ROUTINE_STAGE) return `watch:${st.learner.routine?.watch.length ?? 0}`;
+  if (st.id === NOTES_STAGE) return readsLegNote(st) ? 'note' : 'no-note';
   return undefined;
 }
 
@@ -491,6 +516,11 @@ export function testApproachHere(s: GameState): void {
   const random = evaluate(st, { kind: 'random' }, seeds, 'baseline', p.traits, 0);
   recordGuideRun(s, st, 0, r.successRate, random.successRate, r.successRate, undefined, r.meanReward, 'approach');
   addJournal(s, p.id, 'guide-approach-ponds', `${p.name}'s Approach was tested in a pen with ponds: ${r.successes}/${r.episodes} reached the berry dry.`);
+}
+
+/** Notes lesson: does the skill sense the note “leg”? */
+function readsLegNote(st: StageSpec | undefined): boolean {
+  return !!st?.learner.senses?.some((n) => n.cardId === 'sense.note' && String(n.args.name ?? '').trim() === 'leg');
 }
 
 function starterPlanRows() {

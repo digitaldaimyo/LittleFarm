@@ -51,6 +51,7 @@ export function presetSenses(): SpecNode[] {
 }
 
 export function radixOf(n: SpecNode): number {
+  if (n.cardId === 'sense.note') return 1 + Math.max(1, Math.min(9, Number(n.args.cap ?? 1) || 1));
   return REGISTRY.cards.get(n.cardId)?.radix ?? 1;
 }
 
@@ -176,6 +177,11 @@ function senseFn(n: SpecNode, target: string): (w: World, base?: Tally) => numbe
         const n = storeCount(s), st = def(s.kind).storage;
         return n === 0 ? 0 : st && n >= st.slots * st.perSlot ? 2 : 1;
       };
+    case 'sense.note': {
+      const name = String(n.args.name ?? 'note').trim() || 'note';
+      const cap = Math.max(1, Math.min(9, Number(n.args.cap ?? 1) || 1));
+      return (w) => Math.min(cap, w.notes?.[name] ?? 0);
+    }
     case 'sense.still':
       return (w) => { const s = w.pet.still ?? 0; return s === 0 ? 0 : s < 5 ? 1 : 2; };
     default:

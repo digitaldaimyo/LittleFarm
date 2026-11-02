@@ -124,6 +124,8 @@ export interface World {
   seedCoins?: number;
   /** Items sold (dropped at a container that sells, i.e. the farm's house). */
   sold?: number;
+  /** Notes your rules wrote this try (flags and counters, 0–9). Absent until a rule writes one. */
+  notes?: Record<string, number>;
   /** Set when a rule ends the try as a success (✓) or a miss (✗); otherwise SUCCESS decides. */
   verdict?: 'success' | 'fail';
 }
@@ -191,6 +193,7 @@ export function cloneWorld(w: World): World {
     ...(w.counts ? { counts: { ...w.counts } } : {}),
     objects: w.objects.map((o) => (o.store ? { ...o, store: o.store.map((s) => ({ ...s })) } : { ...o })),
     ...(w.tally ? { tally: cloneTally(w.tally) } : {}),
+    ...(w.notes ? { notes: { ...w.notes } } : {}),
   };
 }
 

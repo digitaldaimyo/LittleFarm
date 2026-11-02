@@ -2,7 +2,7 @@ import type { Action, Obj, PetBody, SimEvent, World } from '../sim/world';
 import { addObject, inBounds, isSolidAt, bfsPath, cloneTally, def, emptyStore, emptyWorld, seedPrice, storeAccepts, storeCount, inArea, nearest, nudgeableGate, objectsAt, onGround, step, type StepOptions } from '../sim/world';
 import { nightfallRequests, postRequests, trackRequests } from './requests';
 import { Rng } from '../sim/rng';
-import { FetchController, FetchRun, NavRun, SkillRun, isDone, randomMove, type ExecStep } from '../learning/policies';
+import { FetchController, FetchRun, NavRun, SkillRun, isDone, randomMove, type ExecStep, type NoteRunner } from '../learning/policies';
 import { navTimeout } from '../learning/episodes';
 import {
   BEHAVIOR_LABEL, describeContext, learnedSelect, rulesSelect, updateExecutive,
@@ -10,7 +10,9 @@ import {
 } from '../learning/executive';
 import type { FarmPlan, FarmState, GameState, Helper, Pet, Plot } from './types';
 import { activeRevision, getSkill, navPolicyFor, petById, routineRunFor, sensePolicyOf } from './pets';
-import { compileCondition, withTarget } from '../sim/compile';
+import { compileCondition, compileStage, withTarget } from '../sim/compile';
+import type { SpecNode, StageSpec } from '../domain/types';
+import { walk } from '../domain/spec';
 import { addJournal, addJournalOnce } from './journal';
 import { checkUnlocks } from './progression';
 import { GUARD_HOLD, choosePlanRow, compilePlan, newPlanRuntime, planInvocation, planUsesMemory, starterPlan, updatePlanValue, type PlanRuntime } from './plan';
@@ -213,6 +215,15 @@ export function toteTarget(s: GameState): Obj | null {
   const plotNear = (o: Obj) => s.farm.plots.some((p) => (!p.unlock || s.progress.unlocks.includes(p.unlock)) && chebyshev(p, o) <= 1);
   const stray = baskets.find((o) => storeCount(o) === 0 && !plotNear(o));
   return stray && cropSpot(s) ? stray : null;
+}
+
+/** A skill's note-writing rules, compiled for the farm (aimed at `target`), or null if it writes none. */
+function noteRunnerFor(stage: StageSpec | undefined, target: string): NoteRunner | null {
+  if (!stage) return null;
+  const writes = (r: SpecNode) => { let w = false; walk(r, (x) => { if (x.cardId === 'eff.note') w = true; }); return w; };
+  const rules = stage.rules.filter((r) => r.args.off !== 1 && writes(r));
+  if (!rules.length) return null;
+  return compileStage({ ...stage, rules, learner: { ...stage.learner, focus: target } });
 }
 
 /** Is this object still a valid destination (on the ground)? */
@@ -549,7 +560,7 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
       if (!rev || !policy) return { next: () => ({ done: 'fail', reason: 'skill missing' }) };
       const target = inv.args.target || rev.focus || 'berry';
       const cond = rev.success && rev.outcome !== 'survive' ? withTarget(target, () => compileCondition(rev.success!)) : null;
-      return new SkillRun(policy, target, inv.timeout, cond ? (world, base) => cond({ w: world, prev: world.pet, base }) : null);
+      return new SkillRun(policy, target, inv.timeout, cond ? (world, base) => cond({ w: world, prev: world.pet, base }) : null, noteRunnerFor(rev.stage, target));
     }
     case 'rest': {
       let t = 0;
@@ -1093,7 +1104,10 @@ function petTurn(s: GameState, pet: Pet, rt: FarmRuntime, fx: FarmFx[], opts: St
   if (isDone(st)) {
     finishInvocation(s, pet, rt, st.done, st.reason, fx);
   } else {
+    const prev = { x: f.world.pet.x, y: f.world.pet.y };
+    const exec = rt.exec;
     const events = step(f.world, st, opts);
+    (exec as { observe?: SkillRun['observe'] }).observe?.call(exec, f.world, prev, events); // skills with notes keep writing them
     handleEvents(s, pet, events, rt, fx);
   }
   rt.claim = claimFor(f.world, rt.inv);

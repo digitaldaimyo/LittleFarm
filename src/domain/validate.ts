@@ -1,5 +1,5 @@
 import type { CardDef, Diagnostic, SpecNode, StageSpec, TypeExpr } from './types';
-import { BRAINS, brainOf } from '../learning/senses';
+import { BRAINS, brainOf, radixOf } from '../learning/senses';
 import type { Registry } from './registry';
 import { REGISTRY, kindOfCard } from './registry';
 import { fits, generic, nominal, typeToString } from './typecheck';
@@ -161,7 +161,7 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
     let size = 1;
     for (const sn of senses) {
       validateNode(sn, nominal('Sense'), senseCtx);
-      size *= reg.cards.get(sn.cardId)?.radix ?? 1;
+      size *= radixOf(sn);
       const w = sn.args.what;
       const k = isNode(w) ? kindOfCard(w.cardId) : null;
       if (k && !placed.has(k)) out.push({ severity: 'warning', code: 'sense-missing', nodeId: sn.id, message: `This skill watches for ${reg.objects.get(k)?.name ?? k}, but none is in the pen, so it can't learn what that sense means.` });
@@ -172,6 +172,22 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
     if (size > brain.states) out.push({ severity: 'error', code: 'state-budget', message: `These senses make ${size.toLocaleString()} situations to learn — too many for a ${brain.label} brain (max ${brain.states.toLocaleString()}). ${big ? 'Drop a sense' : 'Choose the Big brain in the Pet binder, drop a sense,'} or use a cheaper one (e.g. “How far is…” instead of “Where is…”).` });
     else if (size > brain.warn) out.push({ severity: 'warning', code: 'state-budget', message: `${size.toLocaleString()} situations to learn — this will need lots of practice tries${big ? ' (tens of thousands)' : ''}.` });
     if (!stage.abilities.length) out.push({ severity: 'error', code: 'no-abilities', message: 'Give the skill at least one ability (Move, Stay…).' });
+  }
+  // Notes: written by rules, read by conditions and the Note sense. Catch typos and dead notes.
+  {
+    const writes = new Map<string, string>(), reads = new Map<string, string>();
+    const name = (x: SpecNode) => String(x.args.name ?? 'note').trim() || 'note';
+    const roots = [...stage.rules.filter((r) => r.args.off !== 1), ...(stage.success ? [stage.success] : []), ...(stage.fail ? [stage.fail] : []), ...(L.senses ?? []), ...(L.routine?.watch ?? [])];
+    for (const r of roots) walk(r, (x) => {
+      if (x.cardId === 'eff.note') writes.set(name(x), x.id);
+      if (x.cardId === 'cond.note' || x.cardId === 'sense.note') reads.set(name(x), x.id);
+    });
+    const all = new Set([...writes.keys(), ...reads.keys()]);
+    if (all.size > 4) out.push({ severity: 'error', code: 'too-many-notes', message: `At most 4 notes per skill (this one uses ${all.size}: ${[...all].map((n) => `“${n}”`).join(', ')}).` });
+    for (const [n, id] of reads) if (!writes.has(n)) out.push({ severity: 'warning', code: 'note-never-written', nodeId: id, message: `Nothing writes the note “${n}”, so it is always 0.${writes.size ? ` Did you mean ${[...writes.keys()].map((w) => `“${w}”`).join(' or ')}?` : ' Add a rule with “Write a note”.'}` });
+    const sensed = new Set((L.senses ?? []).filter((x) => x.cardId === 'sense.note').map(name));
+    if (template === 'sense') for (const [n, id] of writes) if (reads.has(n) && !sensed.has(n)) out.push({ severity: 'info', code: 'note-not-sensed', nodeId: id, message: `Your rules use the note “${n}”, but ${L.skill || 'the pet'} can’t sense it. If what to do next depends on it, add the Note sense (“${n}”).` });
+    for (const [n, id] of writes) if (!reads.has(n)) out.push({ severity: 'info', code: 'note-never-read', nodeId: id, message: `The note “${n}” is written but nothing reads it. Add the Note sense so ${L.skill || 'the pet'} can use it, or test it in a rule.` });
   }
   if (template === 'routine') {
     const R = L.routine ?? { options: [], watch: [] };

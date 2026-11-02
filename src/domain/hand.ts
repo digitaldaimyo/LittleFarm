@@ -58,6 +58,8 @@ function contextScore(reg: Registry, card: CardDef, ctx: HandContext, placedTrai
   if (card.id === 'cond.just' && (ctx.role === 'success' || ctx.role === 'fail')) s -= 3;
   if (card.id === 'cond.closer' && (ctx.role === 'success' || ctx.role === 'fail')) s -= 6; // "got closer" only means something on a step
   if (card.id === 'sense.did') s += walkAny(ctx.stage, (id) => id === 'cond.happened') ? 6 : -2;
+  // Notes: once the rules write a note, reading it is the natural next sense (and testing it the natural condition).
+  if (card.id === 'sense.note' || card.id === 'cond.note') s += walkAny(ctx.stage, (id) => id === 'eff.note') ? 8 : -1;
   if ((card.id === 'cond.and' || card.id === 'cond.any') && (ctx.role === 'success' || ctx.role === 'fail')) s += 1;
   // Cards that need a kind of thing the pen doesn't have (e.g. "Has delivered" with nothing carryable).
   for (const sock of card.sockets ?? []) {
