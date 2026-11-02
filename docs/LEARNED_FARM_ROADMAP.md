@@ -1,0 +1,196 @@
+# Learned farm roadmap: every job is a learned skill, and the executive learns too
+
+Status: **proposed roadmap** (no code yet). Decisions are in section 8.
+
+**The commitment.** Everything a pet does on its own on the farm comes from a skill or routine the player taught it in the pen. No hidden job scripts. The farm executive is promoted from a fixed rule list to a learned, two-level decision-maker:
+- the **upper level** reads the farm and picks what to work on next (a responsibility);
+- the **lower level** picks which learned skill or routine to use for it.
+
+This roadmap draws on the feedback group's *Learned Capabilities & Executive AI Redesign* spec. We adopt its core principles, adapt much of its machinery to fit what Pen Deck already has, and defer or decline the rest (section 2).
+
+## 1. Audit: what is learned today and what is scripted (HEAD `34c8b26`)
+
+Farm decisions flow `chooseInvocation` → `buildExecutor` → `step` in `src/game/farm.ts`. Each farm **job** (`BehaviorId`) is executed as follows:
+
+| Job | What runs it today | Learned part | Scripted part |
+|---|---|---|---|
+| **Harvest** (`forage`) | `FarmWalk` legs + `pick` + `drop` | Walking (the pet's Approach/Avoid) | Which crop, the pick, choosing storage vs house (`harvestTarget`), the drop, stuck recovery |
+| **Haul** (`deliver`) | `FetchRun` | The Fetch controller *and* Approach | Which item (eggs, fullest storage) and the destination (house) |
+| **Plant** | `FarmWalk` to soil + `plant` | Walking | Which soil, the plant |
+| **Basket run** (`tote`) | A phase machine: fetch → lift → unload → place | Walking legs | Nearly everything: target basket, destination, the crop-side spot (`cropSpot`), BFS last steps, retries |
+| **Catch fireflies** | `NavRun` to firefly | Walking | Target choice |
+| **Mind the gate** | Walk + `nudge` | Walking | Which gate, the nudge |
+| **Go to** | `NavRun` | Walking | — |
+| **Nap** (`rest`) | `wait` until rested; with other pets on duty, a **BFS walk home** | — | All of it |
+| **Wander** | random moves | — | All of it (by design) |
+| **Run a skill** | `SkillRun` / `RoutineRun` | **All of it** | Target from the player |
+| **Steer** | the player | — | — |
+
+**Who decides:**
+- **Auto, rules mode:** `rulesSelect` is a hand-ordered priority list.
+- **Auto, learned mode:** `learnedSelect` is a contextual bandit over the fixed job list, rewarded by coins per tick.
+- **Farm plans:** player IF/DO rows over the same fixed jobs, plus *Run a skill*.
+- **Always on:** the starter plan mirrors the rules tick for tick, and stuck recovery (`jitter`, `FarmWalk` sniffing) is scripted.
+
+**Defects confirmed while auditing:**
+1. `RoutineRun` reports `success: 'time up'` on timeout (`routine.ts:158`). `SkillRun` does too (`policies.ts:203`), which is only right for *survive* skills ("stay dry until time's up"). Timeout must be its own outcome.
+2. Routine and Fetch learning add up an option's rewards undiscounted and then discount by a flat γ (`trainer.ts:219`). It isn't duration-aware SMDP learning yet. This matters once options last very different lengths of time.
+3. A bought or unlocked crop plot can exist before it's usable. Harvest only "knows" kinds through `CROPS`, and a pen skill aims at **one kind**. There's no "any ripe crop" target.
+
+**What already works in our favour:**
+- Pens can hold every farm object (crops, soil, house, baskets, sheds, gates, creatures, fireflies, stocked storage), night, rain, and the Plant / Lift / Shoo / Nudge / Water abilities.
+- Routines learn Fetch from cards in 400 tries (91%) and already run on the farm.
+- Notes give skills memory.
+- Big brains and long runs give room.
+- A **certified** label exists for every skill.
+
+## 2. What we take from the feedback spec
+
+| Spec idea | Our call | Why |
+|---|---|---|
+| No hidden competence; every autonomous farm action from a saved learned skill/routine | **Adopt** | It's the game's promise |
+| Physics stays deterministic; only *choices* are learned | **Adopt** (already true) | |
+| One runtime and outcome protocol (success / failure / timeout / interrupted / cancelled) | **Adopt** | Fixes defect 1; simplifies `farm.ts` |
+| Capability registry with stable IDs, revisions, eligibility reasons | **Adopt, slimmed**: a *capability* is a saved skill or routine **plus an aim** (what it's pointed at), with eligibility reasons | We already have stable skill IDs and revisions |
+| Pin revisions by default | **Adapt**: keep "follow the active revision" (retraining improves every user, a lesson we teach), keep stale-dependency warnings, and add an optional pin | Pinning by default would undercut "retrain to improve" |
+| Goals vs needs vs intentions as three constructs | **Adopt, small**: **responsibilities** (player goals: a condition to reach or keep, a priority), **needs** (energy only, plus night) and one **current commitment** with no-progress and cooldown rules | The full lifecycle machine is more than the farm needs |
+| Goal predicates from the existing card grammar | **Adopt** | Conditions, *Has done…*, counts, storage, notes already exist |
+| Deterministic executive first, then learned | **Adopt** | Gives an honest baseline to beat |
+| Goal-conditioned SMDP option-value learner, duration-discounted | **Adopt** for the lower level (the capability choice); the upper level starts as priorities and learns later | Matches our tabular style |
+| `expectedEffects` predictions on capabilities | **Adapt**: *learned* per-capability statistics (success rate, ticks, goal progress per use), shown as evidence | Players shouldn't have to write predictions |
+| Rest requires a learned capability; no invisible nap | **Adapt**: resting is the innate *Stay* action (like *Do action* in routines). Choosing **when** to rest and **where** to go is learned. Collapsing asleep at 0 energy stays involuntary (a need, not a job). | A pet that can't learn to sit down would be cruel and confusing |
+| Bounded nested routines (routine as an option) | **Defer**: measure first whether flat routines with aims cover Harvest, Basket run and Plant | The spec itself says measure first |
+| Raise `MAX_OPTIONS` / `MAX_WATCH` | **Defer** until a task needs it | |
+| Responsibility board and custom goal editor | **Adopt**, built on the farm-plan mat (rows become responsibilities) | Reuses a UI players know |
+| Restructured 9-lesson curriculum | **Adapt** (section 5): keep our 11 lessons, insert *Harvest* early, convert *Plan the farm* to responsibilities | Existing lessons are still accurate about training |
+| Statistical evidence: repeated seeds, held-out scenarios, anti-reward-hacking checks | **Adopt** (we already measure this way) | |
+| Feature flags for legacy scripted jobs | **Adopt, tests only**, removed when each job's learned replacement passes its gate | |
+| Pet-to-pet negotiation, LLMs, natural-language planning | **Decline** | Non-goals in the spec too |
+| Economy redesign | **Decline**, except unlock order (section 5) | |
+
+## 3. Target design
+
+```text
+Responsibilities (player)  +  Needs (energy, night)
+              │  upper level: what to work on — priorities first, learned later (phase 5)
+              ▼
+     Current commitment  (sticks until done, stuck, or out-prioritised; cools down failures)
+              │  lower level: which capability — learned option values per responsibility
+              ▼
+   Capabilities = saved skills / routines × aim   (eligibility + reasons, evidence)
+              │  one runtime adapter, one outcome protocol
+              ▼
+   Deterministic world (unchanged)
+```
+
+### 3.1 Capabilities
+- **What counts:** every saved skill or routine the pet has, combined with an **aim**: a kind ("berry"), a **trait** ("any ripe crop", "any storage with room") or "the target of the responsibility". Trait aims are new (defect 3) and are needed for one Harvest skill to work for every crop.
+- **Opt-in:** a capability is usable on the farm when the player allows it (default: certified ones). Uncertified ones can be allowed explicitly; the card shows readiness.
+- **Eligibility, with a reason:** missing skill, nothing to aim at, a stale dependency, hands full, too tired, cooling down.
+- **Evidence, learned on the farm:** uses, success rate, median ticks, progress per use. It's shown on the card and used by the executive.
+- **One runtime:**
+  - every capability runs through one adapter, whether started by direct assignment, a plan row, a responsibility or the executive;
+  - it reports `success`, `failure`, `timeout`, `interrupted` or `cancelled`, with a reason and elapsed ticks;
+  - *survive* skills (e.g. "Keep clear") report success at time-up only if they survived.
+
+### 3.2 Responsibilities, needs and the commitment
+- **A responsibility** is a condition card (what should be true), how it's kept (*until true once*, *keep true*, or *repeat N times*), a priority, and optionally which capabilities may serve it. Examples:
+  - "Storage at most half full (keep)";
+  - "Sell 10 berries today (repeat daily)";
+  - "Every field plot planted (keep)";
+  - "Patrol: note *leg* ≥ 3 (repeat)".
+- **Needs:** energy below a threshold raises a *Rest* need, and night raises a *Sleep* preference. A need becomes a high-priority responsibility. Satisfying it still uses a capability: *Stay* (innate), or a learned "Go home" first.
+- **The commitment:**
+  - the executive commits to one responsibility and keeps using capabilities for it until it's satisfied, until it's out-prioritised by a need or a clearly higher priority, or until no progress is made for N ticks;
+  - repeated failures put that capability or responsibility pair on cooldown (shown with the reason);
+  - progress is always measured from the world (conditions and tallies), never from what a skill claims.
+- **Farm plans** become the responsibility editor. A plan row "IF *condition* DO *job*" converts to a responsibility "WHEN *condition* WORK ON *(the job's goal)* USING *(capability)*" (section 6).
+
+### 3.3 The executive, in two stages
+1. **Deterministic (phase 4):** take the highest-priority unsatisfied responsibility, then choose the eligible capability with the best evidence for it (optimistic for untried ones), committing as in 3.2.
+2. **Learned (phase 5):** an option-value table per (responsibility, compact farm state, capability). It's trained at capability boundaries with **duration-discounted** targets (γ^ticks), and rewarded by **progress on the responsibility** plus completion, minus time and failure. Coins are no longer the reward. Exploration follows the pet's Curiosity, over eligible capabilities only.
+   - The upper level (which responsibility next) learns the same way once the lower level works.
+   - Executive values are separate from skills: they can be reset, and retrained in **executive lessons**.
+
+### 3.4 What stays scripted (the allowlist)
+World physics and legality; collapsing asleep at 0 energy; the player's Steer; *Stay*; stopping when a capability is cancelled. Nothing else. Today's stuck recovery (random sniffing) becomes a property of the walking skills: their own Walls and Last-heading senses, plus the *timeout* outcome. Recovery is the executive choosing something else.
+
+## 4. Pen ↔ farm parity (what pens must express so farm jobs can be taught)
+
+| Farm capability | Taught as | Pen affordances needed |
+|---|---|---|
+| Go to / Approach, Avoid | Existing presets | — |
+| **Harvest & sell** | A routine: Approach → ripe crop, Pick up, Approach → house, Put down (watching carrying / at crop / at house) | **Trait aims** ("any ripe crop", "the house"); crops that ripen during a try (optional) |
+| Harvest into storage | Same routine, aimed at "storage with room" | Trait aim "storage with room"; stocked storage (exists) |
+| **Haul** | Fetch (exists) aimed at "fullest storage" → house | Trait aims |
+| **Plant** | A sense skill: walk to soil, Plant | "Can afford seeds" in pens (a pen coin budget); soil (exists) |
+| **Basket run** | A routine: Approach → basket, Lift, Approach → house, Put down, Approach → crops, Put down | Basket senses (Stock, exists); "a clear tile by the crops" aim |
+| **Rest** | *Stay*, plus a learned "Go home" (Approach → house) | **Energy in pens** (drains with work, a Tired sense), so "rest when tired" can be practised |
+| Catch fireflies | Approach aimed at firefly at night | Exists (Time of day, fireflies placeable) |
+| Mind the gate | Existing *Open the gate* recipe, plus a "Close" variant | Exists |
+| Wander | A learned "explore" skill, or simply unused | Optional |
+
+**Gate per job:**
+- the same saved revision succeeds on held-out pens and on held-out farm layouts;
+- the farm reaches at least the agreed share of the scripted baseline (decision 3);
+- no legacy executor runs for that job.
+
+## 5. Progression and the Field Guide
+
+The first farm coins currently come from the built-in Harvest. Without it, **harvesting must be taught before the farm earns**. Proposed early game:
+
+| # | Lesson | New / changed | The player builds |
+|---|---|---|---|
+| 1 | First lesson | Changed ending: "put it to work" becomes "it can walk to anything; now teach it a job" | Approach |
+| 2 | **Harvest** *(new)* | A routine from cards in a farm-like pen: Approach → crop, Pick up, Approach → house, Put down | Harvest routine, then **allowed on the farm** → first coins |
+| 3–4 | Practice, Scatter | Unchanged | |
+| 5 | Pay for results | Unchanged (Fetch loophole) | Fetch |
+| 6–9 | Where, Invent, Read, Combine | Unchanged | |
+| 10 | **Plan the farm → First responsibility** *(changed)* | "Keep storage at most half full" with Harvest and Haul allowed; watch the executive commit, switch, recover | Responsibilities |
+| 11–12 | Lay out the farm, Notebook | Unchanged | |
+| 13 | **Teach a job** *(new, optional)* | Plant and Basket run from cards when those unlock | Plant skill, Basket-run routine |
+| 14 | **Let them choose** *(new)* | Train the executive in an executive lesson; compare deterministic vs learned on held-out farms | Executive values |
+
+- **Unlock order:** Fetch lessons open right after Harvest instead of at 5 coins, since Haul needs it. Carrots still follow a certified Fetch.
+- **Starter content:** none is pre-trained invisibly. Recipes and lessons give the cards; the pet trains them like any skill.
+
+## 6. Existing saves (v8 → v9)
+
+- **Kept:** every skill, revision, report, card, stage and the layout.
+- **Legacy jobs are not silently mapped to skills the pet lacks.** On load, a **"Your pets need to learn their jobs"** transition opens:
+  - it lists each job the farm relied on, alongside the pet's skills that could serve it;
+  - it offers the new lessons (free) to train the missing ones.
+- **Plans** convert row by row to responsibilities. Rows whose job has no capability are kept but marked *waiting for a skill*.
+- **Until the player trains replacements** (decision 4): either the farm idles except for innate *Stay*, or the legacy jobs stay available for a grace period with a visible "scripted" badge.
+
+## 7. Phases and gates
+
+| Phase | Scope | Gate |
+|---|---|---|
+| **0: baselines** | `npm run bench:farm`: current Auto (rules and learned), plans and two-pet farms over fixed and held-out seeds (coins, tasks, ticks, timeouts, idle, switches, ms per tick); failing tests for defects 1–2 | Reproducible baseline report in TESTING.md |
+| **1: one runtime** | Capability = skill/routine × aim; one adapter and outcome protocol (fixes defect 1); duration-aware option learning (defect 2, gated so existing skills keep their measured results); trait aims; eligibility reasons; *Run a skill* and plan rows go through it | All direct and plan skill invocations use one path; outcome tests pass; existing recipe numbers unchanged within noise |
+| **2: parity** | Pen energy and a Tired sense, a pen coin budget for seeds, the "storage with room" / "ripe crop" / "clear tile by crops" aims; transfer tests (train in pen → run on held-out farms) | A full harvest → sell cycle runs on the farm using only learned capabilities |
+| **3: learned repertoire** | Harvest, Haul, Plant, Basket run, Rest/Go home, fireflies, gate as recipes and lessons; Field Guide lessons 1–2 and 13; unlock reorder; v9 save transition; retire each scripted executor once its gate passes | A pet without a skill can't do that job; farm output ≥ the agreed share of baseline (decision 3); new-player e2e passes |
+| **4: responsibilities + deterministic executive** | Responsibilities (from plan rows), needs, commitment rules, cooldowns, decision trace ("working on X with Y because…"); replaces `rulesSelect`, the starter plan and the job list | Multi-capability responsibility completed; low energy handled; no thrash (switches per minute) and no infinite retry (property tests) |
+| **5: learned executive** | Duration-discounted option values per responsibility (lower level), then the upper level; executive lessons; Curiosity as exploration | Beats the phase-4 executive or random-eligible choice on held-out farms over repeated seeds, without losing safety; lesson 14 |
+| **6: retire and polish** | Remove legacy Auto, rules and job executors; capability readiness in the Pet binder; executive inspector; docs | Definition of done (below) |
+
+**Definition of done:**
+- A pet with no skills does nothing productive on the farm.
+- Every autonomous action on the farm comes from a saved skill or routine through one runtime.
+- Player-made skills serve responsibilities without being named in code.
+- Responsibilities, needs and the commitment are inspectable.
+- The learned executive measurably beats its baseline.
+- Old saves keep every trained skill.
+- No timeout counts as success.
+
+## 8. Decisions needed
+
+1. **Revision binding:** follow the active revision with stale warnings plus an optional pin (**recommended**), or pin by default (the spec's choice)?
+2. **Rest:** innate *Stay* plus learned "when" and "where", with involuntary sleep at 0 energy (**recommended**); or a fully learned rest skill?
+3. **Farm output bar for retiring a scripted job:** the learned replacement reaches ≥ 80% of the scripted baseline on held-out farms (**recommended**), or must match it?
+4. **Existing saves:** a transition lesson plus a visible "scripted" grace period until replacements are trained (**recommended**: no player wakes up to a dead farm); or no grace (the farm idles until trained)?
+5. **Capability opt-in:** certified skills allowed by default and others opt-in (**recommended**), or everything allowed?
+6. **Where responsibilities live:** convert the farm plan mat into the responsibilities editor (**recommended**: one place), or a separate board?
+7. **Upper-level learning:** priorities first and the learned upper level in phase 5 (**recommended**), or learned from the start?
+8. **Nested routines:** deferred until measured (**recommended**), or planned for phase 3?

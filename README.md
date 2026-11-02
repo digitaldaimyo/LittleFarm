@@ -175,4 +175,5 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 | `docs/TEACHING_PLAN.md` | Polishing rules, conditions and pens: the plan, and what phases A–C shipped |
 | `docs/FARM_LIFE_PLAN.md` | Farm life: storage and selling at the house (A), replanting with seed costs (B) and your own layout (C) shipped; next, a pet roster (D) |
 | `docs/LOOSER_LIMITS_PLAN.md` | Looser limits (shipped): a Big brain, longer practice and more steps, and notes (flags and counters) that rules write and pets sense |
+| `docs/LEARNED_FARM_ROADMAP.md` | Roadmap (proposed): every farm job a learned skill or routine; responsibilities and a two-level learned executive |
 | `docs/SOUND_PLAN.md` | Sound effects, ambience, music and settings: the plan, and what phases A–C shipped |
