@@ -23,9 +23,9 @@ export function probeTile(policy: SensePolicy, w: World, target: string): ProbeC
   const v = enc.encode(w);
   let s = enc.index(v);
   let guessed = false;
-  if (policy.q.visits[s] < 3) {
+  if (policy.q.visits(s) < 3) {
     guessed = true;
-    for (const b of enc.backoffs(v)) { s = b; if (policy.q.visits[s] >= 3) break; }
+    for (const b of enc.backoffs(v)) { s = b; if (policy.q.visits(s) >= 3) break; }
   }
   const legal = legalActionIdx(w, policy.def.actions);
   const qs = legal.map((a) => policy.q.value(s, a));

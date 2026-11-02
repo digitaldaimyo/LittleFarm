@@ -28,6 +28,8 @@ export interface SkillEval {
 
 export interface SkillRevision {
   rev: number;
+  /** Big brains: an older revision's table was not kept (to keep saves small); its report remains. */
+  tableDropped?: boolean;
   createdAt: number;
   stageId: string;
   stageName: string;

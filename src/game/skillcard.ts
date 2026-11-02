@@ -1,7 +1,7 @@
 import type { Pet, Skill, SkillRevision } from './types';
 import { REGISTRY } from '../domain/registry';
 import { migrateLegacyEndOutcomes, stageRoots, walk } from '../domain/spec';
-import { STATE_MAX } from '../learning/senses';
+import { BRAINS } from '../learning/senses';
 import { addJournal } from './journal';
 import type { GameState } from './types';
 import { isPreset } from './pets';
@@ -45,7 +45,7 @@ export function importSkillCard(s: GameState, p: Pet, text: string): ImportResul
   const k = c.skill, r = c.revision;
   if (!isObj(k) || typeof k.name !== 'string' || !k.name.trim() || !isObj(r)) return { ok: false, reason: 'The card is missing its skill or revision.' };
   const q = r.policy;
-  if (!isObj(q) || q.format !== 'double-q/v1' || !Number.isInteger(q.nS) || !Number.isInteger(q.nA) || q.nS < 1 || q.nS > STATE_MAX || q.nA < 1 || q.nA > 16 || !isObj(q.rows)) {
+  if (!isObj(q) || q.format !== 'double-q/v1' || !Number.isInteger(q.nS) || !Number.isInteger(q.nA) || q.nS < 1 || q.nS > BRAINS.big.states || q.nA < 1 || q.nA > 16 || !isObj(q.rows)) {
     return { ok: false, reason: 'The card’s learned policy is missing or malformed.' };
   }
   for (const [key, row] of Object.entries(q.rows)) {

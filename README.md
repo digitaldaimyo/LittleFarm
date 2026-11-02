@@ -78,11 +78,13 @@ The **First lesson** banner (lesson 1 of the Field Guide) walks you through this
   - its **senses**, a meter showing how many situations it must learn:
     - *Where is…*, *How far is…*, *Standing on…*, *Walls nearby*, *Hazards nearby*, *Last heading*;
     - *Carrying?*, *Patience*, *Where is a dry…*, *Has water?*, *Day or night*;
-    - *Where is area…*, *Where is a stray…*, *Area seen from…*, *Gate state*, *Rain*, *Done … yet?*.
-  - its **abilities**: Move, Stay, Pick up, Put down, Water, Shoo, Nudge gate.
+    - *Where is area…*, *Where is a stray…*, *Area seen from…*, *Gate state*, *Rain*, *Done … yet?*, *Stock*.
+  - its **brain**: *Standard* (up to 5 senses and 100,000 situations) or *Big* (up to 8 senses and 2,000,000 situations, keeping only the ones the pet meets; it needs much more practice).
+  - its **abilities**: Move, Stay, Pick up, Put down, Water, Shoo, Nudge gate, Plant, Lift basket.
+  - **practice** up to 100,000 tries (Fetch and routines 20,000) and **time per try** up to 400 steps, with a training-time estimate for this device.
   - whether success ends the try or is **judged when time is up**.
 
-  Write its rules with *the target* meaning "whatever this skill is aimed at". Examples in the Curriculum: *Wait for it*, *Keep clear*, *Water the garden*, *Herd a chicken*, *Open the gate*.
+  Write its rules with *the target* meaning "whatever this skill is aimed at". Examples in the Curriculum: *Wait for it*, *Keep clear*, *Water the garden*, *Herd a chicken*, *Open the gate*, *Empty the basket*.
 - **Routines** (a certified Approach and two saved skills) choose between your skills (*Use skill*, aimed at anything, with an optional *only when…*) and actions (*Do action*). They **watch** up to 4 conditions and learn which option fits which situation. Options always call each skill's *current* revision, and the game flags routines certified with an older one. Examples: *Bring it home (routine)*, *Morning chores*.
 - **Seeing what your pet learned:**
   - Every report and skill has **What it actually did**: a heatmap around the target, action mix, endings, and which rules paid.

@@ -1,6 +1,11 @@
 # Looser limits plan: bigger brains, longer practice, and notes the pet can sense
 
-Status: **plan** (no code yet). Recommendations are marked; decisions are in section 6.
+Status: **phase A shipped; phase B in progress.** Decisions: all recommendations, and **phase C (the network) is dropped** as not worth it.
+
+### Phase A: what shipped
+- Big brain (sparse table, 8 senses, 2,000,000 situations), practice to 100,000 tries (composite 20,000), time per try to 400 steps, typed-in exact values, a training-time estimate, the save-size line in Settings, and keeping only the two newest tables of Big skills.
+- **Changes from the plan:** no separate sparse save format was needed (saves were already sparse); a Standard brain still refuses > 5 senses with a pointer to Big; the learning curve was capped at ~400 points for long runs.
+- Tests: `tests/limits.test.ts`; browser test checks the Big brain's budget and the estimate.
 
 The goal: give players more room to build ambitious skills, without losing what makes the game legible (every number is measured, nothing is a black box, and failure is explained).
 

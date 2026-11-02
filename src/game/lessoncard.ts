@@ -39,7 +39,7 @@ export function importLessonCard(s: GameState, text: string): LessonImport {
   }
   const w = Number(L.size.w), h = Number(L.size.h), ticks = Number(L.maxTicks), episodes = Number(L.learner.episodes);
   if (![w, h].every((n) => Number.isInteger(n) && n >= 4 && n <= 16)) return { ok: false, reason: 'The lesson’s pen size is out of range.' };
-  if (!Number.isFinite(ticks) || ticks < 1 || ticks > 500 || !Number.isFinite(episodes) || episodes < 0 || episodes > 50000) return { ok: false, reason: 'The lesson’s time or practice settings are out of range.' };
+  if (!Number.isFinite(ticks) || ticks < 1 || ticks > 500 || !Number.isFinite(episodes) || episodes < 0 || episodes > 100000) return { ok: false, reason: 'The lesson’s time or practice settings are out of range.' };
   const unknown = new Set<string>();
   let nodes = 0;
   for (const root of stageRoots(L as StageSpec)) {

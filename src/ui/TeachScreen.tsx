@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Trainer } from '../learning/trainer';
 import { cloneWorld, legalActions, step, type Action, type World } from '../sim/world';
 import { probeField, probePath } from '../learning/probe';
 import { audio } from '../audio/engine';
@@ -23,7 +24,7 @@ import { useReplay } from './replay';
 import { startTraining } from './training';
 import { activePet, activeRevision, getSkill, isCertified, isPreset, sensePolicyOf, staleUses, subskillsFor } from '../game/pets';
 import { MAX_OPTIONS, MAX_WATCH } from '../learning/routine';
-import { ABILITY_LABELS, ABILITY_ORDER, MAX_SENSES, STATE_MAX, STATE_WARN, presetSenses, stateSpaceSize } from '../learning/senses';
+import { ABILITY_LABELS, ABILITY_ORDER, BRAINS, MAX_EPISODES, MAX_TICKS, brainOf, presetSenses, stateSpaceSize, type Brain } from '../learning/senses';
 import { templateOf } from '../learning/skilldef';
 import { canTrain, trainingCost, undoStage } from '../game/state';
 import { currentStep, isGuideStage } from '../game/tutorial';
@@ -608,6 +609,7 @@ function PetBinder({ stage, pet }: { stage: StageSpec; pet: Pet }) {
   const skills: string[] = ['Approach', 'Avoid', 'Fetch'];
   const custom = !isPreset(stage.learner.skill);
   const template = templateOf(stage);
+  const maxEps = template === 'sense' ? MAX_EPISODES.sense : MAX_EPISODES.composite;
   const canInvent = s.state.progress.unlocks.includes('custom');
   const lockedSkill = (k: string) => (k === 'Fetch' && !s.state.progress.unlocks.includes('fetch') ? 'Unlocks after earning 5 coins with a certified Approach' : k === 'Avoid' && !s.state.progress.unlocks.includes('avoid') ? 'Unlocks after earning 12 coins' : null);
   const newSkill = () => {
@@ -683,13 +685,15 @@ function PetBinder({ stage, pet }: { stage: StageSpec; pet: Pet }) {
         </>
       )}
       <label className="param-edit" data-tut="practice-slider">Practice tries
-        <input type="range" min={template === 'fetch' ? 100 : 300} max={template === 'fetch' ? 4000 : 12000} step={100} value={stage.learner.episodes} onChange={(e) => update((st) => { st.learner.episodes = Number(e.target.value); })} />
-        <span className="num">{stage.learner.episodes}</span>
+        <input type="range" min={template === 'fetch' ? 100 : 300} max={maxEps} step={100} value={Math.min(maxEps, stage.learner.episodes)} onChange={(e) => update((st) => { st.learner.episodes = Number(e.target.value); })} />
+        <input className="num-input" type="number" aria-label="Practice tries (exact)" min={100} max={maxEps} step={100} value={stage.learner.episodes} onChange={(e) => { const v = Math.round(Number(e.target.value)); if (Number.isFinite(v)) update((st) => { st.learner.episodes = Math.max(100, Math.min(maxEps, v)); }); }} />
       </label>
       <label className="param-edit">Time per try
-        <input type="range" min={10} max={120} step={5} value={stage.maxTicks} onChange={(e) => update((st) => { st.maxTicks = Number(e.target.value); })} />
-        <span className="num">{stage.maxTicks} steps</span>
+        <input type="range" min={10} max={MAX_TICKS} step={5} value={stage.maxTicks} onChange={(e) => update((st) => { st.maxTicks = Number(e.target.value); })} />
+        <input className="num-input" type="number" aria-label="Time per try in steps (exact)" min={10} max={MAX_TICKS} step={5} value={stage.maxTicks} onChange={(e) => { const v = Math.round(Number(e.target.value)); if (Number.isFinite(v)) update((st) => { st.maxTicks = Math.max(10, Math.min(MAX_TICKS, v)); }); }} />
+        <span className="small muted">steps</span>
       </label>
+      <TrainingEstimate stage={stage} />
       <h4>{pet.name}’s temperament</h4>
       <p className="small muted">Stable tendencies, separate from learned skills. Each slider changes real learning parameters.</p>
       <Trait pet={pet} k="curiosity" label="Curiosity" help="How much they keep exploring: exploration floor during lessons (2–12%) and how often Auto tries new jobs." />
@@ -786,22 +790,55 @@ function RoutineEditor({ stage, pet, update }: { stage: StageSpec; pet: Pet; upd
   );
 }
 
+/** A quick timing of a few practice tries on this device, scaled to the whole run (sense skills). */
+function TrainingEstimate({ stage }: { stage: StageSpec }) {
+  const shape = JSON.stringify([stage.environment, stage.rules, stage.learner.senses, stage.abilities, stage.maxTicks, stage.size, stage.success, stage.fail]);
+  const perTry = useMemo(() => {
+    if (templateOf(stage) !== 'sense') return null;
+    try {
+      const probe = structuredClone(stage);
+      const t = new Trainer({ stage: probe, episodes: 30, traits: { ...DEFAULT_TRAITS } });
+      const t0 = performance.now();
+      while (!t.done) t.runChunk(30, false);
+      return (performance.now() - t0) / 30;
+    } catch { return null; }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shape]);
+  if (perTry === null) return null;
+  const secs = (perTry * stage.learner.episodes) / 1000;
+  const text = secs < 2 ? 'a moment' : secs < 90 ? `about ${Math.round(secs)} s` : `about ${Math.round(secs / 60)} min`;
+  return <p className="small muted" data-tut="estimate">Training time on this device: {text} (at most — tries get shorter as {stage.learner.skill} learns). You can stop early and keep what it learned.</p>;
+}
+
 function SenseEditor({ stage, update, custom }: { stage: StageSpec; update: (fn: (st: StageSpec) => void) => void; custom: boolean }) {
   const s = useStore();
   const senses = stage.learner.senses ?? presetSenses();
   const size = stateSpaceSize(senses);
   const errs = nodesWithErrors(validateStage(stage, REGISTRY, new Set(s.state.progress.unlocks)));
-  const pctBudget = Math.min(100, (100 * Math.log10(Math.max(1, size))) / Math.log10(STATE_MAX));
+  const brain = BRAINS[brainOf(stage.learner)];
+  const pctBudget = Math.min(100, (100 * Math.log10(Math.max(1, size))) / Math.log10(brain.states));
   return (
     <>
+      {custom && (
+        <>
+          <h4>Brain</h4>
+          <div className="seg" role="radiogroup" aria-label="Brain" data-tut="brain">
+            {(Object.keys(BRAINS) as Brain[]).map((b) => (
+              <button key={b} role="radio" aria-checked={brainOf(stage.learner) === b} className={brainOf(stage.learner) === b ? 'on' : ''}
+                onClick={() => update((st) => { if (b === 'big') st.learner.brain = 'big'; else delete st.learner.brain; })}>{BRAINS[b].label}</button>
+            ))}
+          </div>
+          <p className="small muted">{brain.hint}</p>
+        </>
+      )}
       <h4>Senses <span className="muted small">— what {custom ? 'it' : 'this skill'} pays attention to</span></h4>
       <div className="many senses" data-tut="senses">
         {senses.map((n, i) => <NodeChip key={n.id} stage={stage} n={n} slot={{ parentId: '#senses', socket: 'senses', index: i }} errors={errs} />)}
-        {senses.length < MAX_SENSES && <SlotChip stage={stage} slot={{ parentId: '#senses', socket: 'senses', index: null }} label="+ sense" errors={errs} />}
+        {senses.length < brain.senses && <SlotChip stage={stage} slot={{ parentId: '#senses', socket: 'senses', index: null }} label="+ sense" errors={errs} />}
       </div>
       <div className="budget" aria-label={`${size} situations to learn`}>
-        <div className={`bar ${size > STATE_WARN ? 'warn' : ''}`} role="meter" aria-valuemin={0} aria-valuemax={STATE_MAX} aria-valuenow={size}><i style={{ width: `${pctBudget}%` }} /></div>
-        <span className="small"><b className="num">{size.toLocaleString()}</b> situations to learn {size > STATE_MAX ? '— too many!' : size > STATE_WARN ? '— needs lots of practice' : ''}</span>
+        <div className={`bar ${size > brain.warn ? 'warn' : ''}`} role="meter" aria-valuemin={0} aria-valuemax={brain.states} aria-valuenow={size}><i style={{ width: `${pctBudget}%` }} /></div>
+        <span className="small"><b className="num">{size.toLocaleString()}</b> of {brain.states.toLocaleString()} situations {size > brain.states ? '— too many!' : size > brain.warn ? '— needs lots of practice' : ''}</span>
       </div>
       <p className="small muted">More senses = smarter but slower to learn. Each sense multiplies the situations your pet must practise.</p>
       <h4>Abilities</h4>

@@ -446,3 +446,5 @@ button.node { padding: 2px 9px; font-weight: 600; }
   .roster-list li { flex-wrap: wrap; }
   .roster-actions { flex-direction: row; flex-wrap: wrap; width: 100%; }
 }
+
+.num-input { width: 6.5em; margin-left: 6px; }

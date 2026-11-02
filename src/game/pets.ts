@@ -1,6 +1,6 @@
 import type { SkillName, StageSpec } from '../domain/types';
 import { newId } from '../domain/spec';
-import type { SerializedQ } from '../learning/qtable';
+import { DENSE_MAX_STATES, type SerializedQ } from '../learning/qtable';
 import type { TrainingReport } from '../learning/report';
 import type { GameState, NavigatorName, PaletteId, Pet, Skill, SkillRevision } from './types';
 import { addJournal, addJournalOnce, pct } from './journal';
@@ -216,6 +216,7 @@ export function saveRevision(s: GameState, pet: Pet, input: SaveRevisionInput): 
   const prevActive = activeRevision(skill);
   const keepPrev = !rev.eval.passed && !!prevActive?.eval.passed;
   if (!keepPrev) skill.activeRev = rev.rev;
+  trimBigTables(skill);
   pet.mastery[input.stage.id] = {
     rate: rev.eval.successRate, episodes: rev.eval.episodes, rev: rev.rev, skill: name, at: Date.now(), transfer: rev.eval.transferRate,
   };
@@ -230,9 +231,23 @@ export function saveRevision(s: GameState, pet: Pet, input: SaveRevisionInput): 
   return rev;
 }
 
+/**
+ * Big-brain tables can be hundreds of KB, so a skill keeps the tables of its active revision and its newest other
+ * revision only; older ones keep their report (and can't be switched back to).
+ */
+export function trimBigTables(skill: Skill): void {
+  const big = (r: SkillRevision) => Object.keys(r.policy?.rows ?? {}).length > 0 && (r.policy?.nS ?? 0) > DENSE_MAX_STATES;
+  const newestOther = [...skill.revisions].reverse().find((r) => r.rev !== skill.activeRev);
+  for (const r of skill.revisions) {
+    if (r.rev === skill.activeRev || r === newestOther || !big(r)) continue;
+    r.policy = { ...r.policy, rows: {} };
+    r.tableDropped = true;
+  }
+}
+
 export function rollbackSkill(s: GameState, pet: Pet, name: SkillName, rev: number): boolean {
   const k = getSkill(pet, name);
-  if (!k || !k.revisions.some((r) => r.rev === rev)) return false;
+  if (!k || !k.revisions.some((r) => r.rev === rev && !r.tableDropped)) return false;
   k.activeRev = rev;
   addJournal(s, pet.id, 'rollback', `${pet.name}'s ${name} was switched to revision ${rev}.`);
   return true;

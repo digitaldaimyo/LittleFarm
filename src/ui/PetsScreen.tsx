@@ -98,7 +98,7 @@ function SkillHistory({ pet, k }: { pet: Pet; k: Skill }) {
               <td className="num">{Math.round(r.eval.successRate * 100)}% <span className="muted">n={r.eval.episodes}</span></td>
               <td className="num">{Math.round(r.eval.beforeRate * 100)}%</td>
               <td className="num">{Math.round(r.eval.transferRate * 100)}%</td>
-              <td>{r.rev !== k.activeRev && <button className="btn ghost small" onClick={() => s.mutate((g) => { rollbackSkill(g, g.pets.find((p) => p.id === pet.id)!, k.name, r.rev); store.runtime.exec = null; })}>Use</button>}</td>
+              <td>{r.tableDropped ? <span className="small muted" title="Big-brain tables are kept for the active and newest revisions only, to keep saves small">table not kept</span> : r.rev !== k.activeRev && <button className="btn ghost small" onClick={() => s.mutate((g) => { rollbackSkill(g, g.pets.find((p) => p.id === pet.id)!, k.name, r.rev); store.runtime.exec = null; })}>Use</button>}</td>
             </tr>
           ))}
         </tbody>

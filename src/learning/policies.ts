@@ -40,8 +40,8 @@ export class SensePolicy {
     const enc = this.encoder(target);
     const v = enc.encode(w, base);
     let s = enc.index(v);
-    if (this.q.visits[s] < MIN_VISITS) {
-      for (const b of enc.backoffs(v)) { s = b; if (this.q.visits[s] >= MIN_VISITS) break; }
+    if (this.q.visits(s) < MIN_VISITS) {
+      for (const b of enc.backoffs(v)) { s = b; if (this.q.visits(s) >= MIN_VISITS) break; }
     }
     return this.def.actions[this.q.greedy(s, legalActionIdx(w, this.def.actions))];
   }

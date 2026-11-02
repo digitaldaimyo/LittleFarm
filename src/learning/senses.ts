@@ -25,6 +25,19 @@ export const STATE_WARN = 50000;
 export const STATE_MAX = 100000;
 export const MAX_SENSES = 5;
 
+export type Brain = 'standard' | 'big';
+/** What each brain can hold. Big tables are stored sparsely (only situations the pet actually met). */
+export const BRAINS: Record<Brain, { label: string; senses: number; states: number; warn: number; hint: string }> = {
+  standard: { label: 'Standard', senses: MAX_SENSES, states: STATE_MAX, warn: STATE_WARN, hint: 'Up to 5 senses and 100,000 situations. Learns quickly.' },
+  big: { label: 'Big', senses: 8, states: 2000000, warn: 500000, hint: 'Up to 8 senses and 2,000,000 situations, keeping only the ones met. Needs much more practice: a 6-sense lesson with 280,000 situations went 53% → 70% → 83% at 12,000 → 30,000 → 60,000 tries.' },
+};
+export function brainOf(learner: { brain?: Brain }): Brain {
+  return learner.brain === 'big' ? 'big' : 'standard';
+}
+/** Practice and time limits (the Pet binder's sliders, lesson cards). */
+export const MAX_EPISODES = { sense: 100000, composite: 20000 };
+export const MAX_TICKS = 400;
+
 /** Backoff priority: lower drops first. Senses not listed are never dropped. */
 const DROP_RANK: Record<string, number> = { 'sense.hazards': 1, 'sense.blocked': 2, 'sense.still': 3, 'sense.carrying': 4, 'sense.here': 5 };
 

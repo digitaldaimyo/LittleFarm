@@ -2,7 +2,7 @@ import type { StageSpec } from '../domain/types';
 import type { TrainingReport } from '../learning/report';
 import type { GameState } from './types';
 import { templateOf } from '../learning/skilldef';
-import { stateSpaceSize } from '../learning/senses';
+import { BRAINS, brainOf, stateSpaceSize } from '../learning/senses';
 import { OBJECT_BY_ID } from '../domain/packs/farm';
 import { activeRevision, getSkill } from './pets';
 
@@ -35,7 +35,7 @@ export function reportTips(stage: StageSpec, r: TrainingReport, episodes: number
   if (r.after.successRate >= 0.5 && r.transfer.successRate < r.after.successRate - 0.25) {
     out.push({ id: 'transfer', lesson: 'where', text: 'It struggles in bigger, busier pens. Add a little variety to the practice pen — more obstacles, the things the real job will meet.' });
   }
-  if (templateOf(stage) === 'sense' && stage.learner.senses && stateSpaceSize(stage.learner.senses) > 50000) {
+  if (templateOf(stage) === 'sense' && stage.learner.senses && stateSpaceSize(stage.learner.senses) > BRAINS[brainOf(stage.learner)].warn) {
     out.push({ id: 'situations', lesson: 'invent', text: 'So many senses means a huge number of situations to practise. Try dropping a sense the job doesn’t need.' });
   }
   if (r.randomOptions && r.after.successRate < r.randomOptions.successRate + 0.1) {

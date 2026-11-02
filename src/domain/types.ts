@@ -102,6 +102,8 @@ export interface LearnerSpec {
   /** Navigation skill a composite uses as its movement option. */
   navigator?: 'Approach' | 'Avoid';
   episodes: number;
+  /** Sense skills: the learner's capacity. Standard (default) or Big (more senses and situations; needs more practice). */
+  brain?: 'standard' | 'big';
 }
 
 export interface StageSpec {

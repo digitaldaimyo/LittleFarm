@@ -1,4 +1,5 @@
 import type { CardDef, Diagnostic, SpecNode, StageSpec, TypeExpr } from './types';
+import { BRAINS, brainOf } from '../learning/senses';
 import type { Registry } from './registry';
 import { REGISTRY, kindOfCard } from './registry';
 import { fits, generic, nominal, typeToString } from './typecheck';
@@ -156,7 +157,6 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
   if (template === 'sense') {
     const senses = L.senses ?? [];
     if (L.senses && senses.length === 0) out.push({ severity: 'error', code: 'no-senses', message: 'Pick at least one Sense — otherwise the pet is learning blindfolded.' });
-    if (senses.length > 5) out.push({ severity: 'error', code: 'too-many-senses', message: 'At most 5 senses per skill.' });
     const senseCtx: Ctx = { reg, itBound: false, placed: null, out, target: L.focus, areas };
     let size = 1;
     for (const sn of senses) {
@@ -166,8 +166,11 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
       const k = isNode(w) ? kindOfCard(w.cardId) : null;
       if (k && !placed.has(k)) out.push({ severity: 'warning', code: 'sense-missing', nodeId: sn.id, message: `This skill watches for ${reg.objects.get(k)?.name ?? k}, but none is in the pen, so it can't learn what that sense means.` });
     }
-    if (size > 100000) out.push({ severity: 'error', code: 'state-budget', message: `These senses make ${size.toLocaleString()} situations to learn — too many for one pet (max 100,000). Drop a sense or use a cheaper one (e.g. “How far is…” instead of “Where is…”).` });
-    else if (size > 50000) out.push({ severity: 'warning', code: 'state-budget', message: `${size.toLocaleString()} situations to learn — this will need lots of practice tries.` });
+    const brain = BRAINS[brainOf(L)];
+    const big = brainOf(L) === 'big';
+    if (senses.length > brain.senses) out.push({ severity: 'error', code: 'too-many-senses', message: `A ${brain.label} brain holds up to ${brain.senses} senses (this skill has ${senses.length}).${big ? '' : ' Choose the Big brain in the Pet binder, or drop a sense.'}` });
+    if (size > brain.states) out.push({ severity: 'error', code: 'state-budget', message: `These senses make ${size.toLocaleString()} situations to learn — too many for a ${brain.label} brain (max ${brain.states.toLocaleString()}). ${big ? 'Drop a sense' : 'Choose the Big brain in the Pet binder, drop a sense,'} or use a cheaper one (e.g. “How far is…” instead of “Where is…”).` });
+    else if (size > brain.warn) out.push({ severity: 'warning', code: 'state-budget', message: `${size.toLocaleString()} situations to learn — this will need lots of practice tries${big ? ' (tens of thousands)' : ''}.` });
     if (!stage.abilities.length) out.push({ severity: 'error', code: 'no-abilities', message: 'Give the skill at least one ability (Move, Stay…).' });
   }
   if (template === 'routine') {

@@ -427,7 +427,7 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
       // Basket run: lift a basket, empty it at the house (or a shed with room) if it holds anything, then set it
       // down by the crops. Walks use the learned movement skill; the last step onto the chosen tile is instinct.
       const held0 = heldBasket(w);
-      let basketId = held0?.id ?? toteTarget(s)?.id ?? null;
+      const basketId = held0?.id ?? toteTarget(s)?.id ?? null;
       let phase: 'fetch' | 'unload' | 'place' | 'placed' = held0 ? (storeCount(held0) > 0 ? 'unload' : 'place') : 'fetch';
       let walk: FarmWalk | null = null;
       let walkFor = '';

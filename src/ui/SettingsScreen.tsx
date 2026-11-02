@@ -54,6 +54,7 @@ export function SettingsScreen() {
       <div className="panel">
         <h3>Your save</h3>
         <p className="small muted">Everything lives on this device (IndexedDB). No accounts, no servers, no analytics. Auto-saves every few seconds and after lessons.</p>
+        <SaveSize />
         {s.ui.loadDiagnostics.length > 0 && <ul className="small">{s.ui.loadDiagnostics.map((d, i) => <li key={i}>{d}</li>)}</ul>}
         <div className="row gap wrap">
           <button className="btn" onClick={exportSave}>Export JSON</button>
@@ -111,5 +112,18 @@ function SoundSettings() {
       <label className="small"><input type="checkbox" checked={a.offScreen} disabled={!g.settings.sound} onChange={(e) => set({ offScreen: e.target.checked })} /> Farm sounds on other screens (quieter)</label>
       <p className="small muted">All sounds are made on your device as you play; nothing is downloaded. Pets chirp in their own voice when they pick something up or finish a job.</p>
     </div>
+  );
+}
+
+/** How big the save is, and what takes the room (Big-brain skills can be hundreds of KB). */
+function SaveSize() {
+  const s = useStore();
+  const g = s.state;
+  const total = serializeGame(g).length;
+  const skills = g.pets.flatMap((p) => p.skills.map((k) => ({ name: `${p.name}’s ${k.name}`, n: JSON.stringify(k).length })));
+  skills.sort((a, b) => b.n - a.n);
+  const kb = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
+  return (
+    <p className="small" data-tut="save-size">Save size: <b>{kb(total)}</b>{skills[0] && skills[0].n > 50 * 1024 ? ` — largest: ${skills.slice(0, 2).map((k) => `${k.name} ${kb(k.n)}`).join(', ')}` : ''}.{total > 4 * 1024 * 1024 ? ' Big-brain skills keep their two newest tables; older revisions keep only their reports.' : ''}</p>
   );
 }

@@ -210,6 +210,11 @@ try {
     await page.click('[data-tut="senses"] .slot:has-text("+ sense")');
     await page.click('.sleeve .card:has-text("Patience")');
     await step('Add the rules', 'L6: Stay ability and Patience sense added');
+    // Looser limits: the Big brain raises the situations budget; the estimate is shown; back to Standard.
+    await page.click('[data-tut="brain"] button:has-text("Big")');
+    check((await page.textContent('[data-tut="senses"] + .budget')).includes('of 2,000,000'), 'limits: the Big brain raises the budget to 2,000,000 situations');
+    check((await page.locator('[data-tut="estimate"]').count()) === 1, 'limits: a training-time estimate is shown');
+    await page.click('[data-tut="brain"] button:has-text("Standard")');
     await tab('Rules');
     await page.click('[data-tut="suggested"] .suggest');
     await train();

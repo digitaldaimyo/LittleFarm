@@ -236,7 +236,9 @@ export class Trainer {
       const rec = recordSample && this.episode === stop - 1;
       const t = this.runOne(rec);
       if (rec) sample = t;
-      if (this.episode % 25 === 0 || this.episode === this.cfg.episodes) {
+      // About 400 curve points at most (every 25 tries up to 10,000 tries, as before).
+      const every = Math.max(25, Math.round(this.cfg.episodes / 400 / 25) * 25);
+      if (this.episode % every === 0 || this.episode === this.cfg.episodes) {
         this.curve.push({ episode: this.episode, success: this.successMA(), reward: this.rewardMA() });
       }
     }
