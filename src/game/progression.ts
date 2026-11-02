@@ -1,10 +1,8 @@
 import type { GameState } from './types';
 import { activePet, getSkill, isCertified } from './pets';
 import { addJournal } from './journal';
-import { addObject, emptyStore } from '../sim/world';
-import { addCropPlot, expandFarm } from './expand';
-
-const SCARECROW_POS = { x: 8, y: 2 };
+import { addObject } from '../sim/world';
+import { expandFarm } from './expand';
 
 export interface UnlockDef {
   id: string;
@@ -47,16 +45,10 @@ export interface ShopItem {
 export const SHOP: ShopItem[] = [
   { id: 'snack', label: 'Training snack', price: 3, describe: '+40 energy for the active pet.', consumable: true },
   { id: 'trees', label: 'Tree cards', price: 4, describe: 'Trees for your pens.' },
-  { id: 'fences', label: 'Fence cards', price: 6, describe: 'Fences for pen mazes.' },
-  { id: 'bushes', label: 'Two more berry bushes', price: 8, describe: 'More berries to forage.' },
+  { id: 'fences', label: 'Fence cards', price: 6, describe: 'Fences for pen mazes — and for your farm (Layout).' },
   { id: 'bed', label: 'Comfy bed', price: 12, describe: 'Naps restore energy twice as fast.' },
-  { id: 'patch2', label: 'Third carrot patch', price: 15, describe: 'More carrots to sell.', requires: 'carrots' },
-  { id: 'sunflowers', label: 'Sunflower patch', price: 10, describe: 'Seed 2, sells for 7. Crows love sunflowers — they go for them before the berries. Comes planted.', requires: 'carrots' },
-  { id: 'pumpkins', label: 'Pumpkin patch', price: 12, describe: 'Seed 3, sells for 12, but slow to grow. Comes planted.', requires: 'carrots' },
   { id: 'chickens', label: 'Two chickens', price: 10, describe: 'They wander — and lay eggs (3 coins each at the house) only while in the coop. Teach a pet to herd them!', requires: 'custom' },
   { id: 'orchard', label: 'Orchard expansion', price: 25, describe: 'The farm grows to 16×12: a fenced orchard of berry bushes behind a gate, and a southern meadow.', requires: 'custom' },
-  { id: 'scarecrow', label: 'Scarecrow', price: 8, describe: 'Crows won’t come within 2 tiles of it (protects the top-right bushes).', requires: 'custom' },
-  { id: 'shed', label: 'Shed', price: 25, describe: 'Storage for 40 by the house: 4 slots of 10, one kind each. Harvesters fill it; haulers take it to the house.', requires: 'fetch' },
   { id: 'adopt', label: 'Adopt another pet', price: 20, describe: 'A second trainee with their own skills.', consumable: true },
 ];
 
@@ -112,19 +104,6 @@ export function buy(s: GameState, id: string): BuyResult {
     }
   }
   if (id === 'orchard') expandFarm(s);
-  if (id === 'scarecrow' && !s.farm.world.objects.some((o) => o.kind === 'scarecrow')) {
-    const w = s.farm.world;
-    const busy = w.objects.some((o) => !o.carried && !o.delivered && o.x === SCARECROW_POS.x && o.y === SCARECROW_POS.y);
-    if (!busy) addObject(w, 'scarecrow', SCARECROW_POS.x, SCARECROW_POS.y);
-  }
-  if (id === 'shed' && !s.farm.world.objects.some((o) => o.kind === 'shed')) {
-    // Next to the house, on the first free tile (layout mode will let you move it later).
-    const w = s.farm.world;
-    const free = (x: number, y: number) => x >= 0 && y >= 0 && x < w.w && y < w.h && !w.objects.some((o) => !o.carried && !o.delivered && o.x === x && o.y === y) && !(w.pet.x === x && w.pet.y === y);
-    const spot = [[2, 1], [1, 2], [2, 2], [0, 1], [1, 0], [2, 0], [0, 2]].find(([x, y]) => free(x, y));
-    if (spot) addObject(w, 'shed', spot[0], spot[1]).store = emptyStore('shed');
-  }
-  if (id === 'pumpkins' || id === 'sunflowers') addCropPlot(s, id === 'pumpkins' ? 'pumpkin' : 'sunflower');
   if (id === 'snack') {
     const p = activePet(s);
     if (p) p.energy = Math.min(100, p.energy + 40);

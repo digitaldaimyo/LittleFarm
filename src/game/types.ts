@@ -9,7 +9,7 @@ import type { Traits } from '../learning/episodes';
 import type { ExecutiveTable, Invocation } from '../learning/executive';
 import type { World } from '../sim/world';
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 export type PaletteId = 'meadow' | 'plum' | 'sky' | 'moss';
 export type JobId = 'forage' | 'deliver' | 'plant' | 'rest' | 'skill';
@@ -170,6 +170,8 @@ export interface FarmState {
   rngState2?: number;
   /** Neighbours' requests board. */
   requests?: FarmRequest[];
+  /** Farm layouts applied so far (layout mode). */
+  layoutEdits?: number;
   /** Current shower: raining until this tick; the temporary pond tiles it made. */
   rainUntil?: number;
   puddles?: number[];

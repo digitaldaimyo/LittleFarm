@@ -414,3 +414,15 @@ button.node { padding: 2px 9px; font-weight: 600; }
 .store-badge rect { fill: rgba(255,255,255,.92); stroke: #7F5427; stroke-width: 1; }
 .store-badge text { font-size: 9px; font-weight: 700; fill: #5E3D1C; font-family: system-ui, sans-serif; }
 .store-badge.full rect { fill: #FCE3B5; stroke: #B5651D; }
+
+/* Farm layout mode */
+.layout-panel { border-color: var(--leaf-ink); }
+.layout-panel .row { gap: 8px; flex-wrap: wrap; }
+.layout-tools { display: flex; gap: 6px; margin: 6px 0; }
+.layout-palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; margin-bottom: 8px; }
+.layout-item { display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 4px 8px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--paper); font-size: 13px; text-align: left; }
+.layout-item span:nth-of-type(1) { flex: 1; }
+.layout-item.sel { border-color: var(--leaf-ink); background: var(--leaf-tint); }
+.layout-item:disabled { opacity: 0.45; }
+.layout-changes { margin: 4px 0 8px; padding-left: 18px; }
+.layout-preview { background: var(--mat); border-radius: 10px; padding: 8px 10px; margin: 6px 0; }

@@ -6,7 +6,9 @@ import { effectiveOutput } from './validate';
 import { placedKinds } from './spec';
 
 /** Unlock ids sold in the shop (kept here to avoid a domain → game import). */
-const SHOP_UNLOCKS = new Set(['trees', 'fences', 'bushes', 'bed', 'patch2', 'chickens', 'scarecrow']);
+const SHOP_UNLOCKS = new Set(['trees', 'fences', 'bed', 'chickens']);
+/** Unlocked by placing one on the farm (Layout). */
+const LAYOUT_UNLOCKS = new Set(['scarecrow', 'pumpkins', 'sunflowers']);
 
 export interface HandContext {
   socket: TypeExpr;
@@ -121,7 +123,7 @@ export function buildHand(reg: Registry, ctx: HandContext): Hand {
     const obj = kind ? reg.objects.get(kind) : undefined;
     if (card.unlock && !ctx.unlocks.has(card.unlock)) {
       status = 'locked';
-      reason = SHOP_UNLOCKS.has(card.unlock) ? `Unlock “${card.presentation.title}” in the farm shop.` : `Unlocks as your farm grows (${card.unlock === 'carrots' ? 'certify Fetch' : 'keep playing'}).`;
+      reason = SHOP_UNLOCKS.has(card.unlock) ? `Unlock “${card.presentation.title}” in the farm shop.` : LAYOUT_UNLOCKS.has(card.unlock) ? `Place one on your farm (Farm → Layout) to use it in pens.` : `Unlocks as your farm grows (${card.unlock === 'carrots' ? 'certify Fetch' : 'keep playing'}).`;
     } else if (obj && ctx.placing && !obj.penPlaceable) {
       continue; // farm-only fixtures never appear in pen hands
     } else if (obj && !ctx.placing && !placed.has(obj.id)) {

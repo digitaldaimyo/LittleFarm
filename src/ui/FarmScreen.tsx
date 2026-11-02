@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PlanMat } from './PlanMat';
 import { Tips } from './Tips';
+import { LayoutPanel, layoutTap, openLayout } from './LayoutPanel';
 import { farmTips } from '../game/coach';
 import { describeRequest, requestHelp } from '../game/requests';
 import { chapterById, startChapter } from '../game/tutorial';
@@ -57,6 +58,7 @@ export function FarmScreen() {
   const fxTypes = s.ui.fx.filter((x) => performance.now() - x.at < 900).map((x) => x.type);
   const mood = pet ? moodFor(pet, fxTypes, f.current?.behaviorId, f.stun) : 'idle';
   const manual = pet?.assignment.mode === 'manual';
+  const layout = s.ui.layout;
   const next = nextUnlock(g);
   const [showPlan, setShowPlan] = useState(false);
   const perMin = recentProduction(f, 214); // ≈ 60s at 1×
@@ -108,12 +110,13 @@ export function FarmScreen() {
       <section className="stage-col">
         <div className="farm-frame">
           <WorldView
-            world={f.world} palette={pet.palette} mood={mood} ground="farm" darkness={darkness}
+            world={layout ? layout.draft.world : f.world} palette={pet.palette} mood={mood} ground="farm" darkness={layout ? 0 : darkness}
+            highlight={layout?.pick ?? null}
             palette2={f.duty2PetId ? g.pets.find((p) => p.id === f.duty2PetId)?.palette ?? null : null}
             label={`Farm. ${pet.name} is at column ${f.world.pet.x}, row ${f.world.pet.y}.`}
             fx={s.ui.fx}
-            onTile={manual ? (x, y) => { if (!queueManualPath(g, store.runtime, x, y)) store.toast('Can’t get there.', 'warn'); } : undefined}
-            tileLabel={(x, y) => `Walk to ${x},${y}`}
+            onTile={layout ? layoutTap : manual ? (x, y) => { if (!queueManualPath(g, store.runtime, x, y)) store.toast('Can’t get there.', 'warn'); } : undefined}
+            tileLabel={(x, y) => (layout ? `Layout: tile ${x},${y}` : `Walk to ${x},${y}`)}
           />
         </div>
         <div className="farm-bar">
@@ -126,8 +129,9 @@ export function FarmScreen() {
           <span className={`clock ${clock.night ? 'night' : ''}`} aria-label={`Day ${clock.day}, ${clock.label}`}>{clock.night ? '☾' : '☀'} Day {clock.day} · {clock.label}</span>
           {f.world.raining && <span className="clock rain" aria-label="Raining">☂ Rain — plots watered</span>}
           <span className="muted small">{perMin} coins in the last minute</span>
+          {!layout && <button className="btn ghost small" data-tut="layout-btn" onClick={openLayout}>Layout…</button>}
         </div>
-        {manual && (
+        {manual && !layout && (
           <div className="manual-pad" aria-label="Steering controls">
             <button onClick={() => queueManual(store.runtime, 'N')} aria-label="Up">▲</button>
             <div>
@@ -149,6 +153,7 @@ export function FarmScreen() {
       </section>
 
       <aside className="side-col">
+        <LayoutPanel />
         <div className="panel pet-card">
           <PetSprite palette={pet.palette} mood={mood} size={56} carrying={carriedKind ?? null} />
           <div className="grow">

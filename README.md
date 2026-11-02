@@ -21,7 +21,7 @@ npm run dev        # http://localhost:5173
 | `npm test` | Vitest: 158 tests in 21 files (sim, registry, learning, saves, farm, every milestone gate, the Field Guide, the card editor, sound, teaching polish, pens, cards, farm life, and a layout fingerprint that keeps existing lessons' layouts fixed) |
 | `npm run bench` | Trains every starter skill under 5 seeds and prints held-out results, hardware and timings |
 | `npm run evidence` | Reproduces the measurements behind the Field Guide and the Trainer's notebook |
-| `npm run e2e` | Browser test that plays all nine Field Guide lessons and the newer editor features with real clicks, about a minute (run `npm run build` first; needs Playwright with Chromium). `npm run e2e -- --from=4` skips lessons 1–3 |
+| `npm run e2e` | Browser test that plays all ten Field Guide lessons and the newer editor features with real clicks, about a minute (run `npm run build` first; needs Playwright with Chromium). `npm run e2e -- --from=4` skips lessons 1–3 |
 
 Requires Node 18+ (developed on Node 22). Needs no secrets or environment variables.
 
@@ -93,14 +93,15 @@ The **First lesson** banner (lesson 1 of the Field Guide) walks you through this
 
 ## The farm
 
-- **Produce travels; the house sells.** Coins come only from produce brought to the house (berry 2, carrot 5, sunflower 7, pumpkin 12, egg 3), plus fireflies. The **basket** stores 6 of one kind and a **shed** (shop) 4 kinds × 10; the map shows how full each is. A full basket gets a coaching tip.
-- **Crops and replanting.** Berry bushes regrow by themselves; carrot, sunflower and pumpkin plots go back to empty soil after each harvest and must be **planted** again, buying a seed (1, 2 or 3 coins). The shop sells sunflower and pumpkin patches. A farm can't get stuck: bushes are free, and a neighbour's seed packet arrives at dawn when nothing is growing and seeds are unaffordable.
+- **Produce travels; the house sells.** Coins come only from produce brought to the house (berry 2, carrot 5, sunflower 7, pumpkin 12, egg 3), plus fireflies. The **basket** stores 6 of one kind and a **shed** 4 kinds × 10; the map shows how full each is. A full basket gets a coaching tip.
+- **Crops and replanting.** Berry bushes regrow by themselves; carrot, sunflower and pumpkin plots go back to empty soil after each harvest and must be **planted** again, buying a seed (1, 2 or 3 coins). A farm can't get stuck: bushes are free, and a neighbour's seed packet arrives at dawn when nothing is growing and seeds are unaffordable.
+- **Your layout.** **Layout…** on the Farm pauses the farm and opens a draft: place berry bushes (4), carrot (3), sunflower (5) and pumpkin (6) patches, baskets (6), sheds (25), scarecrows (8) and fences (1); move things (free) or remove them (half the price back). Every change is checked as you go: the house's door stays clear, the coop stays whole, and everything must stay reachable from the house. **Preview half a day** races the farm as it is against the draft from the same moment, then **Apply** pays. Up to 8 crop plots (14 with the orchard).
 - **Jobs:** Auto, **Harvest** (pick a ripe crop, carry it to storage with room, or the house), **Plant** (empty soil, paying for the seed), **Haul** (Fetch: eggs and stored goods to the house), Nap, **Run a skill** (any of your skills or routines, aimed at anything), and **Steer** (tap tiles, or arrow keys, P pick up, D put down, W water, X shoo, G nudge a gate, L plant). The farm keeps running while you're on other screens.
 - **Day and night:** a day lasts about 5½ minutes at 1×, and the last 30% is night. Night darkens the farm, pets on Auto prefer to nap, and **fireflies** appear (+1 coin each, gone at dawn).
 - **Watering:** a pet with *Water* fills up at the **well** (3 splashes) and waters dry bushes or patches, which then regrow twice as fast.
 - **Creatures:**
-  - **Chickens** (shop) lay eggs only inside the **coop** (2 coins each, delivered by Fetch).
-  - From day 2, **crows** peck ripe crops by day. **Shoo** pushes a chicken one tile or sends a crow flying, and a **Scarecrow** keeps crows 2 tiles away.
+  - **Chickens** (shop) lay eggs only inside the **coop** (3 coins each at the house, hauled with Fetch).
+  - From day 2, **crows** peck ripe crops by day. **Shoo** pushes a chicken one tile or sends a crow flying, and a **Scarecrow** (placed in Layout) keeps crows 2 tiles away.
 - **Expansion and weather:**
   - The *Orchard expansion* grows the farm to 16×12 with a **gate**; *Nudge* opens or shuts it.
   - From day 2, gentle **rain** waters every plot and keeps crows away.
@@ -109,7 +110,7 @@ The **First lesson** banner (lesson 1 of the Field Guide) walks you through this
   - Rows are tried top to bottom, skipping jobs that can't do anything right now. *Has done…* in a row counts from when the current job started.
   - **Preview 300 ticks** shows exactly what the plan would do (the farm is deterministic).
   - The **starter plan** is the built-in Auto rules written out. *Learn among matches* lets the pet choose among applicable rows, and an **anti-dithering guard** steps in when rows flip-flop.
-- **Two pets** can work at once (**Also on duty**). They never chase the same thing (but may share the house and storage tiles). One harvesting while the other hauls earns the most.
+- **Two pets** can work at once (**Also on duty**). They never chase the same thing (but may share the house and storage tiles), and a resting pet naps at the house rather than in the other's way. Both on Auto, or one on Auto and one hauling, earn the most.
 
 ## The Field Guide
 
@@ -123,6 +124,7 @@ The **Guide** tab offers short, free lessons on setting up training that works, 
 7. *See what your pet learned*
 8. *Combine skills* (a routine is only as good as what it watches)
 9. *Plan the farm*
+10. *Lay out the farm* (a basket by the bushes vs a crop moved next to the house, in preview)
 
 It also holds the **Trainer's notebook** (a checklist built from measured results) and a **glossary**. **Coaching tips** appear in reports and on the farm when the evidence suggests a common mistake, each linking to its lesson.
 
@@ -165,5 +167,5 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 | `docs/ROADMAP.md` | The expansion roadmap (all six milestones shipped), later work, and what could come next |
 | `docs/TUTORIAL_PLAN.md` | The Field Guide's design, the evidence behind each lesson, and what shipped |
 | `docs/TEACHING_PLAN.md` | Polishing rules, conditions and pens: the plan, and what phases A–C shipped |
-| `docs/FARM_LIFE_PLAN.md` | Farm life: storage and selling at the house (phase A) and replanting with seed costs (phase B) shipped; then your own layout and a pet roster |
+| `docs/FARM_LIFE_PLAN.md` | Farm life: storage and selling at the house (A), replanting with seed costs (B) and your own layout (C) shipped; next, a pet roster (D) |
 | `docs/SOUND_PLAN.md` | Sound effects, ambience, music and settings: the plan, and what phases A–C shipped |

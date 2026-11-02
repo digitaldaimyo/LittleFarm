@@ -9,7 +9,7 @@ The **farm** is the home screen and the pet is always visible. The **pen** is a 
 The tutorial teaches *how a good trainer thinks*, not just which buttons exist. Full design and evidence: `docs/TUTORIAL_PLAN.md`.
 
 - **Lesson 1, First lesson** (10 steps, active from the start): adopt → open the pen → place a scattered berry → build the treat rule card by card → set SUCCESS → train Approach → read the report → save → Forage on the farm → earn 5 coins (Fetch unlocks). The tutorial pen starts with rocks but no berry, rules or SUCCESS. A suggested recipe sits behind "Stuck?".
-- **Lessons 2–9** appear in the **Guide** tab when they become useful (a locked lesson says what opens it): 2 *Read the report: practice*, 3 *Scatter, don't pin*, 4 *Pay for results, not effort*, 5 *Practise where it works*, 6 *Invent a skill*, 7 *See what your pet learned*, 8 *Combine skills*, 9 *Plan the farm*. Most try something the wrong way first and show the player's own two runs side by side.
+- **Lessons 2–9** appear in the **Guide** tab when they become useful (a locked lesson says what opens it): 2 *Read the report: practice*, 3 *Scatter, don't pin*, 4 *Pay for results, not effort*, 5 *Practise where it works*, 6 *Invent a skill*, 7 *See what your pet learned*, 8 *Combine skills*, 9 *Plan the farm*, 10 *Lay out the farm*. Most try something the wrong way first and show the player's own two runs side by side.
 - Every lesson can be started, paused, skipped and replayed. Field Guide training costs no energy and is never saved automatically.
 - A banner shows the current step, *why* it matters and, where useful, a button that does it ("Test my Approach here"). The control it refers to is outlined and scrolled into view.
 - The Guide also holds the **Trainer's notebook** (a checklist built from measured results) and a **glossary**.
@@ -51,7 +51,11 @@ Outside the tutorial, a training run is 4 taps from the farm (Teach → Curricul
 
 - **Plant** (a job, an ability and a card) walks to empty soil and plants it. Auto and the starter plan plant before harvesting, so the seed grows while the pet works. The Harvest job doesn't plant.
 - **Never stuck:** bushes keep a 0-coin farm earning, and at dawn, if nothing is growing and no seed is affordable, a neighbour's packet plants the cheapest plot for free.
-- With replanting, a pet on Auto with Fetch and carrots sells about 251 coins over two farm days (as before); adding pumpkin and sunflower patches gives about 279.
+- With replanting, a pet on Auto with Fetch and carrots sells about 247 coins over two farm days; adding a pumpkin and a sunflower patch gives about 310.
+
+**Your layout** (farm life, phase C). *Layout…* pauses the farm and edits a draft: place crop plots, baskets, sheds, scarecrows and fences; move things for free; remove them for half their price back (all of it if placed in this draft). A placement is refused, with the reason, if it's off the farm, on the house's door tile or the coop, on something, over the plot budget (8, or 14 with the orchard), unaffordable, or if it would cut the house, well, storage, a plot, a gate or the coop off from the house's door. The house, well, pond, gates and the orchard's fence stay put. *Preview half a day* runs the farm as it is and as drafted from the same moment and compares coins; *Apply* pays. Placing a scarecrow, sunflower or pumpkin also makes it available in pens.
+
+- **Measured** (one pet on Auto with Fetch and carrots, 3 seeds, 2,400 ticks): both bushes beside the house 208–249 vs 160–217 as they were; carrots beside the house helps 2 of 3 seeds; a *second* basket by the bushes loses (46–184): with one pet each basketed crop travels twice. With a hauler too, bushes beside the house help 2 of 3 seeds.
 
 **Watered** plots grow twice as fast, and the soil dries out when the next crop appears. Watering takes a learned skill: fill up at the well, then find dry plots.
 
@@ -68,7 +72,8 @@ Outside the tutorial, a training run is 4 taps from the farm (Teach → Curricul
 | Fetch lessons | Certified Approach + 5 coins earned |
 | Carrot patches | A certified Fetch |
 | Avoid lessons | 12 coins earned (after Fetch) |
-| Shop | Snack (+40 energy, 3), Tree cards (4), Fence cards (6), Two more bushes (8), Comfy bed (12), Third carrot patch (15, after carrots), Sunflower patch (10, after carrots), Pumpkin patch (12, after carrots), Shed (25, after Fetch), Adopt another pet (20). After *Your own skills*: Two chickens (10), Scarecrow (8), Orchard expansion (25) |
+| Shop | Snack (+40 energy, 3), Tree cards (4), Fence cards (6, also unlock fences in Layout), Comfy bed (12), Adopt another pet (20). After *Your own skills*: Two chickens (10), Orchard expansion (25) |
+| Layout (Farm → Layout…) | Berry bush 4, Carrot patch 3, Sunflower patch 5, Pumpkin patch 6 (patches after carrots, placed planted), Basket 6 (up to 4), Shed 25 (after Fetch, up to 2), Scarecrow 8 (after *Your own skills*, up to 2), Fence 1 (after Fence cards). Removing refunds half. Up to 8 crop plots, 14 with the orchard |
 | Field Guide lessons | Offered in context (see Tutorial) |
 
 Unlocks add **vocabulary** (new cards and skills) and **problems** (carrots need carrying, ponds need avoiding), not grind.

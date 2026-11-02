@@ -117,6 +117,14 @@ The same simulator runs pens, evaluation and the farm. Fixed seed + fixed action
   - Pets may share container tiles (no `buddy` obstacle there). Claims cover crops and eggs, never storage.
 - **Saves v6:** the farm's bin gets an empty one-slot store; `sold` starts at 0.
 
+### Farm life: your layout (phase C)
+- **`game/layout.ts`:** `LAYOUT_ITEMS` (catalog: kind, price, crop, requires, max, grants), a `LayoutDraft` (a cloned world + plots, net cost, ids placed in this draft, pen-card grants, a change log), `place` / `move` / `remove` with `canPlace` / `canMove` / `canRemove` returning reasons, `unreachable(world)` (BFS from the house's door tile over non-solid tiles, gates counted open; a solid target counts when a walkable tile touches it), `plotBudget`, `applyLayout` (pays, swaps in the world and plots, grants unlocks, journals), and `previewLayout` (two `farmTick` runs on clones from the same state: as is vs draft).
+- `Obj.fixed` marks the orchard's fence and gate (set by `expandFarm`; migrated for v6 saves).
+- **UI:** `ui/LayoutPanel.tsx` keeps the draft in `ui.layout`; the farm loop skips ticks while it's open; `WorldView` draws the draft and routes taps to `layoutTap`. Applying clears the runtime's current jobs and claims.
+- **Shop:** the bush, patch, shed and scarecrow items left the shop for Layout. Locked pen cards for scarecrow, sunflower and pumpkin say to place one on the farm.
+- **Two pets:** a pet resting while another is on duty walks (BFS) to the house and naps there, a tile both may share, so it never blocks the other's path. Single-pet farms are unchanged.
+- **Saves v7:** plots that waited for the removed shop items ("Two more bushes", "Third carrot patch") and were never bought are removed with their objects; the orchard's fence and gate get `fixed`.
+
 ### Farm life: crops and planting (phase B)
 - **Sim:** `ObjectDef.crop { grows, seed?, sells }` is the single source of crop numbers (`GROW_TICKS`, `SELL_PRICE` and `seedPrice` derive from it). Empty field plots are `soil` objects with `Obj.crop`; the `plant` action turns the soil under the pet into a `patch` when `World.seedCoins` covers the seed (undefined in pens: free) and emits `plant`, otherwise `fumble`. `plant` is last in `ABILITY_ORDER`. Crows aim for sunflowers as if they were 8 tiles nearer.
 - **Cards:** `ev.plant`, `cond.canAfford`, `job.plant`.

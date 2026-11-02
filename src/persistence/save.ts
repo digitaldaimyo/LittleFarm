@@ -75,6 +75,22 @@ const MIGRATIONS: Record<number, Migration> = {
     g.version = 6;
     return g;
   },
+  /**
+   * v6 → v7 (farm layout): plots that waited for the old shop items ("Two more bushes", "Third carrot patch")
+   * and were never bought are removed — you place plots yourself now. The orchard's fence and gate are marked fixed.
+   */
+  6: (g) => {
+    const f = g.farm;
+    const unlocks: string[] = Array.isArray(g.progress?.unlocks) ? g.progress.unlocks : [];
+    if (isObj(f) && isObj(f.world) && Array.isArray(f.world.objects) && Array.isArray(f.plots)) {
+      const gone = f.plots.filter((p: any) => isObj(p) && (p.unlock === 'bushes' || p.unlock === 'patch2') && !unlocks.includes(p.unlock));
+      f.plots = f.plots.filter((p: any) => !gone.includes(p));
+      f.world.objects = f.world.objects.filter((o: any) => !(isObj(o) && ['bush', 'patch', 'soil'].includes(o.kind) && gone.some((p: any) => p.x === o.x && p.y === o.y)));
+      if (f.world.w >= 16) for (const o of f.world.objects) if (isObj(o) && ((o.kind === 'fence' && ((o.x === 12 && o.y <= 9) || (o.y === 9 && o.x >= 13))) || o.kind === 'gate')) o.fixed = true;
+    }
+    g.version = 7;
+    return g;
+  },
   /** v4 → v5: "End try (done ✓)" meant "SUCCESS decides"; it is now spelled 'judge' ('success' counts outright). */
   4: (g) => {
     migrateLegacyEndOutcomes(g);

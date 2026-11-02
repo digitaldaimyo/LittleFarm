@@ -299,8 +299,49 @@ try {
     check(!(await rowNames()).includes('Check on the well'), 'L9: experiment row deleted and the plan applied');
     await looked();
     await lessonDone('Plan the farm');
+
+    // Lesson 10: Lay out the farm (farm life phase C)
+    await start('Lay out the farm');
+    await nav('Farm');
+    await page.click('[data-tut="layout-btn"]');
+    check((await page.textContent('.layout-panel')).includes('farm paused'), 'L10: layout mode opens and pauses the farm');
+    const tick0 = await page.textContent('.clock');
+    await page.click('[data-tut="layout-bin"]');
+    for (const [x, y] of [[9, 2], [8, 1], [10, 1], [10, 4], [9, 5], [11, 5], [10, 6]]) {
+      await page.click(`[aria-label="Layout: tile ${x},${y}"]`);
+      if ((await page.textContent('.layout-panel')).includes('placed a basket')) break;
+    }
+    await step('Preview it', 'L10: a basket placed by the bushes');
+    await page.click('[data-tut="layout-preview"]');
+    const lp = (await page.textContent('.layout-preview')).replace(/\s+/g, ' ');
+    console.log(`   ${lp}`);
+    check(/as it is -?\d+ coins · your layout -?\d+ coins/.test(lp), 'L10: preview compares the farm as it is with the draft');
+    check((await page.textContent('.clock')) === tick0, 'L10: the farm stayed paused while editing');
+    await step('Bring a crop closer', 'L10: asks to bring a crop closer');
+    await page.click('[data-tut="layout-remove"]');
+    for (const [x, y] of [[9, 2], [8, 1], [10, 1], [10, 4], [9, 5], [11, 5], [10, 6]]) {
+      await page.click(`[aria-label="Layout: tile ${x},${y}"]`);
+      if ((await page.textContent('.layout-panel')).includes('removed a basket')) break;
+    }
+    check((await page.textContent('.layout-panel')).includes('Costs 0'), 'L10: removing the basket placed in this draft is free');
+    await page.click('[data-tut="layout-move"]');
+    await page.click('[aria-label="Layout: tile 9,1"]'); // a berry bush
+    for (const [x, y] of [[2, 1], [2, 2], [3, 2], [1, 3], [3, 3]]) {
+      await page.click(`[aria-label="Layout: tile ${x},${y}"]`);
+      if ((await page.textContent('.layout-panel')).includes('moved the berry bush')) break;
+    }
+    await page.click('[data-tut="layout-preview"]');
+    const lp2 = (await page.textContent('.layout-preview')).replace(/\s+/g, ' ');
+    console.log(`   ${lp2}`);
+    await step('Keep the better farm', 'L10: bush moved next to the house and previewed');
+    if (await page.isEnabled('[data-tut="layout-apply"]')) {
+      await page.click('[data-tut="layout-apply"]');
+      check((await page.locator('.layout-panel').count()) === 0, 'L10: the layout is applied');
+    } else await looked();
+    await looked();
+    await lessonDone('Lay out the farm');
     await nav('Guide');
-    check((await page.locator('.guide-item.done').count()) === 9, 'all 9 Field Guide lessons done');
+    check((await page.locator('.guide-item.done').count()) === 10, 'all 10 Field Guide lessons done');
 
     // Teaching polish (phase A): build "end on shoo chicken" the old way, get warned, repair it, train it.
     await nav('Teach');

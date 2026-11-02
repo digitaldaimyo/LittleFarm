@@ -51,11 +51,8 @@ export function createFarm(): FarmState {
   const plots: Plot[] = [
     { x: 9, y: 1, crop: 'berry', objId: null, timer: 999 },
     { x: 10, y: 5, crop: 'berry', objId: null, timer: 999 },
-    { x: 8, y: 8, crop: 'berry', objId: null, timer: 999, unlock: 'bushes' },
-    { x: 10, y: 2, crop: 'berry', objId: null, timer: 999, unlock: 'bushes' },
     { x: 2, y: 7, crop: 'carrot', objId: null, timer: 999, unlock: 'carrots' },
     { x: 4, y: 7, crop: 'carrot', objId: null, timer: 999, unlock: 'carrots' },
-    { x: 6, y: 7, crop: 'carrot', objId: null, timer: 999, unlock: 'patch2' },
   ];
   for (const p of plots) { const o = addObject(w, p.crop === 'berry' ? 'bush' : 'patch', p.x, p.y); if (p.crop !== 'berry') o.crop = p.crop; }
   w.pet.x = 1;
@@ -418,9 +415,14 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
     case 'rest': {
       let t = 0;
       return {
-        next() {
+        next(world) {
           if ((pet.energy >= 98 && t >= 6) || t >= inv.timeout) return { done: 'success', reason: 'rested' };
           t++;
+          // With another pet on duty, nap at the house (a tile both may share) rather than in someone's way.
+          if (world.pet2 && world.pet.carrying === null && !objectsAt(world, world.pet.x, world.pet.y).some((o) => o.kind === 'home')) {
+            const path = bfsPath(world, world.pet.x, world.pet.y, (x, y) => objectsAt(world, x, y).some((o) => o.kind === 'home'), true);
+            if (path?.length) return path[0];
+          }
           return 'wait';
         },
       };

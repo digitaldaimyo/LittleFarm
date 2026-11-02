@@ -6,7 +6,7 @@
 - You lay out the farm: plots, baskets, sheds and the rest.
 - Pets still do all the work, managed from the farm itself: tap a pet for its details and controls, tap the house for the roster.
 
-Status: **phases A and B shipped.** Decisions (section 9) all went with the recommendations: perennial berry bushes; harvests to the nearest storage with room; without Fetch, harvests go straight to the house; fireflies stay instant; up to 4 pets on duty (phase D); plain pumpkins; a fixed house; build order A → B → C → D.
+Status: **phases A, B and C shipped.** Decisions (section 9) all went with the recommendations: perennial berry bushes; harvests to the nearest storage with room; without Fetch, harvests go straight to the house; fireflies stay instant; up to 4 pets on duty (phase D); plain pumpkins; a fixed house; build order A → B → C → D.
 
 ### Phase A: what shipped, and what we learned
 - **Selling and storage:**
@@ -34,6 +34,22 @@ Status: **phases A and B shipped.** Decisions (section 9) all went with the reco
 - **Tests:** `tests/farmlife.test.ts` (13), updated two-pet, orchard, routine, Fetch and lesson-9 tests, and the full browser test.
 
 
+
+### Phase C: what shipped, and what we learned
+- **Layout mode:** *Layout…* on the Farm pauses the farm and opens a **draft**. Place (berry bush 4, carrot patch 3, sunflower 5, pumpkin 6 — patches come planted — basket 6, shed 25, scarecrow 8, fence 1), **move** (free; a plot takes its ripe crop along) or **remove** (half the price back; all of it for something placed in this draft). *Apply* pays the net cost; *Cancel* drops the draft.
+- **Validation as you place**, each refusal with a reason: off the farm, the house's door tile, the coop, an occupied tile or a pet, not unlocked, the item's maximum, the **plot budget** (8 crop plots; 14 after the orchard), not enough coins, and anything that would cut the house, well, storage, plots, gates or the coop off from the house's door. The house, well, pond, gates and the orchard's fence stay put; trees and rocks can move but not be removed; storage with something in it can't be removed.
+- **Preview half a day** runs the farm twice from the same moment (as it is, and as drafted) with the same pets and jobs, and compares coins.
+- **The shop** lost "Two more bushes", "Third carrot patch", the sunflower and pumpkin patches, the shed and the scarecrow: they're placed in Layout now. Placing a scarecrow, sunflower or pumpkin also unlocks it for pens. Fence cards from the shop unlock fences in Layout.
+- **Field Guide lesson 10, Lay out the farm** (offered once a pet has Fetch): a basket by the bushes, preview, then bring a crop closer, preview again, apply.
+- **Saves v7:** plots that waited for the removed shop items and were never bought are removed; the orchard's fence and gate are marked fixed.
+- **Changes from the plan:**
+  - **The lesson's contrast flipped.** The plan expected "a basket by the bushes + a hauler" to beat "everything to the house". Measured (TESTING.md), a second basket usually *loses*: with one pet every basketed crop travels twice, and even with a hauler it lost on all three seeds. Moving crops nearer the house wins (one pet: 208–249 vs 160–217). The lesson now tries the basket first and lets the preview say no, then moves a crop.
+  - **Two pets nap at the house.** Measuring layouts found a pet napping in a corridor blocking the other for most of a day (248→23 coins). A resting pet with another on duty now walks home to nap.
+  - The plot budget is fixed (8 / 14) rather than bought.
+  - The coop can't be built on at all (simpler than checking it stays 2×2).
+  - The preview is half a day (600 ticks) rather than 300, so slower crops show up.
+- **Not done in C:** changing what a plot grows without removing it; moving the coop; multiple-tile sheds; drag-and-drop (it's tap-to-pick, tap-to-place).
+- **Tests:** `tests/layout.test.ts` (12), save-version and two-pet updates, and lesson 10 in the browser test.
 
 ### Phase B: what shipped, and what we learned
 - **The crop cycle:** a field plot is **empty soil → planted → ripe → harvested → empty soil**. Soil is its own object kind (`soil`, carrying `crop`); planting turns it into a growing `patch`. Harvesting or a crow's peck turns it back into soil, which doesn't grow. Berry bushes regrow by themselves, as before.

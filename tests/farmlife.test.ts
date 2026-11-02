@@ -6,7 +6,6 @@ import { compileCondition } from '../src/sim/compile';
 import { node } from '../src/domain/spec';
 import { ABILITY_ORDER } from '../src/learning/senses';
 import { OBJECT_BY_ID } from '../src/domain/packs/farm';
-import { buy } from '../src/game/progression';
 import { farmTips } from '../src/game/coach';
 import { trackRequests } from '../src/game/requests';
 import { parseGame, serializeGame } from '../src/persistence/save';
@@ -137,16 +136,6 @@ describe('produce travels; the house sells', () => {
 });
 
 describe('the shed, requests, tips and saves', () => {
-  it('the shop’s shed is placed by the house as empty storage', () => {
-    const s = farmGame({ fetch: true });
-    s.progress.unlocks.push('fetch');
-    s.resources.coins = 30;
-    expect(buy(s, 'shed').ok).toBe(true);
-    const shed = s.farm.world.objects.find((o) => o.kind === 'shed')!;
-    expect(shed.store).toHaveLength(4);
-    expect(Math.abs(shed.x - 1) + Math.abs(shed.y - 1)).toBeLessThanOrEqual(2);
-  });
-
   it('requests count sales at the house, not picks or storing', () => {
     const s = farmGame();
     s.farm.requests = [{ id: 'r', kind: 'berries', n: 2, from: 'Hazel', day: 1, until: 'nightfall', progress: 0, status: 'open', reward: 3 } as never];
@@ -253,24 +242,6 @@ describe('crops and planting (farm life B)', () => {
     for (let i = 0; i < 4; i++) { step(w, 'wait'); xs.push(crow.x); }
     expect(w.objects.find((o) => o.kind === 'berry')!.delivered).toBeFalsy();
     expect(Math.max(...xs)).toBeGreaterThan(4); // it flew toward the sunflower
-  });
-
-  it('the shop sells pumpkin and sunflower patches, planted, on free tiles', () => {
-    const s = farmGame();
-    s.progress.unlocks.push('carrots');
-    s.resources.coins = 40;
-    expect(buy(s, 'pumpkins').ok).toBe(true);
-    expect(buy(s, 'sunflowers').ok).toBe(true);
-    for (const crop of ['pumpkin', 'sunflower']) {
-      const plot = s.farm.plots.find((p) => p.crop === crop)!;
-      const o = s.farm.world.objects.filter((x) => x.x === plot.x && x.y === plot.y);
-      expect(o.map((x) => x.kind)).toEqual(['patch']);
-      expect(o[0].crop).toBe(crop);
-    }
-    const rt = createRuntime(s.farm);
-    s.farm.dutyPetId = null;
-    for (let i = 0; i < 130; i++) farmTick(s, rt);
-    expect(s.farm.world.objects.some((o) => o.kind === 'pumpkin')).toBe(true);
   });
 
   it('never stuck: with no coins and nothing growing, a neighbour’s seeds plant the cheapest plot at dawn', () => {

@@ -30,6 +30,8 @@ export interface Obj {
   store?: StoreSlot[];
   /** Field plots (soil / patch): which crop is (or will be) planted here. Default carrot. */
   crop?: string;
+  /** Farm layout: part of a fixed structure (the orchard's fence and gate) — can't be moved or removed. */
+  fixed?: boolean;
 }
 
 /** What it costs to plant this crop (perennials and non-crops: 0). */

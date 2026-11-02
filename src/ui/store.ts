@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import type { LayoutDraft, LayoutItemId, LayoutPreview } from '../game/layout';
 import type { GameState } from '../game/types';
 import { newGame } from '../game/state';
 import { createRuntime, farmTick, type FarmFx, type FarmRuntime } from '../game/farm';
@@ -49,6 +50,17 @@ export interface UiState {
   penReplay: EpisodeTrace | null;
   farmPaused: boolean;
   loadDiagnostics: string[];
+  /** Farm layout mode: the draft being edited (the farm pauses while it's open). */
+  layout: LayoutUi | null;
+}
+
+export interface LayoutUi {
+  draft: LayoutDraft;
+  /** 'move' / 'remove', or a catalog item to place. */
+  tool: 'move' | 'remove' | LayoutItemId;
+  /** Move: the tile picked up, waiting for a destination. */
+  pick: { x: number; y: number } | null;
+  preview: LayoutPreview | null;
 }
 
 class GameStore {
@@ -56,7 +68,7 @@ class GameStore {
   runtime: FarmRuntime = createRuntime(this.state.farm);
   ui: UiState = {
     screen: 'farm', binder: 'environment', slot: null, placing: null, placeMode: 'random', zoneStart: null, previewSeed: 1,
-    modal: null, toasts: [], fx: [], training: null, penReplay: null, farmPaused: false, loadDiagnostics: [],
+    modal: null, toasts: [], fx: [], training: null, penReplay: null, farmPaused: false, loadDiagnostics: [], layout: null,
   };
   version = 0;
   private listeners = new Set<() => void>();
@@ -141,7 +153,7 @@ class GameStore {
       last = now;
       const w = this.state.farm.world;
       audio.setScene({ night: !!w.night, raining: !!w.raining, onFarm: this.ui.screen === 'farm' });
-      if (this.ui.farmPaused) return;
+      if (this.ui.farmPaused || this.ui.layout) return;
       acc += dt * this.state.settings.farmSpeed;
       const tickMs = 280;
       let changed = false;

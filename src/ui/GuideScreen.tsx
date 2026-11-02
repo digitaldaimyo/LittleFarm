@@ -120,6 +120,7 @@ const GLOSSARY: [string, string][] = [
   ['House (selling)', 'On the farm, produce only earns coins when a pet brings it to the house. Fireflies are the exception (+1 when caught).'],
   ['Basket / shed', 'Farm storage. A basket holds 6 of one kind; a shed holds 4 kinds, 10 each. Harvesters drop crops there; a hauler (Fetch) takes them to the house.'],
   ['Plant', 'Walk to empty soil and plant its crop. The seed is paid from your coins (carrot 1, sunflower 2, pumpkin 3); field crops need replanting after each harvest, berry bushes regrow by themselves.'],
+  ['Layout', 'Farm → Layout…: place bushes, crop patches, baskets, sheds, scarecrows and fences; move or remove them (half the price back). Preview the draft against the farm as it is, then apply. Everything must stay reachable from the house; up to 8 crop plots (14 with the orchard).'],
   ['Harvest / Haul', 'Harvest: pick a ripe crop and carry it to storage with room, or the house. Haul: carry eggs and stored goods to the house (needs Fetch).'],
   ['Pen / lesson', 'A practice world plus rules. What’s in the pen is all your pet sees while learning.'],
   ['Try', 'One attempt in the pen, from the start until the try ends or time runs out.'],

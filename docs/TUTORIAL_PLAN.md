@@ -4,6 +4,13 @@
 
 Status: **All three phases shipped.** Sections 1–9 below are the original plan, kept for the reasoning and evidence; the phase notes here record what actually shipped. **Numbering:** the Guide numbers lessons 1–9 in the order used here (lesson 1 is the First lesson), so *Invent a skill* is lesson 6. Shipped: Chapter 1 revised; Field Guide engine and screen; lessons 2–9; notebook; glossary; coaching tips; requests-board side quests; a browser test (`npm run e2e`).
 
+### Farm life (phase C): lesson 10, Lay out the farm
+- **Offered** once a pet has a saved Fetch skill (layouts matter once there's storage and hauling).
+- **Steps:** open Layout… (the farm pauses) → experiment: a basket by the bushes → *Preview half a day* → bring a crop closer (remove the basket, free since it was placed in this draft; move a bush or patch nearer the house) and preview again → apply the better farm (or say you've looked) → a note on the plot budget.
+- **Why it's built this way (measured, one pet on Auto with Fetch and carrots, 3 seeds, 2,400 ticks):** a second basket by the bushes *loses* (217→110, 200→184, 160→46): with one pet every basketed crop travels twice. Both bushes beside the house *wins* (217→249, 200→211, 160→208). So the lesson tries the tempting idea first and lets the preview say no, like the other lessons. In the browser test: basket 65→61 coins per half day, bush by the house 65→75.
+- **Lesson 9's two-pets note** now quotes phase-C numbers (one pet on Auto 161, Auto + hauler 223, both on Auto 240) and says plain Harvest doesn't replant.
+- **Numbering:** the Guide now has 10 lessons; the browser test plays all of them.
+
 ### Farm life (phase A) changes to the lessons
 - **Lesson 1:** "Forage berries" is now **Harvest**. The "Earn 5 coins" step says each berry sells for 2 coins at the house; without Fetch, harvests go straight there, so the lesson flows as before.
 - **Lesson 8:** the routine watches "Is at → Basket" (the bin's new name).

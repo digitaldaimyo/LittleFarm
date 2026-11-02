@@ -233,7 +233,7 @@ describe('saves and skill cards (v5)', () => {
     expect(r.ok).toBe(true);
     const then = r.game!.stages[0].rules[0].args.then as ReturnType<typeof node>[];
     expect(then.map((e) => e.args.outcome)).toEqual(['judge', 'fail']);
-    expect(SAVE_VERSION).toBe(6);
+    expect(SAVE_VERSION).toBe(7);
   });
 
   it('the v1 fixture save migrates all the way and its old “done ✓” ends are judged by SUCCESS', () => {
