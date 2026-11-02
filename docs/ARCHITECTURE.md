@@ -199,6 +199,10 @@ Saves are v2. The v1 → v2 migration adds templates and explicit preset senses.
 
 **Feedback:** 👍/👎 on a replayed movement episode adds ±0.5 (clamped to ±1) to those (state, action) pairs. That bonus is added to reward in later lessons for that stage and shown as "Your feedback" in the ledger.
 
+### Learned jobs (learned-farm phase 3)
+
+`src/game/capability.ts` binds farm jobs to learned skills: `LEARNED_JOBS` (today `forage` → the Harvest routine, aimed at `@crop`), `jobSkill(pet, job)` (the player's pick in `Pet.jobSkills`, else the skill taught by the job's recipe or named after it) and `jobCapability` (null unless the farm may use it). The forage executor in `farm.ts` simply calls `runCapability`; with no bound skill the job isn't eligible and the job card is locked. There is no scripted fallback.
+
 ## Persistence
 
 Saves are currently **v6** (`SAVE_VERSION`). `persistence/save.ts` handles the save envelope `{ format: 'pen-deck-save', version, game }`. It has a migration table (version N → N+1), fills missing sections from defaults, validates shapes, clamps numbers, checks policy formats, and reports unknown cards. Saves never execute code. `storage.ts` writes to IndexedDB with a localStorage fallback. Export and Import JSON live in Settings.

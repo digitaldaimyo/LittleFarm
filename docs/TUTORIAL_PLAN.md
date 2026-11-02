@@ -143,6 +143,10 @@ Same arc as today, with the *why* added and one small contrast:
 
 ---
 
+### Learned farm: the Harvest lesson
+
+The first lesson now ends when Approach is saved ("Next: teach it a job"). **Teach a job: Harvest** starts right away: train the Harvest routine (an editable copy of the recipe), save it, put Pip on the Harvest job, and earn 5 coins (which unlocks Fetch). Without the routine the Harvest job is locked, because the farm no longer has a built-in harvest.
+
 ## 5. Trainer's notebook (in-game reference)
 
 A Help panel reachable from the Teach screen, the report and the Farm, built from §2's evidence:
