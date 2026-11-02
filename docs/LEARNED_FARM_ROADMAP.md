@@ -113,6 +113,7 @@ Status: **official roadmap**, decisions settled (section 8). **Phase 0 done:**
 | "Otherwise wander" first, 101 / 202 | 20 / 20 | 331–345 / 220–285 | 232 / 175 | 0 |
 
   The learned executive beats random picks everywhere and stays within 4% of a good order. It rescues a bad one, and never starts a job while tired. It doesn't beat a good order: the starter set is already close to the best this reward can see.
+- **On the real farm** (`bench:farm --learned`, 2 days, Curiosity exploring 2–10%, after 4 practice days), learned Auto earns 606 on the standard farm and 544 held-out, against 690 and 674 for the fixed order (88% / 81%; both above the phase-0 baselines of 352 / 230 for the old learned chooser). Exploring on the job costs about 10–20% against a good order. Lowering farm exploration, or letting the player set it, is a phase-6 tuning question.
 
 Next: phase 6 (retire and polish: direct job cards, the stuck-recovery sniffing, capability readiness in the Pet binder, an executive inspector).
 
