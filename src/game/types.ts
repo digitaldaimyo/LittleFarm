@@ -145,7 +145,10 @@ export interface Pet {
   stats: PetStats;
   assignment: Assignment;
   mastery: Record<string, StageMastery>;
+  /** Responsibilities (phase 4; the farm plan's rows grew into them). Auto starts from the starter ones. */
   plan?: FarmPlan;
+  /** Evidence from the farm, per job (`forage`, `skill:Patrol`…): uses, successes, ticks. Used to pick jobs. */
+  evidence?: Record<string, { n: number; ok: number; ticks: number }>;
   nicknames?: Record<string, string>;
 }
 

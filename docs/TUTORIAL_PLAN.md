@@ -143,6 +143,10 @@ Same arc as today, with the *why* added and one small contrast:
 
 ---
 
+### Learned farm: the Responsibilities lesson (phase 4)
+
+*Plan the farm* is now **Responsibilities**. The steps are the same: open the editor, preview, move the shadowed "Check on the well" above "Otherwise wander", preview until it runs, tidy up and use them. The last step's *why* explains UNTIL, OR USE and cooldowns, and points to the "Why…" decision trace under the list. The rows now read WHEN / USE / OR USE / UNTIL, and needs (rest, sleep) come before them, so the starter set no longer has nap or sleep rows.
+
 ### Learned farm: the Harvest lesson
 
 The first lesson now ends when Approach is saved ("Next: teach it a job"). **Teach a job: Harvest** starts right away: train the Harvest routine (an editable copy of the recipe), save it, put Pip on the Harvest job, and earn 5 coins (which unlocks Fetch). Without the routine the Harvest job is locked, because the farm no longer has a built-in harvest.

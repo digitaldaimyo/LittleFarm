@@ -101,7 +101,7 @@ The **First lesson** banner (lesson 1 of the Field Guide) walks you through this
 - **Your layout.** **Layout…** on the Farm pauses the farm and opens a draft: place berry bushes (4), carrot (3), sunflower (5) and pumpkin (6) patches, baskets (6), sheds (25), scarecrows (8) and fences (1); move things (free) or remove them (half the price back). Every change is checked as you go: the house's door stays clear, the coop stays whole, and everything must stay reachable from the house. **Preview half a day** races the farm as it is against the draft from the same moment, then **Apply** pays. Up to 8 crop plots (14 with the orchard).
 - **Carrying baskets.** A pet can **lift** a basket with whatever is in it (a carried basket can't be filled). Put down at the house or a shed, it's emptied there; on open ground, it's set down. Pets that have learned the **Basket run** routine (Train, after Fetch) carry a basket next to the crops and, once it's half full, empty it at the house six at a time. With a **Harvest to storage** routine too, harvests go into a nearby basket instead of the house. Over two farm days that lifts a one-pet farm with Fetch and carrots from about 247 to 271 coins.
 - **Jobs:** Auto, **Harvest** (runs the pet's own learned Harvest routine, aimed at any ripe crop, selling at the house; locked until it's taught), **Plant** (the pet's Plant routine: empty soil, paying for the seed), **Basket run** (the pet's Basket run routine), **Haul** (the pet's Fetch: eggs and stored goods to the house), Nap, **Run a skill** (any of your skills or routines, aimed at anything), and **Steer** (tap tiles, or arrow keys, P pick up, D put down, W water, X shoo, G nudge a gate, L plant, B lift a basket). The farm keeps running while you're on other screens.
-- **Day and night:** a day lasts about 5½ minutes at 1×, and the last 30% is night. Night darkens the farm, pets on Auto prefer to nap, and **fireflies** appear (+1 coin each, gone at dawn).
+- **Day and night:** a day lasts about 5½ minutes at 1×, and the last 30% is night. Night darkens the farm, pets on Auto sleep (a need), and **fireflies** appear (+1 coin each, gone at dawn).
 - **Watering:** a pet with *Water* fills up at the **well** (3 splashes) and waters dry bushes or patches, which then regrow twice as fast.
 - **Creatures:**
   - **Chickens** (shop) lay eggs only inside the **coop** (3 coins each at the house, hauled with Fetch).
@@ -110,10 +110,11 @@ The **First lesson** banner (lesson 1 of the Field Guide) walks you through this
   - The *Orchard expansion* grows the farm to 16×12 with a **gate**; *Nudge* opens or shuts it.
   - From day 2, gentle **rain** waters every plot and keeps crows away.
   - Each dawn, neighbours pin up to three optional **requests**, each with a hint and a lesson link.
-- **Farm plans:** IF / DO rows written with the same cards ("IF energy below 30 DO nap", "IF has picked up a berry DO nap").
-  - Rows are tried top to bottom, skipping jobs that can't do anything right now. *Has done…* in a row counts from when the current job started.
-  - **Preview 300 ticks** shows exactly what the plan would do (the farm is deterministic).
-  - The **starter plan** is the built-in Auto rules written out. *Learn among matches* lets the pet choose among applicable rows, and an **anti-dithering guard** steps in when rows flip-flop.
+- **Responsibilities (Auto):** what a pet on Auto looks after, written with the same cards: **WHEN** conditions hold, **USE** a job (**OR USE** others), optionally **UNTIL** a condition holds. Higher in the list = more important.
+  - **Needs come first:** a tired pet rests until refreshed (a basket in its paws is put down first); at night it sleeps, unless a responsibility's WHEN mentions night (fireflies).
+  - **Commitment:** with UNTIL, the pet sticks with a responsibility until it holds; only a need, or a failed job after 60 ticks, pulls it away. Without UNTIL, each finished job counts.
+  - **Evidence:** among the jobs a responsibility may use, the pet picks the one that has worked best for it (untried ones get a turn). A job that makes no progress in the world 3 times in a row rests for 200 ticks; an UNTIL responsibility with no progress for 400 ticks is set aside.
+  - **Why…** under the list explains each decision ("Storage at most half full → Haul: sticking with it — not done yet"). **Preview 300 ticks** shows exactly what would happen. *Has done…* counts from when the current job started. The **starter set** is what Auto does until you edit it.
 - **Your pets on the farm:** tap a pet for its **card** (energy, mood, what it's doing and why, its job, *Move with*, on/off duty, *Make lead*, links to its skills and to Teach). Tap the **house** for the **roster**: every pet, who's on duty and doing what ("2 harvesting, 1 hauling"), rename, put on or take off duty, adopt. Tap anything else to see what it is (a basket's contents, a plot's stage and time to ripe). A strip of pets under the farm switches cards.
 - **Up to 4 pets on duty.** They never chase the same thing (but may share the house and storage tiles), and a resting pet naps at the house rather than in someone's way. The **lead** is the pet you can steer. More pets earn more when there's work for them: over two farm days on the starting farm, 1 pet 191–247 coins, 4 pets 262–395 (more fields help more pets).
 
@@ -129,7 +130,7 @@ The **Guide** tab offers short, free lessons on setting up training that works, 
 7. *Invent a skill* (what one sense too many costs)
 8. *See what your pet learned*
 9. *Combine skills* (a routine is only as good as what it watches)
-10. *Plan the farm*
+10. *Responsibilities* (what Auto looks after, in what order; preview, fix a shadowed one)
 11. *Lay out the farm* (a basket by the bushes vs a crop moved next to the house, in preview)
 12. *Give your pet a notebook* (Patrol without and with the Note sense)
 

@@ -137,7 +137,7 @@ const GLOSSARY: [string, string][] = [
   ['Revision', 'A saved version of a skill (r1, r2…). You can switch back any time.'],
   ['Experiment', 'A Field Guide run: free, for comparing, not saved unless you choose.'],
   ['Routine', 'A skill that chooses between your other skills.'],
-  ['Farm plan', 'IF/DO rows deciding which job runs when on the farm.'],
+  ['Responsibilities', 'What a pet on Auto looks after: WHEN … USE a job (OR USE others) … UNTIL …, in priority order. Needs (rest, sleep) come first.'],
 ];
 
 function Glossary() {

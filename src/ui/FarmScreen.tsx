@@ -18,7 +18,7 @@ const runnable = (p: Pet): Skill[] => p.skills.filter((k) => !!deployedRevision(
 import { OBJECT_BY_ID } from '../domain/packs/farm';
 
 const FARM_TARGETS = ['berry', 'carrot', 'egg', 'chicken', 'crow', 'firefly', 'gate', 'bin', 'home', 'well', 'pond', 'bush', 'patch', 'rock', 'tree'];
-import { DAY_TICKS, MAX_ON_DUTY, applyPlan, crewSummary, dayInfo, describeTile, dutyPets, makeLead, petActivity, queueManual, queueManualPath, recentProduction, restartPet, setOnDuty, TIRED } from '../game/farm';
+import { DAY_TICKS, MAX_ON_DUTY, crewSummary, dayInfo, describeTile, dutyPets, makeLead, petActivity, queueManual, queueManualPath, recentProduction, restartPet, setOnDuty, TIRED } from '../game/farm';
 import { RosterStrip, toggleDuty, leadPet, petStatus } from './Roster';
 import { nextUnlock } from '../game/progression';
 import { BEHAVIOR_LABEL } from '../learning/executive';
@@ -35,7 +35,7 @@ function moodFor(pet: Pet, fxTypes: string[], behavior: string | undefined, stun
 }
 
 interface JobCard {
-  id: 'auto' | JobId | 'manual' | 'plan';
+  id: 'auto' | JobId | 'manual';
   title: string;
   blurb: string;
   needs?: string;
@@ -46,8 +46,7 @@ function jobCards(pet: Pet): JobCard[] {
   const cap = (job: string) => jobCapability(pet, job);
   const runs = (job: string) => (cap(job) ? ` (${cap(job)!.name} r${cap(job)!.rev})` : '');
   return [
-    { id: 'auto', title: 'Auto', blurb: `${pet.name} decides using their executive — napping at night, unless there are fireflies to catch.` },
-    { id: 'plan', title: 'Farm plan', blurb: 'Your own IF/DO rows decide which skill runs when. Preview before applying.' },
+    { id: 'auto', title: 'Auto', blurb: `${pet.name} works on their responsibilities (edit them below) with the skills they know: needs first — rest when tired, sleep at night — then the most important thing that needs doing.` },
     { id: 'forage', title: BEHAVIOR_LABEL.forage, blurb: `Runs ${pet.name}’s own Harvest${runs('forage')}: any ripe crop to the house, where it sells (berry +2, carrot +5, sunflower +7, pumpkin +12). With a Harvest to storage routine too, crops go into a basket or shed with room while someone can empty it.`, needs: 'Harvest', locked: cap('forage') ? undefined : 'Needs a Harvest skill — teach it in the Field Guide (Teach a job: Harvest)' },
     { id: 'deliver', title: BEHAVIOR_LABEL.deliver, blurb: `Runs ${pet.name}’s own Fetch${runs('deliver')}: eggs and whatever is in the basket or shed to the house, where it sells.`, needs: 'Fetch', locked: cap('deliver') ? undefined : 'Needs a certified Fetch skill' },
     { id: 'plant', title: BEHAVIOR_LABEL.plant, blurb: `Runs ${pet.name}’s own Plant${runs('plant')}: empty soil gets its seed — carrots (1), sunflowers (2), pumpkins (3), paid from your coins.`, needs: 'Plant', locked: cap('plant') ? undefined : 'Needs a Plant routine — train the Plant recipe in Train' },
@@ -118,7 +117,6 @@ export function FarmScreen() {
       if (!onDuty.has(p.id)) warn = setOnDuty(st, p.id, true, store.runtime);
       // Only the lead can be steered: steering a helper makes it the lead.
       if (id === 'manual' && st.farm.dutyPetId !== p.id && !warn) makeLead(st, p.id, store.runtime);
-      if (id === 'plan') { applyPlan(st, store.runtime, p.id); st.progress.flags.assignedJob = true; return; }
       if (id === 'auto') p.assignment.mode = 'auto';
       else if (id === 'manual') p.assignment.mode = 'manual';
       else {
@@ -136,7 +134,7 @@ export function FarmScreen() {
     if (warn) store.toast(warn, 'warn');
   };
   const setNav = (n: NavigatorName) => store.mutate((st) => { st.pets.find((x) => x.id === pet.id)!.assignment.navigator = n; restartPet(st, store.runtime, pet.id); });
-  const selected: JobCard['id'] = pet.assignment.mode === 'job' ? pet.assignment.job : pet.assignment.mode;
+  const selected: JobCard['id'] = pet.assignment.mode === 'job' ? pet.assignment.job : pet.assignment.mode === 'plan' ? 'auto' : pet.assignment.mode;
   const canAvoid = !!getSkill(pet, 'Avoid');
   const body = pet.id === lead.id ? f.world.pet : f.world.crew?.[(f.helpers ?? []).findIndex((h) => h.petId === pet.id)];
   const carriedKind = body && body.carrying !== null ? f.world.objects.find((o) => o.id === body.carrying)?.kind : null;
@@ -227,7 +225,7 @@ export function FarmScreen() {
                 <>
                   <strong>{BEHAVIOR_LABEL[act.current.behaviorId]}</strong>
                   {act.current.args.navigator && act.current.behaviorId !== 'rest' && <span className="chip">moves with {act.current.args.navigator}</span>}
-                  <span className={`chip by-${act.current.chosenBy}`}>{act.current.chosenBy === 'player' ? 'your call' : act.current.chosenBy === 'rules' ? 'rule-based choice' : act.current.chosenBy === 'plan' ? 'farm plan' : 'learned choice'}</span>
+                  <span className={`chip by-${act.current.chosenBy}`}>{act.current.chosenBy === 'player' ? 'your call' : act.current.chosenBy === 'rules' ? 'rule-based choice' : act.current.chosenBy === 'plan' ? 'responsibility' : 'learned choice'}</span>
                   <div className="muted small">{act.current.intention}</div>
                 </>
               ) : <span className="muted">Thinking…</span>}
@@ -289,7 +287,7 @@ export function FarmScreen() {
               <span className="small">Executive</span>
               <div className="seg" role="radiogroup" aria-label="Executive selector">
                 {(['rules', 'learned'] as const).map((m) => (
-                  <button key={m} role="radio" aria-checked={pet.executive.mode === m} className={pet.executive.mode === m ? 'on' : ''} onClick={() => store.mutate((st) => { st.pets.find((x) => x.id === pet.id)!.executive.mode = m; })}>{m === 'rules' ? 'Simple rules' : 'Learns from results'}</button>
+                  <button key={m} role="radio" aria-checked={pet.executive.mode === m} className={pet.executive.mode === m ? 'on' : ''} onClick={() => store.mutate((st) => { st.pets.find((x) => x.id === pet.id)!.executive.mode = m; })}>{m === 'rules' ? 'Responsibilities' : 'Learns from results'}</button>
                 ))}
               </div>
             </div>
@@ -302,9 +300,9 @@ export function FarmScreen() {
           )}
         </div>
 
-        {(selected === 'plan' || showPlan) && <PlanMat pet={pet} />}
-        {selected !== 'plan' && !showPlan && (
-          <button className="btn ghost" data-tut="plan-edit" onClick={() => setShowPlan(true)}>Edit farm plan…</button>
+        {showPlan && <PlanMat pet={pet} />}
+        {!showPlan && (
+          <button className="btn ghost" data-tut="plan-edit" onClick={() => setShowPlan(true)}>Edit responsibilities…</button>
         )}
 
         <RequestsBoard />

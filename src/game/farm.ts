@@ -6,7 +6,7 @@ import { NavRun, SkillRun, isDone, randomMove, type ExecStep, type Outcome } fro
 import { navTimeout } from '../learning/episodes';
 import { atFocus } from '../learning/features';
 import {
-  BEHAVIOR_LABEL, describeContext, learnedSelect, rulesSelect, updateExecutive,
+  BEHAVIOR_LABEL, describeContext, learnedSelect, updateExecutive,
   type BehaviorId, type ExecContext, type Invocation,
 } from '../learning/executive';
 import type { FarmPlan, FarmState, GameState, Helper, Pet, Plot } from './types';
@@ -14,7 +14,7 @@ import { getSkill, navPolicyFor, petById, sensePolicyOf } from './pets';
 import { deployedRevision, jobCapability, runCapability } from './capability';
 import { addJournal, addJournalOnce } from './journal';
 import { checkUnlocks } from './progression';
-import { GUARD_HOLD, choosePlanRow, compilePlan, newPlanRuntime, planInvocation, planUsesMemory, starterPlan, updatePlanValue, type PlanRuntime } from './plan';
+import { GUARD_HOLD, afterDutyJob, chooseDuty, compilePlan, newPlanRuntime, planUsesMemory, starterPlan, traceDecision, updatePlanValue, type PlanRuntime } from './plan';
 
 export const FARM_W = 12;
 export const FARM_H = 9;
@@ -78,6 +78,8 @@ export interface FarmRuntime {
   inv: Invocation | null;
   ctx: ExecContext | null;
   startCoins: number;
+  /** What the world looked like (work done) when the current job started: progress is measured from the world. */
+  startWork?: string;
   startEnergy: number;
   startTick: number;
   manual: Action[];
@@ -465,29 +467,6 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
   if (pet.assignment.mode === 'manual') return mk('manual', 'player', 'Following your lead');
   const eligible = eligibleBehaviors(pet, ctx);
   if (pet.energy <= 5) return mk('rest', 'rules', 'Too sleepy to work — nap first');
-  if (pet.assignment.mode === 'plan') {
-    const plan = (pet.plan ??= starterPlan());
-    const rows = compilePlan(plan);
-    const { row, guarded, learned } = choosePlanRow(s, pet, plan, rows, ctx, rt.plan, rt.rng);
-    if (guarded) rt.plan.guarded++;
-    if (!row) {
-      return guarded
-        ? { ...mk('rest', 'plan', 'Holding still for a moment — plan rows were flip-flopping'), timeout: GUARD_HOLD }
-        : mk('rest', 'plan', 'No plan row applies right now — napping');
-    }
-    const prev = rt.plan.starts.at(-1)?.row;
-    if (prev && prev !== row.id) rt.plan.switches++;
-    rt.plan.starts.push({ tick: s.farm.tick, row: row.id });
-    if (rt.plan.starts.length > 60) rt.plan.starts.shift();
-    rt.plan.fires[row.id] = (rt.plan.fires[row.id] ?? 0) + 1;
-    let t = timeouts[row.job.behaviorId];
-    if (row.job.behaviorId === 'skill') t = Math.round((deployedRevision(getSkill(pet, row.job.args.skill ?? ''))?.maxTicks ?? 40) * (1 + pet.traits.persistence));
-    const why = `Plan row ${row.index + 1}: ${row.label}${guarded ? ' (sticking with it — rows were flip-flopping)' : learned ? ' (learned pick)' : ''}`;
-    const inv = planInvocation(row, t, why);
-    if (row.job.behaviorId === 'deliver') inv.args.item = ctx.carrying ? 'carried item' : 'carrot or egg';
-    if (learned) inv.args.learned = '1';
-    return inv;
-  }
   if (pet.assignment.mode === 'job' && pet.assignment.job === 'skill') {
     if (custom && !ctx.energyLow) return mk('skill', 'player', `You asked for: ${pet.assignment.skillName} → ${pet.assignment.target || custom.focus}`);
     return mk('rest', 'rules', custom ? 'Tired — resting before running the skill' : 'Pick a saved skill to run');
@@ -508,13 +487,30 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
       : `Can't ${BEHAVIOR_LABEL[j].toLowerCase()} yet — check the skill it needs`;
     return mk('rest', 'rules', why);
   }
+  // Auto: the responsibility executive (phase 4) — needs first, then the pet's responsibilities (or the starter ones).
   pet.executive.decisions++;
-  if (pet.executive.mode === 'learned') {
+  if (pet.assignment.mode === 'auto' && pet.executive.mode === 'learned') {
     const { choice, explored } = learnedSelect(ctx, eligible, pet.executive.table, rt.rng, pet.traits.curiosity);
     return mk(choice, 'learned', `${explored ? 'Trying something (curious)' : 'Best so far'} — ${describeContext(ctx)}`);
   }
-  const choice = rulesSelect(ctx, eligible);
-  return mk(choice, 'rules', describeContext(ctx));
+  const plan = (pet.plan ??= starterPlan());
+  const rows = compilePlan(plan);
+  const d = chooseDuty(s, pet, plan, rows, ctx, rt.plan, rt.rng);
+  if (d.guarded) rt.plan.guarded++;
+  traceDecision(rt.plan, s.farm.tick, d.row ? `${d.row.label} → ${d.job!.label}: ${d.why}` : d.why);
+  if (!d.row) return d.guarded && !d.need ? { ...mk('rest', 'plan', d.why), timeout: GUARD_HOLD } : mk('rest', 'plan', d.why);
+  const row = d.row, job = d.job!;
+  const prev = rt.plan.starts.at(-1)?.row;
+  if (prev && prev !== row.id) rt.plan.switches++;
+  rt.plan.starts.push({ tick: s.farm.tick, row: row.id });
+  if (rt.plan.starts.length > 60) rt.plan.starts.shift();
+  rt.plan.fires[row.id] = (rt.plan.fires[row.id] ?? 0) + 1;
+  let t = timeouts[job.behaviorId];
+  if (job.behaviorId === 'skill') t = Math.round((deployedRevision(getSkill(pet, job.args.skill ?? ''))?.maxTicks ?? 40) * (1 + pet.traits.persistence));
+  const inv: Invocation = { behaviorId: job.behaviorId, args: { ...job.args }, intention: `${row.label}: ${d.why}`, timeout: t, chosenBy: 'plan' };
+  if (job.behaviorId === 'deliver') inv.args.item = ctx.carrying ? 'carried item' : 'carrot or egg';
+  if (d.learned) inv.args.learned = '1';
+  return inv;
 }
 
 function finishInvocation(s: GameState, pet: Pet, rt: FarmRuntime, result: Outcome, reason: string, fx: FarmFx[]): void {
@@ -533,6 +529,7 @@ function finishInvocation(s: GameState, pet: Pet, rt: FarmRuntime, result: Outco
     if (result !== 'success') r -= 0.3;
     updateExecutive(pet.executive.table, rt.ctx, inv.behaviorId, r);
   }
+  if (inv.chosenBy === 'plan' && inv.args.row && pet.plan) afterDutyJob(pet, rt.plan, compilePlan(pet.plan), inv.args, result === 'success', ticks, s.farm.tick, workDone(s.farm.world) !== rt.startWork);
   if (inv.chosenBy === 'plan' && inv.args.learned && pet.plan && rt.ctx && inv.args.row) {
     let r = coins - 0.01 * ticks;
     if (inv.behaviorId === 'rest') r += rt.ctx.energyLow ? 1.5 : -0.5;
@@ -548,6 +545,16 @@ function finishInvocation(s: GameState, pet: Pet, rt: FarmRuntime, result: Outco
   s.farm.current = null;
   rt.exec = null;
   rt.inv = null;
+}
+
+/**
+ * A fingerprint of work done on the farm: sales, deliveries, what's in the pet's paws, sown plots, fireflies, gates.
+ * A job that changed it made progress, whatever it reported.
+ */
+function workDone(w: World): string {
+  const n = (k: string) => w.objects.filter((o) => o.kind === k && onGround(o)).length;
+  const delivered = Object.values(w.delivered).reduce((a, b) => a + b, 0);
+  return `${w.sold ?? 0}|${delivered}|${w.pet.carrying}|${n('soil')}|${n('firefly')}|${w.objects.filter((o) => o.kind === 'gate' && o.open).length}`;
 }
 
 function earn(s: GameState, pet: Pet, amount: number, x: number, y: number, fx: FarmFx[]) {
@@ -936,13 +943,14 @@ function petTurn(s: GameState, pet: Pet, rt: FarmRuntime, fx: FarmFx[], opts: St
   }
   if (!rt.exec) {
     // Plans with "Has done…" rows need the farm to remember events; they count from each job's start.
-    const remembers = pet.assignment.mode === 'plan' && !!pet.plan && planUsesMemory(pet.plan);
+    const remembers = (pet.assignment.mode === 'plan' || (pet.assignment.mode === 'auto' && pet.executive.mode === 'rules')) && !!pet.plan && planUsesMemory(pet.plan);
     if (remembers) f.world.tally ??= {};
     const inv = chooseInvocation(s, pet, rt);
     if (remembers) rt.plan.base = cloneTally(f.world.tally);
     rt.inv = inv;
     rt.exec = buildExecutor(s, pet, inv, rt);
     rt.startCoins = s.resources.coins;
+    rt.startWork = workDone(f.world);
     rt.startEnergy = pet.energy;
     rt.startTick = f.tick;
     f.current = inv;
@@ -991,7 +999,9 @@ export function applyPlan(s: GameState, rt: FarmRuntime, petId: string): void {
   const p = petById(s, petId);
   if (!p) return;
   p.plan ??= starterPlan();
-  p.assignment.mode = 'plan';
+  p.assignment.mode = 'auto'; // Auto works on the pet's responsibilities
+  p.executive.mode = 'rules';
+  s.progress.flags.dutiesApplied = true;
   const hi = (s.farm.helpers ?? []).findIndex((h) => h.petId === petId);
   if (hi >= 0) {
     // A helper: it starts its plan from a clean slate; the lead carries on.

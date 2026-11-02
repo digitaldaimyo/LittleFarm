@@ -46,11 +46,11 @@ export function requestHelp(kind: RequestKind): { hint: string; lesson?: string 
     case 'berries': return { hint: 'Harvest berries with Approach (or Avoid, to stay out of the pond); they count once they reach the house.', lesson: 'where' };
     case 'eggs': return { hint: 'The Haul job uses Fetch to carry eggs (and anything in the basket or shed) to the house.', lesson: 'results' };
     case 'carrots': return { hint: 'Harvest carrots into the basket, then Haul them to the house (Haul needs Fetch).', lesson: 'results' };
-    case 'fireflies': return { hint: 'At night, Auto catches fireflies — or add a plan row “IF it’s night DO Catch fireflies”.', lesson: 'plans' };
+    case 'fireflies': return { hint: 'At night, Auto catches fireflies — or give your pet a responsibility “WHEN it’s night USE Catch fireflies”.', lesson: 'plans' };
     case 'water': return { hint: 'Teach the “Water the garden” recipe (Curriculum) and run it on the farm with “Run a skill”.', lesson: 'invent' };
     case 'noPecks': return { hint: 'Invent a guard skill with the Shoo ability (aim it at the crow) — or buy a scarecrow.', lesson: 'invent' };
     case 'coop': return { hint: 'Try the “Herd a chicken” recipe: “Area seen from…” is the sense that makes herding work.', lesson: 'invent' };
-    case 'gate': return { hint: 'Teach Shut the gate (Train), then add a plan row: IF “Gates are… any open” DO “Mind the gate (closed)”.', lesson: 'plans' };
+    case 'gate': return { hint: 'Teach Shut the gate (Train), then give your pet a responsibility: WHEN “Gates are… any open” USE “Mind the gate (closed)”.', lesson: 'plans' };
   }
 }
 

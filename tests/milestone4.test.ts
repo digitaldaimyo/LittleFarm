@@ -5,7 +5,7 @@ import { buy } from '../src/game/progression';
 import { applyPlan, createRuntime, farmTick, previewPlan, DAY_TICKS } from '../src/game/farm';
 import { planWarnings, starterPlan } from '../src/game/plan';
 import { node } from '../src/domain/spec';
-import { recipeStage, trainAndSave } from './helpers';
+import { giveFarmJobs, recipeStage, trainAndSave } from './helpers';
 import type { FarmPlan, GameState } from '../src/game/types';
 
 /** A busy farm: Approach + Fetch, carrots, chickens, crows, nights. */
@@ -15,6 +15,7 @@ function busyFarm(): GameState {
   pet.traits = { curiosity: 0.5, persistence: 0.5, caution: 0.5 };
   const ap = trainAndSave(g, pet, recipeStage('go-to-berry'));
   trainAndSave(g, pet, recipeStage('bring-it-home'), ap.policy);
+  giveFarmJobs(g, pet);
   g.progress.unlocks.push('custom', 'fetch', 'carrots');
   g.resources.coins = 30;
   buy(g, 'chickens');
@@ -59,7 +60,7 @@ describe('M4 gate 2: preview = reality', () => {
     expect(g.resources.coins - coins0).toBe(preview.coins);
     expect({ coins: g.resources.coins, tick: g.farm.tick, petX: g.farm.world.pet.x, petY: g.farm.world.pet.y }).toEqual(preview.final);
     expect(g.pets[0].energy).toBeCloseTo(preview.energyEnd, 9);
-    expect(Object.keys(preview.fires).length).toBeGreaterThan(1);
+    expect(preview.fires[plan.rows[2].id]).toBeGreaterThan(0); // “Eggs first” (eggs keep coming, so it keeps the pet busy)
   });
 });
 

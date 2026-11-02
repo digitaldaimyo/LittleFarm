@@ -199,6 +199,10 @@ Saves are v2. The v1 → v2 migration adds templates and explicit preset senses.
 
 **Feedback:** 👍/👎 on a replayed movement episode adds ±0.5 (clamped to ±1) to those (state, action) pairs. That bonus is added to reward in later lessons for that stage and shown as "Your feedback" in the ledger.
 
+### Responsibilities and the executive (learned-farm phase 4)
+
+`src/game/plan.ts` holds the responsibilities (the farm plan's `plan.row` cards with `if` = WHEN, `do` = USE, `also` = OR USE and `until` = UNTIL) and the deterministic executive. `compilePlan` turns rows into `CompiledRow`s, each with `jobs` that carry evidence keys. `chooseDuty` handles needs → priority → commitment → evidence → cooldowns and returns a reason. `afterDutyJob` records evidence (`Pet.evidence`), failures and cooldowns, judging progress by a world fingerprint (`workDone` in farm.ts). The runtime state (`PlanRuntime`: commit, cooldown, fails, trace, switches) lives in each pet's `FarmRuntime.plan`. Auto, and old saves' `plan` mode, go through it in `chooseInvocation`.
+
 ### Learned jobs (learned-farm phase 3)
 
 `src/game/capability.ts` binds farm jobs to learned skills: `LEARNED_JOBS` (`forage` → Harvest to storage / Harvest, aimed at `@crop`; `deliver` → Fetch; `tote` → Basket run; `plant` → Plant; `gateOpen`/`gateShut` → Open / Shut the gate), `jobSkills`/`jobSkill(pet, job)` (the player's pick in `Pet.jobSkills`, else skills taught by the job's recipes or named after it, preferred first) and `jobCapability(pet, job, state?)` (null unless the farm may use it; with the state, Harvest picks storage only when it's nearer than the house and someone can empty it). The job executors in `farm.ts` call `runCapability`, which takes `RunOptions` (`goal` replaces the skill's own goal, e.g. "the basket is set down"; `dest`/`count` for Fetch); with no bound skill the job isn't eligible and the job card is locked. There is no scripted fallback.

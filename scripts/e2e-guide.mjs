@@ -292,8 +292,8 @@ try {
     await page.click('[data-tut="save-skill"]');
     await lessonDone('Combine skills');
 
-    // Lesson 9: Plan the farm
-    await start('Plan the farm');
+    // Lesson 9: Responsibilities (the farm plan grew into them in learned-farm phase 4)
+    await start('Responsibilities');
     await nav('Farm');
     await page.click('[data-tut="plan-edit"]');
     await page.click('[data-tut="plan-preview"]');
@@ -312,12 +312,13 @@ try {
     }
     console.log(`   moved up ${moves}×: ${(await rowNames()).join(' | ')}`);
     check(ran, 'L9: moved high enough, the row runs in the preview');
-    await step('Tidy up and use the plan', 'L9: asks to tidy up the experiment row');
+    await step('Tidy up and use them', 'L9: asks to tidy up the experiment responsibility');
     await (await wellRow()).locator('button[aria-label="Delete row"]').click();
     await page.click('[data-tut="plan-apply"]');
-    check(!(await rowNames()).includes('Check on the well'), 'L9: experiment row deleted and the plan applied');
+    check(!(await rowNames()).includes('Check on the well'), 'L9: experiment deleted and the responsibilities used');
+    check(/Why Pip is doing what they do/.test(await page.textContent('.plan-mat')), 'L9: the decision trace explains what the pet is doing');
     await looked();
-    await lessonDone('Plan the farm');
+    await lessonDone('Responsibilities');
 
     // Lesson 10: Lay out the farm (farm life phase C)
     await start('Lay out the farm');

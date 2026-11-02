@@ -19,7 +19,7 @@ export function petStatus(petId: string): string {
 
 function jobName(p: Pet): string {
   const a = p.assignment;
-  return a.mode === 'auto' ? 'Auto' : a.mode === 'plan' ? 'Farm plan' : a.mode === 'manual' ? 'Steer' : BEHAVIOR_LABEL[a.job === 'skill' ? 'skill' : a.job];
+  return a.mode === 'auto' ? 'Auto' : a.mode === 'plan' ? 'Auto' : a.mode === 'manual' ? 'Steer' : BEHAVIOR_LABEL[a.job === 'skill' ? 'skill' : a.job];
 }
 
 export function toggleDuty(petId: string, on: boolean): void {

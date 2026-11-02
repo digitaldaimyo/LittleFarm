@@ -10,9 +10,11 @@ import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import { newGame } from '../src/game/state';
 import { adoptPet } from '../src/game/pets';
 import { createRuntime, dayInfo, farmTick, DAY_TICKS, NIGHT_FROM, GROW_TICKS } from '../src/game/farm';
-import { rulesSelect } from '../src/learning/executive';
+import { chooseDuty, compilePlan, newPlanRuntime, starterPlan } from '../src/game/plan';
+import { farmContext } from '../src/game/farm';
+import { Rng } from '../src/sim/rng';
 import { parseGame, serializeGame } from '../src/persistence/save';
-import { recipeStage as rs, trainAndSave } from './helpers';
+import { recipeStage as rs, trainAndSave, giveHarvest } from './helpers';
 
 describe('watering', () => {
   it('fills at the well and waters a dry plot (3 splashes per fill)', () => {
@@ -94,11 +96,24 @@ describe('day and night', () => {
     expect(g.journal.some((j) => j.kind === 'first-night')).toBe(true);
   });
 
-  it('rule-based executive prefers sleep at night unless there are fireflies to catch', () => {
-    const base = { energyLow: false, berry: true, carrot: false, carrying: false, recentFail: false };
-    expect(rulesSelect({ ...base, night: false }, ['rest', 'forage', 'catch', 'wander'])).toBe('forage');
-    expect(rulesSelect({ ...base, night: true, firefly: false }, ['rest', 'forage', 'wander'])).toBe('rest');
-    expect(rulesSelect({ ...base, night: true, firefly: true }, ['rest', 'forage', 'catch'])).toBe('catch');
+  it('the responsibility executive sleeps at night unless there are fireflies to catch (a night responsibility)', () => {
+    const g = newGame();
+    const p = adoptPet(g, 'Pip', 'meadow');
+    p.traits = { ...DEFAULT_TRAITS };
+    trainAndSave(g, p, rs('go-to-berry'));
+    giveHarvest(g, p);
+    g.farm.dutyPetId = p.id;
+    const plan = starterPlan();
+    const rows = compilePlan(plan);
+    const w = g.farm.world;
+    const pick = () => { const d = chooseDuty(g, p, plan, rows, farmContext(g, p, false), newPlanRuntime(), new Rng(1)); return d.need ?? d.job?.behaviorId; };
+    w.night = false;
+    addObject(w, 'berry', 6, 6); // something ripe
+    expect(pick()).toBe('forage');
+    w.night = true;
+    expect(pick()).toBe('night');
+    addObject(w, 'firefly', 5, 5);
+    expect(pick()).toBe('catch');
   });
 
   it('Time of day card + Is night condition + night sense work in pens', () => {

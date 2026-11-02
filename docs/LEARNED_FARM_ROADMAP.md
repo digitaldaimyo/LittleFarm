@@ -68,7 +68,26 @@ Status: **official roadmap**, decisions settled (section 8). **Phase 0 done:**
 
 **Phase 3d done:** the v9 save migration (see §6). Phase 3 is complete.
 
-Next: phase 4 (responsibilities and a deterministic executive over learned capabilities).
+**Phase 4 done (responsibilities + the deterministic executive):**
+- **Responsibilities** are the farm plan's rows, grown in place, so old rows still mean what they meant. Each card now reads: WHEN conditions, USE a job, **OR USE** more jobs, and optionally **UNTIL** a condition. The plan mat is now the responsibilities editor (decision 6).
+- **Auto is the responsibility executive** (`chooseDuty`, `afterDutyJob` in `game/plan.ts`):
+  - **Needs first:** a tired pet rests until energy 90, unless it holds a basket. At night it sleeps, unless a responsibility's WHEN mentions night.
+  - **Priority:** the highest responsibility whose WHEN holds and whose UNTIL doesn't yet, with at least one eligible job that isn't cooling down.
+  - **Commitment:** an UNTIL responsibility holds for 60 ticks unless its job failed. An each-time responsibility is released after each finished job, so old rows behave exactly as before.
+  - **Evidence:** the job with the best evidence wins (success rate per tick, kept on the pet). Untried jobs get a turn first.
+  - **Cooldowns:** a job that makes **no progress in the world** 3 times in a row rests for 200 ticks. An UNTIL responsibility with no progress for 400 ticks is set aside. Progress is a world fingerprint (sales, deliveries, what's in the paws, sown plots, fireflies, gates), not what the job reported. This mattered: Harvest to storage handing a crop over to Haul isn't a failure.
+  - **Decision trace:** "Why…" in the editor; the reason is also on the pet card.
+- **Retired:** `rulesSelect` (the old fixed Auto rule list), the separate Farm plan job card and plan mode (old saves' plan mode runs as Auto), and the "Tired? Nap" / "Night: sleep" rows, which are now needs. The *Learns from results* bandit stays until phase 5 replaces it.
+- **Field Guide:** lesson 10 is now *Responsibilities*: same shadowing and preview steps, plus UNTIL, OR USE and the trace.
+- **Gate (tests/duties.test.ts):**
+  - a responsibility served by two jobs (Haul or Basket run) is worked on until its UNTIL holds;
+  - a tired pet rests until refreshed before working;
+  - no thrash: under 25 switches a minute on three farms, and the guard is never needed;
+  - no endless retry: a job that can never work is tried at most 3 times per cooldown;
+  - a commitment holds against a more important responsibility within 60 ticks.
+- **Farm output stays ≥ 80% of the phase-0 baseline everywhere** (`bench:farm --learned`; see TESTING).
+
+Next: phase 5 (the learned executive: option values per responsibility, executive lessons).
 
 **The commitment.** Everything a pet does on its own on the farm comes from a skill or routine the player taught it in the pen. No hidden job scripts. The farm executive is promoted from a fixed rule list to a learned, two-level decision-maker:
 - the **upper level** reads the farm and picks what to work on next (a responsibility);

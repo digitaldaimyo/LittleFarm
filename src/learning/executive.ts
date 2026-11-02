@@ -2,9 +2,9 @@ import { Rng } from '../sim/rng';
 
 /**
  * Tiny executive: chooses which behavior to run at option boundaries.
- * Two interchangeable selectors share one invocation contract:
- *   - a deterministic rules baseline
- *   - a locally trained contextual bandit (tabular, ε-greedy, running means)
+ * The deterministic choice is the responsibility executive (game/plan.ts, `chooseDuty`; it replaced the old rule
+ * list in learned-farm phase 4). This file keeps the shared invocation contract and the learned bandit (phase 5
+ * replaces it).
  */
 export type BehaviorId = 'forage' | 'deliver' | 'rest' | 'wander' | 'manual' | 'skill' | 'catch' | 'goto' | 'gate' | 'plant' | 'tote';
 
@@ -55,24 +55,6 @@ export function describeContext(c: ExecContext): string {
   if (c.firefly) p.push('fireflies out');
   if (c.recentFail) p.push('just had a setback');
   return p.join(', ');
-}
-
-export function rulesSelect(c: ExecContext, eligible: BehaviorId[]): BehaviorId {
-  const has = (b: BehaviorId) => eligible.includes(b);
-  if (c.basket && has('tote')) return 'tote'; // holding a basket: finish the run before anything else
-  if (c.energyLow && has('rest')) return 'rest';
-  if (c.night && c.firefly && has('catch')) return 'catch';
-  if (c.night && !c.carrying && has('rest')) return 'rest'; // pets prefer sleeping at night
-  // Farm life: "berry" = something ripe to harvest, "carrot" = goods to haul (eggs or stored produce).
-  if (c.carrying && has('deliver')) return 'deliver';
-  if (c.carrying && has('forage')) return 'forage'; // no Fetch yet: carry the harvest home
-  if (c.tote && has('tote')) return 'tote'; // a basket half full (six crops a trip) or away from the crops
-  if (c.storeHalf && has('deliver')) return 'deliver';
-  if (c.soil && has('plant')) return 'plant'; // sow first: a seed in the ground is growing while you harvest
-  if (c.berry && has('forage')) return 'forage';
-  if (c.carrot && has('deliver')) return 'deliver';
-  if (has('wander') && !c.energyLow) return 'wander';
-  return 'rest';
 }
 
 export function learnedSelect(c: ExecContext, eligible: BehaviorId[], table: ExecutiveTable, rng: Rng, curiosity: number): { choice: BehaviorId; explored: boolean } {

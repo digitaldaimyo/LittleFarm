@@ -1,3 +1,4 @@
+import { jobCapability } from './capability';
 import type { StageSpec } from '../domain/types';
 import type { TrainingReport } from '../learning/report';
 import type { GameState } from './types';
@@ -56,9 +57,10 @@ export function farmTips(s: GameState): Tip[] {
   // Empty soil the farm can afford to plant, and nobody on duty plants.
   const soil = f.world.objects.filter((o) => o.kind === 'soil' && !o.carried && !o.delivered);
   const affordable = soil.some((o) => s.resources.coins >= (OBJECT_BY_ID[o.crop ?? 'carrot']?.crop?.seed ?? 0));
-  const planter = duty.some((p) => p.assignment.mode === 'auto' || (p.assignment.mode === 'job' && p.assignment.job === 'plant')
-    || (p.assignment.mode === 'plan' && !!p.plan?.rows.some((r) => (r.args.do as { cardId?: string } | undefined)?.cardId === 'job.plant')));
-  if (soil.length && affordable && duty.length && !planter) tips.push({ id: 'idle-soil', text: `${soil.length === 1 ? 'A field plot is' : `${soil.length} field plots are`} empty. Field crops need replanting after each harvest — put a pet on Auto or Plant (or add a Plant row to your farm plan).` });
+  const plants = (p: (typeof duty)[number]) => !p.plan || JSON.stringify(p.plan.rows).includes('"job.plant"');
+  const planter = duty.some((p) => !!jobCapability(p, 'plant') && (((p.assignment.mode === 'auto' || p.assignment.mode === 'plan') && plants(p)) || (p.assignment.mode === 'job' && p.assignment.job === 'plant')));
+  const canPlant = duty.some((p) => !!jobCapability(p, 'plant'));
+  if (soil.length && affordable && duty.length && !planter) tips.push({ id: 'idle-soil', text: `${soil.length === 1 ? 'A field plot is' : `${soil.length} field plots are`} empty. Field crops need replanting after each harvest — ${canPlant ? 'put a pet on Auto or Plant (or give it a responsibility that uses Plant).' : 'teach a pet the Plant routine (Train), then put it on Auto or Plant.'}` });
   // Every pet on duty hauling (nobody harvests, so there's soon nothing to haul), or all napping.
   const job = duty[0]?.assignment.mode === 'job' ? duty[0].assignment.job : null;
   if (duty.length >= 2 && (job === 'deliver' || job === 'rest') && duty.every((p) => p.assignment.mode === 'job' && p.assignment.job === job)) {
