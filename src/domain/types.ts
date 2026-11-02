@@ -145,6 +145,8 @@ export interface ObjectDef {
   mover?: 'wander' | 'crow';
   /** Farm storage: how many slots (one kind each) and how many items per slot. */
   storage?: { slots: number; perSlot: number };
+  /** Storage a pet can lift and carry (baskets; not sheds). */
+  portable?: boolean;
   /** Farm: bringing produce here sells it. */
   sells?: boolean;
   /** Crops: how long they take to grow (ticks), what the seed costs (none = perennial), and what they sell for. */

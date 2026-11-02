@@ -105,6 +105,35 @@ function waterGarden(): StageSpec {
   };
 }
 
+/** Example player-style skill: a basket starts with stock; lift it, carry it to the house and put it down there (it empties). */
+function emptyBasket(): StageSpec {
+  const n = maker('eb');
+  return {
+    id: 'stage-empty-basket', name: 'Empty the basket', recipeId: 'empty-basket', version: 1,
+    blurb: 'A custom skill: lift a stocked basket, carry it to the house and put it down there to empty it.',
+    size: { w: 8, h: 8 },
+    environment: [
+      n('place.pet', { mode: 'random', x: 0, y: 0 }),
+      n('place.stocked', { kind: k(n, 'bin'), item: k(n, 'berry'), count: 3, vary: 'upTo', region: 'anywhere' }),
+      n('place.random', { kind: k(n, 'home'), count: 1, region: 'anywhere' }),
+      n('place.random', { kind: k(n, 'rock'), count: 2, region: 'anywhere' }),
+    ],
+    abilities: ['move', 'drop', 'lift'],
+    rules: [
+      // A small, once-only treat for lifting: without it the only treat is at the very end, and practice rarely finds it.
+      n('rule', { label: 'Lifted', when: n('ev.lift', { actor: pet(n), what: k(n, 'bin') }), then: [n('eff.reward', { amount: 1 })], limit: n('lim.once') }),
+      n('rule', { label: 'Emptied at the house', when: n('ev.empty', { what: k(n, 'bin'), into: k(n, 'home') }), then: [n('eff.reward', { amount: 6 }), n('eff.end', { outcome: 'judge' })], limit: n('lim.once') }),
+      n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.03 })] }),
+    ],
+    success: n('cond.storage', { level: 'empty' }),
+    fail: null,
+    seed: 909, maxTicks: 80,
+    learner: { skill: 'Empty the basket', template: 'sense', focus: 'bin', episodes: 8000,
+      senses: [n('sense.nearest', { what: k(n, 'bin') }), n('sense.nearest', { what: k(n, 'home') }), n('sense.carrying')] },
+    evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.6 },
+  };
+}
+
 const coopArea = (n: Mk) => n('area.named', { name: 'coop' });
 
 /** Example player-style skill: shoo a chicken into a coop that sits somewhere new each try. */
@@ -370,6 +399,7 @@ export const RECIPES: Recipe[] = [
   { id: 'wait-for-it', name: 'Wait for it', blurb: 'Your own skill: go to the target and stay put.', skill: 'Wait for it', unlock: 'custom', optional: true, build: waitForIt },
   { id: 'keep-clear', name: 'Keep clear', blurb: 'Your own skill: stay away from the pond until time is up.', skill: 'Keep clear', unlock: 'custom', optional: true, build: keepClear },
   { id: 'water-garden', name: 'Water the garden', blurb: 'Your own skill: fill up at the well, water the dry patches.', skill: 'Water the garden', unlock: 'custom', optional: true, build: waterGarden },
+  { id: 'empty-basket', name: 'Empty the basket', blurb: 'Your own skill: carry a stocked basket to the house and empty it there (uses Lift).', skill: 'Empty the basket', unlock: 'custom', optional: true, build: emptyBasket },
   { id: 'herd-chicken', name: 'Herd a chicken', blurb: 'Your own skill: shoo a chicken into the coop.', skill: 'Herd', unlock: 'custom', optional: true, build: herdChicken },
   { id: 'shoo-loophole', name: 'Treat for every shoo', blurb: 'Experiment: a herding reward with a loophole.', skill: 'Herd (loophole)', unlock: 'custom', optional: true, build: shooLoophole },
   { id: 'open-gate', name: 'Open the gate', blurb: 'Your own skill: find a gate and nudge it open.', skill: 'Open the gate', unlock: 'custom', optional: true, build: openGate },

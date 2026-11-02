@@ -361,11 +361,14 @@ try {
     check((await page.locator('.world [aria-label="Mochi"]').count()) === 1, 'roster: Mochi appears on the farm');
     await page.click('.roster-chip:has-text("Mochi")');
     check((await page.textContent('[data-tut="pet-card"] .pet-name')) === 'Mochi', 'roster: the strip opens Mochi’s card');
-    await page.click('[aria-label="Farm tile 2,3"]');
+    // The basket may have been carried next to the crops: find it by its count badge.
+    const [bx, by] = await page.$eval('.store-badge', (g) => { const m = g.getAttribute('transform').match(/translate\(([-\d.]+) ([-\d.]+)\)/); return [Math.round((+m[1] - 10) / 40), Math.round((+m[2] - 1) / 40)]; });
+    await page.click(`[aria-label="Farm tile ${bx},${by}"]`);
     check(/^Basket: /.test(await page.textContent('.inspect span')), 'farm: tapping the basket shows what is in it');
     await page.click('[data-tut="duty-toggle"]');
     check((await page.locator('.world [aria-label="Mochi"]').count()) === 0, 'roster: off duty, Mochi goes home');
     await page.click('.roster-chip:has-text("Pip")');
+    check(await page.isEnabled('[data-tut="job-tote"]'), 'baskets: the Basket run job is available to a pet with Fetch');
     await page.click('[data-tut="pet-card"] button:has-text("Teach Pip")'); // Pip is the active pet again for what follows
 
     // Teaching polish (phase A): build "end on shoo chicken" the old way, get warned, repair it, train it.

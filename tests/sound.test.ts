@@ -22,7 +22,7 @@ const FX_SAMPLES: FarmFx[] = [
   ...['night'].map((text) => ({ type: 'nap' as const, x: 1, y: 1, text })),
   ...['shoo', 'firefly', 'crow', 'dawn', 'dusk'].map((text) => ({ type: 'sound' as const, x: 1, y: 1, text })),
 ];
-const SIM_EVENTS: SimEventType[] = ['tick', 'move', 'bump', 'reach', 'enter', 'pickup', 'drop', 'deliver', 'fumble', 'stay', 'fill', 'water', 'shoo', 'scare', 'peck', 'enterArea', 'leaveArea', 'gate', 'full', 'plant'];
+const SIM_EVENTS: SimEventType[] = ['tick', 'move', 'bump', 'reach', 'enter', 'pickup', 'drop', 'deliver', 'fumble', 'stay', 'fill', 'water', 'shoo', 'scare', 'peck', 'enterArea', 'leaveArea', 'gate', 'full', 'plant', 'lift', 'empty'];
 
 describe('sound cues', () => {
   it('every farm effect (and every tag on one) either makes a sound or is silent on purpose', () => {

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { BehaviorSummary } from '../learning/summary';
 import { HEAT_N, HEAT_R } from '../learning/summary';
 
-const ACTION_LABEL: Record<string, string> = { N: 'north', E: 'east', S: 'south', W: 'west', wait: 'stay', pick: 'pick up', drop: 'put down', water: 'water', shoo: 'shoo', nudge: 'nudge', plant: 'plant' };
+const ACTION_LABEL: Record<string, string> = { N: 'north', E: 'east', S: 'south', W: 'west', wait: 'stay', pick: 'pick up', drop: 'put down', water: 'water', shoo: 'shoo', nudge: 'nudge', plant: 'plant', lift: 'lift' };
 
 /** "What it actually did" — heatmap around the target, action mix, endings, which rules paid. */
 export function BehaviorSummaryView({ s, target, curiosities }: { s: BehaviorSummary; target: string; curiosities?: string[] }) {

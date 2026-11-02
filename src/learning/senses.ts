@@ -3,7 +3,7 @@ import { REGISTRY } from '../domain/registry';
 import { node } from '../domain/spec';
 import { compileEvent, countSince, resolveKind, withTarget } from '../sim/compile';
 import type { Action, Tally, World } from '../sim/world';
-import { DIRS, MOVES, def, inArea, isHazardAt, isSolidAt, nearest, nudgeableGate, objectsAt, plantableHere, type Area } from '../sim/world';
+import { DIRS, MOVES, def, inArea, isHazardAt, isSolidAt, nearest, nudgeableGate, objectsAt, onGround, plantableHere, storeCount, type Area } from '../sim/world';
 
 /**
  * Compiles player-chosen Sense cards into a mixed-radix state encoder.
@@ -146,6 +146,23 @@ function senseFn(n: SpecNode, target: string): (w: World, base?: Tally) => numbe
       return (w) => MOVES.indexOf(w.pet.facing);
     case 'sense.carrying':
       return (w) => (w.pet.carrying !== null ? 1 : 0);
+    case 'sense.stock':
+      // How full the nearest storage is — or the basket in its paws: 0 empty (or none), 1 some, 2 full.
+      return (w) => {
+        const held = w.pet.carrying !== null ? w.objects.find((o) => o.id === w.pet.carrying && o.store) : undefined;
+        let s = held;
+        if (!s) {
+          let bd = Infinity;
+          for (const o of w.objects) {
+            if (!o.store || !onGround(o)) continue;
+            const d = Math.abs(o.x - w.pet.x) + Math.abs(o.y - w.pet.y);
+            if (d < bd) { bd = d; s = o; }
+          }
+        }
+        if (!s) return 0;
+        const n = storeCount(s), st = def(s.kind).storage;
+        return n === 0 ? 0 : st && n >= st.slots * st.perSlot ? 2 : 1;
+      };
     case 'sense.still':
       return (w) => { const s = w.pet.still ?? 0; return s === 0 ? 0 : s < 5 ? 1 : 2; };
     default:
@@ -193,9 +210,9 @@ export function compileEncoder(senses: SpecNode[], target: string): SenseEncoder
 }
 
 /** Ability cards → ordered primitive action set. Order is fixed so presets keep the legacy 4-action layout. */
-export const ABILITY_ACTIONS: Record<string, Action[]> = { move: MOVES, stay: ['wait'], pickup: ['pick'], drop: ['drop'], water: ['water'], shoo: ['shoo'], nudge: ['nudge'], plant: ['plant'] };
-export const ABILITY_LABELS: Record<string, string> = { move: 'Move', stay: 'Stay', pickup: 'Pick up', drop: 'Put down', water: 'Water', shoo: 'Shoo', nudge: 'Nudge gate', plant: 'Plant' };
-export const ABILITY_ORDER = ['move', 'stay', 'pickup', 'drop', 'water', 'shoo', 'nudge', 'plant']; // new abilities go last, so saved policies keep their action indices
+export const ABILITY_ACTIONS: Record<string, Action[]> = { move: MOVES, stay: ['wait'], pickup: ['pick'], drop: ['drop'], water: ['water'], shoo: ['shoo'], nudge: ['nudge'], plant: ['plant'], lift: ['lift'] };
+export const ABILITY_LABELS: Record<string, string> = { move: 'Move', stay: 'Stay', pickup: 'Pick up', drop: 'Put down', water: 'Water', shoo: 'Shoo', nudge: 'Nudge gate', plant: 'Plant', lift: 'Lift basket' };
+export const ABILITY_ORDER = ['move', 'stay', 'pickup', 'drop', 'water', 'shoo', 'nudge', 'plant', 'lift']; // new abilities go last, so saved policies keep their action indices
 
 export function actionsFor(abilities: string[]): Action[] {
   const out: Action[] = [];
@@ -215,6 +232,8 @@ export function legalActionIdx(w: World, actions: Action[]): number[] {
       if (w.pet.carrying !== null) out.push(i);
     } else if (a === 'plant') {
       if (plantableHere(w)) out.push(i);
+    } else if (a === 'lift') {
+      if (w.pet.carrying === null && objectsAt(w, w.pet.x, w.pet.y).some((o) => def(o.kind).portable)) out.push(i);
     } else if (a === 'nudge') {
       if (nudgeableGate(w)) out.push(i);
     } else if (a === 'shoo') {

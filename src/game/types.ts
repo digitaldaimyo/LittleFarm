@@ -12,7 +12,7 @@ import type { World } from '../sim/world';
 export const SAVE_VERSION = 8;
 
 export type PaletteId = 'meadow' | 'plum' | 'sky' | 'moss';
-export type JobId = 'forage' | 'deliver' | 'plant' | 'rest' | 'skill';
+export type JobId = 'forage' | 'deliver' | 'plant' | 'tote' | 'rest' | 'skill';
 export type NavigatorName = 'Approach' | 'Avoid';
 
 export interface SkillEval {

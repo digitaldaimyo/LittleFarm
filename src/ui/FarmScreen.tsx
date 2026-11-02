@@ -45,6 +45,7 @@ function jobCards(pet: Pet, unlocks: string[]): JobCard[] {
     { id: 'forage', title: BEHAVIOR_LABEL.forage, blurb: 'Pick ripe crops and carry them to storage or the house, where they sell (berry +2, carrot +5, sunflower +7, pumpkin +12).', needs: 'Approach', locked: hasNav ? undefined : 'Needs a saved Approach skill' },
     { id: 'deliver', title: BEHAVIOR_LABEL.deliver, blurb: 'Fetch eggs and whatever is in the basket or shed to the house, where it sells.', needs: 'Fetch', locked: hasFetch ? undefined : 'Needs a saved Fetch skill' },
     { id: 'plant', title: BEHAVIOR_LABEL.plant, blurb: 'Plant empty soil: carrots (seed 1), sunflowers (2), pumpkins (3). Seeds are paid from your coins.', needs: 'Approach', locked: hasNav ? undefined : 'Needs a saved Approach skill' },
+    { id: 'tote', title: BEHAVIOR_LABEL.tote, blurb: 'Lift a basket that’s half full, empty it at the house or a shed, and set it down by the crops — six crops in one trip. Also moves an empty basket next to the fields.', needs: 'Fetch', locked: hasFetch ? undefined : 'Needs a saved Fetch skill' },
     { id: 'rest', title: 'Nap', blurb: 'Rest to refill energy.' },
     { id: 'skill', title: 'Run a skill', blurb: 'Run one of your own skills, aimed at anything on the farm.', locked: customSkills(pet).length ? undefined : unlocks.includes('custom') ? 'Invent a skill in the pen first (Pet binder → New skill)' : 'Unlocks with a certified Approach' },
     { id: 'manual', title: 'Steer', blurb: 'Guide them yourself: tap tiles or use arrow keys.' },
@@ -75,7 +76,7 @@ export function FarmScreen() {
 
   useEffect(() => {
     if (!manual) return;
-    const keys: Record<string, Action> = { ArrowUp: 'N', ArrowRight: 'E', ArrowDown: 'S', ArrowLeft: 'W', ' ': 'pick', p: 'pick', d: 'drop', w: 'water', x: 'shoo', g: 'nudge', l: 'plant' };
+    const keys: Record<string, Action> = { ArrowUp: 'N', ArrowRight: 'E', ArrowDown: 'S', ArrowLeft: 'W', ' ': 'pick', p: 'pick', d: 'drop', w: 'water', x: 'shoo', g: 'nudge', l: 'plant', b: 'lift' };
     const h = (e: KeyboardEvent) => {
       const a = keys[e.key];
       if (!a || (e.target as HTMLElement)?.tagName === 'INPUT') return;
@@ -181,8 +182,9 @@ export function FarmScreen() {
               <button className="wide" onClick={() => queueManual(store.runtime, 'shoo')}>Shoo (X)</button>
               <button className="wide" onClick={() => queueManual(store.runtime, 'nudge')}>Nudge gate (G)</button>
               <button className="wide" onClick={() => queueManual(store.runtime, 'plant')}>Plant (L)</button>
+              <button className="wide" onClick={() => queueManual(store.runtime, 'lift')}>Lift basket (B)</button>
             </div>
-            <p className="muted small">Tap a tile to walk there. Pick up (P) and put down (D) to carry crops: put them down in the basket or shed to store them, or in the house to sell them. Water at the well to fill up, then on a bush or patch — watered plots regrow twice as fast. Stand on empty soil and Plant (L) to sow it — the seed is paid from your coins. Walk into fireflies at night to catch them. Shoo pushes a next-door chicken one tile away and sends crows flying. Chickens only lay eggs inside the coop.</p>
+            <p className="muted small">Tap a tile to walk there. Pick up (P) and put down (D) to carry crops: put them down in the basket or shed to store them, or in the house to sell them. Water at the well to fill up, then on a bush or patch — watered plots regrow twice as fast. Stand on empty soil and Plant (L) to sow it — the seed is paid from your coins. Lift (B) a basket to carry it: put it down (D) by the crops, or at the house or a shed to empty it there. Walk into fireflies at night to catch them. Shoo pushes a next-door chicken one tile away and sends crows flying. Chickens only lay eggs inside the coop.</p>
           </div>
         )}
       </section>
@@ -236,7 +238,7 @@ export function FarmScreen() {
               </button>
             ))}
           </div>
-          {(selected === 'forage' || selected === 'deliver' || selected === 'plant' || selected === 'auto') && (
+          {(selected === 'forage' || selected === 'deliver' || selected === 'plant' || selected === 'tote' || selected === 'auto') && (
             <div className="sleeve-inline">
               <span className="small">Move with</span>
               <div className="seg" role="radiogroup" aria-label="Navigation skill">

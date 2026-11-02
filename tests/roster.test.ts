@@ -96,11 +96,12 @@ describe('a crew of up to 4 pets', () => {
     const rt = createRuntime(g.farm);
     for (let t = 0; t < 20; t++) farmTick(g, rt);
     expect(crewSummary(g)).toMatch(/\d (harvesting|hauling|planting|napping|thinking)/);
-    expect(describeTile(g, 2, 3)).toMatch(/^Basket: /);
+    const b = g.farm.world.objects.find((o) => o.kind === 'bin' && !o.carried)!;
+    expect(describeTile(g, b.x, b.y)).toMatch(/^Basket: /);
     expect(describeTile(g, 9, 1)).toMatch(/^Berry bush: (ripe|growing)/);
     g.progress.unlocks = g.progress.unlocks.filter((u) => u !== 'carrots');
     expect(describeTile(g, 2, 7)).toMatch(/waiting for carrots/);
-    expect(describeTile(g, 6, 6)).toBeNull();
+    expect(describeTile(g, 11, 3)).toBeNull();
   });
 
   it('v7 saves: the second pet on duty becomes the first helper, with its body, job and RNG', () => {

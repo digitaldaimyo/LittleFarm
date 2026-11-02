@@ -100,7 +100,7 @@ export const SILENT_FX = new Set(['nap:night', 'splash:rain']);
 const PICKUP_PITCH: Record<string, number> = { egg: 1.15, carrot: 0.9 };
 
 /** Sound-only farm markers (`type: 'sound'`), which the farm view doesn't draw. */
-const SOUND_TAGS: Record<string, CueId> = { shoo: 'farm.shoo', firefly: 'farm.firefly', crow: 'farm.crow', dawn: 'world.dawn', dusk: 'world.dusk', plant: 'farm.plant' };
+const SOUND_TAGS: Record<string, CueId> = { shoo: 'farm.shoo', firefly: 'farm.firefly', crow: 'farm.crow', dawn: 'world.dawn', dusk: 'world.dusk', plant: 'farm.plant', emptied: 'farm.store' };
 const DROP_TAGS: Record<string, CueId> = { watered: 'farm.water', filled: 'farm.fill', 'gate open': 'farm.gateOpen', 'gate shut': 'farm.gateShut', stored: 'farm.store' };
 
 /** The cue for one farm effect (null = silent). Exposed for the coverage test. */
@@ -163,6 +163,8 @@ export function cuesForSimEvents(events: SimEvent[], width: number): CueRequest[
       : e.type === 'gate' ? (e.state === 'open' ? 'farm.gateOpen' : 'farm.gateShut')
       : e.type === 'full' ? 'farm.full'
       : e.type === 'plant' ? 'farm.plant'
+      : e.type === 'lift' ? 'farm.pickup'
+      : e.type === 'empty' ? 'farm.store'
       : null;
     if (id) out.push({ id, ...(id === 'farm.pickup' ? { pitch: PICKUP_PITCH[e.kind ?? ''] ?? 1 } : {}), pan: panFor(e.x, width) });
   }

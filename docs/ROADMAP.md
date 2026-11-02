@@ -239,7 +239,7 @@ The milestones shipped in the recommended order: M1 → M5 (watering + day/night
 - **Fixes found along the way:** the random baseline never used Shoo or Stay (learned results unchanged); lesson 9 could get stuck on busy farms; a starting lesson's report covered the next one.
 
 ## Next: farm life (in progress)
-Phase A shipped: produce travels to storage (baskets, sheds) and sells only at the house, with Harvest and Haul jobs. Phase B shipped: field crops (carrot, sunflower, pumpkin) need replanting, each seed costs coins, and a Plant job, ability and cards do the work. Phase C shipped: a Layout mode (place, move, remove, validated as you go, previewed against the farm as it is) and Field Guide lesson 10. Phase D shipped: tap a pet for its card, the house for the roster, anything else for what it is; up to 4 pets on duty. See `docs/FARM_LIFE_PLAN.md`.
+Phase A shipped: produce travels to storage (baskets, sheds) and sells only at the house, with Harvest and Haul jobs. Phase B shipped: field crops (carrot, sunflower, pumpkin) need replanting, each seed costs coins, and a Plant job, ability and cards do the work. Phase C shipped: a Layout mode (place, move, remove, validated as you go, previewed against the farm as it is) and Field Guide lesson 10. Since then: pets carry baskets (Lift; a Basket run job that Auto uses), and pens can start with stocked storage (the *Empty the basket* recipe). Phase D shipped: tap a pet for its card, the house for the roster, anything else for what it is; up to 4 pets on duty. See `docs/FARM_LIFE_PLAN.md`.
 
 ## What could come next
 Not committed; listed roughly smallest first.

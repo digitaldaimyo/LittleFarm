@@ -85,8 +85,7 @@ export function findInStage(s: StageSpec, id: string): SpecNode | null {
 export function placedKinds(s: StageSpec): Set<string> {
   const out = new Set<string>();
   for (const p of s.environment) {
-    const k = p.args.kind;
-    if (isNode(k) && k.cardId.startsWith('kind:')) out.add(k.cardId.slice(5));
+    for (const k of [p.args.kind, p.args.item]) if (isNode(k) && k.cardId.startsWith('kind:')) out.add(k.cardId.slice(5));
   }
   return out;
 }

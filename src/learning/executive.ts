@@ -6,7 +6,7 @@ import { Rng } from '../sim/rng';
  *   - a deterministic rules baseline
  *   - a locally trained contextual bandit (tabular, ε-greedy, running means)
  */
-export type BehaviorId = 'forage' | 'deliver' | 'rest' | 'wander' | 'manual' | 'skill' | 'catch' | 'goto' | 'gate' | 'plant';
+export type BehaviorId = 'forage' | 'deliver' | 'rest' | 'wander' | 'manual' | 'skill' | 'catch' | 'goto' | 'gate' | 'plant' | 'tote';
 
 export interface Invocation {
   behaviorId: BehaviorId;
@@ -29,6 +29,10 @@ export interface ExecContext {
   storeHalf?: boolean;
   /** Farm life: empty soil whose seed can be afforded. */
   soil?: boolean;
+  /** Baskets: the pet is holding a basket. */
+  basket?: boolean;
+  /** Baskets: a basket run would help (one at least half full, or an empty one away from the crops). */
+  tote?: boolean;
 }
 
 export interface ExecutiveTable {
@@ -37,7 +41,7 @@ export interface ExecutiveTable {
 }
 
 export function contextKey(c: ExecContext): string {
-  return `${+c.energyLow}${+c.berry}${+c.carrot}${+c.carrying}${+c.recentFail}${+!!c.night}${+!!c.firefly}${c.soil ? 's' : ''}`; // (soil appended only when present, so older tables keep their keys)
+  return `${+c.energyLow}${+c.berry}${+c.carrot}${+c.carrying}${+c.recentFail}${+!!c.night}${+!!c.firefly}${c.soil ? 's' : ''}${c.basket ? 'b' : ''}${c.tote ? 't' : ''}`; // (soil appended only when present, so older tables keep their keys)
 }
 
 export function describeContext(c: ExecContext): string {
@@ -55,12 +59,14 @@ export function describeContext(c: ExecContext): string {
 
 export function rulesSelect(c: ExecContext, eligible: BehaviorId[]): BehaviorId {
   const has = (b: BehaviorId) => eligible.includes(b);
+  if (c.basket && has('tote')) return 'tote'; // holding a basket: finish the run before anything else
   if (c.energyLow && has('rest')) return 'rest';
   if (c.night && c.firefly && has('catch')) return 'catch';
   if (c.night && !c.carrying && has('rest')) return 'rest'; // pets prefer sleeping at night
   // Farm life: "berry" = something ripe to harvest, "carrot" = goods to haul (eggs or stored produce).
   if (c.carrying && has('deliver')) return 'deliver';
   if (c.carrying && has('forage')) return 'forage'; // no Fetch yet: carry the harvest home
+  if (c.tote && has('tote')) return 'tote'; // a basket half full (six crops a trip) or away from the crops
   if (c.storeHalf && has('deliver')) return 'deliver';
   if (c.soil && has('plant')) return 'plant'; // sow first: a seed in the ground is growing while you harvest
   if (c.berry && has('forage')) return 'forage';
@@ -93,6 +99,7 @@ export function updateExecutive(table: ExecutiveTable, c: ExecContext, b: Behavi
 
 export const BEHAVIOR_LABEL: Record<BehaviorId, string> = {
   forage: 'Harvest',
+  tote: 'Basket run',
   deliver: 'Haul to the house',
   plant: 'Plant',
   rest: 'Nap',

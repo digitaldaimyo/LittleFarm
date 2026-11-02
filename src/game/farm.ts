@@ -151,10 +151,14 @@ class FarmWalk {
 
 /** Where a harvested item goes: without Fetch straight to the house; with it, the nearest storage with room (or the house). */
 export function harvestDestination(w: World, kind: string, hasFetch: boolean): string {
-  if (!hasFetch) return 'home';
-  const options = w.objects.filter((o) => onGround(o) && (o.kind === 'home' || (o.store && storeAccepts(o, kind))));
+  return harvestTarget(w, kind, hasFetch)?.kind ?? 'home';
+}
+
+/** The exact storage (or house) a harvest goes to — with several baskets, the walk must head for this one. */
+export function harvestTarget(w: World, kind: string, hasFetch: boolean): Obj | undefined {
+  const options = w.objects.filter((o) => onGround(o) && (o.kind === 'home' || (hasFetch && o.store && storeAccepts(o, kind))));
   options.sort((a, b) => (Math.abs(a.x - w.pet.x) + Math.abs(a.y - w.pet.y)) - (Math.abs(b.x - w.pet.x) + Math.abs(b.y - w.pet.y)));
-  return options[0]?.kind ?? 'home';
+  return options[0];
 }
 
 /** Empty soil whose seed the farm can afford right now. */
@@ -162,9 +166,65 @@ export function canPlantSomewhere(w: World): boolean {
   return w.objects.some((o) => o.kind === 'soil' && onGround(o) && (w.seedCoins ?? 0) >= seedPrice(o.crop ?? 'carrot'));
 }
 
-/** Is any basket or shed at least half full? */
+/** Is any basket or shed (on the ground) at least half full? */
 export function storeHalfFull(w: World): boolean {
-  return w.objects.some((o) => { const st = def(o.kind).storage; return !!o.store && !!st && storeCount(o) * 2 >= st.slots * st.perSlot; });
+  return w.objects.some((o) => { const st = def(o.kind).storage; return !!o.store && onGround(o) && !!st && storeCount(o) * 2 >= st.slots * st.perSlot; });
+}
+
+/** The basket the pet is holding, if any. */
+export function heldBasket(w: World): Obj | undefined {
+  const c = w.pet.carrying !== null ? w.objects.find((o) => o.id === w.pet.carrying) : undefined;
+  return c && def(c.kind).portable ? c : undefined;
+}
+
+const PLOT_KINDS = ['bush', 'patch', 'soil'];
+const chebyshev = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+
+/**
+ * The best clear tile to set a basket down among the crops: next to as many (unlocked) plots as possible, then
+ * nearest the house (a shorter haul). Null if there's nowhere useful.
+ */
+export function cropSpot(s: GameState): { x: number; y: number; plot: Obj } | null {
+  const w = s.farm.world;
+  const plots = s.farm.plots.filter((p) => !p.unlock || s.progress.unlocks.includes(p.unlock))
+    .map((p) => objectsAt(w, p.x, p.y).find((o) => PLOT_KINDS.includes(o.kind))).filter((o): o is Obj => !!o);
+  const home = w.objects.find((o) => o.kind === 'home' && onGround(o));
+  const coop = (w.areas ?? []).find((a) => a.name === 'coop');
+  const bodies = [w.pet, ...(w.crew ?? [])];
+  let best: { x: number; y: number; plot: Obj; score: number; d: number } | null = null;
+  for (let y = 0; y < w.h; y++) for (let x = 0; x < w.w; x++) {
+    if (objectsAt(w, x, y).length || isSolidAt(w, x, y) || (x === 1 && y === 2) || (coop && inArea(coop, x, y))) continue;
+    if (bodies.some((b) => b.x === x && b.y === y && b !== w.pet)) continue;
+    const near = plots.filter((o) => chebyshev(o, { x, y }) === 1);
+    if (!near.length) continue;
+    const d = home ? Math.abs(home.x - x) + Math.abs(home.y - y) : 0;
+    if (!best || near.length > best.score || (near.length === best.score && d < best.d)) best = { x, y, plot: near[0], score: near.length, d };
+  }
+  return best && best.score >= 2 ? { x: best.x, y: best.y, plot: best.plot } : null;
+}
+
+/** Is a basket run worth doing? A basket at least half full (to empty), or an empty one away from the crops (to move). */
+export function toteTarget(s: GameState): Obj | null {
+  const w = s.farm.world;
+  const baskets = w.objects.filter((o) => def(o.kind).portable && o.store && onGround(o));
+  const full = baskets.filter((o) => storeCount(o) * 2 >= def(o.kind).storage!.perSlot * def(o.kind).storage!.slots)
+    .sort((a, b) => storeCount(b) - storeCount(a) || (Math.abs(a.x - w.pet.x) + Math.abs(a.y - w.pet.y)) - (Math.abs(b.x - w.pet.x) + Math.abs(b.y - w.pet.y)))[0];
+  if (full) return full;
+  const plotNear = (o: Obj) => s.farm.plots.some((p) => (!p.unlock || s.progress.unlocks.includes(p.unlock)) && chebyshev(p, o) <= 1);
+  const stray = baskets.find((o) => storeCount(o) === 0 && !plotNear(o));
+  return stray && cropSpot(s) ? stray : null;
+}
+
+/** Is this object still a valid destination (on the ground)? */
+function storeCountOf(w: World, o: Obj): boolean {
+  return onGround(o) && w.objects.includes(o);
+}
+
+/** Hide the other objects of a kind while `fn` runs, so a learned walk heads for this one. */
+function only<T>(w: World, kind: string, id: number, fn: () => T): T {
+  const hid = w.objects.filter((o) => o.kind === kind && o.id !== id && onGround(o));
+  for (const o of hid) o.hidden = true;
+  try { return fn(); } finally { for (const o of hid) delete o.hidden; }
 }
 
 /** Everything sold at the house so far (the haul job is done when this goes up). */
@@ -178,9 +238,11 @@ export function farmContext(s: GameState, pet: Pet, recentFail: boolean): ExecCo
     energyLow: pet.energy < TIRED,
     // "berry": something ripe to harvest; "carrot": goods to haul (eggs, or anything in storage).
     berry: CROPS.some((c) => !!nearest(w, c)),
-    carrot: !!nearest(w, 'egg') || w.objects.some((o) => o.store && storeCount(o) > 0),
+    carrot: !!nearest(w, 'egg') || w.objects.some((o) => o.store && onGround(o) && storeCount(o) > 0),
     storeHalf: storeHalfFull(w),
     soil: canPlantSomewhere(w),
+    ...(heldBasket(w) ? { basket: true } : {}),
+    ...(activeRevision(getSkill(pet, 'Fetch')) && toteTarget(s) ? { tote: true } : {}),
     carrying: w.pet.carrying !== null,
     recentFail,
     night: !!w.night,
@@ -309,8 +371,10 @@ export function eligibleBehaviors(pet: Pet, ctx: ExecContext): BehaviorId[] {
   const fetch = !!activeRevision(getSkill(pet, 'Fetch'));
   // Harvest: pick something ripe, or (without Fetch) finish carrying it home.
   // (A pet holding something can always finish carrying it; with Fetch, Auto prefers hauling it.)
-  if (nav && ((ctx.berry && !ctx.carrying) || ctx.carrying)) out.push('forage');
-  if (fetch && nav && (ctx.carrot || ctx.carrying)) out.push('deliver');
+  if (nav && ((ctx.berry && !ctx.carrying) || (ctx.carrying && !ctx.basket))) out.push('forage');
+  if (fetch && nav && ((ctx.carrot && !ctx.carrying) || (ctx.carrying && !ctx.basket))) out.push('deliver');
+  // Baskets: a pet holding one finishes the run; otherwise a run when a basket is half full or away from the crops.
+  if (fetch && nav && (ctx.basket || (ctx.tote && !ctx.carrying))) out.push('tote');
   if (nav && ctx.soil && !ctx.carrying) out.push('plant');
   if (nav && ctx.firefly && !ctx.carrying) out.push('catch');
   if (!ctx.energyLow) out.push('wander');
@@ -332,9 +396,11 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
       // Farm trips are longer now (from the house to the crops and back), so each leg gets a little more patience.
       const leg = Math.round(tmo * 1.5);
       let run: FarmWalk | null = phase === 'go' ? new FarmWalk(nav, crop?.kind ?? 'berry', leg, rt.rng) : null;
+      let dest: Obj | undefined;
       const toStore = (world: World) => {
         const kind = world.objects.find((o) => o.id === world.pet.carrying)?.kind ?? '';
-        run = new FarmWalk(nav, harvestDestination(world, kind, hasFetch), leg, rt.rng);
+        dest = harvestTarget(world, kind, hasFetch);
+        run = new FarmWalk(nav, dest?.kind ?? 'home', leg, rt.rng);
         phase = 'carry';
       };
       if (phase === 'carry') toStore(w);
@@ -345,7 +411,8 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
             if (world.pet.carrying === null) return { done: 'fail', reason: 'missed it' };
             toStore(world);
           }
-          const st = run!.next(world);
+          // Carrying: head for the chosen storage, not just the nearest of its kind (there may be several baskets).
+          const st = phase === 'carry' && dest && storeCountOf(world, dest) ? only(world, dest.kind, dest.id, () => run!.next(world)) : run!.next(world);
           if (!isDone(st)) return st;
           if (st.done === 'fail') return st;
           if (phase === 'go') { phase = 'pick'; return 'pick'; }
@@ -356,6 +423,78 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
     }
     case 'goto':
       return new NavRun(nav, inv.args.target ?? 'home', tmo, rt.rng);
+    case 'tote': {
+      // Basket run: lift a basket, empty it at the house (or a shed with room) if it holds anything, then set it
+      // down by the crops. Walks use the learned movement skill; the last step onto the chosen tile is instinct.
+      const held0 = heldBasket(w);
+      let basketId = held0?.id ?? toteTarget(s)?.id ?? null;
+      let phase: 'fetch' | 'unload' | 'place' | 'placed' = held0 ? (storeCount(held0) > 0 ? 'unload' : 'place') : 'fetch';
+      let walk: FarmWalk | null = null;
+      let walkFor = '';
+      let spot: { x: number; y: number; plot: Obj } | null = null;
+      let fumbles = 0;
+      const walkTo = (world: World, kind: string, id: number, tag: string): ExecStep => {
+        if (walkFor !== tag) { walk = new FarmWalk(nav, kind, tmo, rt.rng); walkFor = tag; }
+        return only(world, kind, id, () => walk!.next(world));
+      };
+      return {
+        next(world) {
+          for (let guard = 0; guard < 4; guard++) {
+            if (basketId === null) return { done: 'fail', reason: 'no basket to carry' };
+            const b = world.objects.find((o) => o.id === basketId);
+            if (!b || b.delivered) return { done: 'fail', reason: 'basket gone' };
+            if (phase === 'fetch') {
+              if (!onGround(b)) return { done: 'fail', reason: 'someone else has it' };
+              if (world.pet.x === b.x && world.pet.y === b.y) { phase = storeCount(b) > 0 ? 'unload' : 'place'; return 'lift'; }
+              const st = walkTo(world, b.kind, b.id, `b${b.id}`);
+              if (isDone(st) && st.done === 'fail') return st;
+              if (isDone(st)) continue;
+              return st;
+            }
+            if (phase === 'unload') {
+              if (world.pet.carrying !== b.id) return { done: 'fail', reason: 'dropped the basket' };
+              if (storeCount(b) === 0) { phase = 'place'; continue; }
+              const kinds = (b.store ?? []).filter((x) => x.n > 0).map((x) => x.kind!);
+              const dests = world.objects.filter((o) => onGround(o) && (o.kind === 'home' || (o.store && !def(o.kind).portable && kinds.some((k) => storeAccepts(o, k))))); // the house or a shed, never another basket
+              dests.sort((a2, b2) => (Math.abs(a2.x - world.pet.x) + Math.abs(a2.y - world.pet.y)) - (Math.abs(b2.x - world.pet.x) + Math.abs(b2.y - world.pet.y)));
+              const dest = dests[0];
+              if (!dest) return { done: 'fail', reason: 'nowhere to empty it' };
+              if (world.pet.x === dest.x && world.pet.y === dest.y) return 'drop';
+              const st = walkTo(world, dest.kind, dest.id, `d${dest.id}`);
+              if (isDone(st) && st.done === 'fail') return st;
+              if (isDone(st)) continue;
+              return st;
+            }
+            if (phase === 'place') {
+              if (world.pet.carrying !== b.id) return { done: 'success', reason: 'basket set down' };
+              spot ??= cropSpot(s);
+              if (!spot) {
+                // Nowhere by the crops: set it down on the first clear tile nearby.
+                const path = bfsPath(world, world.pet.x, world.pet.y, (x, y) => !objectsAt(world, x, y).length && !(x === 1 && y === 2), true);
+                if (!path) return { done: 'fail', reason: 'nowhere to set it down' };
+                if (!path.length) { phase = 'placed'; return 'drop'; }
+                return path[0];
+              }
+              if (world.pet.x === spot.x && world.pet.y === spot.y) { phase = 'placed'; return 'drop'; }
+              if (chebyshev(world.pet, spot) <= 1 || (world.pet.x === spot.plot.x && world.pet.y === spot.plot.y)) {
+                const target = spot;
+                const path = bfsPath(world, world.pet.x, world.pet.y, (x, y) => x === target.x && y === target.y, true);
+                if (path?.length) return path[0];
+              }
+              const st = walkTo(world, spot.plot.kind, spot.plot.id, `p${spot.plot.id}`);
+              if (isDone(st) && st.done === 'fail') return st;
+              if (isDone(st)) { walkFor = 'arrived'; const target = spot; const path = bfsPath(world, world.pet.x, world.pet.y, (x, y) => x === target.x && y === target.y, true); if (path?.length) return path[0]; spot = null; continue; }
+              return st;
+            }
+            // placed: the drop either worked (done) or the tile was taken — find another spot.
+            if (world.pet.carrying !== b.id) return { done: 'success', reason: 'basket set down by the crops' };
+            if (++fumbles > 3) return { done: 'fail', reason: 'couldn’t set the basket down' };
+            spot = null; walkFor = ''; phase = 'place';
+          }
+          return 'wait';
+        },
+      };
+    }
     case 'plant': {
       // Walk to empty soil, sow it (the farm pays for the seed).
       const walk = new FarmWalk(nav, 'soil', Math.round(tmo * 1.5), rt.rng);
@@ -453,7 +592,7 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
   const w = s.farm.world;
   const tmo = navTimeout(w.w, w.h, pet.traits.persistence);
   const timeouts: Record<BehaviorId, number> = { forage: tmo * 3 + 6, // farm life: walk to the crop, then carry it to storage or the house
-    deliver: tmo * 3, plant: Math.round(tmo * 1.5) + 4, rest: 30, wander: 6, manual: 1e9, skill: 60, catch: tmo, goto: tmo, gate: tmo + 2 };
+    deliver: tmo * 3, plant: Math.round(tmo * 1.5) + 4, tote: tmo * 4 + 10, rest: 30, wander: 6, manual: 1e9, skill: 60, catch: tmo, goto: tmo, gate: tmo + 2 };
   const custom = pet.assignment.skillName ? activeRevision(getSkill(pet, pet.assignment.skillName)) : null;
   if (custom) timeouts.skill = Math.round((custom.maxTicks ?? 40) * (1 + pet.traits.persistence));
   const navigator = pet.assignment.navigator;
@@ -463,6 +602,7 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
       : b === 'deliver' ? { item: ctx.carrying ? 'carried item' : 'carrot or egg', into: 'bin', navigator }
       : b === 'catch' ? { target: 'firefly', navigator }
       : b === 'plant' ? { target: 'soil', navigator }
+      : b === 'tote' ? { target: 'bin', navigator }
       : b === 'skill' ? { skill: pet.assignment.skillName ?? '', target: pet.assignment.target || custom?.focus || 'berry' }
       : {},
     intention: why,
@@ -506,6 +646,8 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
     const why = j === 'rest' ? 'Napping as asked'
       : j === 'forage' && !ctx.berry ? 'Nothing ripe yet — resting while crops regrow'
       : j === 'deliver' && !ctx.carrot ? 'Nothing to haul — the basket and shed are empty'
+      : j === 'tote' && !activeRevision(getSkill(pet, 'Fetch')) ? 'Basket runs need a saved Fetch skill'
+      : j === 'tote' ? 'No basket needs a run — none is half full or away from the crops'
       : j === 'plant' && ctx.carrying ? 'Hands full — put it down before planting'
       : j === 'plant' ? 'Nothing to plant — no empty soil, or not enough coins for its seed'
       : `Can't ${BEHAVIOR_LABEL[j].toLowerCase()} yet — check the skill it needs`;
@@ -616,6 +758,12 @@ function handleEvents(s: GameState, pet: Pet, events: SimEvent[], rt: FarmRuntim
       fx.push({ type: 'pickup', x: e.x, y: e.y });
     } else if (e.type === 'drop') {
       fx.push({ type: 'drop', x: e.x, y: e.y });
+    } else if (e.type === 'lift') {
+      fx.push({ type: 'pickup', x: e.x, y: e.y });
+      addJournalOnce(s, pet.id, 'first-lift', `${pet.name} lifted a basket. A carried basket can’t be filled — put it down by the crops, or at the house or a shed to empty it there.`);
+    } else if (e.type === 'empty') {
+      fx.push({ type: 'sound', x: e.x, y: e.y, text: 'emptied' });
+      addJournalOnce(s, pet.id, 'first-basket-run', `${pet.name} carried a whole basket to the ${e.into === 'shed' ? 'shed' : 'house'} and emptied it there — several crops in one trip.`, true);
     } else if (e.type === 'deliver' && e.into === 'home') {
       // Sold at the house: the only place produce turns into coins.
       const value = SELL_PRICE[e.kind ?? ''] ?? 1;
@@ -688,7 +836,7 @@ export function petActivity(s: GameState, petId: string): { current: Invocation 
 
 /** "Who does what" across the pets on duty, e.g. "2 harvesting, 1 hauling". */
 export function crewSummary(s: GameState): string {
-  const VERB: Partial<Record<BehaviorId, string>> = { forage: 'harvesting', deliver: 'hauling', plant: 'planting', rest: 'napping', catch: 'catching fireflies', wander: 'sniffing around', skill: 'running a skill', goto: 'on an errand', gate: 'minding the gate', manual: 'steered by you' };
+  const VERB: Partial<Record<BehaviorId, string>> = { forage: 'harvesting', deliver: 'hauling', plant: 'planting', tote: 'on a basket run', rest: 'napping', catch: 'catching fireflies', wander: 'sniffing around', skill: 'running a skill', goto: 'on an errand', gate: 'minding the gate', manual: 'steered by you' };
   const n = new Map<string, number>();
   for (const p of dutyPets(s)) {
     const a = petActivity(s, p.id);
@@ -897,7 +1045,7 @@ function claimFor(w: World, inv: Invocation | null): number | null {
   if (!inv) return null;
   // Harvesters claim the crop they're heading for; haulers claim eggs. Storage is shared, never claimed
   // (hiding a basket would stop the other pet storing there).
-  const kinds = inv.behaviorId === 'forage' && w.pet.carrying === null ? [...CROPS] : inv.behaviorId === 'plant' ? ['soil'] : inv.behaviorId === 'catch' ? ['firefly'] : inv.behaviorId === 'goto' ? [inv.args.target ?? ''] : inv.behaviorId === 'deliver' && w.pet.carrying === null ? ['egg'] : [];
+  const kinds = inv.behaviorId === 'forage' && w.pet.carrying === null ? [...CROPS] : inv.behaviorId === 'plant' ? ['soil'] : inv.behaviorId === 'tote' && w.pet.carrying === null ? ['bin'] : inv.behaviorId === 'catch' ? ['firefly'] : inv.behaviorId === 'goto' ? [inv.args.target ?? ''] : inv.behaviorId === 'deliver' && w.pet.carrying === null ? ['egg'] : [];
   let best: number | null = null, bd = Infinity;
   for (const k of kinds) {
     const o = nearest(w, k);

@@ -29,7 +29,7 @@ export type SlotRole = 'success' | 'fail' | 'when' | 'if' | 'then' | 'sense' | '
 
 /** The ability an event needs (events your pet can't cause rank low; ones only it can cause rank high). */
 export const EVENT_ABILITY: Record<string, string> = {
-  'ev.shoo': 'shoo', 'ev.pickup': 'pickup', 'ev.drop': 'drop', 'ev.deliver': 'drop', 'ev.stay': 'stay', 'ev.fill': 'water', 'ev.water': 'water', 'ev.gate': 'nudge', 'ev.plant': 'plant',
+  'ev.shoo': 'shoo', 'ev.pickup': 'pickup', 'ev.drop': 'drop', 'ev.deliver': 'drop', 'ev.stay': 'stay', 'ev.fill': 'water', 'ev.water': 'water', 'ev.gate': 'nudge', 'ev.plant': 'plant', 'ev.lift': 'lift',
   'ev.reach': 'move', 'ev.enter': 'move', 'ev.bump': 'move',
 };
 

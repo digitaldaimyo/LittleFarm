@@ -26,11 +26,13 @@ export function starterPlan(): FarmPlan {
     chooser: 'first',
     guard: true,
     rows: [
+      row('Holding a basket', [node('cond.carrying', { actor: pet(), what: node('kind:bin') })], node('job.tote', { navigator: 'Approach' })),
       row('Tired? Nap', [node('cond.energyBelow', { value: 25 })], node('job.nap')),
       row('Fireflies out', [node('cond.night'), has('firefly')], node('job.catch', { navigator: 'Approach' })),
       row('Night: sleep', [node('cond.night'), node('cond.not', { inner: node('cond.carryingAny', { actor: pet() }) })], node('job.nap')),
       row('Finish hauling', [node('cond.carryingAny', { actor: pet() })], node('job.deliver', { navigator: 'Approach' })),
       row('Carry it home', [node('cond.carryingAny', { actor: pet() })], node('job.forage', { navigator: 'Approach' })),
+      row('Basket needs a run', [], node('job.tote', { navigator: 'Approach' })),
       row('Storage filling up', [node('cond.storage', { level: 'half' })], node('job.deliver', { navigator: 'Approach' })),
       row('Empty soil', [has('soil'), node('cond.canAfford')], node('job.plant', { navigator: 'Approach' })),
       row('Something ripe', [node('cond.any', { any: [has('berry'), has('carrot'), has('pumpkin'), has('sunflower')] })], node('job.forage', { navigator: 'Approach' })),
@@ -52,7 +54,7 @@ export interface CompiledRow {
 
 const JOB_BEHAVIOR: Record<string, BehaviorId> = {
   'job.forage': 'forage', 'job.deliver': 'deliver', 'job.catch': 'catch', 'job.nap': 'rest',
-  'job.wander': 'wander', 'job.goto': 'goto', 'job.skill': 'skill', 'job.gate': 'gate', 'job.plant': 'plant',
+  'job.wander': 'wander', 'job.goto': 'goto', 'job.skill': 'skill', 'job.gate': 'gate', 'job.plant': 'plant', 'job.tote': 'tote',
 };
 
 export function compilePlan(plan: FarmPlan): CompiledRow[] {
@@ -63,7 +65,7 @@ export function compilePlan(plan: FarmPlan): CompiledRow[] {
     const args: Record<string, string> = { row: r.id };
     if (j) {
       const nav = paramOf(j, 'navigator', 'Approach');
-      if (['forage', 'deliver', 'catch', 'goto', 'gate', 'plant'].includes(behaviorId)) args.navigator = nav;
+      if (['forage', 'deliver', 'catch', 'goto', 'gate', 'plant', 'tote'].includes(behaviorId)) args.navigator = nav;
       if (behaviorId === 'plant') args.target = 'soil';
       if (behaviorId === 'gate') args.state = paramOf(j, 'state', 'closed');
       if (behaviorId === 'forage') args.target = 'berry';
@@ -86,8 +88,9 @@ export function jobPossible(p: Pet, w: World, ctx: ExecContext, job: CompiledRow
   switch (job.behaviorId) {
     case 'rest': return true;
     case 'wander': return !ctx.energyLow;
-    case 'forage': return !!nav && ((ctx.berry && !ctx.carrying) || ctx.carrying);
-    case 'deliver': return !!activeRevision(getSkill(p, 'Fetch')) && !!nav && (ctx.carrot || ctx.carrying);
+    case 'forage': return !!nav && ((ctx.berry && !ctx.carrying) || (ctx.carrying && !ctx.basket));
+    case 'deliver': return !!activeRevision(getSkill(p, 'Fetch')) && !!nav && ((ctx.carrot && !ctx.carrying) || (ctx.carrying && !ctx.basket));
+    case 'tote': return !!activeRevision(getSkill(p, 'Fetch')) && !!nav && (!!ctx.basket || (!!ctx.tote && !ctx.carrying));
     case 'catch': return !!nav && !!ctx.firefly && !ctx.carrying;
     case 'plant': return !!nav && !!ctx.soil && !ctx.carrying;
     case 'goto': return !!nav && !!nearest(w, job.args.target) && !atFocus(w, job.args.target);
@@ -190,8 +193,8 @@ export function planWarnings(p: Pet, plan: FarmPlan): { rowId?: string; message:
       else if (!isCertified(k)) out.push({ rowId: r.id, message: `Row ${r.index + 1}: “${k.name}” isn’t certified yet — it may not work well.` });
     }
   });
-  const needNav = rows.filter((r) => ['forage', 'catch', 'goto', 'deliver', 'plant'].includes(r.job.behaviorId) && !navPolicyFor(p, 'Approach'));
-  const needFetch = rows.filter((r) => r.job.behaviorId === 'deliver' && !activeRevision(getSkill(p, 'Fetch')));
+  const needNav = rows.filter((r) => ['forage', 'catch', 'goto', 'deliver', 'plant', 'tote'].includes(r.job.behaviorId) && !navPolicyFor(p, 'Approach'));
+  const needFetch = rows.filter((r) => (r.job.behaviorId === 'deliver' || r.job.behaviorId === 'tote') && !activeRevision(getSkill(p, 'Fetch')));
   const list = (rs: CompiledRow[]) => `${rs.length > 1 ? 'Rows' : 'Row'} ${rs.map((r) => r.index + 1).join(', ')}`;
   if (needNav.length) out.push({ message: `${list(needNav)} need${needNav.length > 1 ? '' : 's'} a movement skill (Approach or Avoid) — skipped until ${p.name} learns one.` });
   if (needFetch.length) out.push({ message: `${list(needFetch)} need${needFetch.length > 1 ? '' : 's'} Fetch — skipped until ${p.name} learns it.` });

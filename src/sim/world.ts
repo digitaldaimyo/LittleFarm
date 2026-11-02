@@ -6,7 +6,7 @@ import { OBJECT_BY_ID } from '../domain/packs/farm';
  * One step = one action by the pet = one tick. Every tick returns an event list
  * that drives rewards, diagnostics, animation and the journal.
  */
-export type Action = 'N' | 'E' | 'S' | 'W' | 'pick' | 'drop' | 'wait' | 'water' | 'shoo' | 'nudge' | 'plant';
+export type Action = 'N' | 'E' | 'S' | 'W' | 'pick' | 'drop' | 'wait' | 'water' | 'shoo' | 'nudge' | 'plant' | 'lift';
 export const MOVES: Action[] = ['N', 'E', 'S', 'W'];
 export const DIRS: Record<string, [number, number]> = { N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0] };
 
@@ -157,7 +157,7 @@ export function cloneTally(t: Tally | undefined): Tally {
   return out;
 }
 
-export type SimEventType = 'tick' | 'move' | 'bump' | 'reach' | 'enter' | 'pickup' | 'drop' | 'deliver' | 'fumble' | 'stay' | 'fill' | 'water' | 'shoo' | 'scare' | 'peck' | 'enterArea' | 'leaveArea' | 'gate' | 'full' | 'plant';
+export type SimEventType = 'tick' | 'move' | 'bump' | 'reach' | 'enter' | 'pickup' | 'drop' | 'deliver' | 'fumble' | 'stay' | 'fill' | 'water' | 'shoo' | 'scare' | 'peck' | 'enterArea' | 'leaveArea' | 'gate' | 'full' | 'plant' | 'lift' | 'empty';
 
 export interface SimEvent {
   type: SimEventType;
@@ -254,6 +254,7 @@ export function legalActions(_w: World, abilities: string[]): Action[] {
   if (abilities.includes('shoo')) out.push('shoo');
   if (abilities.includes('nudge')) out.push('nudge');
   if (abilities.includes('plant')) out.push('plant');
+  if (abilities.includes('lift')) out.push('lift');
   if (out.length === 0) out.push('wait');
   return out;
 }
@@ -336,6 +337,14 @@ export function step(w: World, action: Action, opts: StepOptions = {}): SimEvent
       p.water = (p.water ?? 0) - 1;
       events.push({ type: 'water', x: p.x, y: p.y, kind: plot.kind, objId: plot.id });
     } else events.push({ type: 'fumble', x: p.x, y: p.y });
+  } else if (action === 'lift') {
+    // Lift a basket (with whatever is in it). While carried it can't be filled.
+    const b = p.carrying === null ? objectsAt(w, p.x, p.y).find((o) => def(o.kind).portable) : undefined;
+    if (b) {
+      b.carried = true;
+      p.carrying = b.id;
+      events.push({ type: 'lift', x: p.x, y: p.y, kind: b.kind, objId: b.id });
+    } else events.push({ type: 'fumble', x: p.x, y: p.y });
   } else if (action === 'plant') {
     // Sow empty soil: it becomes a growing patch of its crop (the farm pays for the seed).
     const soil = plantableHere(w);
@@ -367,7 +376,8 @@ export function step(w: World, action: Action, opts: StepOptions = {}): SimEvent
     }
   } else if (action === 'drop') {
     const c = p.carrying !== null ? w.objects.find((o) => o.id === p.carrying) : undefined;
-    if (c) {
+    if (c && def(c.kind).portable) dropBasket(w, c, events);
+    else if (c) {
       p.carrying = null;
       c.carried = false;
       c.x = p.x;
@@ -396,6 +406,47 @@ export function step(w: World, action: Action, opts: StepOptions = {}): SimEvent
   }
   if (w.tally) recordTally(w.tally, w, events); // only worlds that remember (see generateWorld / SkillRun)
   return events;
+}
+
+/**
+ * Putting down a carried basket. At the house or a shed it is emptied there (sold / stored, as much as fits) and
+ * stays in the pet's paws; anywhere else it is set down, if the tile is clear.
+ */
+function dropBasket(w: World, b: Obj, events: SimEvent[]): void {
+  const p = w.pet;
+  const here = objectsAt(w, p.x, p.y);
+  const into = here.find((o) => def(o.kind).container);
+  if (into) {
+    let moved = 0;
+    for (const slot of b.store ?? []) {
+      while (slot.kind && slot.n > 0 && storeAccepts(into, slot.kind)) {
+        const kind = slot.kind;
+        if (into.store) {
+          const cap = def(into.kind).storage?.perSlot ?? Infinity;
+          const to = into.store.find((s) => s.kind === kind && s.n < cap) ?? into.store.find((s) => s.kind === null || s.n === 0)!;
+          to.kind = kind;
+          to.n++;
+        }
+        slot.n--;
+        if (slot.n === 0) slot.kind = null;
+        moved++;
+        w.delivered[kind] = (w.delivered[kind] ?? 0) + 1;
+        if (def(into.kind).sells) w.sold = (w.sold ?? 0) + 1;
+        events.push({ type: 'deliver', x: p.x, y: p.y, kind, into: into.kind });
+      }
+    }
+    if (moved) events.push({ type: 'empty', x: p.x, y: p.y, kind: b.kind, objId: b.id, into: into.kind });
+    else if (storeCount(b) > 0) events.push({ type: 'full', x: p.x, y: p.y, kind: b.kind, objId: b.id, into: into.kind });
+    else events.push({ type: 'fumble', x: p.x, y: p.y });
+    return;
+  }
+  // Set it down: only on a clear tile (not on a crop, a plot or anything else).
+  if (here.length) { events.push({ type: 'fumble', x: p.x, y: p.y }); return; }
+  p.carrying = null;
+  b.carried = false;
+  b.x = p.x;
+  b.y = p.y;
+  events.push({ type: 'drop', x: p.x, y: p.y, kind: b.kind, objId: b.id });
 }
 
 /** Deterministic creature PRNG (mulberry32 on world.rng). */

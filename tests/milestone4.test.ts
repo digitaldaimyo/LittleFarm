@@ -49,7 +49,7 @@ describe('M4 gate 2: preview = reality', () => {
     const rt = createRuntime(g.farm);
     for (let t = 0; t < 500; t++) farmTick(g, rt); // mid-game state
     const plan = starterPlan();
-    plan.rows.splice(1, 0, node('plan.row', { label: 'Eggs first', if: [node('cond.compare', { quantity: node('q.count', { what: node('kind:egg') }), op: '>=', value: 1 })], do: node('job.deliver', { navigator: 'Approach' }) }));
+    plan.rows.splice(2, 0, node('plan.row', { label: 'Eggs first', if: [node('cond.compare', { quantity: node('q.count', { what: node('kind:egg') }), op: '>=', value: 1 })], do: node('job.deliver', { navigator: 'Approach' }) }));
     const pid = g.pets[0].id;
     const preview = previewPlan(g, pid, plan, 300);
     g.pets[0].plan = plan;

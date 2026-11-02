@@ -3,7 +3,7 @@ import { isNode, paramOf } from '../domain/spec';
 import { kindOfCard } from '../domain/registry';
 import { Rng, hashSeed } from './rng';
 import type { Obj, SimEvent, Tally, World } from './world';
-import { addObject, bfsDistance, blocks, def, distTo, emptyWorld, eventOfKey, inArea, inBounds, isSolidAt, nearest, objectsAt, onGround, seedPrice } from './world';
+import { addObject, bfsDistance, blocks, def, distTo, emptyStore, emptyWorld, eventOfKey, inArea, inBounds, isSolidAt, nearest, objectsAt, onGround, seedPrice } from './world';
 
 /** How a rule's End try judges the try: by SUCCESS (default), or it counts as a success ✓ / a miss ✗ outright. */
 export type EndOutcome = 'judge' | 'success' | 'fail';
@@ -219,6 +219,7 @@ export function compileCondition(n: SpecNode): Cond {
     case 'cond.storage': {
       // Any basket or shed with something in it / at least half full / full.
       const level = paramOf(n, 'level', 'any');
+      if (level === 'empty') return ({ w }) => !w.objects.some((o) => !!o.store && !o.delivered && o.store.some((s) => s.n > 0));
       return ({ w }) => w.objects.some((o) => {
         if (!o.store) return false;
         const st = def(o.kind).storage;
@@ -305,6 +306,11 @@ export function compileEvent(n: SpecNode): (e: SimEvent) => boolean {
     case 'ev.leavesArea': { const a = areaArg(n, 'area'); return (e) => e.type === 'leaveArea' && e.kind === k && e.area === a; }
     case 'ev.water': return (e) => e.type === 'water' && e.kind === k;
     case 'ev.plant': return (e) => e.type === 'plant' && e.kind === k;
+    case 'ev.lift': return (e) => e.type === 'lift' && e.kind === k;
+    case 'ev.empty': {
+      const into = kindArg(n, 'into');
+      return (e) => e.type === 'empty' && e.kind === k && e.into === into;
+    }
     default:
       throw new Error(`Cannot compile event ${n.cardId}`);
   }
@@ -456,6 +462,26 @@ export function generateWorld(spec: StageSpec, seed: number): World {
           const [x, y] = rng.pick(t);
           addObject(w, mat === 'fences' ? 'fence' : mat === 'mixed' && i % 2 === 1 ? 'fence' : 'rock', x, y);
           occupied.add(key(x, y));
+        }
+        continue;
+      }
+      if (p.cardId === 'place.stocked') {
+        // Storage that already holds things (as much as fits; one kind per slot).
+        const k = resolveKind(p.args.kind, spec.learner.focus);
+        const item = resolveKind(p.args.item, spec.learner.focus);
+        if (!k) continue;
+        const t = freeTiles(paramOf(p, 'region', 'anywhere'));
+        const t2 = t.length ? t : freeTiles('anywhere');
+        if (!t2.length) continue;
+        const [x, y] = rng.pick(t2);
+        const o = addObject(w, k, x, y);
+        occupied.add(key(x, y));
+        const st = def(k).storage;
+        if (st && item) {
+          o.store = emptyStore(k);
+          const max = Math.max(1, paramOf(p, 'count', 3));
+          let n = paramOf(p, 'vary', 'exact') === 'upTo' ? 1 + rng.int(max) : max;
+          for (const slot of o.store!) { const put = Math.min(n, st.perSlot); if (put <= 0) break; slot.kind = item; slot.n = put; n -= put; }
         }
         continue;
       }

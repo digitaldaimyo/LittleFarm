@@ -265,7 +265,7 @@ describe('crops and planting (farm life B)', () => {
   });
 
   it('the plant ability goes last, so saved policies keep their action indices', () => {
-    expect(ABILITY_ORDER).toEqual(['move', 'stay', 'pickup', 'drop', 'water', 'shoo', 'nudge', 'plant']);
+    expect(ABILITY_ORDER).toEqual(['move', 'stay', 'pickup', 'drop', 'water', 'shoo', 'nudge', 'plant', 'lift']);
   });
 
   it('a farm day with replanting earns more than it spends on seeds', () => {

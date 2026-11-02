@@ -174,7 +174,7 @@ function PenView({ stage, pet }: { stage: StageSpec; pet: Pet }) {
   };
   useEffect(() => {
     if (!play) return;
-    const keys: Record<string, Action> = { ArrowUp: 'N', ArrowRight: 'E', ArrowDown: 'S', ArrowLeft: 'W', ' ': 'wait', p: 'pick', d: 'drop', w: 'water', x: 'shoo', g: 'nudge', l: 'plant' };
+    const keys: Record<string, Action> = { ArrowUp: 'N', ArrowRight: 'E', ArrowDown: 'S', ArrowLeft: 'W', ' ': 'wait', p: 'pick', d: 'drop', w: 'water', x: 'shoo', g: 'nudge', l: 'plant', b: 'lift' };
     const h = (e: KeyboardEvent) => {
       const a = keys[e.key];
       const tag = (e.target as HTMLElement)?.tagName;
@@ -251,7 +251,7 @@ function PenView({ stage, pet }: { stage: StageSpec; pet: Pet }) {
             <div className="play-log small" aria-live="polite">{play.ended ?? (play.log.length ? `Rules fired: ${play.log.join(' · ')}` : 'Arrow keys to move · Space stay · P pick up · D put down · W water · X shoo · G gate')}</div>
             <div className="play-pad">
               {(['W', 'N', 'S', 'E'] as Action[]).map((a) => <button key={a} className="btn ghost small" aria-label={`Move ${a === 'N' ? 'up' : a === 'S' ? 'down' : a === 'W' ? 'left' : 'right'}`} onClick={() => act(a)}>{a === 'N' ? '↑' : a === 'S' ? '↓' : a === 'W' ? '←' : '→'}</button>)}
-              {([['stay', 'wait', 'Stay'], ['pickup', 'pick', 'Pick up'], ['drop', 'drop', 'Put down'], ['water', 'water', 'Water'], ['shoo', 'shoo', 'Shoo'], ['nudge', 'nudge', 'Nudge gate'], ['plant', 'plant', 'Plant']] as const).filter(([ab]) => stage.abilities.includes(ab)).map(([, a, label]) => <button key={a} className="btn ghost small" onClick={() => act(a as Action)}>{label}</button>)}
+              {([['stay', 'wait', 'Stay'], ['pickup', 'pick', 'Pick up'], ['drop', 'drop', 'Put down'], ['water', 'water', 'Water'], ['shoo', 'shoo', 'Shoo'], ['nudge', 'nudge', 'Nudge gate'], ['plant', 'plant', 'Plant'], ['lift', 'lift', 'Lift basket']] as const).filter(([ab]) => stage.abilities.includes(ab)).map(([, a, label]) => <button key={a} className="btn ghost small" onClick={() => act(a as Action)}>{label}</button>)}
               <button className="btn ghost small" onClick={() => startPlay()}>Restart</button>
               <button className="btn ghost small" onClick={() => { s.setUi({ previewSeed: s.ui.previewSeed + 1 }); startPlay(s.ui.previewSeed + 1); }}>Next layout</button>
               <button className="btn ghost small" onClick={() => setPlay(null)}>Stop</button>
@@ -355,6 +355,11 @@ function EnvironmentBinder({ stage }: { stage: StageSpec }) {
           if (!id) { const t = node('place.obstacles', { amount: 'few', kind: 'rocks' }); id = t.id; update((st) => { st.environment.push(t); }); audio.play('pen.place'); }
           s.setUi({ placing: null, slot: { parentId: id, socket: 'kind', index: null } });
         }}><span className="card-title">Obstacles</span><span className="card-sub">{(() => { const t = stage.environment.find((p) => p.cardId === 'place.obstacles'); return t ? `${paramOf(t, 'amount', 'few')} ${paramOf(t, 'kind', 'rocks')}` : 'none yet'; })()}</span></button>
+        <button className="card g-obj" data-tut="env-stocked" onClick={() => {
+          const t = node('place.stocked', { kind: node('kind:bin'), item: node(`kind:${stage.learner.focus && stage.learner.focus !== 'bin' ? stage.learner.focus : 'berry'}`), count: 3, vary: 'exact', region: 'anywhere' });
+          update((st) => { st.environment.push(t); }); audio.play('pen.place');
+          s.setUi({ placing: null, slot: { parentId: t.id, socket: 'kind', index: null } });
+        }}><span className="card-title">Stocked storage</span><span className="card-sub">a basket that already holds things</span></button>
       </div>
       <h4>Pen size</h4>
       <div className="seg small-seg" role="radiogroup" aria-label="Pen size" data-tut="pen-size">
@@ -395,6 +400,7 @@ function placementText(stage: StageSpec, p: SpecNode): string {
   const t = describe(p, { petName: 'Pet', target: stage.learner.focus });
   if (p.cardId === 'place.random') return `Scatter ${t}`;
   if (p.cardId === 'place.obstacles') return `Obstacles: ${t}`;
+  if (p.cardId === 'place.stocked') return `Stocked: ${t}`;
   if (p.cardId === 'place.fixed') return `Place ${t}`;
   if (p.cardId === 'zone.rect') return `Area “${paramOf(p, 'name', 'coop')}” ${paramOf(p, 'w', 2)}×${paramOf(p, 'h', 2)} ${paramOf(p, 'where', 'fixed') === 'random' ? '(random spot each try)' : `at (${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`}`;
   if (p.cardId === 'place.pet' && paramOf(p, 'mode', 'random') === 'fixed') return `Pet starts at (${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`;
