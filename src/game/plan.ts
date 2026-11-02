@@ -93,10 +93,10 @@ export function jobPossible(p: Pet, w: World, ctx: ExecContext, job: CompiledRow
     case 'deliver': return !!jobCapability(p, 'deliver') && !!nav && ((ctx.carrot && !ctx.carrying) || (ctx.carrying && !ctx.basket));
     case 'tote': return !!jobCapability(p, 'tote') && (!!ctx.basket || (!!ctx.tote && !ctx.carrying));
     case 'catch': return !!nav && !!ctx.firefly && !ctx.carrying;
-    case 'plant': return !!nav && !!ctx.soil && !ctx.carrying;
+    case 'plant': return !!jobCapability(p, 'plant') && !!ctx.soil && !ctx.carrying;
     case 'goto': return !!nav && !!nearest(w, job.args.target) && !atFocus(w, job.args.target);
     case 'skill': return !!activeRevision(getSkill(p, job.args.skill ?? ''));
-    case 'gate': return w.objects.some((o) => o.kind === 'gate' && !o.carried && !o.delivered && !!o.open !== (job.args.state === 'open'));
+    case 'gate': return !!jobCapability(p, job.args.state === 'open' ? 'gateOpen' : 'gateShut') && w.objects.some((o) => o.kind === 'gate' && !o.carried && !o.delivered && !!o.open !== (job.args.state === 'open'));
     default: return false;
   }
 }

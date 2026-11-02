@@ -87,6 +87,7 @@ export function placedKinds(s: StageSpec): Set<string> {
   for (const p of s.environment) {
     for (const k of [p.args.kind, p.args.item]) if (isNode(k) && k.cardId.startsWith('kind:')) out.add(k.cardId.slice(5));
   }
+  if (out.has('soil')) out.add('carrot'); // planting pen soil grows carrots
   return out;
 }
 

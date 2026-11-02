@@ -57,7 +57,18 @@ Status: **official roadmap**, decisions settled (section 8). **Phase 0 done:**
 | Harvest job | 431 vs 356 (121%) | 650 vs 670 (97%) |
 | Two pets | 776 vs 886 (88%) | 761 vs 865 (88%) |
 
-Next: phase 3c (Plant, Go home / Rest, fireflies, the gate).
+**Phase 3c done (Plant, the gate, errands, fireflies and the walk home):**
+- **Plant** runs the pet's own **Plant** routine: Approach → empty soil, only when there's money for its seed; then plant. It's a new recipe (Train, after carrots unlock) that scores 75% in its pen (random 30%). The job is done once a plot is sown. Without the routine nobody plants, and the carrots unlock now says so.
+- **Mind the gate** runs the pet's own **Shut the gate** skill (a new recipe; 85% in its pen) or **Open the gate**, depending on the direction asked. A new pen card, **Gates start** (open / shut / either), lets pens practise shutting an open gate. The old *Open the gate* skill never saw an open gate, so it couldn't shut one on the farm. The neighbours' gate request now says to teach Shut the gate.
+- **Errands and fireflies** were already the pet's own walking skill (Approach / Avoid) and stay that way.
+- **Rest is innate** (Stay, as decided). The walk home before a nap with another pet on duty is now the pet's own Approach; without Approach it naps where it is. **Wander** stays innate too.
+- **Fixed:** a single skill (not a routine) now honours the job's own goal. Before, *Open the gate*'s goal "a gate is open" counted as instant success when the job was to shut it.
+- **Gate:** `bench:farm --learned` (now with Plant learned too) stays ≥ 80% everywhere: 83–175%.
+- **No built-in job scripts are left.** Every farm job runs a skill or routine the pet learned, or an innate Stay or wander.
+
+**Phase 3d done:** the v9 save migration (see §6). Phase 3 is complete.
+
+Next: phase 4 (responsibilities and a deterministic executive over learned capabilities).
 
 **The commitment.** Everything a pet does on its own on the farm comes from a skill or routine the player taught it in the pen. No hidden job scripts. The farm executive is promoted from a fixed rule list to a learned, two-level decision-maker:
 - the **upper level** reads the farm and picks what to work on next (a responsibility);
@@ -221,6 +232,14 @@ The playtest team knows existing saves may be negatively affected by this update
   - the journal says the farm now runs on learned jobs and points to the Harvest lesson.
 - **If a save can't be migrated cleanly,** the game offers a reset rather than guessing.
 - New games are the supported path, and the browser test plays a new game end to end.
+
+**Done (phase 3d):** saves are v9. Migrating a v8 save:
+- clears jobs the old scripts left half-run;
+- puts every pet back on Auto (old assignments and plans dropped; the navigator is kept);
+- adds a journal milestone pointing to *Teach a job: Harvest*;
+- sets a one-time farm notice with **Open the Guide**, **Start fresh…** (the reset dialog) and dismiss buttons.
+
+Pets, skills, revisions, stages and the layout are kept.
 
 ## 7. Phases and gates
 

@@ -13,7 +13,7 @@ import { activeRevision, adoptPet, getSkill } from '../src/game/pets';
 import { exportSkillCard, importSkillCard } from '../src/game/skillcard';
 import { createRuntime, farmTick, setOnDuty } from '../src/game/farm';
 import { parseGame, serializeGame } from '../src/persistence/save';
-import { trainAndSave, giveHarvest } from './helpers';
+import { trainAndSave, giveFarmJobs } from './helpers';
 import type { StageSpec } from '../src/domain/types';
 
 function trained(stage: StageSpec) {
@@ -116,7 +116,7 @@ describe('M6: two pets on duty', () => {
     const g = newGame();
     const a = adoptPet(g, 'Pip', 'meadow');
     const b = adoptPet(g, 'Mochi', 'plum');
-    for (const p of [a, b]) { p.traits = { ...DEFAULT_TRAITS }; trainAndSave(g, p, recipeStage('go-to-berry')); giveHarvest(g, p); p.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' }; }
+    for (const p of [a, b]) { p.traits = { ...DEFAULT_TRAITS }; trainAndSave(g, p, recipeStage('go-to-berry')); giveFarmJobs(g, p); p.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' }; }
     // Both on Auto with their learned Harvest (learned-farm phase 3: harvests sell at the house, so a dedicated
     // hauler has little to do until a learned "harvest into storage" exists).
     for (const p of [a, b]) trainAndSave(g, p, recipeStage('bring-it-home'), activeRevision(getSkill(p, 'Approach'))!.policy);

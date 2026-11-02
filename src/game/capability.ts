@@ -148,7 +148,7 @@ export function runCapability(s: GameState, p: Pet, name: string, aim: string | 
   const goal = rev.success && !survive ? withTarget(target, () => compileCondition(rev.success!)) : null;
   const failNode = rev.stage?.fail ?? null;
   const fail = survive && failNode ? withTarget(target, () => compileCondition(failNode)) : null;
-  return new SkillRun(policy, target, timeout, goal ? sinceStart(s.farm.world, goal) : null, noteRunnerFor(rev.stage, target), survive ? (world) => !fail?.({ w: world, prev: world.pet }) : null, { eps: deployExplore(p), rng });
+  return new SkillRun(policy, target, timeout, opts.goal ? (world) => opts.goal!(world) : goal ? sinceStart(s.farm.world, goal) : null, noteRunnerFor(rev.stage, target), survive ? (world) => !fail?.({ w: world, prev: world.pet }) : null, { eps: deployExplore(p), rng });
 }
 
 /**
@@ -168,6 +168,9 @@ export const LEARNED_JOBS: Record<string, LearnedJob> = {
   forage: { label: 'Harvest', recipes: ['harvest-store', 'harvest'], aim: '@crop', names: ['Harvest to storage', 'Harvest'] },
   deliver: { label: 'Haul', recipes: ['bring-it-home'], aim: 'bin', names: ['Fetch'] },
   tote: { label: 'Basket run', recipes: ['basket-run'], aim: 'bin', names: ['Basket run'] },
+  plant: { label: 'Plant', recipes: ['plant'], aim: 'soil', names: ['Plant'] },
+  gateOpen: { label: 'Open the gate', recipes: ['open-gate'], aim: 'gate', names: ['Open the gate'] },
+  gateShut: { label: 'Shut the gate', recipes: ['shut-gate'], aim: 'gate', names: ['Shut the gate'] },
 };
 
 /** Which recipe (if any) taught this skill's deployed revision, or which of the job's names it has. */

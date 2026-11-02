@@ -43,7 +43,6 @@ interface JobCard {
 }
 
 function jobCards(pet: Pet): JobCard[] {
-  const hasNav = !!activeRevision(getSkill(pet, 'Approach')) || !!activeRevision(getSkill(pet, 'Avoid'));
   const cap = (job: string) => jobCapability(pet, job);
   const runs = (job: string) => (cap(job) ? ` (${cap(job)!.name} r${cap(job)!.rev})` : '');
   return [
@@ -51,7 +50,7 @@ function jobCards(pet: Pet): JobCard[] {
     { id: 'plan', title: 'Farm plan', blurb: 'Your own IF/DO rows decide which skill runs when. Preview before applying.' },
     { id: 'forage', title: BEHAVIOR_LABEL.forage, blurb: `Runs ${pet.name}’s own Harvest${runs('forage')}: any ripe crop to the house, where it sells (berry +2, carrot +5, sunflower +7, pumpkin +12). With a Harvest to storage routine too, crops go into a basket or shed with room while someone can empty it.`, needs: 'Harvest', locked: cap('forage') ? undefined : 'Needs a Harvest skill — teach it in the Field Guide (Teach a job: Harvest)' },
     { id: 'deliver', title: BEHAVIOR_LABEL.deliver, blurb: `Runs ${pet.name}’s own Fetch${runs('deliver')}: eggs and whatever is in the basket or shed to the house, where it sells.`, needs: 'Fetch', locked: cap('deliver') ? undefined : 'Needs a certified Fetch skill' },
-    { id: 'plant', title: BEHAVIOR_LABEL.plant, blurb: 'Plant empty soil: carrots (seed 1), sunflowers (2), pumpkins (3). Seeds are paid from your coins.', needs: 'Approach', locked: hasNav ? undefined : 'Needs a saved Approach skill' },
+    { id: 'plant', title: BEHAVIOR_LABEL.plant, blurb: `Runs ${pet.name}’s own Plant${runs('plant')}: empty soil gets its seed — carrots (1), sunflowers (2), pumpkins (3), paid from your coins.`, needs: 'Plant', locked: cap('plant') ? undefined : 'Needs a Plant routine — train the Plant recipe in Train' },
     { id: 'tote', title: BEHAVIOR_LABEL.tote, blurb: `Runs ${pet.name}’s own Basket run${runs('tote')}: lift a basket that’s half full, empty it at the house, and set it down beside the crops — six crops in one trip. Also moves an empty basket next to the fields.`, needs: 'Basket run', locked: cap('tote') ? undefined : 'Needs a Basket run routine — train the Basket run recipe in Train' },
     { id: 'rest', title: 'Nap', blurb: 'Rest to refill energy.' },
     { id: 'skill', title: 'Run a skill', blurb: 'Run any skill or routine it has learned, aimed at anything on the farm — or at any ripe crop, or storage with room.', locked: runnable(pet).length ? undefined : 'Teach a skill in the pen first' },
@@ -144,6 +143,14 @@ export function FarmScreen() {
 
   return (
     <div className="screen farm-screen">
+      {g.progress.flags.learnedFarmNotice && (
+        <div className="tutorial quiet" role="status" data-tut="learned-farm-notice">
+          <span className="grow small"><b>The farm changed:</b> every job now runs a skill or routine your pets learned — no built-in jobs. Teach Harvest first (Guide → “Teach a job: Harvest”), or start a fresh farm.</span>
+          <button className="btn small" onClick={() => { store.mutate((st) => { delete st.progress.flags.learnedFarmNotice; }); s.setUi({ screen: 'guide' }); }}>Open the Guide</button>
+          <button className="btn small ghost" onClick={() => s.setUi({ modal: 'confirm-reset' })}>Start fresh…</button>
+          <button className="btn small ghost" aria-label="Dismiss" onClick={() => store.mutate((st) => { delete st.progress.flags.learnedFarmNotice; })}>✕</button>
+        </div>
+      )}
       <section className="stage-col">
         <div className="farm-frame">
           <WorldView

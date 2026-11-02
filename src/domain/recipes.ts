@@ -391,6 +391,45 @@ function basketRunRoutine(): StageSpec {
   };
 }
 
+/**
+ * Planting as a learned routine (learned-farm phase 3c): walk to empty soil whose seed the farm can afford, plant it.
+ */
+function plantRoutine(): StageSpec {
+  const n = maker('pl');
+  const afford = () => n('cond.canAfford');
+  const onSoil = () => n('cond.at', { actor: pet(n), what: k(n, 'soil') });
+  return {
+    id: 'stage-plant', name: 'Plant', recipeId: 'plant', version: 1,
+    blurb: 'A routine from cards: Approach → empty soil (when there’s money for its seed), plant it.',
+    size: { w: 10, h: 10 },
+    environment: [
+      n('place.pet', { mode: 'random', x: 0, y: 0 }),
+      n('place.random', { kind: k(n, 'soil'), count: 2, region: 'anywhere', vary: 'more1' }),
+      n('place.purse', { coins: 6 }),
+      n('place.obstacles', { amount: 'few', kind: 'rocks' }),
+    ],
+    abilities: ['move', 'plant'],
+    rules: [
+      n('rule', { label: 'Planted', when: n('ev.plant', { actor: pet(n), what: k(n, 'carrot') }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'judge' })], limit: n('lim.once') }),
+      n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.02 })] }),
+    ],
+    success: n('cond.happened', { event: n('ev.plant', { actor: pet(n), what: k(n, 'carrot') }) }),
+    fail: null,
+    seed: 545, maxTicks: 60,
+    learner: {
+      skill: 'Plant', template: 'routine', focus: 'soil', episodes: 800,
+      routine: {
+        options: [
+          n('opt.skill', { skill: 'Approach', aim: k(n, 'soil'), when: afford() }),
+          n('opt.action', { action: 'plant', when: onSoil() }),
+        ],
+        watch: [onSoil(), afford()],
+      },
+    },
+    evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.7 },
+  };
+}
+
 /** A routine built from two player-made skills: herd the chicken home, water the garden, and nap when done. */
 function morningChores(): StageSpec {
   const n = maker('mc');
@@ -457,6 +496,33 @@ function openGate(): StageSpec {
     fail: null,
     seed: 1212, maxTicks: 40,
     learner: { skill: 'Open the gate', template: 'sense', focus: 'gate', episodes: 3000,
+      senses: [n('sense.nearest', { what: n('ref.target') }), n('sense.blocked')] },
+    evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.7 },
+  };
+}
+
+/** Example player-style skill: walk to an open gate and nudge it shut from beside it (the farm's gate at nightfall). */
+function shutGate(): StageSpec {
+  const n = maker('sg');
+  return {
+    id: 'stage-shut-gate', name: 'Shut the gate', recipeId: 'shut-gate', version: 1,
+    blurb: 'A custom skill: find the open gate and nudge it shut — from beside it, not standing in it.',
+    size: { w: 8, h: 8 },
+    environment: [
+      n('place.pet', { mode: 'random', x: 0, y: 0 }),
+      n('place.random', { kind: k(n, 'gate'), count: 1, region: 'anywhere' }),
+      n('place.random', { kind: k(n, 'rock'), count: 2, region: 'anywhere' }),
+      n('place.gates', { state: 'open' }),
+    ],
+    abilities: ['move', 'nudge'],
+    rules: [
+      n('rule', { label: 'Gate shut!', when: n('ev.gate', { actor: pet(n), state: 'closed' }), then: [n('eff.reward', { amount: 10 }), n('eff.end', { outcome: 'judge' })], limit: n('lim.once') }),
+      n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.05 })] }),
+    ],
+    success: n('cond.gates', { state: 'closed' }),
+    fail: null,
+    seed: 1313, maxTicks: 40,
+    learner: { skill: 'Shut the gate', template: 'sense', focus: 'gate', episodes: 4000,
       senses: [n('sense.nearest', { what: n('ref.target') }), n('sense.blocked')] },
     evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.7 },
   };
@@ -586,9 +652,11 @@ export const RECIPES: Recipe[] = [
   { id: 'harvest', name: 'Harvest', blurb: 'A routine: walk to any ripe crop, pick it up, carry it to the house (uses your Approach).', skill: 'Harvest', unlock: 'custom', optional: true, build: harvestRoutine },
   { id: 'harvest-store', name: 'Harvest to storage', blurb: 'A routine: walk to any ripe crop, pick it up, put it in a basket or shed with room (uses your Approach).', skill: 'Harvest to storage', unlock: 'fetch', optional: true, build: harvestStoreRoutine },
   { id: 'basket-run', name: 'Basket run', blurb: 'A routine: lift a basket, empty it at the house, set it down beside the crops (uses your Approach).', skill: 'Basket run', unlock: 'fetch', optional: true, build: basketRunRoutine },
+  { id: 'plant', name: 'Plant', blurb: 'A routine: walk to empty soil you can afford a seed for, plant it (uses your Approach).', skill: 'Plant', unlock: 'carrots', optional: true, build: plantRoutine },
   { id: 'herd-chicken', name: 'Herd a chicken', blurb: 'Your own skill: shoo a chicken into the coop.', skill: 'Herd', unlock: 'custom', optional: true, build: herdChicken },
   { id: 'shoo-loophole', name: 'Treat for every shoo', blurb: 'Experiment: a herding reward with a loophole.', skill: 'Herd (loophole)', unlock: 'custom', optional: true, build: shooLoophole },
   { id: 'open-gate', name: 'Open the gate', blurb: 'Your own skill: find a gate and nudge it open.', skill: 'Open the gate', unlock: 'custom', optional: true, build: openGate },
+  { id: 'shut-gate', name: 'Shut the gate', blurb: 'Your own skill: find the open gate and nudge it shut from beside it.', skill: 'Shut the gate', unlock: 'custom', optional: true, build: shutGate },
   { id: 'fetch-routine', name: 'Bring it home (routine)', blurb: 'Fetch, rebuilt from cards as a routine.', skill: 'Fetch routine', unlock: 'routines', optional: true, build: fetchAsRoutine },
   { id: 'morning-chores', name: 'Morning chores', blurb: 'A routine: pick the right skills from your deck (needs Herd, Water the garden, Keep clear, Wait for it).', skill: 'Morning chores', unlock: 'routines', optional: true, build: morningChores },
   { id: 'pay-per-pickup', name: 'Treat for every pickup', blurb: 'Experiment: a reward with a loophole.', skill: 'Fetch', unlock: 'fetch', optional: true, build: payPerPickup },

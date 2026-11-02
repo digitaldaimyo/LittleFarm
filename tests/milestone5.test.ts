@@ -13,7 +13,7 @@ import { buy } from '../src/game/progression';
 import { applyPlan, createRuntime, farmTick, previewPlan, DAY_TICKS } from '../src/game/farm';
 import { BIG_H, BIG_W, ORCHARD_GATE } from '../src/game/expand';
 import { describeRequest, trackRequests } from '../src/game/requests';
-import { trainAndSave, giveHarvest } from './helpers';
+import { trainAndSave, giveFarmJobs } from './helpers';
 import type { GameState } from '../src/game/types';
 
 function farmWithPet(): GameState {
@@ -21,7 +21,7 @@ function farmWithPet(): GameState {
   const pet = adoptPet(g, 'Pip', 'meadow');
   pet.traits = { ...DEFAULT_TRAITS };
   const ap = trainAndSave(g, pet, recipeStage('go-to-berry'));
-  giveHarvest(g, pet);
+  giveFarmJobs(g, pet);
   trainAndSave(g, pet, recipeStage('bring-it-home'), ap.policy);
   g.progress.unlocks.push('custom', 'fetch', 'carrots');
   return g;
@@ -93,6 +93,7 @@ describe('M5: orchard expansion', () => {
     g.resources.coins = 60;
     buy(g, 'orchard');
     const pid = g.pets[0].id;
+    trainAndSave(g, g.pets[0], recipeStage('shut-gate')); // Mind the gate (shut) runs the pet's own Shut the gate skill
     const plan = { chooser: 'first' as const, guard: true, rows: [node('plan.row', { label: 'Shut the gate', if: [node('cond.gates', { state: 'open' })], do: node('job.gate', { state: 'closed' }) }), node('plan.row', { label: 'Nap', if: [], do: node('job.nap') })] };
     // Approach r1 is shaky right next to the fence (rare in 8×8 pens); the stuck-recovery gets it there.
     const p = previewPlan(g, pid, plan, 300);

@@ -106,7 +106,7 @@ import { suggestedRules, recipeStage } from '../src/domain/recipes';
 import { node } from '../src/domain/spec';
 import { getSkill } from '../src/game/pets';
 import { reportTips, farmTips } from '../src/game/coach';
-import { trainAndSave, giveHarvest } from './helpers';
+import { trainAndSave, giveFarmJobs } from './helpers';
 import type { SerializedQ } from '../src/learning/qtable';
 
 function runNav(s: GameState, stageId: string, nav?: SerializedQ) {
@@ -249,7 +249,7 @@ describe('Field Guide phase C lessons', () => {
     const p = adoptPet(s, 'Pip', 'meadow');
     p.traits = { ...DEFAULT_TRAITS };
     trainAndSave(s, p, recipeStage('go-to-berry'));
-    giveHarvest(s, p);
+    giveFarmJobs(s, p);
     skipChapter(s, 'first');
     return s;
   }

@@ -50,7 +50,7 @@ Outside the tutorial, a training run is 4 taps from the farm (Teach → Curricul
 | Sunflower (crows go for it first) | 2 | 70 | 7 |
 | Pumpkin | 3 | 120 | 12 |
 
-- **Plant** (a job, an ability and a card) walks to empty soil and plants it. Auto and the starter plan plant before harvesting, so the seed grows while the pet works. The Harvest job doesn't plant.
+- **Plant** (a job, an ability and a card) runs the pet's own **Plant** routine (a recipe in Train): it walks to empty soil it can afford a seed for and plants it. Without the routine, nobody plants. Auto and the starter plan plant before harvesting, so the seed grows while the pet works. The Harvest job doesn't plant.
 - **Never stuck:** bushes keep a 0-coin farm earning, and at dawn, if nothing is growing and no seed is affordable, a neighbour's packet plants the cheapest plot for free.
 - With replanting, a pet on Auto with Fetch and carrots sells about 247 coins over two farm days; adding a pumpkin and a sunflower patch gives about 310.
 
@@ -132,4 +132,4 @@ Entries are grounded templates filled from real events: adoption, skill learned 
 - Objects added with watering and day/night: well, firefly. With Milestone 2: chicken, crow, egg, scarecrow, and the Area card. Berry bushes, carrot patches and home can now go in pens.
 - Recipes: *Go to the berry*, *Bring it home*, *Avoid the pond*, *Treat for every pickup* (experiment), and custom-skill examples *Wait for it*, *Keep clear*, *Water the garden*, *Herd a chicken* and *Open the gate*, the experiment *Treat for every shoo*, and the routines *Bring it home (routine)* and *Morning chores*.
 - Objects added with Milestone 5: gate (and the orchard and meadow areas of the expansion), rain puddles.
-- Farm plan jobs: Forage, Deliver, Catch fireflies, Nap, Wander, Go to…, Run skill, Mind the gate.
+- Farm plan jobs: Forage, Deliver, Catch fireflies, Nap, Wander, Go to…, Run skill, Mind the gate. Each runs a learned skill (Mind the gate: the pet's *Open the gate* or *Shut the gate*; pens practise the latter with the **Gates start open** card). Nap and Wander are innate.

@@ -105,6 +105,35 @@ const MIGRATIONS: Record<number, Migration> = {
     g.version = 8;
     return g;
   },
+  /**
+   * v8 → v9 (learned farm, phase 3): farm jobs no longer have built-in scripts — each runs a skill or routine the pet
+   * learned. Jobs left half-run by the old scripts are cleared, the journal explains what changed, and the farm shows
+   * a one-time notice (with a fresh-start option: playtesters were told saves may suffer).
+   */
+  8: (g) => {
+    const f = g.farm;
+    if (isObj(f)) {
+      f.current = null;
+      f.queue = [];
+      if (Array.isArray(f.helpers)) for (const h of f.helpers) if (isObj(h)) { h.current = null; h.queue = []; }
+    }
+    // Old assignments and plans are dropped (roadmap §6): every pet goes back to Auto, which only uses learned jobs.
+    if (Array.isArray(g.pets)) for (const p of g.pets) if (isObj(p)) {
+      const nav = isObj(p.assignment) && p.assignment.navigator === 'Avoid' ? 'Avoid' : 'Approach';
+      p.assignment = { mode: 'auto', job: 'forage', navigator: nav };
+      delete p.plan;
+    }
+    if (isObj(g.progress)) {
+      g.progress.flags = isObj(g.progress.flags) ? g.progress.flags : {};
+      g.progress.flags.learnedFarmNotice = true;
+    }
+    if (Array.isArray(g.journal)) g.journal.unshift({
+      id: `j-v9-${Date.now().toString(36)}`, at: Date.now(), petId: null, kind: 'learned-farm', milestone: true,
+      text: 'The farm now runs only on what your pets have learned: Harvest, Plant, Basket runs and Mind the gate are skills and routines you teach in the pen (Haul uses Fetch). Start with the Guide’s “Teach a job: Harvest”.',
+    });
+    g.version = 9;
+    return g;
+  },
   /** v4 → v5: "End try (done ✓)" meant "SUCCESS decides"; it is now spelled 'judge' ('success' counts outright). */
   4: (g) => {
     migrateLegacyEndOutcomes(g);

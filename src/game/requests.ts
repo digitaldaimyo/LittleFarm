@@ -50,7 +50,7 @@ export function requestHelp(kind: RequestKind): { hint: string; lesson?: string 
     case 'water': return { hint: 'Teach the “Water the garden” recipe (Curriculum) and run it on the farm with “Run a skill”.', lesson: 'invent' };
     case 'noPecks': return { hint: 'Invent a guard skill with the Shoo ability (aim it at the crow) — or buy a scarecrow.', lesson: 'invent' };
     case 'coop': return { hint: 'Try the “Herd a chicken” recipe: “Area seen from…” is the sense that makes herding work.', lesson: 'invent' };
-    case 'gate': return { hint: 'Add a plan row: IF “Gates are… any open” DO “Mind the gate (closed)”.', lesson: 'plans' };
+    case 'gate': return { hint: 'Teach Shut the gate (Train), then add a plan row: IF “Gates are… any open” DO “Mind the gate (closed)”.', lesson: 'plans' };
   }
 }
 

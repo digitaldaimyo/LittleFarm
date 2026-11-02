@@ -39,7 +39,7 @@ function skilledPet(g: GameState, name: string, seed: number): Pet {
   trainAndSave(g, p, st);
   const fe = recipeStage('bring-it-home'); fe.seed = seed;
   trainAndSave(g, p, fe, activeRevision(getSkill(p, 'Approach'))!.policy);
-  if (LEARNED) for (const id of ['harvest', 'harvest-store', 'basket-run']) { const st = recipeStage(id); st.seed = seed; trainAndSaveRoutine(g, p, st); }
+  if (LEARNED) for (const id of ['harvest', 'harvest-store', 'basket-run', 'plant']) { const st = recipeStage(id); st.seed = seed; trainAndSaveRoutine(g, p, st); }
   return p;
 }
 

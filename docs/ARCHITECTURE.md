@@ -201,11 +201,11 @@ Saves are v2. The v1 → v2 migration adds templates and explicit preset senses.
 
 ### Learned jobs (learned-farm phase 3)
 
-`src/game/capability.ts` binds farm jobs to learned skills: `LEARNED_JOBS` (`forage` → Harvest to storage / Harvest, aimed at `@crop`; `deliver` → Fetch; `tote` → Basket run), `jobSkills`/`jobSkill(pet, job)` (the player's pick in `Pet.jobSkills`, else skills taught by the job's recipes or named after it, preferred first) and `jobCapability(pet, job, state?)` (null unless the farm may use it; with the state, Harvest picks storage only when it's nearer than the house and someone can empty it). The job executors in `farm.ts` call `runCapability`, which takes `RunOptions` (`goal` replaces the skill's own goal, e.g. "the basket is set down"; `dest`/`count` for Fetch); with no bound skill the job isn't eligible and the job card is locked. There is no scripted fallback.
+`src/game/capability.ts` binds farm jobs to learned skills: `LEARNED_JOBS` (`forage` → Harvest to storage / Harvest, aimed at `@crop`; `deliver` → Fetch; `tote` → Basket run; `plant` → Plant; `gateOpen`/`gateShut` → Open / Shut the gate), `jobSkills`/`jobSkill(pet, job)` (the player's pick in `Pet.jobSkills`, else skills taught by the job's recipes or named after it, preferred first) and `jobCapability(pet, job, state?)` (null unless the farm may use it; with the state, Harvest picks storage only when it's nearer than the house and someone can empty it). The job executors in `farm.ts` call `runCapability`, which takes `RunOptions` (`goal` replaces the skill's own goal, e.g. "the basket is set down"; `dest`/`count` for Fetch); with no bound skill the job isn't eligible and the job card is locked. There is no scripted fallback.
 
 ## Persistence
 
-Saves are currently **v6** (`SAVE_VERSION`). `persistence/save.ts` handles the save envelope `{ format: 'pen-deck-save', version, game }`. It has a migration table (version N → N+1), fills missing sections from defaults, validates shapes, clamps numbers, checks policy formats, and reports unknown cards. Saves never execute code. `storage.ts` writes to IndexedDB with a localStorage fallback. Export and Import JSON live in Settings.
+Saves are currently **v9** (`SAVE_VERSION`; v8 → v9 is the learned-farm migration, see `docs/LEARNED_FARM_ROADMAP.md` §6). `persistence/save.ts` handles the save envelope `{ format: 'pen-deck-save', version, game }`. It has a migration table (version N → N+1), fills missing sections from defaults, validates shapes, clamps numbers, checks policy formats, and reports unknown cards. Saves never execute code. `storage.ts` writes to IndexedDB with a localStorage fallback. Export and Import JSON live in Settings.
 
 ## Extension points
 

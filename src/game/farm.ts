@@ -1,9 +1,10 @@
 import type { Action, Obj, PetBody, SimEvent, World } from '../sim/world';
-import { addObject, inBounds, isSolidAt, bfsPath, cloneTally, def, emptyStore, emptyWorld, seedPrice, storeAccepts, storeCount, inArea, nearest, nudgeableGate, objectsAt, onGround, step, type StepOptions } from '../sim/world';
+import { addObject, inBounds, isSolidAt, bfsPath, cloneTally, def, emptyStore, emptyWorld, seedPrice, storeAccepts, storeCount, inArea, nearest, objectsAt, onGround, step, type StepOptions } from '../sim/world';
 import { nightfallRequests, postRequests, trackRequests } from './requests';
 import { Rng } from '../sim/rng';
 import { NavRun, SkillRun, isDone, randomMove, type ExecStep, type Outcome } from '../learning/policies';
 import { navTimeout } from '../learning/episodes';
+import { atFocus } from '../learning/features';
 import {
   BEHAVIOR_LABEL, describeContext, learnedSelect, rulesSelect, updateExecutive,
   type BehaviorId, type ExecContext, type Invocation,
@@ -127,29 +128,6 @@ function regrow(s: GameState): void {
   }
 }
 
-/**
- * A farm walk with the learned movement skill, plus the farm's stuck recovery a little earlier: if the pet keeps
- * revisiting the same tile (3 times in 8 steps: a loop, typically beside an obstacle), it sniffs around for two
- * random steps and carries on. Farm only — pens and reports measure the learned skill as it is.
- */
-class FarmWalk {
-  private recent: string[] = [];
-  private sniff = 0;
-  private inner: NavRun;
-  constructor(nav: ReturnType<typeof sensePolicyOf>, focus: string, timeout: number, private rng: Rng) {
-    this.inner = new NavRun(nav, focus, timeout, rng);
-  }
-  next(w: World): ExecStep {
-    const st = this.inner.next(w);
-    if (isDone(st)) return st;
-    const here = `${w.pet.x},${w.pet.y}`;
-    this.recent.push(here);
-    if (this.recent.length > 8) this.recent.shift();
-    if (this.sniff === 0 && this.recent.filter((p) => p === here).length >= 3) { this.sniff = 2; this.recent = []; }
-    if (this.sniff > 0) { this.sniff--; return randomMove(w, this.rng); }
-    return st;
-  }
-}
 
 /** Where a harvested item goes: without Fetch straight to the house; with it, the nearest storage with room (or the house). */
 export function harvestDestination(w: World, kind: string, hasFetch: boolean): string {
@@ -366,7 +344,7 @@ export function eligibleBehaviors(pet: Pet, ctx: ExecContext): BehaviorId[] {
   if (jobCapability(pet, 'deliver') && nav && ((ctx.carrot && !ctx.carrying) || (ctx.carrying && !ctx.basket))) out.push('deliver');
   // Baskets: a pet holding one finishes the run; otherwise a run when a basket is half full or away from the crops.
   if (jobCapability(pet, 'tote') && (ctx.basket || (ctx.tote && !ctx.carrying))) out.push('tote');
-  if (nav && ctx.soil && !ctx.carrying) out.push('plant');
+  if (jobCapability(pet, 'plant') && ctx.soil && !ctx.carrying) out.push('plant');
   if (nav && ctx.firefly && !ctx.carrying) out.push('catch');
   if (!ctx.energyLow) out.push('wander');
   return out;
@@ -385,6 +363,7 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
       return runCapability(s, pet, cap.name, cap.aim, rt.rng, inv.timeout);
     }
     case 'goto':
+      // An errand: the pet's own walking skill (Approach, or Avoid), aimed at the target.
       return new NavRun(nav, inv.args.target ?? 'home', tmo, rt.rng);
     case 'tote': {
       // Basket run: the pet's own Basket run routine (learned-farm phase 3b). The job is done once a basket it
@@ -396,35 +375,20 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
       return runCapability(s, pet, cap.name, cap.aim, rt.rng, inv.timeout, { goal });
     }
     case 'plant': {
-      // Walk to empty soil, sow it (the farm pays for the seed).
-      const walk = new FarmWalk(nav, 'soil', Math.round(tmo * 1.5), rt.rng);
-      let sowed = false;
-      return {
-        next(world) {
-          if (sowed) return { done: 'success', reason: 'planted' };
-          const st = walk.next(world);
-          if (!isDone(st)) return st;
-          if (st.done !== 'success') return st;
-          sowed = true;
-          return 'plant';
-        },
-      };
+      // Plant: the pet's own Plant routine (learned-farm phase 3c). Done once a plot has been sown.
+      const cap = jobCapability(pet, 'plant');
+      if (!cap) return { next: () => ({ done: 'fail', reason: 'no Plant skill' }) };
+      const soil = (world: World) => world.objects.filter((o) => o.kind === 'soil' && onGround(o)).length;
+      const before = soil(w);
+      return runCapability(s, pet, cap.name, cap.aim, rt.rng, inv.timeout, { goal: (world) => soil(world) < before });
     }
     case 'gate': {
-      // Walk next to the nearest gate in the wrong state, then nudge it.
+      // Mind the gate: the pet's own gate skill (it learned to nudge a gate from beside it). Done when every gate is
+      // as asked; nudging toggles, so the same skill opens and shuts.
       const want = inv.args.state === 'open';
-      let t = 0;
-      return {
-        next(world) {
-          const g = world.objects.filter((o) => o.kind === 'gate' && onGround(o) && !!o.open !== want)
-            .sort((a, b) => (Math.abs(a.x - world.pet.x) + Math.abs(a.y - world.pet.y)) - (Math.abs(b.x - world.pet.x) + Math.abs(b.y - world.pet.y)))[0];
-          if (!g) return { done: 'success', reason: 'gate set' };
-          if (t++ >= inv.timeout) return { done: 'timeout', reason: 'timeout' };
-          if (Math.abs(g.x - world.pet.x) + Math.abs(g.y - world.pet.y) <= 1 && nudgeableGate(world) === g) return 'nudge';
-          if (Math.abs(g.x - world.pet.x) + Math.abs(g.y - world.pet.y) === 0) return randomMove(world, rt.rng); // step out to shut it
-          return nav ? nav.act(world, 'gate') : randomMove(world, rt.rng);
-        },
-      };
+      const cap = jobCapability(pet, want ? 'gateOpen' : 'gateShut');
+      if (!cap) return { next: () => ({ done: 'fail', reason: 'no gate skill' }) };
+      return runCapability(s, pet, cap.name, cap.aim, rt.rng, inv.timeout, { goal: (world) => !world.objects.some((o) => o.kind === 'gate' && onGround(o) && !!o.open !== want) });
     }
     case 'catch': {
       // Fireflies are caught by walking into them (see handleEvents).
@@ -448,10 +412,8 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
           if ((pet.energy >= 98 && t >= 6) || t >= inv.timeout) return { done: 'success', reason: 'rested' };
           t++;
           // With another pet on duty, nap at the house (a tile both may share) rather than in someone's way.
-          if (world.crew?.length && world.pet.carrying === null && !objectsAt(world, world.pet.x, world.pet.y).some((o) => o.kind === 'home')) {
-            const path = bfsPath(world, world.pet.x, world.pet.y, (x, y) => objectsAt(world, x, y).some((o) => o.kind === 'home'), true);
-            if (path?.length) return path[0];
-          }
+          // (Resting is innate — Stay; the walk home is the pet's own Approach, if it has one.)
+          if (nav && world.crew?.length && world.pet.carrying === null && !atFocus(world, 'home') && t < 40) return nav.act(world, 'home');
           return 'wait';
         },
       };

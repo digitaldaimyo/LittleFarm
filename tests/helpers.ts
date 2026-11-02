@@ -64,3 +64,9 @@ export function giveRoutine(s: GameState, pet: Pet, recipe: string) {
 }
 
 export { recipeStage, DEFAULT_TRAITS };
+
+/** The farm's basic learned jobs (phase 3c): Harvest and Plant, trained in pens over the pet's Approach. */
+export function giveFarmJobs(s: GameState, pet: Pet) {
+  giveHarvest(s, pet);
+  return giveRoutine(s, pet, 'plant');
+}

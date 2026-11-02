@@ -4,7 +4,7 @@ import { adoptPet, getSkill, activeRevision, rollbackSkill } from '../src/game/p
 import { createRuntime, farmTick, recentProduction } from '../src/game/farm';
 import { ackStep, advanceTutorial, currentStep, recordGuideRun } from '../src/game/tutorial';
 import { trainingCost } from '../src/game/state';
-import { recipeStage, trainAndSave, giveHarvest, trainAndSaveRoutine } from './helpers';
+import { recipeStage, trainAndSave, giveFarmJobs, trainAndSaveRoutine } from './helpers';
 import { node } from '../src/domain/spec';
 import { suggestedRules } from '../src/domain/recipes';
 
@@ -22,7 +22,7 @@ describe('farm', () => {
     const p = adoptPet(trained, 'Pip', 'meadow');
     p.traits = { curiosity: 0.5, persistence: 0.5, caution: 0.5 };
     trainAndSave(trained, p, recipeStage('go-to-berry'));
-    giveHarvest(trained, p);
+    giveFarmJobs(trained, p);
     p.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' };
     expect(runFarm(untrained, 800)).toBe(0);
     expect(runFarm(trained, 800)).toBeGreaterThanOrEqual(8);
@@ -98,7 +98,7 @@ describe('farm', () => {
     const pet = adoptPet(s, 'Pip', 'meadow');
     pet.traits = { curiosity: 0.5, persistence: 0.5, caution: 0.5 };
     const ap = trainAndSave(s, pet, recipeStage('go-to-berry'));
-    giveHarvest(s, pet);
+    giveFarmJobs(s, pet);
     trainAndSave(s, pet, recipeStage('bring-it-home'), ap.policy);
     s.progress.unlocks.push('fetch', 'carrots');
     pet.assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' };
@@ -114,7 +114,7 @@ describe('farm robustness', () => {
       const pet = adoptPet(s, 'Pip', 'meadow');
       pet.traits = { curiosity: 0.5, persistence: 0.5, caution: 0.5 };
       const ap = trainAndSave(s, pet, { ...recipeStage('go-to-berry'), seed });
-      giveHarvest(s, pet);
+      giveFarmJobs(s, pet);
       trainAndSave(s, pet, { ...recipeStage('bring-it-home'), seed }, ap.policy);
       s.progress.unlocks.push('fetch', 'carrots');
       pet.executive.mode = seed === 202 ? 'learned' : 'rules';

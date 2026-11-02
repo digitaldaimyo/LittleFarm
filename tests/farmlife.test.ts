@@ -12,7 +12,7 @@ import { parseGame, serializeGame } from '../src/persistence/save';
 import { addObject, emptyStore, emptyWorld, seedPrice, step, storeCount, type World } from '../src/sim/world';
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import type { GameState } from '../src/game/types';
-import { recipeStage, trainAndSave, giveHarvest } from './helpers';
+import { recipeStage, trainAndSave, giveFarmJobs } from './helpers';
 
 /** A tiny world: the pet stands on a container with a crop in its paws. */
 function holding(kind: string, container: string, store = true): { w: World; c: ReturnType<typeof addObject> } {
@@ -32,7 +32,7 @@ function farmGame(opts: { fetch?: boolean; mode?: 'auto' | 'forage' | 'deliver' 
   const p = adoptPet(s, 'Pip', 'meadow');
   p.traits = { ...DEFAULT_TRAITS };
   trainAndSave(s, p, recipeStage('go-to-berry'));
-  giveHarvest(s, p);
+  giveFarmJobs(s, p);
   if (opts.fetch) trainAndSave(s, p, recipeStage('bring-it-home'), activeRevision(getSkill(p, 'Approach'))!.policy);
   p.assignment = opts.mode === 'auto' || !opts.mode ? { mode: 'auto', job: 'forage', navigator: 'Approach' } : { mode: 'job', job: opts.mode, navigator: 'Approach' };
   s.farm.dutyPetId = p.id;

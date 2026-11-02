@@ -14,7 +14,7 @@ import { applyPlan, createRuntime, farmTick } from '../src/game/farm';
 import { compilePlan, starterPlan } from '../src/game/plan';
 import { parseGame, serializeGame } from '../src/persistence/save';
 import { fingerprint } from '../scripts/layout-fingerprint';
-import { recipeStage as rs, trainAndSave, giveHarvest } from './helpers';
+import { recipeStage as rs, trainAndSave, giveFarmJobs } from './helpers';
 
 const kinds = (n: SpecNode) => { const out: string[] = []; walk(n, (x) => { if (x.cardId.startsWith('kind:')) out.push(x.cardId); }); return out; };
 
@@ -121,7 +121,7 @@ describe('farm plans remember (since the current job started)', () => {
     const p = adoptPet(s, 'Pip', 'meadow');
     p.traits = { curiosity: 0.5, persistence: 0.5, caution: 0.5 }; // adoptPet's temperament is random
     trainAndSave(s, p, rs('go-to-berry'));
-    giveHarvest(s, p);
+    giveFarmJobs(s, p);
     p.plan = starterPlan();
     const picked = node('cond.happened', { event: node('ev.pickup', { actor: node('actor.pet'), what: node('kind:berry') }), count: 1 });
     p.plan.rows = [
@@ -156,7 +156,7 @@ describe('farm plans remember (since the current job started)', () => {
     const p = adoptPet(s, 'Pip', 'meadow');
     p.traits = { curiosity: 0.5, persistence: 0.5, caution: 0.5 }; // adoptPet's temperament is random
     trainAndSave(s, p, rs('go-to-berry'));
-    giveHarvest(s, p);
+    giveFarmJobs(s, p);
     const rt = createRuntime(s.farm);
     applyPlan(s, rt, p.id);
     for (let i = 0; i < 300; i++) farmTick(s, rt);

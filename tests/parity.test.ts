@@ -189,3 +189,57 @@ describe('learned jobs (phase 3b): Haul, Basket run, Harvest to storage', () => 
     expect(isDone(st) && st).toMatchObject({ done: 'fail', reason: 'no option applies' });
   }, 60000);
 });
+
+describe('learned jobs (phase 3c): Plant, the gate, the walk home', () => {
+  it('Plant runs the pet’s Plant routine (no routine, no planting); its pen pays for seeds and trains well above random', () => {
+    const g = farmFor(101, false);
+    const p = g.pets[0];
+    giveRoutine(g, p, 'harvest');
+    const noPlant = runFarm(g, 900).rt;
+    expect(noPlant.stats!.plant).toBeUndefined(); // harvested carrots leave soil, but nobody plants it
+    const rev = giveRoutine(g, p, 'plant');
+    expect(rev.eval.successRate).toBeGreaterThanOrEqual(0.7);
+    expect(rev.eval.successRate).toBeGreaterThan(rev.eval.randomRate);
+    expect(jobCapability(p, 'plant')?.name).toBe('Plant');
+    const { rt } = runFarm(g, 900);
+    expect(rt.stats!.plant?.ok ?? 0).toBeGreaterThan(0);
+  }, 60000);
+
+  it('“Gates start open” sets pen gates; Mind the gate needs Open the gate / Shut the gate for that direction', () => {
+    const st = recipeStage('shut-gate');
+    expect(generateWorld(st, 4).objects.find((o) => o.kind === 'gate')!.open).toBe(true);
+    expect(generateWorld(recipeStage('open-gate'), 4).objects.find((o) => o.kind === 'gate')!.open).toBeFalsy();
+    const g = farmFor(101, false);
+    const p = g.pets[0];
+    expect(jobCapability(p, 'gateShut')).toBeNull();
+    trainAndSave(g, p, st);
+    expect(jobCapability(p, 'gateShut')?.name).toBe('Shut the gate');
+    expect(jobCapability(p, 'gateOpen')).toBeNull();
+  }, 60000);
+});
+
+describe('saves v9 (learned farm, phase 3d)', () => {
+  it('a v8 save loads: half-run scripted jobs are cleared, the journal explains, and the farm shows a one-time notice', async () => {
+    const { serializeGame, parseGame } = await import('../src/persistence/save');
+    const g = newGame();
+    adoptPet(g, 'Pip', 'meadow');
+    const env = JSON.parse(serializeGame(g));
+    env.version = 8; env.game.version = 8;
+    env.game.farm.current = { behaviorId: 'tote', args: {}, intention: 'old scripted run', timeout: 50, chosenBy: 'rules' };
+    env.game.farm.queue = [env.game.farm.current];
+    delete env.game.progress.flags.learnedFarmNotice;
+    env.game.pets[0].assignment = { mode: 'plan', job: 'deliver', navigator: 'Avoid' };
+    env.game.pets[0].plan = { chooser: 'first', guard: true, rows: [] };
+    const r = parseGame(JSON.stringify(env));
+    expect(r.ok).toBe(true);
+    expect(r.game!.version).toBe(9);
+    expect(r.game!.farm.current).toBeNull();
+    expect(r.game!.farm.queue).toEqual([]);
+    expect(r.game!.progress.flags.learnedFarmNotice).toBe(true);
+    expect(r.game!.journal[0].kind).toBe('learned-farm');
+    expect(r.game!.pets[0].assignment).toEqual({ mode: 'auto', job: 'forage', navigator: 'Avoid' }); // old assignments and plans are dropped
+    expect(r.game!.pets[0].plan).toBeUndefined();
+    // A fresh v9 game has no notice.
+    expect(newGame().progress.flags.learnedFarmNotice).toBeUndefined();
+  });
+});

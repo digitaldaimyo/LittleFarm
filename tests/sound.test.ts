@@ -7,7 +7,7 @@ import { DAY_TICKS, createRuntime, farmTick } from '../src/game/farm';
 import { newGame } from '../src/game/state';
 import { adoptPet } from '../src/game/pets';
 import { parseGame, serializeGame } from '../src/persistence/save';
-import { recipeStage, trainAndSave, giveHarvest } from './helpers';
+import { recipeStage, trainAndSave, giveFarmJobs } from './helpers';
 
 const FX_TYPES: FarmFx['type'][] = ['coin', 'splash', 'pickup', 'drop', 'celebrate', 'confused', 'nap', 'bump', 'sound'];
 const isSilent = (f: FarmFx) => SILENT_FX.has(f.type) || (!!f.text && SILENT_FX.has(`${f.type}:${f.text}`));
@@ -43,7 +43,7 @@ describe('sound cues', () => {
     const s = newGame();
     const p = adoptPet(s, 'Pip', 'meadow');
     trainAndSave(s, p, recipeStage('go-to-berry'));
-    giveHarvest(s, p);
+    giveFarmJobs(s, p);
     const rt = createRuntime(s.farm);
     const seen = new Set<string>();
     let cues = 0;

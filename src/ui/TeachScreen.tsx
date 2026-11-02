@@ -367,6 +367,11 @@ function EnvironmentBinder({ stage }: { stage: StageSpec }) {
           if (!id) { const t = node('place.purse', { coins: 5 }); id = t.id; update((st) => { st.environment.push(t); }); audio.play('pen.place'); }
           s.setUi({ placing: null, slot: { parentId: id, socket: 'kind', index: null } });
         }}><span className="card-title">Seed money</span><span className="card-sub">{(() => { const t = stage.environment.find((p) => p.cardId === 'place.purse'); return t ? `${paramOf(t, 'coins', 5)} coins` : 'none (seeds free)'; })()}</span></button>
+        <button className="card g-obj" data-tut="env-gates" onClick={() => {
+          let id = stage.environment.find((p) => p.cardId === 'place.gates')?.id;
+          if (!id) { const t = node('place.gates', { state: 'open' }); id = t.id; update((st) => { st.environment.push(t); }); audio.play('pen.place'); }
+          s.setUi({ placing: null, slot: { parentId: id, socket: 'kind', index: null } });
+        }}><span className="card-title">Gates start</span><span className="card-sub">{(() => { const t = stage.environment.find((p) => p.cardId === 'place.gates'); return t ? ({ open: 'open', closed: 'shut', random: 'open or shut' } as Record<string, string>)[paramOf(t, 'state', 'open')] : 'shut (default)'; })()}</span></button>
         <button className="card g-obj" data-tut="env-stocked" onClick={() => {
           const t = node('place.stocked', { kind: node('kind:bin'), item: node(`kind:${stage.learner.focus && stage.learner.focus !== 'bin' ? stage.learner.focus : 'berry'}`), count: 3, vary: 'exact', region: 'anywhere' });
           update((st) => { st.environment.push(t); }); audio.play('pen.place');
@@ -415,6 +420,7 @@ function placementText(stage: StageSpec, p: SpecNode): string {
   if (p.cardId === 'place.stocked') return `Stocked: ${t}`;
   if (p.cardId === 'place.energy') return `Energy: ${t}`;
   if (p.cardId === 'place.purse') return `Seed money: ${t}`;
+  if (p.cardId === 'place.gates') return `Gates: ${t}`;
   if (p.cardId === 'place.fixed') return `Place ${t}`;
   if (p.cardId === 'zone.rect') return `Area “${paramOf(p, 'name', 'coop')}” ${paramOf(p, 'w', 2)}×${paramOf(p, 'h', 2)} ${paramOf(p, 'where', 'fixed') === 'random' ? '(random spot each try)' : `at (${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`}`;
   if (p.cardId === 'place.pet' && paramOf(p, 'mode', 'random') === 'fixed') return `Pet starts at (${paramOf(p, 'x', 0)},${paramOf(p, 'y', 0)})`;

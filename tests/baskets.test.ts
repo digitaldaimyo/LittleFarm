@@ -9,7 +9,7 @@ import { createRuntime, cropSpot, farmTick, harvestTarget, heldBasket, toteTarge
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import { Trainer } from '../src/learning/trainer';
 import { buildReport } from '../src/learning/report';
-import { recipeStage, trainAndSave, giveHarvest, giveRoutine } from './helpers';
+import { recipeStage, trainAndSave, giveFarmJobs, giveRoutine } from './helpers';
 
 /** A basket with stock under the pet, a house two steps east and a shed three steps south. */
 function yard(stock = 4) {
@@ -116,7 +116,7 @@ function basketFarm() {
   const p = adoptPet(s, 'Pip', 'meadow');
   p.traits = { ...DEFAULT_TRAITS };
   trainAndSave(s, p, recipeStage('go-to-berry'));
-  giveHarvest(s, p);
+  giveFarmJobs(s, p);
   trainAndSave(s, p, recipeStage('bring-it-home'), activeRevision(getSkill(p, 'Approach'))!.policy);
   giveRoutine(s, p, 'basket-run');
   p.assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' };

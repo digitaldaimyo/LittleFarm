@@ -551,6 +551,11 @@ export function generateWorld(spec: StageSpec, seed: number): World {
     }
     const purse = spec.environment.find((p) => p.cardId === 'place.purse');
     if (purse) w.seedCoins = Math.max(0, paramOf(purse, 'coins', 5));
+    const gates = spec.environment.find((p) => p.cardId === 'place.gates');
+    if (gates) {
+      const st = paramOf(gates, 'state', 'open');
+      for (const o of w.objects) if (o.kind === 'gate') o.open = st === 'open' || (st === 'random' && rng.next() < 0.5);
+    }
     if (!petPlaced) {
       const t = relTiles('awayFrom', petNode!) ?? [];
       const t2 = t.length ? t : freeTiles('anywhere');
