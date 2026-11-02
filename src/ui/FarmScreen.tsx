@@ -12,7 +12,8 @@ import { activePet, activeRevision, customSkills, getSkill, isCertified, petById
 import { OBJECT_BY_ID } from '../domain/packs/farm';
 
 const FARM_TARGETS = ['berry', 'carrot', 'egg', 'chicken', 'crow', 'firefly', 'gate', 'bin', 'home', 'well', 'pond', 'bush', 'patch', 'rock', 'tree'];
-import { DAY_TICKS, applyPlan, dayInfo, queueManual, queueManualPath, recentProduction, TIRED } from '../game/farm';
+import { DAY_TICKS, MAX_ON_DUTY, applyPlan, crewSummary, dayInfo, describeTile, dutyPets, makeLead, petActivity, queueManual, queueManualPath, recentProduction, restartPet, setOnDuty, TIRED } from '../game/farm';
+import { RosterStrip, toggleDuty, leadPet, petStatus } from './Roster';
 import { nextUnlock } from '../game/progression';
 import { BEHAVIOR_LABEL } from '../learning/executive';
 import type { JobId, NavigatorName, Pet } from '../game/types';
@@ -53,11 +54,17 @@ function jobCards(pet: Pet, unlocks: string[]): JobCard[] {
 export function FarmScreen() {
   const s = useStore();
   const g = s.state;
-  const pet = petById(g, g.farm.dutyPetId) ?? activePet(g);
   const f = g.farm;
+  const lead = petById(g, f.dutyPetId) ?? activePet(g);
+  // The pet whose card is shown: tapped on the farm or in the strip (default: the lead).
+  const pet = petById(g, s.ui.farmPet) ?? lead;
   const fxTypes = s.ui.fx.filter((x) => performance.now() - x.at < 900).map((x) => x.type);
-  const mood = pet ? moodFor(pet, fxTypes, f.current?.behaviorId, f.stun) : 'idle';
-  const manual = pet?.assignment.mode === 'manual';
+  const mood = lead ? moodFor(lead, fxTypes, f.current?.behaviorId, f.stun) : 'idle';
+  const act = pet ? petActivity(g, pet.id) : null;
+  const petMood: PetMood = !pet ? 'idle' : pet.id === lead?.id ? mood : act?.current?.behaviorId === 'rest' && pet.energy < 97 ? 'nap' : act ? 'move' : 'nap';
+  const manual = lead?.assignment.mode === 'manual';
+  const onDuty = new Set(dutyPets(g).map((p) => p.id));
+  const crew = (f.helpers ?? []).map((h) => { const p = petById(g, h.petId); const body = f.world.crew?.[(f.helpers ?? []).indexOf(h)]; return p ? { palette: p.palette, name: p.name, mood: (body?.carrying !== null && body?.carrying !== undefined ? 'carry' : h.current?.behaviorId === 'rest' && p.energy < 97 ? 'nap' : 'move') as PetMood } : { palette: 'meadow' as const, name: '?', mood: 'idle' as PetMood }; });
   const layout = s.ui.layout;
   const next = nextUnlock(g);
   const [showPlan, setShowPlan] = useState(false);
@@ -79,11 +86,31 @@ export function FarmScreen() {
     return () => window.removeEventListener('keydown', h);
   }, [manual]);
 
-  if (!pet) return <div className="empty">Adopt a pet to begin.</div>;
+  if (!pet || !lead) return <div className="empty">Adopt a pet to begin.</div>;
+
+  /** Tap on the farm (not steering, not editing the layout): a pet → its card; the house → the roster; else what's there. */
+  const tapTile = (x: number, y: number) => {
+    const w = f.world;
+    // The house first: pets napping there are "at home", and the house is where the roster lives.
+    if (w.objects.some((o) => o.kind === 'home' && o.x === x && o.y === y && !o.delivered)) { s.setUi({ modal: 'roster', inspect: null }); return; }
+    const hit = w.pet.x === x && w.pet.y === y ? lead.id : (f.helpers ?? []).find((_, i) => w.crew?.[i]?.x === x && w.crew?.[i]?.y === y)?.petId;
+    if (hit) {
+      s.setUi({ farmPet: hit, inspect: null });
+      if (window.innerWidth < 900) document.querySelector('.pet-card')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      return;
+    }
+    const text = describeTile(g, x, y);
+    s.setUi({ inspect: text ? { x, y, text } : null });
+  };
 
   const setJob = (id: JobCard['id']) => {
+    let warn: string | null = null;
     store.mutate((st) => {
       const p = st.pets.find((x) => x.id === pet.id)!;
+      // Choosing a job for an off-duty pet puts it to work (if there's room).
+      if (!onDuty.has(p.id)) warn = setOnDuty(st, p.id, true, store.runtime);
+      // Only the lead can be steered: steering a helper makes it the lead.
+      if (id === 'manual' && st.farm.dutyPetId !== p.id && !warn) makeLead(st, p.id, store.runtime);
       if (id === 'plan') { applyPlan(st, store.runtime, p.id); st.progress.flags.assignedJob = true; return; }
       if (id === 'auto') p.assignment.mode = 'auto';
       else if (id === 'manual') p.assignment.mode = 'manual';
@@ -96,27 +123,28 @@ export function FarmScreen() {
           p.assignment.target = activeRevision(k ?? null)?.focus;
         }
       }
-      store.runtime.exec = null; store.runtime.inv = null; st.farm.current = null;
+      restartPet(st, store.runtime, p.id);
       if (id === 'forage' || id === 'deliver' || id === 'auto') st.progress.flags.assignedJob = true;
     });
+    if (warn) store.toast(warn, 'warn');
   };
-  const setNav = (n: NavigatorName) => store.mutate((st) => { st.pets.find((x) => x.id === pet.id)!.assignment.navigator = n; store.runtime.exec = null; store.runtime.inv = null; });
+  const setNav = (n: NavigatorName) => store.mutate((st) => { st.pets.find((x) => x.id === pet.id)!.assignment.navigator = n; restartPet(st, store.runtime, pet.id); });
   const selected: JobCard['id'] = pet.assignment.mode === 'job' ? pet.assignment.job : pet.assignment.mode;
   const canAvoid = !!getSkill(pet, 'Avoid');
-  const carriedKind = f.world.pet.carrying !== null ? f.world.objects.find((o) => o.id === f.world.pet.carrying)?.kind : null;
+  const body = pet.id === lead.id ? f.world.pet : f.world.crew?.[(f.helpers ?? []).findIndex((h) => h.petId === pet.id)];
+  const carriedKind = body && body.carrying !== null ? f.world.objects.find((o) => o.id === body.carrying)?.kind : null;
 
   return (
     <div className="screen farm-screen">
       <section className="stage-col">
         <div className="farm-frame">
           <WorldView
-            world={layout ? layout.draft.world : f.world} palette={pet.palette} mood={mood} ground="farm" darkness={layout ? 0 : darkness}
-            highlight={layout?.pick ?? null}
-            palette2={f.duty2PetId ? g.pets.find((p) => p.id === f.duty2PetId)?.palette ?? null : null}
-            label={`Farm. ${pet.name} is at column ${f.world.pet.x}, row ${f.world.pet.y}.`}
+            world={layout ? layout.draft.world : f.world} palette={lead.palette} mood={mood} crew={crew} ground="farm" darkness={layout ? 0 : darkness}
+            highlight={layout ? layout.pick : g.pets.length > 1 && body ? { x: body.x, y: body.y } : null}
+            label={`Farm. ${lead.name} is at column ${f.world.pet.x}, row ${f.world.pet.y}.`}
             fx={s.ui.fx}
-            onTile={layout ? layoutTap : manual ? (x, y) => { if (!queueManualPath(g, store.runtime, x, y)) store.toast('Can’t get there.', 'warn'); } : undefined}
-            tileLabel={(x, y) => (layout ? `Layout: tile ${x},${y}` : `Walk to ${x},${y}`)}
+            onTile={layout ? layoutTap : manual ? (x, y) => { if (!queueManualPath(g, store.runtime, x, y)) store.toast('Can’t get there.', 'warn'); } : tapTile}
+            tileLabel={(x, y) => (layout ? `Layout: tile ${x},${y}` : manual ? `Walk to ${x},${y}` : `Farm tile ${x},${y}`)}
           />
         </div>
         <div className="farm-bar">
@@ -131,6 +159,13 @@ export function FarmScreen() {
           <span className="muted small">{perMin} coins in the last minute</span>
           {!layout && <button className="btn ghost small" data-tut="layout-btn" onClick={openLayout}>Layout…</button>}
         </div>
+        {s.ui.inspect && !layout && (
+          <div className="inspect small" role="status" aria-live="polite">
+            <span>{s.ui.inspect.text}</span>
+            <button className="icon-btn" aria-label="Close" onClick={() => s.setUi({ inspect: null })}>✕</button>
+          </div>
+        )}
+        {!manual && !layout && !s.ui.inspect && <p className="small muted farm-hint">Tap a pet for its card, the house for your pets, or anything else to see what it is.</p>}
         {manual && !layout && (
           <div className="manual-pad" aria-label="Steering controls">
             <button onClick={() => queueManual(store.runtime, 'N')} aria-label="Up">▲</button>
@@ -154,46 +189,39 @@ export function FarmScreen() {
 
       <aside className="side-col">
         <LayoutPanel />
-        <div className="panel pet-card">
-          <PetSprite palette={pet.palette} mood={mood} size={56} carrying={carriedKind ?? null} />
+        {g.pets.length > 1 && <RosterStrip selected={pet.id} />}
+        <div className="panel pet-card" data-tut="pet-card">
+          <PetSprite palette={pet.palette} mood={petMood} size={56} carrying={carriedKind ?? null} />
           <div className="grow">
-            <div className="row between">
+            <div className="row between wrap">
               <strong className="pet-name">{pet.name}</strong>
-              {g.pets.length > 1 && (
-                <label className="small">Also on duty:{' '}
-                  <select value={f.duty2PetId ?? ''} onChange={(e) => store.mutate((st) => { st.farm.duty2PetId = e.target.value || null; st.farm.current2 = null; if (store.runtime.second) store.runtime.second = undefined; })}>
-                    <option value="">nobody</option>
-                    {g.pets.filter((p) => p.id !== f.dutyPetId).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </label>
-              )}
-              {g.pets.length > 1 && (
-                <label className="small">On duty:{' '}
-                  <select value={f.dutyPetId ?? ''} onChange={(e) => store.mutate((st) => { st.farm.dutyPetId = e.target.value; st.activePetId = e.target.value; store.runtime.exec = null; store.runtime.inv = null; })}>
-                    {g.pets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </label>
-              )}
+              <span className="row gap">
+                {pet.id === f.dutyPetId ? <span className="chip good" title="The lead is the pet you can steer">lead</span>
+                  : onDuty.has(pet.id) ? <button className="btn ghost small" onClick={() => leadPet(pet.id)}>Make lead</button> : null}
+                {g.pets.length > 1 && (
+                  <button className="btn small" data-tut="duty-toggle" disabled={!onDuty.has(pet.id) && onDuty.size >= MAX_ON_DUTY} title={!onDuty.has(pet.id) && onDuty.size >= MAX_ON_DUTY ? `At most ${MAX_ON_DUTY} pets work at once` : undefined}
+                    onClick={() => toggleDuty(pet.id, !onDuty.has(pet.id))}>{onDuty.has(pet.id) ? 'Off duty' : 'On duty'}</button>
+                )}
+              </span>
             </div>
             <Meter label="Energy" value={pet.energy} warn={pet.energy < TIRED} />
             <Meter label="Mood" value={pet.mood} />
             <div className="activity" aria-live="polite">
-              {f.stun > 0 ? <span>Shaking off pond water…</span> : f.current ? (
+              {!act ? <span className="muted">{petStatus(pet.id)}</span> : act.stun > 0 ? <span>Shaking off pond water…</span> : act.current ? (
                 <>
-                  <strong>{BEHAVIOR_LABEL[f.current.behaviorId]}</strong>
-                  {f.current.args.navigator && f.current.behaviorId !== 'rest' && <span className="chip">moves with {f.current.args.navigator}</span>}
-                  <span className={`chip by-${f.current.chosenBy}`}>{f.current.chosenBy === 'player' ? 'your call' : f.current.chosenBy === 'rules' ? 'rule-based choice' : f.current.chosenBy === 'plan' ? 'farm plan' : 'learned choice'}</span>
-                  <div className="muted small">{f.current.intention}</div>
+                  <strong>{BEHAVIOR_LABEL[act.current.behaviorId]}</strong>
+                  {act.current.args.navigator && act.current.behaviorId !== 'rest' && <span className="chip">moves with {act.current.args.navigator}</span>}
+                  <span className={`chip by-${act.current.chosenBy}`}>{act.current.chosenBy === 'player' ? 'your call' : act.current.chosenBy === 'rules' ? 'rule-based choice' : act.current.chosenBy === 'plan' ? 'farm plan' : 'learned choice'}</span>
+                  <div className="muted small">{act.current.intention}</div>
                 </>
               ) : <span className="muted">Thinking…</span>}
             </div>
-            {f.duty2PetId && f.current2 && (
-              <div className="activity small">
-                <strong>{g.pets.find((p) => p.id === f.duty2PetId)?.name}:</strong> {BEHAVIOR_LABEL[f.current2.behaviorId]} <span className="muted">— {f.current2.intention}</span>
-                <div className="muted">Pets never chase the same thing; a second pet pays off when it does different work.</div>
-                <Tips tips={farmTips(g)} />
-              </div>
-            )}
+            <div className="row gap small">
+              <button className="link" onClick={() => { store.mutate((st) => { st.activePetId = pet.id; }); s.setUi({ screen: 'pets' }); }}>{pet.name}’s skills →</button>
+              <button className="link" onClick={() => { store.mutate((st) => { st.activePetId = pet.id; }); s.setUi({ screen: 'teach' }); }}>Teach {pet.name} →</button>
+            </div>
+            {onDuty.size > 1 && <div className="muted small">On duty: {crewSummary(g)}. Pets never chase the same thing; extra pets pay off doing different work.</div>}
+            <Tips tips={farmTips(g)} />
           </div>
         </div>
 

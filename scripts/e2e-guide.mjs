@@ -79,7 +79,8 @@ try {
   await page.click('.tutorial button:has-text("Go to the Farm")');
   await page.click('[data-tut="job-forage"]');
   await page.click('.speed button:has-text("4×")');
-  await page.waitForFunction(() => document.querySelector('.tutorial')?.textContent?.includes('Field Guide'), null, { timeout: 60000 });
+  // (The "Earn 5 coins" step itself mentions the Field Guide, so wait for the lesson-finished banner's button.)
+  await page.waitForSelector('.tutorial button:has-text("Open the Guide")', { timeout: 120000 });
   check(true, 'Chapter 1 finished after earning 5 coins; a new lesson is offered');
 
   // Lesson: practice
@@ -342,6 +343,30 @@ try {
     await lessonDone('Lay out the farm');
     await nav('Guide');
     check((await page.locator('.guide-item.done').count()) === 10, 'all 10 Field Guide lessons done');
+
+    // Pet roster (farm life D): tap the house, adopt a second pet, put it on duty, see its card, tap a basket.
+    await nav('Farm');
+    await page.click('[aria-label="Farm tile 1,1"]');
+    check((await page.locator('.modal.roster').count()) === 1, 'roster: tapping the house opens the roster');
+    const coinsNow = Number((await page.textContent('.modal.roster .row.between .small'))?.match(/\d+/)?.[0] ?? 0);
+    console.log(`   ${coinsNow} coins at the roster`);
+    await page.click('.modal.roster button:has-text("Adopt another pet")');
+    await page.fill('.modal input', 'Mochi');
+    await page.click('.modal button:has-text("Adopt (20 coins)")');
+    await page.click('[data-tut="roster-btn"]');
+    await page.click('[data-tut="duty-Mochi"]');
+    check((await page.textContent('.modal.roster')).includes('On duty (2/4)'), 'roster: Mochi is put on duty (2 of 4)');
+    await page.click('.modal.roster button[aria-label="Close"]');
+    await page.waitForTimeout(800);
+    check((await page.locator('.world [aria-label="Mochi"]').count()) === 1, 'roster: Mochi appears on the farm');
+    await page.click('.roster-chip:has-text("Mochi")');
+    check((await page.textContent('[data-tut="pet-card"] .pet-name')) === 'Mochi', 'roster: the strip opens Mochi’s card');
+    await page.click('[aria-label="Farm tile 2,3"]');
+    check(/^Basket: /.test(await page.textContent('.inspect span')), 'farm: tapping the basket shows what is in it');
+    await page.click('[data-tut="duty-toggle"]');
+    check((await page.locator('.world [aria-label="Mochi"]').count()) === 0, 'roster: off duty, Mochi goes home');
+    await page.click('.roster-chip:has-text("Pip")');
+    await page.click('[data-tut="pet-card"] button:has-text("Teach Pip")'); // Pip is the active pet again for what follows
 
     // Teaching polish (phase A): build "end on shoo chicken" the old way, get warned, repair it, train it.
     await nav('Teach');

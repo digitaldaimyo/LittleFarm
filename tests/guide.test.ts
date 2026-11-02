@@ -225,7 +225,7 @@ describe('Coaching tips', () => {
   it('notice two pets on the same job', () => {
     const s = newGame();
     const a = adoptPet(s, 'Pip', 'meadow'), b = adoptPet(s, 'Mochi', 'plum');
-    s.farm.dutyPetId = a.id; s.farm.duty2PetId = b.id;
+    s.farm.dutyPetId = a.id; setOnDuty(s, b.id, true);
     a.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' };
     b.assignment = { mode: 'job', job: 'deliver', navigator: 'Approach' };
     a.assignment.job = 'deliver';
@@ -237,7 +237,7 @@ describe('Coaching tips', () => {
 
 import { ROUTINE_STAGE, LESSON_ROW } from '../src/game/tutorial';
 import { subskillsFor, saveRevision } from '../src/game/pets';
-import { applyPlan, createRuntime, farmTick, previewPlan, DAY_TICKS, NIGHT_FROM } from '../src/game/farm';
+import { applyPlan, setOnDuty, createRuntime, farmTick, previewPlan, DAY_TICKS, NIGHT_FROM } from '../src/game/farm';
 import { checkUnlocks } from '../src/game/progression';
 import { requestHelp, postRequests } from '../src/game/requests';
 import { buy } from '../src/game/progression';

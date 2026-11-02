@@ -9,7 +9,7 @@ import type { Traits } from '../learning/episodes';
 import type { ExecutiveTable, Invocation } from '../learning/executive';
 import type { World } from '../sim/world';
 
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 
 export type PaletteId = 'meadow' | 'plum' | 'sky' | 'moss';
 export type JobId = 'forage' | 'deliver' | 'plant' | 'rest' | 'skill';
@@ -141,6 +141,14 @@ export interface Pet {
   nicknames?: Record<string, string>;
 }
 
+export interface Helper {
+  petId: string;
+  current: Invocation | null;
+  stun: number;
+  queue: Invocation[];
+  rngState: number;
+}
+
 export interface Plot {
   x: number;
   y: number;
@@ -162,12 +170,11 @@ export interface FarmState {
   current: Invocation | null;
   production: { tick: number; coins: number }[];
   manualMode: boolean;
-  /** A second pet on duty, with its own current job, stun and decisions. */
-  duty2PetId?: string | null;
-  current2?: Invocation | null;
-  stun2?: number;
-  queue2?: Invocation[];
-  rngState2?: number;
+  /**
+   * Pets on duty besides the lead (`dutyPetId`), up to 3 (farm life D). Each has its own current job, stun,
+   * decisions and RNG; its body is `world.crew[i]`.
+   */
+  helpers?: Helper[];
   /** Neighbours' requests board. */
   requests?: FarmRequest[];
   /** Farm layouts applied so far (layout mode). */

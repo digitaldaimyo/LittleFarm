@@ -11,7 +11,7 @@ import { generateWorld } from '../src/sim/compile';
 import { newGame } from '../src/game/state';
 import { activeRevision, adoptPet, getSkill } from '../src/game/pets';
 import { exportSkillCard, importSkillCard } from '../src/game/skillcard';
-import { createRuntime, farmTick } from '../src/game/farm';
+import { createRuntime, farmTick, setOnDuty } from '../src/game/farm';
 import { parseGame, serializeGame } from '../src/persistence/save';
 import { trainAndSave } from './helpers';
 import type { StageSpec } from '../src/domain/types';
@@ -123,7 +123,7 @@ describe('M6: two pets on duty', () => {
     a.assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' }; // harvests and replants
     b.assignment = { mode: 'job', job: 'deliver', navigator: 'Approach' };
     g.farm.dutyPetId = a.id;
-    g.farm.duty2PetId = second ? b.id : null;
+    if (second) setOnDuty(g, b.id, true);
     g.resources.coins = 30;
     g.progress.unlocks.push('custom', 'bushes', 'fetch', 'carrots');
     return g;
@@ -138,8 +138,8 @@ describe('M6: two pets on duty', () => {
       farmTick(two, r2);
       const w = two.farm.world;
       // Pets may share the house and storage tiles (one naps while the other sells); anywhere else, never.
-      if (w.pet2 && w.pet.x === w.pet2.x && w.pet.y === w.pet2.y && !w.objects.some((o) => o.x === w.pet.x && o.y === w.pet.y && ['home', 'bin', 'shed'].includes(o.kind))) sameTile++;
-      if (r2.claim !== null && r2.claim === r2.second?.claim) sameClaim++;
+      if (w.crew && w.pet.x === w.crew[0].x && w.pet.y === w.crew[0].y && !w.objects.some((o) => o.x === w.pet.x && o.y === w.pet.y && ['home', 'bin', 'shed'].includes(o.kind))) sameTile++;
+      if (r2.claim !== null && r2.claim === r2.crew[0]?.claim) sameClaim++;
       expect(w.objects.some((o) => o.hidden || o.kind === 'buddy')).toBe(false);
     }
     expect(sameTile).toBe(0);
@@ -155,6 +155,6 @@ describe('M6: two pets on duty', () => {
     expect(JSON.stringify(a.farm.world)).toBe(JSON.stringify(b.farm.world));
     const r = parseGame(serializeGame(a));
     expect(r.ok).toBe(true);
-    expect(r.game!.farm.world.pet2).toBeDefined();
+    expect(r.game!.farm.world.crew).toHaveLength(1);
   });
 });

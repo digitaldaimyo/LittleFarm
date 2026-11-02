@@ -24,13 +24,13 @@ export interface WorldViewProps {
   darkness?: number;
   /** Probe overlay: the policy's choice on each tile. */
   arrows?: { x: number; y: number; action: string; confidence: number; guessed: boolean }[];
-  /** A second pet on duty. */
-  palette2?: PaletteId | null;
+  /** The other pets on duty (`world.crew`, same order). */
+  crew?: { palette: PaletteId; mood: PetMood; name: string }[];
 }
 
 const ARROW_ROT: Record<string, number> = { N: 0, E: 90, S: 180, W: 270 };
 
-export function WorldView({ world, palette, mood = 'idle', label, onTile, tileLabel, ghostIds, trail, fx, highlight, className, ground = 'pen', darkness, arrows, palette2 }: WorldViewProps) {
+export function WorldView({ world, palette, mood = 'idle', label, onTile, tileLabel, ghostIds, trail, fx, highlight, className, ground = 'pen', darkness, arrows, crew }: WorldViewProps) {
   const dark = darkness ?? (world.night ? 1 : 0);
   const W = world.w * C, H = world.h * C;
   const tiles = [];
@@ -74,11 +74,11 @@ export function WorldView({ world, palette, mood = 'idle', label, onTile, tileLa
           {o.wet && <g aria-hidden="true"><rect x="3" y="3" width={C - 6} height={C - 6} rx="7" className="wet-ring" /><path d="M31 5 q3 5 0 7 q-3 -2 0 -7z" className="drop" /></g>}
         </g>
       ))}
-      {palette2 && world.pet2 && (
-        <g className="pet-pos" style={{ transform: `translate(${world.pet2.x * C}px, ${world.pet2.y * C}px)` }} pointerEvents="none">
-          <g transform="translate(0 -2)"><PetSprite palette={palette2} mood="move" size={C} carrying={world.pet2.carrying !== null ? world.objects.find((o) => o.id === world.pet2!.carrying)?.kind ?? null : null} /></g>
+      {crew && world.crew?.map((b, i) => crew[i] && (
+        <g key={`crew${i}`} className="pet-pos" style={{ transform: `translate(${b.x * C}px, ${b.y * C}px)` }} pointerEvents="none" aria-label={crew[i].name}>
+          <g transform="translate(0 -2)"><PetSprite palette={crew[i].palette} mood={crew[i].mood} size={C} carrying={b.carrying !== null ? world.objects.find((o) => o.id === b.carrying)?.kind ?? null : null} /></g>
         </g>
-      )}
+      ))}
       {arrows?.map((a) => (
         <g key={`ar${a.x},${a.y}`} transform={`translate(${a.x * C + C / 2} ${a.y * C + C / 2})`} pointerEvents="none" aria-hidden="true">
           {a.action in ARROW_ROT ? (

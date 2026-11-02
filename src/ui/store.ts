@@ -42,7 +42,7 @@ export interface UiState {
   /** First corner while painting an area. */
   zoneStart: { x: number; y: number } | null;
   previewSeed: number;
-  modal: null | 'adopt' | 'shop' | 'confirm-reset';
+  modal: null | 'adopt' | 'adopt-paid' | 'shop' | 'confirm-reset' | 'roster';
   toasts: Toast[];
   fx: FxItem[];
   training: TrainingSessionState | null;
@@ -52,6 +52,10 @@ export interface UiState {
   loadDiagnostics: string[];
   /** Farm layout mode: the draft being edited (the farm pauses while it's open). */
   layout: LayoutUi | null;
+  /** Farm: the pet whose card is shown (null = the lead). */
+  farmPet: string | null;
+  /** Farm: a tapped tile and what's on it. */
+  inspect: { x: number; y: number; text: string } | null;
 }
 
 export interface LayoutUi {
@@ -68,7 +72,7 @@ class GameStore {
   runtime: FarmRuntime = createRuntime(this.state.farm);
   ui: UiState = {
     screen: 'farm', binder: 'environment', slot: null, placing: null, placeMode: 'random', zoneStart: null, previewSeed: 1,
-    modal: null, toasts: [], fx: [], training: null, penReplay: null, farmPaused: false, loadDiagnostics: [], layout: null,
+    modal: null, toasts: [], fx: [], training: null, penReplay: null, farmPaused: false, loadDiagnostics: [], layout: null, farmPet: null, inspect: null,
   };
   version = 0;
   private listeners = new Set<() => void>();

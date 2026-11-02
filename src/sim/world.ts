@@ -97,8 +97,8 @@ export interface World {
   tick: number;
   objects: Obj[];
   pet: PetBody;
-  /** A second pet on duty (farm only). */
-  pet2?: PetBody;
+  /** The other pets on duty (farm only): while one acts, the rest are here. */
+  crew?: PetBody[];
   nextId: number;
   delivered: Record<string, number>;
   /** Night-time (set from the pen's Time of day card or the farm clock). */
@@ -185,7 +185,7 @@ export function cloneWorld(w: World): World {
   return {
     ...w,
     pet: { ...w.pet },
-    ...(w.pet2 ? { pet2: { ...w.pet2 } } : {}),
+    ...(w.crew ? { crew: w.crew.map((b) => ({ ...b })) } : {}),
     delivered: { ...w.delivered },
     ...(w.areas ? { areas: w.areas.map((a) => ({ ...a })) } : {}),
     ...(w.counts ? { counts: { ...w.counts } } : {}),

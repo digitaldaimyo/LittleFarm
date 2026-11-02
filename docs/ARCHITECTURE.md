@@ -117,6 +117,14 @@ The same simulator runs pens, evaluation and the farm. Fixed seed + fixed action
   - Pets may share container tiles (no `buddy` obstacle there). Claims cover crops and eggs, never storage.
 - **Saves v6:** the farm's bin gets an empty one-slot store; `sold` starts at 0.
 
+### Farm life: pets (phase D)
+- **Crew:** `FarmState.helpers` (up to 3; `{ petId, current, stun, queue, rngState }`) beside the lead (`dutyPetId`, whose job state stays in `current` / `stun` / `queue`). Helper bodies are `World.crew[i]`; helper runtimes are `FarmRuntime.crew[i]` (created on demand from `rngState`). `farmTick` runs the lead, then each helper; a helper's turn swaps its body, job, stun and queue into the primary slots and reuses `petTurn` (as the second pet always did).
+- **`withOthers`:** while one pet acts, every other body is a `buddy` obstacle (except on container tiles) and every other runtime's claim is hidden. With two pets this is exactly the old `withOtherPet`: a two-pet farm is tick-for-tick identical before and after the refactor (4 job mixes × 3,000 ticks, hashed).
+- **API:** `dutyPets`, `setOnDuty(s, petId, on, rt?)` (refuses a 5th; taking the lead off promotes the first helper), `makeLead` (swaps bodies and roles, restarts decisions), `restartPet`, `petActivity`, `crewSummary`, `describeTile`. `applyPlan` for a helper restarts only that helper.
+- **UI:** `ui/Roster.tsx` (`RosterModal`, `RosterStrip`); `FarmScreen` shows the card of `ui.farmPet` (default the lead) and routes taps: the house → roster, a pet → its card, anything else → `ui.inspect`. Steering a helper makes it the lead. `WorldView` draws `world.crew` with each pet's palette and mood.
+- **Saves v8:** `duty2PetId` / `current2` / `stun2` / `queue2` / `rngState2` and `world.pet2` become `helpers[0]` and `world.crew[0]`.
+- **Performance:** 0.19 ms per farm tick with 4 pets (0.06 with 1); the farm runs at most ~15 ticks/s.
+
 ### Farm life: your layout (phase C)
 - **`game/layout.ts`:** `LAYOUT_ITEMS` (catalog: kind, price, crop, requires, max, grants), a `LayoutDraft` (a cloned world + plots, net cost, ids placed in this draft, pen-card grants, a change log), `place` / `move` / `remove` with `canPlace` / `canMove` / `canRemove` returning reasons, `unreachable(world)` (BFS from the house's door tile over non-solid tiles, gates counted open; a solid target counts when a walkable tile touches it), `plotBudget`, `applyLayout` (pays, swaps in the world and plots, grants unlocks, journals), and `previewLayout` (two `farmTick` runs on clones from the same state: as is vs draft).
 - `Obj.fixed` marks the orchard's fence and gate (set by `expandFarm`; migrated for v6 saves).

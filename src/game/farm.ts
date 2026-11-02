@@ -1,5 +1,5 @@
-import type { Action, SimEvent, World } from '../sim/world';
-import { addObject, bfsPath, cloneTally, def, emptyStore, emptyWorld, seedPrice, storeAccepts, storeCount, inArea, nearest, nudgeableGate, objectsAt, onGround, step, type StepOptions } from '../sim/world';
+import type { Action, Obj, PetBody, SimEvent, World } from '../sim/world';
+import { addObject, inBounds, isSolidAt, bfsPath, cloneTally, def, emptyStore, emptyWorld, seedPrice, storeAccepts, storeCount, inArea, nearest, nudgeableGate, objectsAt, onGround, step, type StepOptions } from '../sim/world';
 import { nightfallRequests, postRequests, trackRequests } from './requests';
 import { Rng } from '../sim/rng';
 import { FetchController, FetchRun, NavRun, SkillRun, isDone, randomMove, type ExecStep } from '../learning/policies';
@@ -8,7 +8,7 @@ import {
   BEHAVIOR_LABEL, describeContext, learnedSelect, rulesSelect, updateExecutive,
   type BehaviorId, type ExecContext, type Invocation,
 } from '../learning/executive';
-import type { FarmPlan, FarmState, GameState, Pet, Plot } from './types';
+import type { FarmPlan, FarmState, GameState, Helper, Pet, Plot } from './types';
 import { activeRevision, getSkill, navPolicyFor, petById, routineRunFor, sensePolicyOf } from './pets';
 import { compileCondition, withTarget } from '../sim/compile';
 import { addJournal, addJournalOnce } from './journal';
@@ -85,17 +85,17 @@ export interface FarmRuntime {
   jitter: number;
   /** Farm-plan memory: row starts (for the anti-dithering guard), fire counts, switches. */
   plan: PlanRuntime;
-  /** Object this pet is heading for (hidden from the other pet on duty). */
+  /** Object this pet is heading for (hidden from the other pets on duty). */
   claim: number | null;
-  /** Runtime of the second pet on duty (created on demand). */
-  second?: FarmRuntime;
+  /** Runtimes of the helpers on duty (`FarmState.helpers`, same order; created on demand). */
+  crew: FarmRuntime[];
   rng: Rng;
 }
 
 export function createRuntime(f: FarmState): FarmRuntime {
   const rng = new Rng(1);
   rng.state = f.rngState >>> 0;
-  return { exec: null, inv: null, ctx: null, startCoins: 0, startEnergy: 0, startTick: 0, manual: [], recentFail: false, jitter: 0, plan: newPlanRuntime(), claim: null, rng };
+  return { exec: null, inv: null, ctx: null, startCoins: 0, startEnergy: 0, startTick: 0, manual: [], recentFail: false, jitter: 0, plan: newPlanRuntime(), claim: null, crew: [], rng };
 }
 
 function plotUnlocked(s: GameState, p: Plot): boolean {
@@ -419,7 +419,7 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
           if ((pet.energy >= 98 && t >= 6) || t >= inv.timeout) return { done: 'success', reason: 'rested' };
           t++;
           // With another pet on duty, nap at the house (a tile both may share) rather than in someone's way.
-          if (world.pet2 && world.pet.carrying === null && !objectsAt(world, world.pet.x, world.pet.y).some((o) => o.kind === 'home')) {
+          if (world.crew?.length && world.pet.carrying === null && !objectsAt(world, world.pet.x, world.pet.y).some((o) => o.kind === 'home')) {
             const path = bfsPath(world, world.pet.x, world.pet.y, (x, y) => objectsAt(world, x, y).some((o) => o.kind === 'home'), true);
             if (path?.length) return path[0];
           }
@@ -650,71 +650,247 @@ export function farmTick(s: GameState, rt: FarmRuntime): TickResult {
   updateWeather(s, rt, fx);
   updateCreatures(s, rt, fx);
   const pet = petById(s, f.dutyPetId);
-  const pet2 = f.duty2PetId && f.duty2PetId !== f.dutyPetId ? petById(s, f.duty2PetId) : null;
+  const helpers = tidyHelpers(s);
+  const onDuty = new Set([f.dutyPetId, ...helpers.map((h) => h.petId)]);
   for (const p of s.pets) {
-    if (p.id !== f.dutyPetId && p.id !== pet2?.id) p.energy = Math.min(100, p.energy + 0.5); // off-duty pets nap at home
+    if (!onDuty.has(p.id)) p.energy = Math.min(100, p.energy + 0.5); // off-duty pets nap at home
   }
   if (!pet) {
     f.rngState = rt.rng.state;
     return { fx, unlocked: checkUnlocks(s) };
   }
-  if (pet2) {
-    f.world.pet2 ??= { x: f.world.pet.x, y: Math.min(f.world.h - 1, f.world.pet.y + 1), carrying: null, facing: 'S' };
-    rt.second ??= createSecondRuntime(f);
-  } else if (f.world.pet2) {
-    delete f.world.pet2;
-    rt.second = undefined;
-  }
-  withOtherPet(s, rt.second, () => petTurn(s, pet, rt, fx, {}));
+  syncCrew(s, rt, helpers);
+  withOthers(s, rt, -1, () => petTurn(s, pet, rt, fx, {}));
   f.rngState = rt.rng.state;
-  if (pet2 && rt.second) secondTurn(s, pet2, rt, fx);
+  for (let i = 0; i < helpers.length; i++) helperTurn(s, i, rt, fx);
   if (f.production.length && f.tick - f.production[0].tick > 2400) f.production = f.production.filter((p) => f.tick - p.tick <= 2400);
   return { fx, unlocked: checkUnlocks(s) };
 }
 
-function createSecondRuntime(f: FarmState): FarmRuntime {
-  const r = createRuntime(f);
-  r.rng.state = (f.rngState2 ?? 0x5ec0d) >>> 0;
-  return r;
+/** A pet's job changed: drop what it's doing so it decides afresh next tick (lead or helper). */
+export function restartPet(s: GameState, rt: FarmRuntime, petId: string): void {
+  const f = s.farm;
+  if (f.dutyPetId === petId) { rt.exec = null; rt.inv = null; f.current = null; return; }
+  const i = (f.helpers ?? []).findIndex((h) => h.petId === petId);
+  if (i < 0) return;
+  f.helpers![i].current = null;
+  const r = rt.crew[i];
+  if (r) { r.exec = null; r.inv = null; }
+}
+
+/** What a pet on the farm is doing right now (null = off duty). */
+export function petActivity(s: GameState, petId: string): { current: Invocation | null; stun: number; lead: boolean } | null {
+  const f = s.farm;
+  if (f.dutyPetId === petId) return { current: f.current, stun: f.stun, lead: true };
+  const h = (f.helpers ?? []).find((x) => x.petId === petId);
+  return h ? { current: h.current, stun: h.stun, lead: false } : null;
+}
+
+/** "Who does what" across the pets on duty, e.g. "2 harvesting, 1 hauling". */
+export function crewSummary(s: GameState): string {
+  const VERB: Partial<Record<BehaviorId, string>> = { forage: 'harvesting', deliver: 'hauling', plant: 'planting', rest: 'napping', catch: 'catching fireflies', wander: 'sniffing around', skill: 'running a skill', goto: 'on an errand', gate: 'minding the gate', manual: 'steered by you' };
+  const n = new Map<string, number>();
+  for (const p of dutyPets(s)) {
+    const a = petActivity(s, p.id);
+    const v = a?.stun ? 'drying off' : a?.current ? VERB[a.current.behaviorId] ?? a.current.behaviorId : 'thinking';
+    n.set(v, (n.get(v) ?? 0) + 1);
+  }
+  return [...n].map(([v, k]) => `${k} ${v}`).join(', ') || 'nobody on duty';
+}
+
+/** What's on a farm tile, in words (storage contents, plot stage and timer), or null if nothing to say. */
+export function describeTile(s: GameState, x: number, y: number): string | null {
+  const w = s.farm.world;
+  const here = objectsAt(w, x, y);
+  const store = here.find((o) => o.store);
+  if (store) {
+    const st = def(store.kind).storage!;
+    const slots = store.store!.map((sl) => (sl.kind ? `${sl.n} ${def(sl.kind).plural}` : 'empty')).join(' · ');
+    return `${def(store.kind).name}: ${slots} (${st.perSlot} per ${st.slots > 1 ? 'slot' : 'kind'}).`;
+  }
+  const plot = s.farm.plots.find((p) => p.x === x && p.y === y);
+  if (plot) {
+    const crop = def(plot.crop);
+    const ripe = here.some((o) => o.kind === plot.crop);
+    const base = here.find((o) => ['bush', 'patch', 'soil'].includes(o.kind));
+    const name = plot.crop === 'berry' ? 'Berry bush' : `${crop.name} patch`;
+    if (!plotUnlockedFor(s, plot)) return `${name}: waiting for ${plot.unlock === 'carrots' ? 'carrots to unlock (certify Fetch)' : 'an unlock'}.`;
+    if (ripe) return `${name}: ripe — ready to harvest (sells for ${SELL_PRICE[plot.crop]}).`;
+    if (base?.kind === 'soil') return `${name}: empty soil — plant it (seed ${seedPrice(plot.crop)}).`;
+    const left = Math.max(0, GROW_TICKS[plot.crop] - plot.timer);
+    return `${name}: growing — ripe in about ${base?.wet ? Math.ceil(left / 2) : left} ticks${base?.wet ? ' (watered: twice as fast)' : ''}.`;
+  }
+  const o = here.find((x2) => !['buddy'].includes(x2.kind));
+  if (!o) return null;
+  if (o.kind === 'well') return 'Well: pets with Water fill up here (3 splashes).';
+  if (o.kind === 'pond') return 'Pond: pets that walk in get wet and lose a few ticks.';
+  if (o.kind === 'gate') return `Gate: ${o.open ? 'open' : 'shut'}. Pets with Nudge can open or shut it.`;
+  return `${def(o.kind).name}.`;
+}
+
+function plotUnlockedFor(s: GameState, p: Plot): boolean {
+  return !p.unlock || s.progress.unlocks.includes(p.unlock);
+}
+
+/** Pets on duty: the lead first, then helpers. */
+export function dutyPets(s: GameState): Pet[] {
+  const f = s.farm;
+  return [f.dutyPetId, ...(f.helpers ?? []).map((h) => h.petId)].map((id) => petById(s, id)).filter((p): p is Pet => !!p);
+}
+
+/** Put a pet on duty (as a helper, or as the lead if nobody leads) or take it off. Returns a reason if it can't. */
+export function setOnDuty(s: GameState, petId: string, on: boolean, rt?: FarmRuntime): string | null {
+  const f = s.farm;
+  const helpers = f.helpers ?? [];
+  const i = helpers.findIndex((h) => h.petId === petId);
+  if (on) {
+    if (f.dutyPetId === petId || i >= 0) return null;
+    if (!f.dutyPetId || !petById(s, f.dutyPetId)) { f.dutyPetId = petId; resetLead(s, rt); return null; }
+    if (dutyPets(s).length >= MAX_ON_DUTY) return `At most ${MAX_ON_DUTY} pets can work at once.`;
+    // A new helper gets its own RNG stream (the first keeps the seed the second pet always had).
+    const used = new Set(helpers.map((h) => h.rngState));
+    let seed = HELPER_SEED;
+    for (let k = 0; used.has(seed); k++) seed = HELPER_SEED + (k + 1) * 0x1000;
+    f.helpers = [...helpers, { petId, current: null, stun: 0, queue: [], rngState: seed }];
+    return null;
+  }
+  if (i >= 0) {
+    f.helpers = helpers.filter((_, k) => k !== i);
+    f.world.crew?.splice(i, 1);
+    rt?.crew.splice(i, 1);
+    if (!f.helpers.length) { delete f.helpers; delete f.world.crew; }
+    return null;
+  }
+  if (f.dutyPetId === petId) {
+    if (!helpers.length) return 'Someone has to mind the farm — put another pet on duty first.';
+    makeLead(s, helpers[0].petId, rt);
+    return setOnDuty(s, petId, false, rt);
+  }
+  return null;
+}
+
+/** Make a helper the lead (the pet you steer and whose plan previews run first); the old lead becomes that helper. */
+export function makeLead(s: GameState, petId: string, rt?: FarmRuntime): void {
+  const f = s.farm;
+  const i = (f.helpers ?? []).findIndex((h) => h.petId === petId);
+  if (i < 0 || !f.dutyPetId) return;
+  const h = f.helpers![i];
+  const w = f.world;
+  [w.pet, w.crew![i]] = [w.crew![i], w.pet];
+  h.petId = f.dutyPetId;
+  f.dutyPetId = petId;
+  s.activePetId = petId;
+  h.current = null; h.queue = []; h.stun = 0;
+  resetLead(s, rt);
+}
+
+function resetLead(s: GameState, rt?: FarmRuntime): void {
+  s.farm.current = null;
+  s.farm.stun = 0;
+  for (const h of s.farm.helpers ?? []) h.current = null;
+  if (!rt) return;
+  rt.exec = null; rt.inv = null; rt.jitter = 0; rt.manual = []; rt.claim = null;
+  rt.crew = [];
+}
+
+/** Most pets on duty at once (the lead + 3 helpers). */
+export const MAX_ON_DUTY = 4;
+const HELPER_SEED = 0x5ec0d;
+
+/** Drop helpers that aren't valid any more (gone, the lead, duplicates, too many), with their bodies and runtimes. */
+function tidyHelpers(s: GameState): Helper[] {
+  const f = s.farm;
+  const list = f.helpers ?? [];
+  const seen = new Set<string | null>([f.dutyPetId]);
+  const keep: number[] = [];
+  list.forEach((h, i) => { if (!seen.has(h.petId) && s.pets.some((p) => p.id === h.petId) && keep.length < MAX_ON_DUTY - 1) { seen.add(h.petId); keep.push(i); } });
+  if (keep.length !== list.length) {
+    f.helpers = keep.map((i) => list[i]);
+    if (f.world.crew) f.world.crew = keep.map((i) => f.world.crew![i]).filter(Boolean);
+  }
+  if (!f.helpers?.length) delete f.helpers;
+  return f.helpers ?? [];
+}
+
+/** Bodies (and runtimes) for every helper; a new helper starts beside the lead. */
+function syncCrew(s: GameState, rt: FarmRuntime, helpers: Helper[]): void {
+  const w = s.farm.world;
+  if (!helpers.length) {
+    if (w.crew) delete w.crew;
+    rt.crew = [];
+    return;
+  }
+  w.crew ??= [];
+  if (w.crew.length > helpers.length) w.crew.length = helpers.length;
+  while (w.crew.length < helpers.length) w.crew.push(startBody(w, w.crew.length));
+  if (rt.crew.length > helpers.length) rt.crew.length = helpers.length;
+  for (let i = 0; i < helpers.length; i++) {
+    if (!rt.crew[i]) {
+      const r = createRuntime(s.farm);
+      r.rng.state = (helpers[i].rngState ?? HELPER_SEED + i * 0x1000) >>> 0;
+      rt.crew[i] = r;
+    }
+  }
+}
+
+function startBody(w: World, i: number): PetBody {
+  const first = { x: w.pet.x, y: Math.min(w.h - 1, w.pet.y + 1), carrying: null, facing: 'S' as const };
+  if (i === 0) return first; // where the second pet always started
+  const taken = (x: number, y: number) => (w.pet.x === x && w.pet.y === y) || (w.crew ?? []).some((b) => b.x === x && b.y === y) || isSolidAt(w, x, y);
+  for (let r = 1; r < w.w + w.h; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+    if (Math.abs(dx) + Math.abs(dy) !== r) continue;
+    const x = w.pet.x + dx, y = w.pet.y + dy;
+    if (inBounds(w, x, y) && !taken(x, y)) return { x, y, carrying: null, facing: 'S' };
+  }
+  return first;
 }
 
 /**
- * While one pet acts, the other is a solid obstacle and whatever it's heading for is hidden,
- * so the two never chase the same berry.
+ * While one pet acts, the others are solid obstacles and whatever they're heading for is hidden,
+ * so no two pets chase the same thing. `acting` is -1 for the lead, else the helper's index.
  */
-function withOtherPet(s: GameState, other: FarmRuntime | undefined, fn: () => void, otherBody = s.farm.world.pet2): void {
+function withOthers(s: GameState, rt: FarmRuntime, acting: number, fn: () => void): void {
   const w = s.farm.world;
-  if (!other || !otherBody) { fn(); return; }
-  // The other pet is an obstacle, except at the house and storage, which both pets may use at once
-  // (a pet napping in the house mustn't stop the other selling).
-  const shared = objectsAt(w, otherBody.x, otherBody.y).some((o) => def(o.kind).container);
-  const buddy = shared ? null : addObject(w, 'buddy', otherBody.x, otherBody.y);
-  const claimed = other.claim !== null ? w.objects.find((o) => o.id === other.claim && !o.carried && !o.delivered) : undefined;
-  if (claimed) claimed.hidden = true;
+  const others = acting < 0 ? rt.crew : [rt, ...rt.crew.filter((_, i) => i !== acting)];
+  const bodies = w.crew ?? [];
+  const buddies: Obj[] = [];
+  const hidden: Obj[] = [];
+  for (const body of bodies) {
+    // Another pet is an obstacle, except at the house and storage, which pets may use at once
+    // (a pet napping in the house mustn't stop another selling).
+    const shared = objectsAt(w, body.x, body.y).some((o) => def(o.kind).container);
+    if (!shared) buddies.push(addObject(w, 'buddy', body.x, body.y));
+  }
+  for (const other of others) {
+    const claimed = other.claim !== null ? w.objects.find((o) => o.id === other.claim && !o.carried && !o.delivered) : undefined;
+    if (claimed) { claimed.hidden = true; hidden.push(claimed); }
+  }
   try { fn(); } finally {
-    if (claimed) delete claimed.hidden;
-    if (buddy) w.objects = w.objects.filter((o) => o !== buddy);
+    for (const o of hidden) delete o.hidden;
+    if (buddies.length) w.objects = w.objects.filter((o) => !buddies.includes(o));
   }
 }
 
-/** The second pet's turn: swap its body, job, stun and queue into the primary slots and reuse the same logic. */
-function secondTurn(s: GameState, pet2: Pet, rt: FarmRuntime, fx: FarmFx[]): void {
+/** A helper's turn: swap its body, job, stun and queue into the primary slots and reuse the same logic. */
+function helperTurn(s: GameState, i: number, rt: FarmRuntime, fx: FarmFx[]): void {
   const f = s.farm;
   const w = f.world;
-  const rt2 = rt.second!;
+  const h = f.helpers![i];
+  const pet = petById(s, h.petId)!;
+  const rtH = rt.crew[i];
   const swap = () => {
-    [w.pet, w.pet2] = [w.pet2!, w.pet];
-    [f.current, f.current2] = [f.current2 ?? null, f.current];
-    [f.stun, f.stun2] = [f.stun2 ?? 0, f.stun];
-    [f.queue, f.queue2] = [f.queue2 ?? [], f.queue];
+    [w.pet, w.crew![i]] = [w.crew![i], w.pet];
+    [f.current, h.current] = [h.current ?? null, f.current];
+    [f.stun, h.stun] = [h.stun ?? 0, f.stun];
+    [f.queue, h.queue] = [h.queue ?? [], f.queue];
   };
   swap();
   try {
-    withOtherPet(s, rt, () => petTurn(s, pet2, rt2, fx, { advance: false }), w.pet2);
+    withOthers(s, rt, i, () => petTurn(s, pet, rtH, fx, { advance: false }));
   } finally {
     swap();
   }
-  f.rngState2 = rt2.rng.state;
+  h.rngState = rtH.rng.state;
 }
 
 function claimFor(w: World, inv: Invocation | null): number | null {
@@ -805,6 +981,13 @@ export function applyPlan(s: GameState, rt: FarmRuntime, petId: string): void {
   if (!p) return;
   p.plan ??= starterPlan();
   p.assignment.mode = 'plan';
+  const hi = (s.farm.helpers ?? []).findIndex((h) => h.petId === petId);
+  if (hi >= 0) {
+    // A helper: it starts its plan from a clean slate; the lead carries on.
+    s.farm.helpers![hi].current = null;
+    if (rt.crew[hi]) rt.crew[hi] = undefined as unknown as FarmRuntime; // recreated next tick from its saved RNG state
+    return;
+  }
   s.farm.dutyPetId = petId;
   s.farm.current = null;
   rt.exec = null;
@@ -815,8 +998,8 @@ export function applyPlan(s: GameState, rt: FarmRuntime, petId: string): void {
   rt.plan = newPlanRuntime();
   rt.claim = null;
   rt.rng.state = s.farm.rngState >>> 0;
-  // The second pet starts its current decision afresh too, so previews from here match reality.
-  if (rt.second) { rt.second = undefined; s.farm.current2 = null; }
+  // Helpers start their current decisions afresh too, so previews from here match reality.
+  if (rt.crew.length) { rt.crew = []; for (const h of s.farm.helpers ?? []) h.current = null; }
 }
 
 export interface PlanPreview {

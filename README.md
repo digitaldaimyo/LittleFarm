@@ -110,7 +110,8 @@ The **First lesson** banner (lesson 1 of the Field Guide) walks you through this
   - Rows are tried top to bottom, skipping jobs that can't do anything right now. *Has done…* in a row counts from when the current job started.
   - **Preview 300 ticks** shows exactly what the plan would do (the farm is deterministic).
   - The **starter plan** is the built-in Auto rules written out. *Learn among matches* lets the pet choose among applicable rows, and an **anti-dithering guard** steps in when rows flip-flop.
-- **Two pets** can work at once (**Also on duty**). They never chase the same thing (but may share the house and storage tiles), and a resting pet naps at the house rather than in the other's way. Both on Auto, or one on Auto and one hauling, earn the most.
+- **Your pets on the farm:** tap a pet for its **card** (energy, mood, what it's doing and why, its job, *Move with*, on/off duty, *Make lead*, links to its skills and to Teach). Tap the **house** for the **roster**: every pet, who's on duty and doing what ("2 harvesting, 1 hauling"), rename, put on or take off duty, adopt. Tap anything else to see what it is (a basket's contents, a plot's stage and time to ripe). A strip of pets under the farm switches cards.
+- **Up to 4 pets on duty.** They never chase the same thing (but may share the house and storage tiles), and a resting pet naps at the house rather than in someone's way. The **lead** is the pet you can steer. More pets earn more when there's work for them: over two farm days, 1 pet 160–217 coins, 4 pets 262–383 on the starting farm and 359–565 with four more carrot plots.
 
 ## The Field Guide
 

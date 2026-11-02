@@ -6,7 +6,7 @@
 - You lay out the farm: plots, baskets, sheds and the rest.
 - Pets still do all the work, managed from the farm itself: tap a pet for its details and controls, tap the house for the roster.
 
-Status: **phases A, B and C shipped.** Decisions (section 9) all went with the recommendations: perennial berry bushes; harvests to the nearest storage with room; without Fetch, harvests go straight to the house; fireflies stay instant; up to 4 pets on duty (phase D); plain pumpkins; a fixed house; build order A → B → C → D.
+Status: **all four phases (A–D) shipped.** Decisions (section 9) all went with the recommendations: perennial berry bushes; harvests to the nearest storage with room; without Fetch, harvests go straight to the house; fireflies stay instant; up to 4 pets on duty (phase D); plain pumpkins; a fixed house; build order A → B → C → D.
 
 ### Phase A: what shipped, and what we learned
 - **Selling and storage:**
@@ -34,6 +34,22 @@ Status: **phases A, B and C shipped.** Decisions (section 9) all went with the r
 - **Tests:** `tests/farmlife.test.ts` (13), updated two-pet, orchard, routine, Fetch and lesson-9 tests, and the full browser test.
 
 
+
+### Phase D: what shipped, and what we learned
+- **Tap a pet** (on the farm, or in the strip of pets under it) for its **card**: energy, mood, what it's doing and why, the job deck and *Move with* for that pet, on/off duty, *Make lead*, and links to its skills and to Teach. The selected pet is ringed on the map.
+- **Tap the house** for the **roster**: every pet with status, energy and job, a "who does what" line ("2 harvesting, 2 hauling"), rename, on/off duty, make lead, and *Adopt another pet* (the shop item stays too).
+- **Tap anything else** to see what it is: a basket's or shed's contents, a plot's stage ("growing — ripe in about 12 ticks", "empty soil — plant it (seed 1)"), the well, pond or a gate.
+- **Up to 4 pets on duty.** The second-pet code became a crew: a lead plus up to 3 helpers, each with its own job state, body, runtime, RNG and claim. Every other pet is an obstacle and every other claim is hidden while one acts. **Two-pet farms are tick-for-tick identical** to before (4 job mixes × 3,000 ticks, hashed before and after).
+- **Measured** (two farm days, 3 seeds; Auto, a hauler, then more on Auto): 1 pet 160–217 coins, 2 pets 211–273, 3 pets 213–340, 4 pets 262–383. With four more carrot plots, 4 pets earn 359–565. **Performance:** 0.19 ms per tick with 4 pets.
+- **Saves v8:** the second pet on duty becomes the first helper.
+- **Changes from the plan:**
+  - The **lead** is explicit: only the lead can be steered (steering a helper makes it the lead), and the farm needs one, so taking the lead off duty promotes the first helper.
+  - Choosing a job for an off-duty pet puts it on duty (if there's room).
+  - No reordering in the roster beyond *Make lead*: helper order only decides who moves first in a tick.
+  - On phones the card sits under the map (tapping a pet scrolls to it) rather than a separate bottom sheet.
+  - Tapping the house always opens the roster, even with a pet napping on it.
+  - The "both pets on the same job" tip now covers any number of pets.
+- **Tests:** `tests/roster.test.ts` (7: four pets never share a tile or target and a fifth is refused, determinism, off duty and lead hand-over, make lead, who does what and tile descriptions, v7 → v8, speed), updated two-pet tests, and a roster section in the browser test.
 
 ### Phase C: what shipped, and what we learned
 - **Layout mode:** *Layout…* on the Farm pauses the farm and opens a **draft**. Place (berry bush 4, carrot patch 3, sunflower 5, pumpkin 6 — patches come planted — basket 6, shed 25, scarecrow 8, fence 1), **move** (free; a plot takes its ripe crop along) or **remove** (half the price back; all of it for something placed in this draft). *Apply* pays the net cost; *Cancel* drops the draft.

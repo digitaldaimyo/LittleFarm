@@ -91,6 +91,20 @@ const MIGRATIONS: Record<number, Migration> = {
     g.version = 7;
     return g;
   },
+  /** v7 → v8 (pet roster): the second pet on duty becomes the first of up to 3 helpers; its body moves to `world.crew`. */
+  7: (g) => {
+    const f = g.farm;
+    if (isObj(f)) {
+      if (typeof f.duty2PetId === 'string' && f.duty2PetId && f.duty2PetId !== f.dutyPetId) {
+        f.helpers = [{ petId: f.duty2PetId, current: f.current2 ?? null, stun: Number(f.stun2) || 0, queue: Array.isArray(f.queue2) ? f.queue2 : [], rngState: Number(f.rngState2 ?? 0x5ec0d) >>> 0 }];
+        if (isObj(f.world) && isObj(f.world.pet2)) f.world.crew = [f.world.pet2];
+      }
+      for (const k of ['duty2PetId', 'current2', 'stun2', 'queue2', 'rngState2']) delete f[k];
+      if (isObj(f.world)) delete f.world.pet2;
+    }
+    g.version = 8;
+    return g;
+  },
   /** v4 → v5: "End try (done ✓)" meant "SUCCESS decides"; it is now spelled 'judge' ('success' counts outright). */
   4: (g) => {
     migrateLegacyEndOutcomes(g);

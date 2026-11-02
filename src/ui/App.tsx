@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { RosterModal } from './Roster';
 import { store, useStore, type Screen } from './store';
 import { FarmScreen } from './FarmScreen';
 import { TeachScreen } from './TeachScreen';
@@ -116,6 +117,8 @@ export function App() {
       </div>
 
       {s.ui.modal === 'adopt' && <AdoptModal />}
+      {s.ui.modal === 'adopt-paid' && <AdoptModal paid />}
+      {s.ui.modal === 'roster' && <RosterModal />}
       {s.ui.modal === 'shop' && <ShopModal />}
       {s.ui.modal === 'confirm-reset' && <ConfirmReset />}
     </div>

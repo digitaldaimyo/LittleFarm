@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { newGame } from '../src/game/state';
 import { adoptPet } from '../src/game/pets';
-import { createRuntime, farmTick } from '../src/game/farm';
+import { createRuntime, farmTick, setOnDuty } from '../src/game/farm';
 import { expandFarm } from '../src/game/expand';
 import { applyLayout, canMove, canPlace, move, place, plotBudget, previewLayout, remove, startLayout, unreachable } from '../src/game/layout';
 import { parseGame, serializeGame } from '../src/persistence/save';
@@ -180,11 +180,11 @@ describe('farm layout: two pets and the Field Guide', () => {
     const b = adoptPet(s, 'Mochi', 'plum');
     b.traits = { ...DEFAULT_TRAITS };
     b.assignment = { mode: 'job', job: 'rest', navigator: 'Approach' };
-    s.farm.duty2PetId = b.id;
+    setOnDuty(s, b.id, true);
     const rt = createRuntime(s.farm);
     for (let i = 0; i < 40; i++) farmTick(s, rt);
     const w = s.farm.world;
-    expect(objectsAt(w, w.pet2!.x, w.pet2!.y).some((o) => o.kind === 'home')).toBe(true);
+    expect(objectsAt(w, w.crew![0].x, w.crew![0].y).some((o) => o.kind === 'home')).toBe(true);
   });
 
   it('lesson 10 opens once a pet has Fetch and walks through basket → preview → crop closer → apply', async () => {

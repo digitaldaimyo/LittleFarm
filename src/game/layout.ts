@@ -107,7 +107,7 @@ function tileReason(w: World, x: number, y: number, ignore?: Obj): string | null
   if (x === DOOR.x && y === DOOR.y) return 'That’s the house’s door — keep it clear.';
   if (inCoop(w, x, y)) return 'The coop stays a 2×2 space for the chickens.';
   if (w.objects.some((o) => o !== ignore && o.x === x && o.y === y && onGround(o))) return 'Something is already there.';
-  if ((w.pet.x === x && w.pet.y === y) || (w.pet2 && w.pet2.x === x && w.pet2.y === y)) return 'A pet is standing there.';
+  if ((w.pet.x === x && w.pet.y === y) || (w.crew ?? []).some((b) => b.x === x && b.y === y)) return 'A pet is standing there.';
   return null;
 }
 

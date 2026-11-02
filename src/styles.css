@@ -426,3 +426,23 @@ button.node { padding: 2px 9px; font-weight: 600; }
 .layout-item:disabled { opacity: 0.45; }
 .layout-changes { margin: 4px 0 8px; padding-left: 18px; }
 .layout-preview { background: var(--mat); border-radius: 10px; padding: 8px 10px; margin: 6px 0; }
+
+/* Pet roster (farm life D) */
+.roster-strip { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.roster-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 2px 10px 2px 4px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--paper); font-size: 13px; font-weight: 600; color: var(--ink); }
+.roster-chip.sel { border-color: var(--leaf-ink); background: var(--leaf-tint); }
+.roster-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line-2); display: inline-block; }
+.roster-chip.on .dot { background: var(--leaf); }
+.roster-list { list-style: none; padding: 0; margin: 8px 0 12px; display: grid; gap: 8px; }
+.roster-list li { display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; }
+.roster-list li.on { border-color: var(--leaf-edge); background: var(--leaf-tint); }
+.roster-name { font-weight: 700; font-size: 15px; border: 1px solid transparent; border-radius: 6px; padding: 2px 4px; background: transparent; color: var(--ink); width: 9em; }
+.roster-name:focus { border-color: var(--line-2); background: var(--paper); }
+.roster-actions { display: flex; flex-direction: column; gap: 4px; }
+.modal.roster { max-width: 560px; }
+.inspect { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; margin-top: 8px; }
+.farm-hint { margin: 6px 2px 0; }
+@media (max-width: 520px) {
+  .roster-list li { flex-wrap: wrap; }
+  .roster-actions { flex-direction: row; flex-wrap: wrap; width: 100%; }
+}

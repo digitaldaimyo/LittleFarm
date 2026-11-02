@@ -68,11 +68,11 @@ export function LayoutPanel() {
       else {
         st.progress.flags.layoutApplied = true;
         st.farm.current = null;
-        st.farm.current2 = null;
+        for (const h of st.farm.helpers ?? []) h.current = null;
       }
     });
     if (out.reason) { store.toast(out.reason, 'warn'); return; }
-    store.runtime.exec = null; store.runtime.inv = null; store.runtime.claim = null; store.runtime.second = undefined;
+    store.runtime.exec = null; store.runtime.inv = null; store.runtime.claim = null; store.runtime.crew = [];
     store.setUi({ layout: null });
     store.toast('New layout applied.', 'good');
   };
