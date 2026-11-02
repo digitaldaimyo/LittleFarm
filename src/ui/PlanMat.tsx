@@ -109,12 +109,12 @@ export function PlanMat({ pet }: { pet: Pet }) {
         </div>
       )}
       {preview && <PreviewCard preview={preview} rows={rows} />}
-      {pr && pr.trace.length > 0 && (
-        <details className="queue" data-tut="duty-trace" open>
-          <summary>Why {pet.name} is doing what they do</summary>
-          <ol>{pr.trace.slice(-8).reverse().map((t, i) => <li key={i} className="small"><span className="muted">tick {t.tick}:</span> {t.text}</li>)}</ol>
-        </details>
-      )}
+      <details className="queue" data-tut="duty-trace" open>
+        <summary>Why {pet.name} is doing what they do</summary>
+        {pr && pr.trace.length > 0
+          ? <ol>{pr.trace.slice(-8).reverse().map((t, i) => <li key={i} className="small"><span className="muted">tick {t.tick}:</span> {t.text}</li>)}</ol>
+          : <p className="small muted">No decisions yet — {pet.name} explains each choice here once they’re on Auto and the farm is running.</p>}
+      </details>
       <button className="btn primary" data-tut="plan-apply" onClick={() => { store.mutate((g) => applyPlan(g, store.runtime, pet.id)); store.toast(`${pet.name} is working on these responsibilities (Auto).`, 'good'); }}>Use these responsibilities</button>
     </div>
   );
