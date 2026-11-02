@@ -170,4 +170,5 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 | `docs/TUTORIAL_PLAN.md` | The Field Guide's design, the evidence behind each lesson, and what shipped |
 | `docs/TEACHING_PLAN.md` | Polishing rules, conditions and pens: the plan, and what phases A–C shipped |
 | `docs/FARM_LIFE_PLAN.md` | Farm life: storage and selling at the house (A), replanting with seed costs (B) and your own layout (C) shipped; next, a pet roster (D) |
+| `docs/LOOSER_LIMITS_PLAN.md` | Plan: a bigger brain, longer practice and more steps, and notes (counters and flags) that rules write and pets sense |
 | `docs/SOUND_PLAN.md` | Sound effects, ambience, music and settings: the plan, and what phases A–C shipped |
