@@ -39,14 +39,14 @@ describe('the learned executive (phase 5)', () => {
     expect(b.job?.key).toBe(a.job?.key);
   });
 
-  it('with a mistake in the order (“Otherwise wander” first), learned picks beat the order and random picks; nobody starts work tired', () => {
+  it('with a mistake in the order (“Otherwise nap” first), learned picks beat the order and random picks; nobody starts work tired', () => {
     const g = farm();
     const p = g.pets[0];
     const r = p.plan!.rows;
-    r.unshift(r.splice(r.findIndex((x) => x.args.label === 'Otherwise wander'), 1)[0]);
+    r.unshift(r.splice(r.findIndex((x) => x.args.label === 'Otherwise nap'), 1)[0]);
     practiseExecutive(g, p.id, 4);
     const cmp = compareExecutives(g, p.id);
-    expect(by(cmp, 'rules').coins).toBeLessThan(60); // the order just wanders
+    expect(by(cmp, 'rules').coins).toBeLessThan(60); // the order just naps
     expect(by(cmp, 'learned').coins).toBeGreaterThan(by(cmp, 'random').coins);
     expect(by(cmp, 'learned').coins).toBeGreaterThan(3 * by(cmp, 'rules').coins);
     for (const row of cmp) expect(row.tiredWork).toBe(0);
@@ -75,11 +75,11 @@ describe('the learned executive (phase 5)', () => {
     const g = farm();
     const p = g.pets[0];
     const r = p.plan!.rows;
-    r.unshift(r.splice(r.findIndex((x) => x.args.label === 'Otherwise wander'), 1)[0]);
+    r.unshift(r.splice(r.findIndex((x) => x.args.label === 'Otherwise nap'), 1)[0]);
     practiseExecutive(g, p.id, 2);
     const ids = Object.fromEntries(compilePlan(p.plan!).map((x) => [x.label, x.id]));
     const mean = (rowId: string) => { const es = Object.entries(p.executive.values!.upper).filter(([k]) => k.endsWith(`|${rowId}`)).map(([, e]) => e); return es.reduce((a, e) => a + e.q * e.n, 0) / Math.max(1, es.reduce((a, e) => a + e.n, 0)); }; // weighted by how often each situation came up
-    expect(mean(ids['Otherwise wander'])).toBeLessThan(0.3); // started at 0.8 (top of the list)
-    expect(mean(ids['Harvest what’s ripe'])).toBeGreaterThan(2 * mean(ids['Otherwise wander']));
+    expect(mean(ids['Otherwise nap'])).toBeLessThan(0.3); // started at 0.8 (top of the list)
+    expect(mean(ids['Harvest what’s ripe'])).toBeGreaterThan(2 * mean(ids['Otherwise nap']));
   }, 60000);
 });

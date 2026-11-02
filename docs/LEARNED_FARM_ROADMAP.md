@@ -115,7 +115,29 @@ Status: **official roadmap**, decisions settled (section 8). **Phase 0 done:**
   The learned executive beats random picks everywhere and stays within 4% of a good order. It rescues a bad one, and never starts a job while tired. It doesn't beat a good order: the starter set is already close to the best this reward can see.
 - **On the real farm** (`bench:farm --learned`, 2 days, Curiosity exploring 2–10%, after 4 practice days), learned Auto earns 606 on the standard farm and 544 held-out, against 690 and 674 for the fixed order (88% / 81%; both above the phase-0 baselines of 352 / 230 for the old learned chooser). Exploring on the job costs about 10–20% against a good order. Lowering farm exploration, or letting the player set it, is a phase-6 tuning question.
 
-Next: phase 6 (retire and polish: direct job cards, the stuck-recovery sniffing, capability readiness in the Pet binder, an executive inspector).
+**Phase 6 done (retire and polish):**
+- **Direct jobs are retired.** The job deck is **Auto** and **Steer**; Auto's card says which farm jobs the pet can do. A direct job in an old save, or set in code, becomes responsibilities: do it, otherwise nap, with *keep at it at night*, which is what a direct job did. The pet goes on Auto (`retireDirectJob`, `jobPlan`, save migration v9 → v10).
+- **New per-responsibility option, "At night: keep at it"** (default: sleep). Without it, old direct jobs on Auto would have slept through the night and lost about 30% of their output (measured: 163 vs 236 coins).
+- **Wander is retired.** The card is kept so old saves load, but hands no longer offer it, and rows that used it nap; saves drop wander rows. The built-in "sniffing around after getting stuck" is gone too: recovery is now the walking skills' own Curiosity steps, plus the executive choosing again after a timeout.
+- **One runtime for everything autonomous.** Errands, fireflies and the walk home before a nap now go through `runCapability` with the pet's own walking skill (Approach, or Avoid when asked). Nothing autonomous on the farm bypasses it. Steer, Stay and collapsing at 0 energy stay outside it, as the allowlist says.
+- **Pet binder → Ready for the farm.** For each farm job (Harvest, Haul, Basket run, Plant, Open / Shut the gate, walking): the skill that does it, its revision and pin, whether the farm may use it, and its record on the farm — or which recipe teaches it.
+- **Executive inspector:** under *Learns what pays off*, each responsibility's learned value (weighted by how often each situation came up), where it started, and how often it was tried.
+- **Exploration on the job is the player's choice:** "keep learning on the farm", on by default, now at 1–5% by Curiosity (was 2–10%).
+- **Coaching tips:** "two pets on the same job" became **"nobody can harvest"**, which links to the Harvest lesson. The storage and planting tips check who can actually haul or plant.
+
+**Definition of done: checked** (`tests/done.test.ts` and earlier phases):
+
+| | Where |
+|---|---|
+| A pet with no skills does nothing productive on the farm | done.test: it only rests, 0 coins over a day |
+| Every autonomous action comes from a saved skill or routine through one runtime | done.test: over 2 days, every job maps to a learned capability; no wandering or scripted sniffing |
+| Player-made skills serve responsibilities without being named in code | done.test: "Wait for it" serves "Sit by the well" |
+| Responsibilities, needs and the commitment are inspectable | "Why…" trace (phase 4), executive inspector (phase 6) |
+| The learned executive measurably beats its baseline | executive.test and phase 5: beats random picks everywhere, and a bad order by more than 10× |
+| Old saves keep every trained skill | done.test (v9 → v10), parity (v8 → v9) |
+| No timeout counts as success | phase0.test (phase 1) |
+
+The learned-farm roadmap is complete.
 
 **The commitment.** Everything a pet does on its own on the farm comes from a skill or routine the player taught it in the pen. No hidden job scripts. The farm executive is promoted from a fixed rule list to a learned, two-level decision-maker:
 - the **upper level** reads the farm and picks what to work on next (a responsibility);

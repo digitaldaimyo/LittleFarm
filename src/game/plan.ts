@@ -41,7 +41,6 @@ export function starterPlan(): FarmPlan {
       row('Every plot planted', [has('soil'), node('cond.canAfford')], node('job.plant', { navigator: 'Approach' })),
       row('Harvest what’s ripe', [crop], node('job.forage', { navigator: 'Approach' })),
       row('Goods waiting', [node('cond.any', { any: [node('cond.storage', { level: 'any' }), has('egg')] })], node('job.deliver', { navigator: 'Approach' })),
-      row('Otherwise wander', [], node('job.wander')),
       row('Otherwise nap', [], node('job.nap')),
     ],
   };
@@ -53,6 +52,30 @@ export interface DutyJob {
   /** Evidence key: the job, or `skill:<name>` for Run a skill. */
   key: string;
   label: string;
+}
+
+/** The card for a job (the old direct jobs, as a responsibility's USE). */
+export function jobCard(job: string, opts: { skill?: string; target?: string; navigator?: string } = {}): SpecNode {
+  const nav = { navigator: opts.navigator ?? 'Approach' };
+  switch (job) {
+    case 'forage': return node('job.forage', nav);
+    case 'deliver': return node('job.deliver', nav);
+    case 'plant': return node('job.plant', nav);
+    case 'tote': return node('job.tote', nav);
+    case 'skill': return node('job.skill', { skill: opts.skill ?? '', ...(opts.target ? { aim: node(`kind:${opts.target}`) } : {}) });
+    default: return node('job.nap');
+  }
+}
+
+/**
+ * A direct job, written as responsibilities (learned-farm phase 6 retired direct jobs): do this job whenever it can
+ * do anything, otherwise nap. Old saves' direct jobs become this.
+ */
+export function jobPlan(job: string, opts: { skill?: string; target?: string; navigator?: string } = {}): FarmPlan {
+  const label = job === 'skill' ? `Run ${opts.skill || 'a skill'}` : BEHAVIOR_LABEL[(job === 'rest' ? 'rest' : job) as BehaviorId] ?? 'Job';
+  const work = row(label, [], jobCard(job, opts));
+  work.args.night = 'work'; // a direct job kept going at night
+  return { chooser: 'first', guard: true, rows: job === 'rest' ? [row('Nap', [], node('job.nap'))] : [work, row('Otherwise nap', [], node('job.nap'))] };
 }
 
 export interface CompiledRow {
@@ -67,13 +90,13 @@ export interface CompiledRow {
   jobs: DutyJob[];
   /** UNTIL: the pet sticks with it until this holds. Null: each finished job counts. */
   until: ((w: World, base?: Tally) => boolean) | null;
-  /** Its WHEN mentions night, so it may run when the pet would otherwise sleep. */
+  /** It may run when the pet would otherwise sleep: “At night: keep at it”, or its WHEN mentions night. */
   night: boolean;
 }
 
 const JOB_BEHAVIOR: Record<string, BehaviorId> = {
   'job.forage': 'forage', 'job.deliver': 'deliver', 'job.catch': 'catch', 'job.nap': 'rest',
-  'job.wander': 'wander', 'job.goto': 'goto', 'job.skill': 'skill', 'job.gate': 'gate', 'job.plant': 'plant', 'job.tote': 'tote',
+  'job.wander': 'rest' /* retired (phase 6): a pet only does what it learned */, 'job.goto': 'goto', 'job.skill': 'skill', 'job.gate': 'gate', 'job.plant': 'plant', 'job.tote': 'tote',
 };
 
 function compileJob(j: SpecNode | null, rowId: string): DutyJob {
@@ -109,7 +132,7 @@ export function compilePlan(plan: FarmPlan): CompiledRow[] {
       holds: (w, base) => conds.every((c) => c({ w, prev: w.pet, base })),
       job: jobs[0], jobs,
       until: until ? (w, base) => until({ w, prev: w.pet, base }) : null,
-      night: JSON.stringify(condNodes).includes('"cond.night"'),
+      night: paramOf(r, 'night', 'sleep') === 'work' || JSON.stringify(condNodes).includes('"cond.night"'),
     };
   });
 }
@@ -119,7 +142,6 @@ export function jobPossible(p: Pet, w: World, ctx: ExecContext, job: { behaviorI
   const nav = navPolicyFor(p, (job.args.navigator as NavigatorName) ?? p.assignment.navigator);
   switch (job.behaviorId) {
     case 'rest': return true;
-    case 'wander': return !ctx.energyLow;
     case 'forage': return !!jobCapability(p, 'forage') && ((ctx.berry && !ctx.carrying) || (ctx.carrying && !ctx.basket));
     case 'deliver': return !!jobCapability(p, 'deliver') && !!nav && ((ctx.carrot && !ctx.carrying) || (ctx.carrying && !ctx.basket));
     case 'tote': return !!jobCapability(p, 'tote') && (!!ctx.basket || (!!ctx.tote && !ctx.carrying));
@@ -212,8 +234,12 @@ const lowerKey = (state: string, row: string, job: string) => `${state}|${row}|$
 export function execValues(p: Pet): ExecValues {
   return (p.executive.values ??= { upper: {}, lower: {}, practised: 0, updates: 0 });
 }
+/**
+ * On the farm, learned picks try something else now and then (Curiosity: 1–5%) so they keep learning; the player can
+ * turn that off (phase 6: exploring on the job cost 10–20% against a good order at the earlier 2–10%).
+ */
 export function deployExploreExec(p: Pet): number {
-  return 0.02 + 0.08 * p.traits.curiosity;
+  return p.executive.explore === false ? 0 : 0.01 + 0.04 * p.traits.curiosity;
 }
 
 /**

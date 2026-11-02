@@ -79,7 +79,7 @@ try {
   const waitBanner = (t) => page.waitForFunction((x) => document.querySelector('.tutorial')?.textContent?.includes(x), t, { timeout: 5000 }).then(() => true, () => false);
   check(await waitBanner('Next: teach it a job'), 'Chapter 1 ends by pointing to the first job');
   await page.click('.nav-btn:has-text("Farm")');
-  check(await page.isDisabled('[data-tut="job-forage"]'), 'Harvest job locked until Harvest is taught (no built-in jobs)');
+  check(/Can’t do any farm job yet/.test(await page.textContent('[data-tut="job-auto"]')), 'Auto can’t do any farm job until Harvest is taught (no built-in jobs)');
   await page.click('.tutorial button:has-text("I’ve looked")');
   // Teach a job: Harvest (learned farm) — a routine from cards, trained in its own pen.
   check(await waitBanner('A routine from cards'), 'Harvest lesson starts after the first lesson');
@@ -89,8 +89,8 @@ try {
   await page.click('[data-tut="save-skill"]');
   check(await waitBanner('Put it to work'), 'Harvest saved; the lesson asks to put it to work');
   await page.click('.tutorial button:has-text("Go to the Farm")');
-  check(!(await page.isDisabled('[data-tut="job-forage"]')), 'Harvest job available once Harvest is taught');
-  await page.click('[data-tut="job-forage"]');
+  check(/Can do: Harvest/.test(await page.textContent('[data-tut="job-auto"]')), 'Auto can harvest once Harvest is taught');
+  await page.click('[data-tut="job-auto"]');
   await page.click('.speed button:has-text("4×")');
   // (The "Earn 5 coins" step itself mentions the Field Guide, so wait for the lesson-finished banner's button.)
   await page.waitForSelector('.tutorial button:has-text("Open the Guide")', { timeout: 120000 });
@@ -306,7 +306,7 @@ try {
     while (!ran && (await rowNames()).indexOf('Check on the well') > 0) {
       await (await wellRow()).locator('button[aria-label="Move up"]').click();
       moves++;
-      if ((await rowNames()).indexOf('Check on the well') > (await rowNames()).indexOf('Otherwise wander')) continue;
+      if ((await rowNames()).indexOf('Check on the well') > (await rowNames()).indexOf('Otherwise nap')) continue;
       await page.click('[data-tut="plan-preview"]');
       ran = /Check on the well — ran \d+×/.test((await page.textContent('.plan-mat')).replace(/\s+/g, ' '));
     }
@@ -423,7 +423,7 @@ try {
     await page.click('[data-tut="duty-toggle"]');
     check((await page.locator('.world [aria-label="Mochi"]').count()) === 0, 'roster: off duty, Mochi goes home');
     await page.click('.roster-chip:has-text("Pip")');
-    check(!(await page.isEnabled('[data-tut="job-tote"]')) && /Basket run routine/.test(await page.textContent('[data-tut="job-tote"]')), 'baskets: the Basket run job waits for a Basket run routine (Fetch alone isn’t enough: no built-in jobs)');
+    check(!/Basket run/.test(await page.textContent('[data-tut="job-auto"]')), 'baskets: no basket runs without a Basket run routine (Fetch alone isn’t enough: no built-in jobs)');
     await page.click('[data-tut="pet-card"] button:has-text("Teach Pip")'); // Pip is the active pet again for what follows
 
     // Teaching polish (phase A): build "end on shoo chicken" the old way, get warned, repair it, train it.

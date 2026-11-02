@@ -10,7 +10,7 @@ import type { ExecutiveTable, Invocation } from '../learning/executive';
 import type { ExecValues } from './plan';
 import type { World } from '../sim/world';
 
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
 
 export type PaletteId = 'meadow' | 'plum' | 'sky' | 'moss';
 export type JobId = 'forage' | 'deliver' | 'plant' | 'tote' | 'rest' | 'skill';
@@ -143,7 +143,7 @@ export interface Pet {
    * How Auto picks among responsibilities: the player's order ('rules'), or learned values ('learned', phase 5).
    * `table` is the retired bandit's (kept so old saves load); `values` are the learned executive's.
    */
-  executive: { mode: 'rules' | 'learned'; table: ExecutiveTable; decisions: number; values?: ExecValues };
+  executive: { mode: 'rules' | 'learned'; table: ExecutiveTable; decisions: number; values?: ExecValues; /** Learned picks keep trying things on the farm (default on). */ explore?: boolean };
   /** Which learned skill or routine does each farm job (learned-farm phase 3); absent = the job's own recipe/name. */
   jobSkills?: Partial<Record<string, string>>;
   feedback: Record<string, Record<string, number>>;

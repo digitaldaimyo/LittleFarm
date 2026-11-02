@@ -46,6 +46,8 @@ export interface CardDef {
   radix?: number;
   /** Unlock flag required before the card is usable. */
   unlock?: string;
+  /** Kept so old saves load, but no longer offered in hands (e.g. Wander, retired in learned-farm phase 6). */
+  retired?: boolean;
   presentation: {
     title: string;
     group: CardGroup;

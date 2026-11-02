@@ -2,19 +2,16 @@ import type { Action, Obj, PetBody, SimEvent, World } from '../sim/world';
 import { addObject, inBounds, isSolidAt, bfsPath, cloneTally, def, emptyStore, emptyWorld, seedPrice, storeAccepts, storeCount, inArea, nearest, objectsAt, onGround, step, type StepOptions } from '../sim/world';
 import { nightfallRequests, postRequests, trackRequests } from './requests';
 import { Rng } from '../sim/rng';
-import { NavRun, SkillRun, isDone, randomMove, type ExecStep, type Outcome } from '../learning/policies';
+import { SkillRun, isDone, type ExecStep, type Outcome } from '../learning/policies';
 import { navTimeout } from '../learning/episodes';
 import { atFocus } from '../learning/features';
-import {
-  BEHAVIOR_LABEL,
-  type BehaviorId, type ExecContext, type Invocation,
-} from '../learning/executive';
+import type { BehaviorId, ExecContext, Invocation } from '../learning/executive';
 import type { FarmPlan, FarmState, GameState, Helper, Pet, Plot } from './types';
-import { getSkill, navPolicyFor, petById, sensePolicyOf } from './pets';
+import { getSkill, petById } from './pets';
 import { deployedRevision, jobCapability, runCapability } from './capability';
 import { addJournal, addJournalOnce } from './journal';
 import { checkUnlocks } from './progression';
-import { GUARD_HOLD, afterDutyJob, chooseDuty, compilePlan, deployExploreExec, execValues, newPlanRuntime, planUsesMemory, starterPlan, traceDecision, type ExecHow, type PlanRuntime } from './plan';
+import { GUARD_HOLD, jobPlan, afterDutyJob, chooseDuty, compilePlan, deployExploreExec, execValues, newPlanRuntime, planUsesMemory, starterPlan, traceDecision, type ExecHow, type PlanRuntime } from './plan';
 
 export const FARM_W = 12;
 export const FARM_H = 9;
@@ -87,7 +84,6 @@ export interface FarmRuntime {
   manual: Action[];
   recentFail: boolean;
   /** Recovery after a failed job: a few random sniffing steps so a pet never repeats a stuck loop forever. */
-  jitter: number;
   /** Farm-plan memory: row starts (for the anti-dithering guard), fire counts, switches. */
   plan: PlanRuntime;
   /** Object this pet is heading for (hidden from the other pets on duty). */
@@ -102,7 +98,7 @@ export interface FarmRuntime {
 export function createRuntime(f: FarmState): FarmRuntime {
   const rng = new Rng(1);
   rng.state = f.rngState >>> 0;
-  return { exec: null, inv: null, ctx: null, startCoins: 0, startEnergy: 0, startTick: 0, manual: [], recentFail: false, jitter: 0, plan: newPlanRuntime(), claim: null, crew: [], rng };
+  return { exec: null, inv: null, ctx: null, startCoins: 0, startEnergy: 0, startTick: 0, manual: [], recentFail: false, plan: newPlanRuntime(), claim: null, crew: [], rng };
 }
 
 function plotUnlocked(s: GameState, p: Plot): boolean {
@@ -338,27 +334,10 @@ function updateClock(s: GameState, rt: FarmRuntime, fx: FarmFx[]): void {
   }
 }
 
-export function eligibleBehaviors(pet: Pet, ctx: ExecContext): BehaviorId[] {
-  const out: BehaviorId[] = ['rest'];
-  const nav = navPolicyFor(pet, pet.assignment.navigator);
-  // Harvest: pick something ripe, or (without Fetch) finish carrying it home.
-  // (A pet holding something can always finish carrying it; with Fetch, Auto prefers hauling it.)
-  // Harvest is a learned job: it needs a Harvest skill or routine (no scripted fallback).
-  if (jobCapability(pet, 'forage') && ((ctx.berry && !ctx.carrying) || (ctx.carrying && !ctx.basket))) out.push('forage');
-  if (jobCapability(pet, 'deliver') && nav && ((ctx.carrot && !ctx.carrying) || (ctx.carrying && !ctx.basket))) out.push('deliver');
-  // Baskets: a pet holding one finishes the run; otherwise a run when a basket is half full or away from the crops.
-  if (jobCapability(pet, 'tote') && (ctx.basket || (ctx.tote && !ctx.carrying))) out.push('tote');
-  if (jobCapability(pet, 'plant') && ctx.soil && !ctx.carrying) out.push('plant');
-  if (nav && ctx.firefly && !ctx.carrying) out.push('catch');
-  if (!ctx.energyLow) out.push('wander');
-  return out;
-}
-
 function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime): { next(w: World): ExecStep } {
   const w = s.farm.world;
-  const navInfo = navPolicyFor(pet, inv.args.navigator === 'Avoid' ? 'Avoid' : 'Approach');
-  const nav = navInfo ? sensePolicyOf(navInfo.rev) : null;
-  const tmo = navTimeout(w.w, w.h, pet.traits.persistence);
+  // The walking skill errands, fireflies and the walk home use: Avoid if asked for and learned, else Approach.
+  const walker = (inv.args.navigator ?? pet.assignment.navigator) === 'Avoid' && getSkill(pet, 'Avoid') ? 'Avoid' : 'Approach';
   switch (inv.behaviorId) {
     case 'forage': {
       // Harvest: the pet's own Harvest skill or routine, aimed at any ripe crop (learned-farm phase 3).
@@ -366,9 +345,11 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
       if (!cap) return { next: () => ({ done: 'fail', reason: 'no Harvest skill' }) };
       return runCapability(s, pet, cap.name, cap.aim, rt.rng, inv.timeout);
     }
-    case 'goto':
-      // An errand: the pet's own walking skill (Approach, or Avoid), aimed at the target.
-      return new NavRun(nav, inv.args.target ?? 'home', tmo, rt.rng);
+    case 'goto': {
+      // An errand: the pet's own walking skill (Approach, or Avoid), aimed at the target — through the one runtime.
+      const target = inv.args.target ?? 'home';
+      return runCapability(s, pet, walker, target, rt.rng, inv.timeout, { goal: (world) => atFocus(world, target) });
+    }
     case 'tote': {
       // Basket run: the pet's own Basket run routine (learned-farm phase 3b). The job is done once a basket it
       // lifted is set down again (the routine's own goal also needs every basket empty, which a farm rarely is).
@@ -395,8 +376,9 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
       return runCapability(s, pet, cap.name, cap.aim, rt.rng, inv.timeout, { goal: (world) => !world.objects.some((o) => o.kind === 'gate' && onGround(o) && !!o.open !== want) });
     }
     case 'catch': {
-      // Fireflies are caught by walking into them (see handleEvents).
-      return new NavRun(nav, 'firefly', tmo, rt.rng);
+      // Fireflies are caught by walking into them (see handleEvents): the pet's own walking skill, aimed at one.
+      const before = w.objects.filter((o) => o.kind === 'firefly' && onGround(o)).length;
+      return runCapability(s, pet, walker, 'firefly', rt.rng, inv.timeout, { goal: (world) => world.objects.filter((o) => o.kind === 'firefly' && onGround(o)).length < before });
     }
     case 'deliver': {
       // Haul: the pet's own Fetch, aimed at eggs or stored goods (fullest storage first), delivered to the house.
@@ -410,25 +392,18 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
       // One runtime for every learned skill, routine or Fetch (direct jobs and plan rows alike).
       return runCapability(s, pet, inv.args.skill ?? '', inv.args.target || undefined, rt.rng, inv.timeout);
     case 'rest': {
+      // Resting is innate (Stay). With another pet on duty, it naps at the house (a tile both may share) rather than
+      // in someone's way: the walk there is the pet's own walking skill, through the one runtime.
       let t = 0;
+      const walkHome = w.crew?.length && w.pet.carrying === null && !atFocus(w, 'home') && getSkill(pet, walker)
+        ? runCapability(s, pet, walker, 'home', rt.rng, 40, { goal: (world) => atFocus(world, 'home') }) : null;
+      let walking = !!walkHome;
       return {
         next(world) {
-          if ((pet.energy >= 98 && t >= 6) || t >= inv.timeout) return { done: 'success', reason: 'rested' };
+          if ((pet.energy >= 98 && t >= 6) || t >= inv.timeout + (walkHome ? 40 : 0)) return { done: 'success', reason: 'rested' };
           t++;
-          // With another pet on duty, nap at the house (a tile both may share) rather than in someone's way.
-          // (Resting is innate — Stay; the walk home is the pet's own Approach, if it has one.)
-          if (nav && world.crew?.length && world.pet.carrying === null && !atFocus(world, 'home') && t < 40) return nav.act(world, 'home');
+          if (walking) { const st = walkHome!.next(world); if (!isDone(st)) return st; walking = false; }
           return 'wait';
-        },
-      };
-    }
-    case 'wander': {
-      let t = 0;
-      return {
-        next(world) {
-          if (t >= inv.timeout) return { done: 'success', reason: 'wandered' };
-          t++;
-          return randomMove(world, rt.rng);
         },
       };
     }
@@ -449,7 +424,7 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
   const tmo = navTimeout(w.w, w.h, pet.traits.persistence);
   const harvestRev = deployedRevision(jobCapability(pet, 'forage') ? getSkill(pet, jobCapability(pet, 'forage')!.name) : null);
   const timeouts: Record<BehaviorId, number> = { forage: Math.max(tmo * 3 + 6, Math.round((harvestRev?.stage?.maxTicks ?? 0) * (1 + pet.traits.persistence))), // a whole harvest trip (the routine's own time per try)
-    deliver: tmo * 3, plant: Math.round(tmo * 1.5) + 4, tote: tmo * 4 + 10, rest: 30, wander: 6, manual: 1e9, skill: 60, catch: tmo, goto: tmo, gate: tmo + 2 };
+    deliver: tmo * 3, plant: Math.round(tmo * 1.5) + 4, tote: tmo * 4 + 10, rest: 30, wander: 0, manual: 1e9, skill: 60, catch: tmo, goto: tmo, gate: tmo + 2 };
   const custom = pet.assignment.skillName ? deployedRevision(getSkill(pet, pet.assignment.skillName)) : null;
   if (custom) timeouts.skill = Math.round((custom.maxTicks ?? 40) * (1 + pet.traits.persistence));
   const navigator = pet.assignment.navigator;
@@ -467,28 +442,9 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
     chosenBy,
   });
   if (pet.assignment.mode === 'manual') return mk('manual', 'player', 'Following your lead');
-  const eligible = eligibleBehaviors(pet, ctx);
   if (pet.energy <= 5) return mk('rest', 'rules', 'Too sleepy to work — nap first');
-  if (pet.assignment.mode === 'job' && pet.assignment.job === 'skill') {
-    if (custom && !ctx.energyLow) return mk('skill', 'player', `You asked for: ${pet.assignment.skillName} → ${pet.assignment.target || custom.focus}`);
-    return mk('rest', 'rules', custom ? 'Tired — resting before running the skill' : 'Pick a saved skill to run');
-  }
-  if (pet.assignment.mode === 'job') {
-    const j = pet.assignment.job as Exclude<typeof pet.assignment.job, 'skill'>;
-    if (eligible.includes(j)) return mk(j, 'player', `You asked for: ${BEHAVIOR_LABEL[j]}`);
-    if (ctx.energyLow) return mk('rest', 'rules', 'Tired — resting before the job');
-    const why = j === 'rest' ? 'Napping as asked'
-      : j === 'forage' && !jobCapability(pet, 'forage') ? `${pet.name} hasn’t learned to harvest — teach Harvest in the Field Guide`
-      : j === 'forage' && !ctx.berry ? 'Nothing ripe yet — resting while crops regrow'
-      : j === 'deliver' && !ctx.carrot ? 'Nothing to haul — the basket and shed are empty'
-      : j === 'deliver' && !jobCapability(pet, 'deliver') ? `${pet.name} hasn’t learned Fetch — teach it in the Field Guide`
-      : j === 'tote' && !jobCapability(pet, 'tote') ? `${pet.name} hasn’t learned a Basket run — teach the Basket run routine in Train`
-      : j === 'tote' ? 'No basket needs a run — none is half full or away from the crops'
-      : j === 'plant' && ctx.carrying ? 'Hands full — put it down before planting'
-      : j === 'plant' ? 'Nothing to plant — no empty soil, or not enough coins for its seed'
-      : `Can't ${BEHAVIOR_LABEL[j].toLowerCase()} yet — check the skill it needs`;
-    return mk('rest', 'rules', why);
-  }
+  // Direct jobs were retired in phase 6: an old one becomes a responsibility (do it, otherwise nap).
+  if (pet.assignment.mode === 'job' || pet.assignment.mode === 'plan') retireDirectJob(pet);
   // Auto: the responsibility executive (phase 4) — needs first, then the pet's responsibilities (or the starter ones).
   pet.executive.decisions++;
   const plan = (pet.plan ??= starterPlan());
@@ -524,9 +480,8 @@ function finishInvocation(s: GameState, pet: Pet, rt: FarmRuntime, result: Outco
   }
   if (inv.chosenBy === 'plan' && inv.args.row && pet.plan) afterDutyJob(pet, rt.plan, compilePlan(pet.plan), inv.args, result === 'success', ticks, s.farm.tick, workDone(s.farm.world) !== rt.startWork, s.farm.world);
   const w = s.farm.world;
-  if (result !== 'success' && inv.behaviorId !== 'wander') {
+  if (result !== 'success') {
     fx.push({ type: 'confused', x: w.pet.x, y: w.pet.y, text: reason });
-    if (result === 'timeout' && inv.behaviorId !== 'skill') rt.jitter = 3 + rt.rng.int(3); // stuck walking: sniff around
   }
   if (result === 'success' && (inv.behaviorId === 'forage' || inv.behaviorId === 'deliver' || (inv.behaviorId === 'skill' && reason === 'goal reached'))) fx.push({ type: 'celebrate', x: w.pet.x, y: w.pet.y });
   s.farm.current = null;
@@ -791,7 +746,7 @@ function resetLead(s: GameState, rt?: FarmRuntime): void {
   s.farm.stun = 0;
   for (const h of s.farm.helpers ?? []) h.current = null;
   if (!rt) return;
-  rt.exec = null; rt.inv = null; rt.jitter = 0; rt.manual = []; rt.claim = null;
+  rt.exec = null; rt.inv = null; rt.manual = []; rt.claim = null;
   rt.crew = [];
 }
 
@@ -922,12 +877,6 @@ function petTurn(s: GameState, pet: Pet, rt: FarmRuntime, fx: FarmFx[], opts: St
   }
   // Mode change → drop current activity.
   if (rt.inv && ((pet.assignment.mode === 'manual') !== (rt.inv.behaviorId === 'manual'))) { rt.exec = null; rt.inv = null; f.current = null; }
-  if (!rt.exec && rt.jitter > 0 && pet.assignment.mode !== 'manual') {
-    rt.jitter--;
-    f.current = { behaviorId: 'wander', args: {}, intention: 'Confused after getting stuck — sniffing around before trying again', timeout: 1, chosenBy: 'rules' };
-    handleEvents(s, pet, step(f.world, randomMove(f.world, rt.rng), opts), rt, fx);
-    return;
-  }
   if (!rt.exec) {
     // Plans with "Has done…" rows need the farm to remember events; they count from each job's start.
     const remembers = (pet.assignment.mode === 'plan' || pet.assignment.mode === 'auto') && !!pet.plan && planUsesMemory(pet.plan);
@@ -1000,7 +949,6 @@ export function applyPlan(s: GameState, rt: FarmRuntime, petId: string): void {
   s.farm.current = null;
   rt.exec = null;
   rt.inv = null;
-  rt.jitter = 0;
   rt.recentFail = false;
   rt.manual = [];
   rt.plan = newPlanRuntime();
@@ -1115,4 +1063,13 @@ export function compareExecutives(s: GameState, petId: string, ticks = DAY_TICKS
     }
     return { mode, coins, tiredWork, switchesPerMin: Math.round(((switches * 214) / (ticks * seeds.length)) * 10) / 10 };
   });
+}
+
+/** Phase 6 retired direct jobs: a pet on one (an old save) gets it as responsibilities instead and goes on Auto. */
+export function retireDirectJob(p: Pet): void {
+  if (p.assignment.mode === 'job') {
+    p.plan = jobPlan(p.assignment.job, { skill: p.assignment.skillName, target: p.assignment.target, navigator: p.assignment.navigator });
+    p.executive.mode = 'rules';
+  }
+  if (p.assignment.mode === 'job' || p.assignment.mode === 'plan') p.assignment.mode = 'auto';
 }

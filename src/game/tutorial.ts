@@ -161,7 +161,7 @@ export const CHAPTERS: Chapter[] = [
     steps: [
       { id: 'train', title: 'A routine from cards', text: 'This pen teaches Harvest. In the Pet binder, look at its options — Approach → any ripe crop, Pick up, Approach → the house, Put down — then press Train.', why: 'A routine reuses skills your pet already has (its Approach) and learns which option to use when. “Any ripe crop” is a different crop each try, so it learns crops in general.', screen: 'teach', highlight: 'train-btn', done: (s) => runs(s, HARVEST_STAGE).length > 0 },
       { id: 'save', title: 'Save Harvest', text: 'Press “Save skill”.', why: 'A saved, certified skill is something the farm may use. Harvest is only as good as the Approach it walks with: practising Approach with “Obstacles: some” and 3,000 tries made it sturdier on the farm in our tests.', screen: 'teach', highlight: 'save-skill', done: (s) => s.pets.some((p) => !!getSkill(p, 'Harvest')?.revisions.some((r) => r.stageId === HARVEST_STAGE)) },
-      { id: 'assign', title: 'Put it to work', text: 'On the Farm, pick the “Harvest” job.', why: 'The Harvest job runs your Harvest routine — the one you just taught — aimed at any ripe crop.', screen: 'farm', highlight: 'job-forage', done: (s) => flag(s, 'assignedJob') },
+      { id: 'assign', title: 'Put it to work', text: 'On the Farm, pick “Auto”. Its card now says it can harvest.', why: 'On Auto, your pet works on its responsibilities with the skills it knows — “Harvest what’s ripe” runs the Harvest routine you just taught, aimed at any ripe crop. There are no built-in jobs.', screen: 'farm', highlight: 'job-auto', done: (s) => flag(s, 'assignedJob') },
       { id: 'earn', title: 'Earn 5 coins', text: 'Each berry sells for 2 coins once your pet carries it to the house — coins only come from the house. Five coins unlocks Fetch lessons (with Fetch, pets can also store crops in the basket and haul them home later) — and the Field Guide has more lessons waiting.', screen: 'farm', done: (s) => s.progress.unlocks.includes('fetch') },
     ],
   },
@@ -330,13 +330,13 @@ export const CHAPTERS: Chapter[] = [
       if (!p) return;
       p.plan ??= starterPlanRows();
       p.plan.rows = p.plan.rows.filter((r) => r.id !== LESSON_ROW);
-      // A new responsibility added at the bottom — below “Otherwise wander”, which always applies.
+      // A new responsibility added at the bottom — below “Otherwise nap”, which always applies.
       p.plan.rows.push({ id: LESSON_ROW, cardId: 'plan.row', args: { label: 'Check on the well', if: [], do: node('job.goto', { aim: node('kind:well'), navigator: 'Approach' }) } });
     },
     steps: [
       { id: 'open', title: 'Open the responsibilities', text: 'On the Farm, press “Edit responsibilities…”. These are what Auto has been working on all along — now yours to edit. A new one, “Check on the well”, was added at the bottom.', why: 'Needs come first (rest when tired, sleep at night). Then the highest responsibility whose WHEN holds — and that one of its jobs can do right now — is worked on, using the job that has worked best.', screen: 'farm', highlight: 'plan-edit', done: (s) => flag(s, 'planOpened') },
       { id: 'preview', title: 'Preview it', text: 'Press “Preview 300 ticks”. Which responsibility never ran?', why: 'The farm is deterministic, so the preview is exactly what would happen.', screen: 'farm', highlight: 'plan-preview', done: (s) => flag(s, 'planPreviewed') },
-      { id: 'move', title: 'Fix the shadowed one', text: '“Check on the well” sits below “Otherwise wander”, which always applies — so it can never run. Move it up (↑) above “Otherwise wander”.', screen: 'farm', highlight: 'plan-rows', done: (s) => rowAboveWander(s) },
+      { id: 'move', title: 'Fix the shadowed one', text: '“Check on the well” sits below “Otherwise nap”, which always applies — so it can never run. Move it up (↑) above “Otherwise nap”.', screen: 'farm', highlight: 'plan-rows', done: (s) => rowAboveWander(s) },
       { id: 'preview-again', title: 'Preview again', text: 'Preview once more. Did “Check on the well” run? If not, the ones above it kept finding work — move it higher (↑) and preview again until it runs.', why: 'Order is priority. On a busy farm, a responsibility low in the list may never get a turn, even with nothing wrong in it.', screen: 'farm', highlight: 'plan-preview', done: (s) => flag(s, 'planRowFired') },
       { id: 'apply', title: 'Tidy up and use them', text: '“Check on the well” was only an experiment (high up, it would pull your pet away from its chores). Delete it (✕), then press “Use these responsibilities”. On Auto, your pet now works on them — “Why…” below says what it is doing and why.', why: 'Give a responsibility an UNTIL (e.g. “Storage at most half full” until storage is under half) and your pet sticks with it until that holds; OR USE lists other jobs that serve it — the pet tries each and keeps using the one that works best. A job that keeps failing gets a rest.', screen: 'farm', highlight: 'plan-apply', done: (s) => s.pets.some((p) => (p.assignment.mode === 'auto' || p.assignment.mode === 'plan') && !!p.plan && !p.plan.rows.some((r) => r.id === LESSON_ROW) && !!s.progress.flags.dutiesApplied) },
       { id: 'two-pets', title: 'Two pets? Split the work', text: 'Tap the house on the farm for your pets: up to 4 can be on duty. With a second pet, both can work on Auto, or one works while the other hauls the basket to the house. Measured over 1,500 ticks: one pet on Auto 161 coins, Auto + a hauler 223, both on Auto 240. Plain Harvest doesn’t replant, so keep someone on Auto (with a Plant routine) or on Plant.', why: 'Produce only earns at the house. When the basket fills up and nobody hauls it, harvests pile up beside it; a hauler keeps the farm flowing.', screen: 'farm', ack: true, done: (s) => flag(s, ackFlag('plans', 'two-pets')) },
@@ -385,7 +385,7 @@ export const CHAPTERS: Chapter[] = [
     steps: [
       { id: 'switch', title: 'Let it learn to pick', text: 'On the Farm, put your pet on Auto and choose “Learns what pays off” (under Picks).', why: 'It keeps your responsibilities and needs, but learns — for each situation — which one, and which job for it, gets something done. It starts out picking in your order.', screen: 'farm', highlight: 'exec-learned', done: (s) => { const p = activePet(s); return !!p && p.executive.mode === 'learned' && (p.assignment.mode === 'auto' || p.assignment.mode === 'plan'); } },
       { id: 'practise', title: 'Practise deciding', text: 'Press “Practise deciding”. Your pet works 4 farm days on copies of your farm (nothing real changes), then the three ways of picking are compared on farms it hasn’t practised on.', screen: 'farm', highlight: 'exec-practise', done: (s) => flag(s, 'execCompared') },
-      { id: 'read', title: 'Read the comparison', text: 'Compare “Learned picks” with “In your order” and “Random picks”. With a good order the two are close; the learned picks shine when the order has a mistake in it (e.g. “Otherwise wander” at the top: in your order the pet just wanders; learned, it works).', why: 'Measured on 2 farms × 3 held-out seeds: a good order 235–378 coins, learned 234–364, random 207–221; with “wander” first, your order 20, learned 220–345. No job is started while tired either way — needs and cooldowns still apply.', screen: 'farm', highlight: 'exec-compare', ack: true, done: (s) => flag(s, ackFlag('choose', 'read')) },
+      { id: 'read', title: 'Read the comparison', text: 'Compare “Learned picks” with “In your order” and “Random picks”. With a good order the two are close; the learned picks shine when the order has a mistake in it (e.g. “Otherwise nap” at the top: in your order the pet just naps; learned, it works).', why: 'Measured on 2 farms × 3 held-out seeds: a good order 235–378 coins, learned 234–364, random 207–221; with an idle responsibility first, your order 20, learned 220–345. No job is started while tired either way — needs and cooldowns still apply.', screen: 'farm', highlight: 'exec-compare', ack: true, done: (s) => flag(s, ackFlag('choose', 'read')) },
     ],
   },
 ];
@@ -561,11 +561,11 @@ function starterPlanRows() {
   return starterPlan();
 }
 
-/** Plans lesson: is the lesson row above the first always-on (no conditions) wander row? */
+/** Responsibilities lesson: is the lesson row above the first always-on (no conditions) nap? */
 function rowAboveWander(s: GameState): boolean {
   const p = activePet(s);
   const rows = p?.plan?.rows ?? [];
   const i = rows.findIndex((r) => r.id === LESSON_ROW);
-  const w = rows.findIndex((r) => isNode(r.args.do) && r.args.do.cardId === 'job.wander' && !(Array.isArray(r.args.if) && r.args.if.length));
+  const w = rows.findIndex((r) => isNode(r.args.do) && r.args.do.cardId === 'job.nap' && !(Array.isArray(r.args.if) && r.args.if.length));
   return i >= 0 && (w < 0 || i < w);
 }

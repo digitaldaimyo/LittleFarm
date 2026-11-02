@@ -222,16 +222,12 @@ describe('Coaching tips', () => {
     expect(reportTips(busy, r, 3000).map((x) => x.id)).toContain('situations');
   });
 
-  it('notice two pets on the same job', () => {
+  it('notice when nobody on duty can harvest (a pet only does what it has learned)', () => {
     const s = newGame();
     const a = adoptPet(s, 'Pip', 'meadow'), b = adoptPet(s, 'Mochi', 'plum');
     s.farm.dutyPetId = a.id; setOnDuty(s, b.id, true);
-    a.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' };
-    b.assignment = { mode: 'job', job: 'deliver', navigator: 'Approach' };
-    a.assignment.job = 'deliver';
-    expect(farmTips(s).map((t) => t.id)).toEqual(['two-pets-same-job']); // both hauling, nobody harvesting
-    a.assignment.job = 'forage';
-    expect(farmTips(s)).toEqual([]); // harvester + hauler (farm life: two harvesters are fine too)
+    expect(farmTips(s).map((t) => t.id)).toEqual(['no-harvester']);
+    expect(farmTips(s)[0].lesson).toBe('harvest');
   });
 });
 
@@ -302,7 +298,7 @@ describe('Field Guide phase C lessons', () => {
     expect(guide(s).status.plans).toBe('offered');
   });
 
-  it('“Plan the farm”: the lesson row is shadowed until moved above “Otherwise wander”, and the preview proves it', () => {
+  it('“Plan the farm”: the lesson row is shadowed until moved above “Otherwise nap”, and the preview proves it', () => {
     const s = withApproach();
     s.progress.unlocks.push('routines');
     advanceTutorial(s);
@@ -316,7 +312,7 @@ describe('Field Guide phase C lessons', () => {
     advanceTutorial(s);
     expect(currentStep(s)?.id).toBe('move');
     const row = plan.rows.pop()!;
-    const w = plan.rows.findIndex((r) => (r.args.do as { cardId: string }).cardId === 'job.wander');
+    const w = plan.rows.findIndex((r) => (r.args.do as { cardId: string }).cardId === 'job.nap');
     plan.rows.splice(w, 0, row);
     advanceTutorial(s);
     expect(currentStep(s)?.id).toBe('preview-again');
@@ -327,10 +323,10 @@ describe('Field Guide phase C lessons', () => {
       i--;
     }
     expect(previewPlan(s, pet.id, plan, 300).fires[LESSON_ROW] ?? 0).toBeGreaterThan(0);
-    expect(i).toBeLessThan(w); // it had to be above "Otherwise wander" to run
+    expect(i).toBeLessThan(w); // it had to be above "Otherwise nap" to run
   });
 
-  it('“Plan the farm” on a busy farm (Fetch + carrots): the row must go higher than “Otherwise wander” to run; the lesson ends once it is tidied away', () => {
+  it('“Plan the farm” on a busy farm (Fetch + carrots): the row must go higher than “Otherwise nap” to run; the lesson ends once it is tidied away', () => {
     const s = withApproach();
     const pet = s.pets[0];
     const ap = getSkill(pet, 'Approach')!;
@@ -345,7 +341,7 @@ describe('Field Guide phase C lessons', () => {
     const fires = () => previewPlan(s, pet.id, plan, 300).fires[LESSON_ROW] ?? 0;
     s.progress.flags.planOpened = true; s.progress.flags.planPreviewed = true;
     const row = plan.rows.pop()!;
-    plan.rows.splice(plan.rows.findIndex((r) => (r.args.do as { cardId: string }).cardId === 'job.wander'), 0, row);
+    plan.rows.splice(plan.rows.findIndex((r) => (r.args.do as { cardId: string }).cardId === 'job.nap'), 0, row);
     advanceTutorial(s);
     expect(currentStep(s)?.id).toBe('preview-again');
     expect(fires()).toBe(0); // the chores above always find work: still shadowed

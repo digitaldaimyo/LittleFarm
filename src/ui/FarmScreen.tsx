@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { PlanMat } from './PlanMat';
+import { compilePlan, rankWeight, starterPlan } from '../game/plan';
 import { Tips } from './Tips';
 import { LayoutPanel, layoutTap, openLayout } from './LayoutPanel';
 import { farmTips } from '../game/coach';
@@ -8,21 +9,13 @@ import { chapterById, startChapter } from '../game/tutorial';
 import { store, useStore } from './store';
 import { WorldView } from './WorldView';
 import { PetSprite, type PetMood } from './art';
-import { activePet, activeRevision, getSkill, isCertified, petById } from '../game/pets';
-import { capabilityOf, deployedRevision, eligibility, jobCapability, kindOfSkill } from '../game/capability';
-import { TRAIT_AIMS } from '../sim/world';
-import type { Skill } from '../game/types';
-
-/** Skills and routines with a revision that can run (the capabilities a player can assign directly). */
-const runnable = (p: Pet): Skill[] => p.skills.filter((k) => !!deployedRevision(k));
-import { OBJECT_BY_ID } from '../domain/packs/farm';
-
-const FARM_TARGETS = ['berry', 'carrot', 'egg', 'chicken', 'crow', 'firefly', 'gate', 'bin', 'home', 'well', 'pond', 'bush', 'patch', 'rock', 'tree'];
+import { activePet, getSkill, isCertified, petById } from '../game/pets';
+import { jobCapability } from '../game/capability';
 import { DAY_TICKS, MAX_ON_DUTY, compareExecutives, practiseExecutive, type ExecComparisonRow, crewSummary, dayInfo, describeTile, dutyPets, makeLead, petActivity, queueManual, queueManualPath, recentProduction, restartPet, setOnDuty, TIRED } from '../game/farm';
 import { RosterStrip, toggleDuty, leadPet, petStatus } from './Roster';
 import { nextUnlock } from '../game/progression';
 import { BEHAVIOR_LABEL } from '../learning/executive';
-import type { JobId, NavigatorName, Pet } from '../game/types';
+import type { NavigatorName, Pet } from '../game/types';
 import type { Action } from '../sim/world';
 
 function moodFor(pet: Pet, fxTypes: string[], behavior: string | undefined, stun: number): PetMood {
@@ -35,7 +28,7 @@ function moodFor(pet: Pet, fxTypes: string[], behavior: string | undefined, stun
 }
 
 interface JobCard {
-  id: 'auto' | JobId | 'manual';
+  id: 'auto' | 'manual';
   title: string;
   blurb: string;
   needs?: string;
@@ -43,16 +36,10 @@ interface JobCard {
 }
 
 function jobCards(pet: Pet): JobCard[] {
-  const cap = (job: string) => jobCapability(pet, job);
-  const runs = (job: string) => (cap(job) ? ` (${cap(job)!.name} r${cap(job)!.rev})` : '');
+  // Phase 6: no direct jobs. Auto works on the pet's responsibilities with its own skills; Steer is you.
+  const ready = (['forage', 'deliver', 'plant', 'tote'] as const).filter((j) => jobCapability(pet, j)).map((j) => BEHAVIOR_LABEL[j]);
   return [
-    { id: 'auto', title: 'Auto', blurb: `${pet.name} works on their responsibilities (edit them below) with the skills they know: needs first — rest when tired, sleep at night — then the most important thing that needs doing.` },
-    { id: 'forage', title: BEHAVIOR_LABEL.forage, blurb: `Runs ${pet.name}’s own Harvest${runs('forage')}: any ripe crop to the house, where it sells (berry +2, carrot +5, sunflower +7, pumpkin +12). With a Harvest to storage routine too, crops go into a basket or shed with room while someone can empty it.`, needs: 'Harvest', locked: cap('forage') ? undefined : 'Needs a Harvest skill — teach it in the Field Guide (Teach a job: Harvest)' },
-    { id: 'deliver', title: BEHAVIOR_LABEL.deliver, blurb: `Runs ${pet.name}’s own Fetch${runs('deliver')}: eggs and whatever is in the basket or shed to the house, where it sells.`, needs: 'Fetch', locked: cap('deliver') ? undefined : 'Needs a certified Fetch skill' },
-    { id: 'plant', title: BEHAVIOR_LABEL.plant, blurb: `Runs ${pet.name}’s own Plant${runs('plant')}: empty soil gets its seed — carrots (1), sunflowers (2), pumpkins (3), paid from your coins.`, needs: 'Plant', locked: cap('plant') ? undefined : 'Needs a Plant routine — train the Plant recipe in Train' },
-    { id: 'tote', title: BEHAVIOR_LABEL.tote, blurb: `Runs ${pet.name}’s own Basket run${runs('tote')}: lift a basket that’s half full, empty it at the house, and set it down beside the crops — six crops in one trip. Also moves an empty basket next to the fields.`, needs: 'Basket run', locked: cap('tote') ? undefined : 'Needs a Basket run routine — train the Basket run recipe in Train' },
-    { id: 'rest', title: 'Nap', blurb: 'Rest to refill energy.' },
-    { id: 'skill', title: 'Run a skill', blurb: 'Run any skill or routine it has learned, aimed at anything on the farm — or at any ripe crop, or storage with room.', locked: runnable(pet).length ? undefined : 'Teach a skill in the pen first' },
+    { id: 'auto', title: 'Auto', blurb: `${pet.name} works on their responsibilities (edit them below) with the skills they know: needs first — rest when tired, sleep at night — then the most important thing that needs doing. ${ready.length ? `Can do: ${ready.join(', ')}.` : 'Can’t do any farm job yet — teach Harvest first (Guide: “Teach a job: Harvest”).'}` },
     { id: 'manual', title: 'Steer', blurb: 'Guide them yourself: tap tiles or use arrow keys.' },
   ];
 }
@@ -117,24 +104,14 @@ export function FarmScreen() {
       if (!onDuty.has(p.id)) warn = setOnDuty(st, p.id, true, store.runtime);
       // Only the lead can be steered: steering a helper makes it the lead.
       if (id === 'manual' && st.farm.dutyPetId !== p.id && !warn) makeLead(st, p.id, store.runtime);
-      if (id === 'auto') p.assignment.mode = 'auto';
-      else if (id === 'manual') p.assignment.mode = 'manual';
-      else {
-        p.assignment.mode = 'job';
-        p.assignment.job = id;
-        if (id === 'skill' && !runnable(p).some((k) => k.name === p.assignment.skillName)) {
-          const k = runnable(p).find((x) => x.custom) ?? runnable(p)[0];
-          p.assignment.skillName = k?.name;
-          p.assignment.target = activeRevision(k ?? null)?.focus;
-        }
-      }
+      p.assignment.mode = id === 'manual' ? 'manual' : 'auto';
       restartPet(st, store.runtime, p.id);
-      if (id === 'forage' || id === 'deliver' || id === 'auto') st.progress.flags.assignedJob = true;
+      if (id === 'auto') st.progress.flags.assignedJob = true;
     });
     if (warn) store.toast(warn, 'warn');
   };
   const setNav = (n: NavigatorName) => store.mutate((st) => { st.pets.find((x) => x.id === pet.id)!.assignment.navigator = n; restartPet(st, store.runtime, pet.id); });
-  const selected: JobCard['id'] = pet.assignment.mode === 'job' ? pet.assignment.job : pet.assignment.mode === 'plan' ? 'auto' : pet.assignment.mode;
+  const selected: JobCard['id'] = pet.assignment.mode === 'manual' ? 'manual' : 'auto';
   const canAvoid = !!getSkill(pet, 'Avoid');
   const body = pet.id === lead.id ? f.world.pet : f.world.crew?.[(f.helpers ?? []).findIndex((h) => h.petId === pet.id)];
   const carriedKind = body && body.carrying !== null ? f.world.objects.find((o) => o.id === body.carrying)?.kind : null;
@@ -240,7 +217,7 @@ export function FarmScreen() {
         </div>
 
         <div className="panel">
-          <h3>Jobs</h3>
+          <h3>What {pet.name} does</h3>
           <div className="job-deck" role="radiogroup" aria-label="Job assignment">
             {jobCards(pet).map((j) => (
               <button key={j.id} data-tut={`job-${j.id}`} role="radio" aria-checked={selected === j.id} disabled={!!j.locked} className={`job ${selected === j.id ? 'sel' : ''} ${j.locked ? 'locked' : ''}`} onClick={() => setJob(j.id)}>
@@ -250,7 +227,7 @@ export function FarmScreen() {
               </button>
             ))}
           </div>
-          {(selected === 'forage' || selected === 'deliver' || selected === 'plant' || selected === 'tote' || selected === 'auto') && (
+          {selected === 'auto' && (
             <div className="sleeve-inline">
               <span className="small">Move with</span>
               <div className="seg" role="radiogroup" aria-label="Navigation skill">
@@ -258,28 +235,6 @@ export function FarmScreen() {
                   <button key={n} data-tut={`nav-${n.toLowerCase()}`} role="radio" aria-checked={pet.assignment.navigator === n} className={pet.assignment.navigator === n ? 'on' : ''} disabled={n === 'Avoid' && !canAvoid} onClick={() => setNav(n)} title={n === 'Avoid' && !canAvoid ? 'Teach Avoid first' : undefined}>{n}</button>
                 ))}
               </div>
-            </div>
-          )}
-          {selected === 'skill' && (
-            <div className="sleeve-inline">
-              <label className="small">Skill{' '}
-                <select value={pet.assignment.skillName ?? ''} onChange={(e) => store.mutate((st) => { const p = st.pets.find((x) => x.id === pet.id)!; p.assignment.skillName = e.target.value; p.assignment.target = deployedRevision(getSkill(p, e.target.value))?.focus; store.runtime.exec = null; store.runtime.inv = null; })}>
-                  {runnable(pet).map((k) => <option key={k.id} value={k.name}>{k.nickname ?? k.name} (r{deployedRevision(k)?.rev}{k.pinnedRev !== undefined ? ', pinned' : ''}){kindOfSkill(k) === 'routine' ? ' · routine' : ''}</option>)}
-                </select>
-              </label>
-              <label className="small">aimed at{' '}
-                <select value={pet.assignment.target ?? ''} onChange={(e) => store.mutate((st) => { st.pets.find((x) => x.id === pet.id)!.assignment.target = e.target.value; store.runtime.exec = null; store.runtime.inv = null; })}>
-                  {Object.entries(TRAIT_AIMS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
-                  {FARM_TARGETS.map((k) => <option key={k} value={k}>{OBJECT_BY_ID[k]?.name ?? k}</option>)}
-                </select>
-              </label>
-              {(() => {
-                const k = getSkill(pet, pet.assignment.skillName ?? '');
-                const cap = k ? capabilityOf(k, pet.assignment.target) : null;
-                const el = cap ? eligibility(g, pet, cap) : null;
-                return el && (!el.ok ? <span className="small warn-text" data-tut="skill-eligibility">Can’t run now: {el.text}</span> : el.warnings.map((x, i) => <span key={i} className="small warn-text">{x}</span>));
-              })()}
-              <span className="small muted">Ends when the skill’s own SUCCESS holds — or time runs out, which counts as a timeout, not a success — then repeats.</span>
             </div>
           )}
           {selected === 'auto' && (
@@ -394,6 +349,8 @@ function ExecutiveLesson({ pet }: { pet: Pet }) {
         <button className="btn small" data-tut="exec-practise" disabled={busy} onClick={practise}>{busy ? 'Practising…' : 'Practise deciding (4 farm days)'}</button>
         {v && <button className="btn ghost small" onClick={() => { if (confirm(`Forget what ${pet.name} learned about choosing? Skills are kept.`)) { store.mutate((g) => { delete g.pets.find((x) => x.id === pet.id)!.executive.values; }); setCmp(null); } }}>Forget what it learned</button>}
       </div>
+      <label className="small"><input type="checkbox" checked={pet.executive.explore !== false} onChange={(e) => store.mutate((g) => { g.pets.find((x) => x.id === pet.id)!.executive.explore = e.target.checked; })} /> keep learning on the farm (tries something else 1–5% of the time, by Curiosity)</label>
+      {v && Object.keys(v.upper).length > 0 && <ExecutiveInspector pet={pet} />}
       {cmp && (
         <table className="small compare" data-tut="exec-compare">
           <thead><tr><th>On 3 farms it hasn’t practised on (1 day each)</th><th>coins</th><th>switches/min</th><th>jobs started tired</th></tr></thead>
@@ -401,5 +358,32 @@ function ExecutiveLesson({ pet }: { pet: Pet }) {
         </table>
       )}
     </div>
+  );
+}
+
+/**
+ * Executive inspector (phase 6): what the learned picks have learned about each responsibility — its value across the
+ * situations met (weighted by how often), against where it started (its place in your list).
+ */
+function ExecutiveInspector({ pet }: { pet: Pet }) {
+  const v = pet.executive.values!;
+  const rows = compilePlan(pet.plan ?? starterPlan());
+  const stats = rows.map((r) => {
+    const es = Object.entries(v.upper).filter(([k]) => k.endsWith(`|${r.id}`)).map(([, e]) => e);
+    const n = es.reduce((a, e) => a + e.n, 0);
+    const q = n ? es.reduce((a, e) => a + e.q * e.n, 0) / n : null;
+    return { r, n, q, start: 0.8 * rankWeight(r.index), situations: es.length };
+  });
+  return (
+    <details className="queue" data-tut="exec-inspector">
+      <summary>What {pet.name} has learned about each responsibility</summary>
+      <table className="small compare">
+        <thead><tr><th>Responsibility</th><th>value</th><th>started at</th><th>tried</th></tr></thead>
+        <tbody>{stats.map(({ r, n, q, start, situations }) => (
+          <tr key={r.id}><td>{r.index + 1}. {r.label}</td><td className="num">{q === null ? '–' : q.toFixed(2)}</td><td className="num">{start.toFixed(2)}</td><td className="num">{n ? `${n}× in ${situations} situation${situations === 1 ? '' : 's'}` : 'not yet'}</td></tr>
+        ))}</tbody>
+      </table>
+      <p className="small muted">Value = what choosing it got done (progress, weighted by its place in your list; quicker is worth a little more). One that gets nothing done in practice sinks toward 0, wherever it is listed.</p>
+    </details>
   );
 }

@@ -44,7 +44,7 @@ export function describeRequest(r: FarmRequest): string {
 export function requestHelp(kind: RequestKind): { hint: string; lesson?: string } {
   switch (kind) {
     case 'berries': return { hint: 'Harvest berries with Approach (or Avoid, to stay out of the pond); they count once they reach the house.', lesson: 'where' };
-    case 'eggs': return { hint: 'The Haul job uses Fetch to carry eggs (and anything in the basket or shed) to the house.', lesson: 'results' };
+    case 'eggs': return { hint: 'On Auto, a pet with a certified Fetch hauls eggs (and anything in the basket or shed) to the house.', lesson: 'results' };
     case 'carrots': return { hint: 'Harvest carrots into the basket, then Haul them to the house (Haul needs Fetch).', lesson: 'results' };
     case 'fireflies': return { hint: 'At night, Auto catches fireflies — or give your pet a responsibility “WHEN it’s night USE Catch fireflies”.', lesson: 'plans' };
     case 'water': return { hint: 'Teach the “Water the garden” recipe (Curriculum) and run it on the farm with “Run a skill”.', lesson: 'invent' };

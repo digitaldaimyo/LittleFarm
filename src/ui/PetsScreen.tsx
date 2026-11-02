@@ -4,7 +4,8 @@ import { exportSkillCard, importSkillCard } from '../game/skillcard';
 import { useStore, store } from './store';
 import { PetSprite } from './art';
 import { activePet, activeRevision, isCertified, rollbackSkill, staleUses, subskillsFor } from '../game/pets';
-import { allowedOnFarm } from '../game/capability';
+import { LEARNED_JOBS, allowedOnFarm, deployedRevision, jobSkill } from '../game/capability';
+import { RECIPES } from '../domain/recipes';
 import { recipeStage } from '../domain/recipes';
 import { evaluate } from '../learning/episodes';
 import { heldOutSeeds, policySpecFor } from '../learning/report';
@@ -52,6 +53,7 @@ export function PetsScreen() {
         </div>
       </section>
       <aside className="side-col">
+        <FarmReadiness pet={pet} />
         <div className="panel">
           <div className="row between"><h3>Repertoire</h3><ImportCard pet={pet} /></div>
           {pet.skills.length === 0 && <p className="muted small">Nothing learned yet — head to Teach.</p>}
@@ -173,5 +175,40 @@ function ImportCard({ pet }: { pet: Pet }) {
         else store.toast(`Couldn’t import: ${result.reason}`, 'warn');
       }} />
     </>
+  );
+}
+
+/**
+ * Farm readiness (learned-farm phase 6): every farm job is done by one of the pet's own skills or routines. For each:
+ * which one, its revision, whether the farm may use it, and how it has gone on the farm — or which recipe teaches it.
+ */
+function FarmReadiness({ pet }: { pet: Pet }) {
+  const rows = [
+    ...Object.entries(LEARNED_JOBS).map(([job, spec]) => ({ job, label: spec.label, recipe: spec.recipes.at(-1)!, k: jobSkill(pet, job), key: job.startsWith('gate') ? `gate:${job === 'gateOpen' ? 'open' : 'closed'}` : job })),
+    { job: 'walk', label: 'Walking (errands, fireflies, the walk home)', recipe: 'go-to-berry', k: pet.skills.find((x) => x.name === 'Approach') ?? null, key: 'catch' },
+  ];
+  const recipeName = (id: string) => RECIPES.find((r) => r.id === id)?.name ?? id;
+  return (
+    <div className="panel" data-tut="farm-readiness">
+      <h3>Ready for the farm</h3>
+      <p className="small muted">{pet.name} only does on the farm what {pet.name} has learned. Each job runs one of these skills; certified ones are used on their own, others once you allow them below.</p>
+      <ul className="readiness">
+        {rows.map((r) => {
+          const rev = deployedRevision(r.k);
+          const e = pet.evidence?.[r.key];
+          return (
+            <li key={r.job} className={`small ${rev && r.k && allowedOnFarm(r.k) ? 'ready' : 'not-ready'}`}>
+              <b>{r.label}</b>{' — '}
+              {!r.k || !rev ? <span className="muted">not learned — train “{recipeName(r.recipe)}”</span>
+                : <>
+                    {r.k.nickname ?? r.k.name} r{rev.rev}{r.k.pinnedRev !== undefined ? ' (pinned)' : ''}
+                    {' · '}{allowedOnFarm(r.k) ? (isCertified(r.k) ? 'certified' : 'allowed') : <span className="warn-text">not certified — allow it on the farm to use it</span>}
+                    {e && e.n > 0 ? ` · on the farm: ${Math.round(e.ok)}/${Math.round(e.n)} worked, ~${Math.round(e.ticks / e.n)} ticks` : ''}
+                  </>}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

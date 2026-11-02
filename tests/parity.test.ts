@@ -232,7 +232,7 @@ describe('saves v9 (learned farm, phase 3d)', () => {
     env.game.pets[0].plan = { chooser: 'first', guard: true, rows: [] };
     const r = parseGame(JSON.stringify(env));
     expect(r.ok).toBe(true);
-    expect(r.game!.version).toBe(9);
+    expect(r.game!.version).toBe(10);
     expect(r.game!.farm.current).toBeNull();
     expect(r.game!.farm.queue).toEqual([]);
     expect(r.game!.progress.flags.learnedFarmNotice).toBe(true);

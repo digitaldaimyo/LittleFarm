@@ -3,6 +3,7 @@ import { sanitizeAudio } from '../game/sound';
 import type { GameState } from '../game/types';
 import { SAVE_VERSION } from '../game/types';
 import { newGame } from '../game/state';
+import { jobPlan } from '../game/plan';
 import { REGISTRY } from '../domain/registry';
 import { stageRoots, walk } from '../domain/spec';
 import type { SpecNode } from '../domain/types';
@@ -132,6 +133,27 @@ const MIGRATIONS: Record<number, Migration> = {
       text: 'The farm now runs only on what your pets have learned: Harvest, Plant, Basket runs and Mind the gate are skills and routines you teach in the pen (Haul uses Fetch). Start with the Guide’s “Teach a job: Harvest”.',
     });
     g.version = 9;
+    return g;
+  },
+  /**
+   * v9 → v10 (learned farm, phase 6): direct jobs are retired — a pet on one gets it as responsibilities (do it,
+   * otherwise nap) and goes on Auto; plan mode is Auto; responsibilities that wandered are dropped (Wander is retired).
+   */
+  9: (g) => {
+    if (Array.isArray(g.pets)) for (const p of g.pets) if (isObj(p) && isObj(p.assignment)) {
+      const a = p.assignment;
+      if (a.mode === 'job') {
+        p.plan = jobPlan(String(a.job), { skill: a.skillName, target: a.target, navigator: a.navigator });
+        if (isObj(p.executive)) p.executive.mode = 'rules';
+      }
+      if (a.mode === 'job' || a.mode === 'plan') a.mode = 'auto';
+      if (isObj(p.plan) && Array.isArray(p.plan.rows)) {
+        p.plan.rows = p.plan.rows.filter((r: any) => !(isObj(r) && isObj(r.args) && isObj(r.args.do) && r.args.do.cardId === 'job.wander'));
+        delete p.plan.table;
+        if (p.plan.chooser === 'learned') p.plan.chooser = 'first';
+      }
+    }
+    g.version = 10;
     return g;
   },
   /** v4 → v5: "End try (done ✓)" meant "SUCCESS decides"; it is now spelled 'judge' ('success' counts outright). */

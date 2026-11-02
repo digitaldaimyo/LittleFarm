@@ -119,6 +119,7 @@ export function buildHand(reg: Registry, ctx: HandContext): Hand {
   for (const card of reg.cards.values()) {
     if (!fits(ctx.socket, effectiveOutput(reg, card, ctx.stage.learner.focus))) continue;
     if (ctx.placing && card.presentation.group === 'reference') continue;
+    if (card.retired) continue;
     let status: HandCard['status'] = 'available';
     let reason: string | undefined;
     const kind = kindOfCard(card.id);
