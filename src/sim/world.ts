@@ -6,7 +6,7 @@ import { OBJECT_BY_ID } from '../domain/packs/farm';
  * One step = one action by the pet = one tick. Every tick returns an event list
  * that drives rewards, diagnostics, animation and the journal.
  */
-export type Action = 'N' | 'E' | 'S' | 'W' | 'pick' | 'drop' | 'wait' | 'water' | 'shoo' | 'nudge';
+export type Action = 'N' | 'E' | 'S' | 'W' | 'pick' | 'drop' | 'wait' | 'water' | 'shoo' | 'nudge' | 'plant';
 export const MOVES: Action[] = ['N', 'E', 'S', 'W'];
 export const DIRS: Record<string, [number, number]> = { N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0] };
 
@@ -28,6 +28,20 @@ export interface Obj {
    * that have this are limited; pens' containers take anything, as before.
    */
   store?: StoreSlot[];
+  /** Field plots (soil / patch): which crop is (or will be) planted here. Default carrot. */
+  crop?: string;
+}
+
+/** What it costs to plant this crop (perennials and non-crops: 0). */
+export function seedPrice(crop: string): number {
+  return OBJECT_BY_ID[crop]?.crop?.seed ?? 0;
+}
+
+/** Can the pet plant right here, right now? (Empty soil, and coins for the seed if the world tracks coins.) */
+export function plantableHere(w: World): Obj | undefined {
+  const soil = objectsAt(w, w.pet.x, w.pet.y).find((o) => o.kind === 'soil');
+  if (!soil) return undefined;
+  return w.seedCoins === undefined || w.seedCoins >= seedPrice(soil.crop ?? 'carrot') ? soil : undefined;
 }
 
 export interface StoreSlot { kind: string | null; n: number }
@@ -104,6 +118,8 @@ export interface World {
    * "Done … yet?" sense. Moves and ticks aren't counted (too frequent, never asked about).
    */
   tally?: Tally;
+  /** Farm: coins available for seed (set each tick by the farm). Unset in pens, where planting is free. */
+  seedCoins?: number;
   /** Items sold (dropped at a container that sells, i.e. the farm's house). */
   sold?: number;
   /** Set when a rule ends the try as a success (✓) or a miss (✗); otherwise SUCCESS decides. */
@@ -139,7 +155,7 @@ export function cloneTally(t: Tally | undefined): Tally {
   return out;
 }
 
-export type SimEventType = 'tick' | 'move' | 'bump' | 'reach' | 'enter' | 'pickup' | 'drop' | 'deliver' | 'fumble' | 'stay' | 'fill' | 'water' | 'shoo' | 'scare' | 'peck' | 'enterArea' | 'leaveArea' | 'gate' | 'full';
+export type SimEventType = 'tick' | 'move' | 'bump' | 'reach' | 'enter' | 'pickup' | 'drop' | 'deliver' | 'fumble' | 'stay' | 'fill' | 'water' | 'shoo' | 'scare' | 'peck' | 'enterArea' | 'leaveArea' | 'gate' | 'full' | 'plant';
 
 export interface SimEvent {
   type: SimEventType;
@@ -235,6 +251,7 @@ export function legalActions(_w: World, abilities: string[]): Action[] {
   if (abilities.includes('water')) out.push('water');
   if (abilities.includes('shoo')) out.push('shoo');
   if (abilities.includes('nudge')) out.push('nudge');
+  if (abilities.includes('plant')) out.push('plant');
   if (out.length === 0) out.push('wait');
   return out;
 }
@@ -316,6 +333,14 @@ export function step(w: World, action: Action, opts: StepOptions = {}): SimEvent
       plot.wet = true;
       p.water = (p.water ?? 0) - 1;
       events.push({ type: 'water', x: p.x, y: p.y, kind: plot.kind, objId: plot.id });
+    } else events.push({ type: 'fumble', x: p.x, y: p.y });
+  } else if (action === 'plant') {
+    // Sow empty soil: it becomes a growing patch of its crop (the farm pays for the seed).
+    const soil = plantableHere(w);
+    if (soil) {
+      soil.kind = 'patch';
+      soil.wet = false;
+      events.push({ type: 'plant', x: p.x, y: p.y, kind: soil.crop ?? 'carrot', objId: soil.id });
     } else events.push({ type: 'fumble', x: p.x, y: p.y });
   } else if (action === 'nudge') {
     const g = nudgeableGate(w);
@@ -400,7 +425,7 @@ function areaEvents(w: World, o: Obj, before: { x: number; y: number }, events: 
   }
 }
 
-const CROPS = ['berry', 'carrot'];
+const CROPS = ['berry', 'carrot', 'pumpkin', 'sunflower'];
 
 function moveCreatures(w: World, events: SimEvent[]) {
   const movers = w.objects.filter((o) => onGround(o) && def(o.kind).mover).sort((a, b) => a.id - b.id);
@@ -425,10 +450,12 @@ function moveCreatures(w: World, events: SimEvent[]) {
       let target: Obj | null = null, bd = Infinity;
       for (const c of w.objects) {
         if (!onGround(c) || !CROPS.includes(c.kind) || !safe(c.x, c.y)) continue;
-        const d = Math.abs(c.x - o.x) + Math.abs(c.y - o.y);
+        // Crows go for sunflowers first (they spot them from much further away).
+        const d = Math.abs(c.x - o.x) + Math.abs(c.y - o.y) - (c.kind === 'sunflower' ? 8 : 0);
         if (d < bd) { bd = d; target = c; }
       }
       if (!target) continue;
+      bd = Math.abs(target.x - o.x) + Math.abs(target.y - o.y);
       if (bd > 0) {
         const opts = MOVES.map((m) => [o.x + DIRS[m][0], o.y + DIRS[m][1]] as const)
           .filter(([x, y]) => inBounds(w, x, y) && !(w.pet.x === x && w.pet.y === y) && safe(x, y) && !w.objects.some((c) => onGround(c) && c !== o && c.x === x && c.y === y && def(c.kind).mover))

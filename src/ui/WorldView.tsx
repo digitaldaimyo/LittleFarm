@@ -116,6 +116,12 @@ export function WorldView({ world, palette, mood = 'idle', label, onTile, tileLa
           {ghostIds?.has(o.id) && <rect x="2" y="2" width={C - 4} height={C - 4} rx="7" className="ghost-ring" />}
         </g>
       ))}
+      {objs.filter((o) => o.crop && (o.kind === 'soil' || o.kind === 'patch') && o.crop !== 'carrot').map((o) => (
+        // Field plots that aren't carrots wear a little badge of their crop.
+        <g key={`cr${o.id}`} transform={`translate(${o.x * C + 2} ${o.y * C + 2}) scale(0.4)`} pointerEvents="none" className="crop-badge" opacity={o.kind === 'soil' ? 0.55 : 0.9}>
+          <ObjectGlyph kind={o.crop!} />
+        </g>
+      ))}
       {objs.filter((o) => o.store).map((o) => {
         // Farm storage: how full it is, and with what.
         const n = o.store!.reduce((a, s) => a + s.n, 0);

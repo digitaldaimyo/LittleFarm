@@ -18,7 +18,7 @@ let chromium;
 try { ({ chromium } = await import('playwright')); } catch { ({ chromium } = require('playwright')); }
 
 const PORT = 4179;
-const CUE_COUNT = 44; // cues in src/audio/kit.ts
+const CUE_COUNT = 45; // cues in src/audio/kit.ts
 const URL = `http://localhost:${PORT}/`;
 const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'ignore' });
 const FROM = Number(process.argv.find((a) => a.startsWith('--from='))?.slice(7) ?? 1);

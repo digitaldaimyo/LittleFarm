@@ -93,8 +93,9 @@ The **First lesson** banner (lesson 1 of the Field Guide) walks you through this
 
 ## The farm
 
-- **Produce travels; the house sells.** Coins come only from produce brought to the house (berry 2, carrot 5, egg 3), plus fireflies. The **basket** stores 6 of one kind and a **shed** (shop) 4 kinds × 10; the map shows how full each is. A full basket gets a coaching tip.
-- **Jobs:** Auto, **Harvest** (pick a ripe crop, carry it to storage with room, or the house), **Haul** (Fetch: eggs and stored goods to the house), Nap, **Run a skill** (any of your skills or routines, aimed at anything), and **Steer** (tap tiles, or arrow keys, P pick up, D put down, W water, X shoo, G nudge a gate). The farm keeps running while you're on other screens.
+- **Produce travels; the house sells.** Coins come only from produce brought to the house (berry 2, carrot 5, sunflower 7, pumpkin 12, egg 3), plus fireflies. The **basket** stores 6 of one kind and a **shed** (shop) 4 kinds × 10; the map shows how full each is. A full basket gets a coaching tip.
+- **Crops and replanting.** Berry bushes regrow by themselves; carrot, sunflower and pumpkin plots go back to empty soil after each harvest and must be **planted** again, buying a seed (1, 2 or 3 coins). The shop sells sunflower and pumpkin patches. A farm can't get stuck: bushes are free, and a neighbour's seed packet arrives at dawn when nothing is growing and seeds are unaffordable.
+- **Jobs:** Auto, **Harvest** (pick a ripe crop, carry it to storage with room, or the house), **Plant** (empty soil, paying for the seed), **Haul** (Fetch: eggs and stored goods to the house), Nap, **Run a skill** (any of your skills or routines, aimed at anything), and **Steer** (tap tiles, or arrow keys, P pick up, D put down, W water, X shoo, G nudge a gate, L plant). The farm keeps running while you're on other screens.
 - **Day and night:** a day lasts about 5½ minutes at 1×, and the last 30% is night. Night darkens the farm, pets on Auto prefer to nap, and **fireflies** appear (+1 coin each, gone at dawn).
 - **Watering:** a pet with *Water* fills up at the **well** (3 splashes) and waters dry bushes or patches, which then regrow twice as fast.
 - **Creatures:**
@@ -164,5 +165,5 @@ Training is fast on any recent laptop CPU. Approach takes about 0.1 s and Avoid 
 | `docs/ROADMAP.md` | The expansion roadmap (all six milestones shipped), later work, and what could come next |
 | `docs/TUTORIAL_PLAN.md` | The Field Guide's design, the evidence behind each lesson, and what shipped |
 | `docs/TEACHING_PLAN.md` | Polishing rules, conditions and pens: the plan, and what phases A–C shipped |
-| `docs/FARM_LIFE_PLAN.md` | Farm life: storage and selling at the house (phase A shipped), then replanting, your own layout, a pet roster |
+| `docs/FARM_LIFE_PLAN.md` | Farm life: storage and selling at the house (phase A) and replanting with seed costs (phase B) shipped; then your own layout and a pet roster |
 | `docs/SOUND_PLAN.md` | Sound effects, ambience, music and settings: the plan, and what phases A–C shipped |

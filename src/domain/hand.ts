@@ -27,7 +27,7 @@ export type SlotRole = 'success' | 'fail' | 'when' | 'if' | 'then' | 'sense' | '
 
 /** The ability an event needs (events your pet can't cause rank low; ones only it can cause rank high). */
 export const EVENT_ABILITY: Record<string, string> = {
-  'ev.shoo': 'shoo', 'ev.pickup': 'pickup', 'ev.drop': 'drop', 'ev.deliver': 'drop', 'ev.stay': 'stay', 'ev.fill': 'water', 'ev.water': 'water', 'ev.gate': 'nudge',
+  'ev.shoo': 'shoo', 'ev.pickup': 'pickup', 'ev.drop': 'drop', 'ev.deliver': 'drop', 'ev.stay': 'stay', 'ev.fill': 'water', 'ev.water': 'water', 'ev.gate': 'nudge', 'ev.plant': 'plant',
   'ev.reach': 'move', 'ev.enter': 'move', 'ev.bump': 'move',
 };
 
@@ -35,7 +35,7 @@ export const EVENT_ABILITY: Record<string, string> = {
 const COND_GROUP: Record<string, string> = {
   'cond.at': 'Where', 'cond.near': 'Where', 'cond.nextTo': 'Where', 'cond.kindNear': 'Where', 'cond.farFrom': 'Where', 'cond.itNear': 'Where', 'cond.closer': 'Where', 'cond.petInArea': 'Where', 'cond.inArea': 'Where', 'cond.allInArea': 'Where',
   'cond.happened': 'Has happened', 'cond.just': 'Has happened', 'cond.delivered': 'Has happened', 'cond.watered': 'Has happened', 'cond.stayedFor': 'Has happened', 'cond.compare': 'Has happened',
-  'cond.carrying': 'Your pet', 'cond.carryingAny': 'Your pet', 'cond.hasWater': 'Your pet', 'cond.energyBelow': 'Your pet',
+  'cond.carrying': 'Your pet', 'cond.carryingAny': 'Your pet', 'cond.canAfford': 'Your pet', 'cond.storage': 'Time and world', 'cond.hasWater': 'Your pet', 'cond.energyBelow': 'Your pet',
   'cond.night': 'Time and world', 'cond.raining': 'Time and world', 'cond.gates': 'Time and world', 'cond.time': 'Time and world',
   'cond.and': 'Combine', 'cond.any': 'Combine', 'cond.not': 'Combine',
 };

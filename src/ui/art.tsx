@@ -136,11 +136,41 @@ export function ObjectGlyph({ kind }: { kind: string }) {
           <circle cx="20" cy="17" r="9" fill="#6CAF64" />
         </g>
       );
-    case 'patch':
+    case 'patch': // planted: furrows with sprouts
       return (
         <g>
           <rect x="3" y="8" width="34" height="26" rx="6" fill="#8F7A55" />
           <path d="M7 15 h26 M7 21 h26 M7 27 h26" stroke="#6F5C3C" strokeWidth="2" />
+          <path d="M12 14 q-2 -4 -4 -4 M12 14 q2 -4 4 -4 M28 20 q-2 -4 -4 -4 M28 20 q2 -4 4 -4 M18 26 q-2 -4 -4 -4 M18 26 q2 -4 4 -4" stroke="#5FA35A" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+        </g>
+      );
+    case 'soil': // empty, waiting for seeds
+      return (
+        <g>
+          <rect x="3" y="8" width="34" height="26" rx="6" fill="#9C8762" stroke="#7A6544" strokeWidth="1.2" strokeDasharray="3 2" />
+          <path d="M7 15 h26 M7 21 h26 M7 27 h26" stroke="#7A6544" strokeWidth="1.6" strokeDasharray="2 3" />
+        </g>
+      );
+    case 'pumpkin':
+      return (
+        <g>
+          <path d="M20 12 q1 -5 4 -6" stroke="#4E7A3A" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+          <ellipse cx="13" cy="24" rx="8" ry="10" fill="#E07B24" />
+          <ellipse cx="27" cy="24" rx="8" ry="10" fill="#E07B24" />
+          <ellipse cx="20" cy="24" rx="7" ry="11" fill="#F0913A" />
+          <path d="M20 14 v20 M13 15 q-3 9 0 18 M27 15 q3 9 0 18" stroke="#C0631A" strokeWidth="1" fill="none" />
+        </g>
+      );
+    case 'sunflower':
+      return (
+        <g>
+          <path d="M20 22 V38" stroke="#4E9A5B" strokeWidth="2.4" />
+          <path d="M20 32 q-6 -2 -8 -6 q6 0 8 4" fill="#5FA35A" />
+          <g fill="#F4C430">
+            {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => <ellipse key={a} cx="20" cy="7" rx="3.2" ry="6" transform={`rotate(${a} 20 15)`} />)}
+          </g>
+          <circle cx="20" cy="15" r="5.5" fill="#7A4A1E" />
+          <circle cx="18.5" cy="13.5" r="1" fill="#A06A34" />
         </g>
       );
     case 'well':

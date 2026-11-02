@@ -30,6 +30,8 @@ Outside the tutorial, a training run is 4 taps from the farm (Teach → Curricul
 |---|---|
 | Berry | 2 |
 | Carrot | 5 |
+| Sunflower | 7 |
+| Pumpkin | 12 |
 | Egg | 3 |
 | Firefly (caught at night, walk into it; not carried) | 1 |
 
@@ -39,7 +41,19 @@ Outside the tutorial, a training run is 4 taps from the farm (Teach → Curricul
 - Two pets can split the work: one harvests into the basket while the other hauls it.
 - Prices were tuned against the old economy (5 training seeds, a farm day of 2,400 ticks): a first-hour pet with only Approach earns about the same per day as before (mean 104 vs 97 coins). The first 5 coins take a little longer (median about 100 ticks vs 66, the walk home). A farm with Fetch and carrots earns 252 vs 250.
 
-Berry bushes regrow in 28 ticks and carrots in 44. **Watered** plots grow twice as fast, and the soil dries out when the next crop appears. Watering takes a learned skill: fill up at the well, then find dry plots.
+**Crops and replanting** (farm life, phase B). Berry bushes are perennial: they regrow 28 ticks after each harvest, for free. Field plots cycle **empty soil → planted → ripe → harvested → empty soil**, and each planting buys a seed from the farm's coins:
+
+| Field crop | Seed | Grows (ticks) | Sells for |
+|---|---|---|---|
+| Carrot | 1 | 44 | 5 |
+| Sunflower (crows go for it first) | 2 | 70 | 7 |
+| Pumpkin | 3 | 120 | 12 |
+
+- **Plant** (a job, an ability and a card) walks to empty soil and plants it. Auto and the starter plan plant before harvesting, so the seed grows while the pet works. The Harvest job doesn't plant.
+- **Never stuck:** bushes keep a 0-coin farm earning, and at dawn, if nothing is growing and no seed is affordable, a neighbour's packet plants the cheapest plot for free.
+- With replanting, a pet on Auto with Fetch and carrots sells about 251 coins over two farm days (as before); adding pumpkin and sunflower patches gives about 279.
+
+**Watered** plots grow twice as fast, and the soil dries out when the next crop appears. Watering takes a learned skill: fill up at the well, then find dry plots.
 
 **Day/night:** a farm day is 1200 ticks, and the last 30% is night. Night darkens the farm and spawns 4 fireflies on open tiles, which leave at dawn. On Auto, the rules executive catches fireflies when it can and otherwise naps. The learned executive's context includes night and fireflies. At night, work costs 1.5× energy and naps restore 1.5×. A pond sits between the bushes and the basket and house, so a pet using Approach often splashes through and loses 3 ticks shaking dry. That's a visible reason to learn Avoid.
 
@@ -54,7 +68,7 @@ Berry bushes regrow in 28 ticks and carrots in 44. **Watered** plots grow twice 
 | Fetch lessons | Certified Approach + 5 coins earned |
 | Carrot patches | A certified Fetch |
 | Avoid lessons | 12 coins earned (after Fetch) |
-| Shop | Snack (+40 energy, 3), Tree cards (4), Fence cards (6), Two more bushes (8), Comfy bed (12), Third carrot patch (15, after carrots), Shed (25, after Fetch), Adopt another pet (20). After *Your own skills*: Two chickens (10), Scarecrow (8), Orchard expansion (25) |
+| Shop | Snack (+40 energy, 3), Tree cards (4), Fence cards (6), Two more bushes (8), Comfy bed (12), Third carrot patch (15, after carrots), Sunflower patch (10, after carrots), Pumpkin patch (12, after carrots), Shed (25, after Fetch), Adopt another pet (20). After *Your own skills*: Two chickens (10), Scarecrow (8), Orchard expansion (25) |
 | Field Guide lessons | Offered in context (see Tutorial) |
 
 Unlocks add **vocabulary** (new cards and skills) and **problems** (carrots need carrying, ponds need avoiding), not grind.

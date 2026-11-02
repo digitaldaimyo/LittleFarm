@@ -211,9 +211,9 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
     if (ev.cardId === 'ev.pickup' && reward > 0 && lim !== 'lim.once' && lim !== 'lim.perObject') pickPay = true;
     if (ev.cardId === 'ev.drop' && reward > 0 && lim !== 'lim.once' && lim !== 'lim.perObject') dropPay = true;
     const fetchT = (L.template ?? (L.skill === 'Fetch' ? 'fetch' : 'sense')) !== 'sense';
-    const needs: Record<string, string> = { 'ev.pickup': 'pickup', 'ev.drop': 'drop', 'ev.deliver': 'drop', 'ev.stay': 'stay', 'ev.fill': 'water', 'ev.water': 'water', 'ev.shoo': 'shoo', 'ev.gate': 'nudge' };
+    const needs: Record<string, string> = { 'ev.pickup': 'pickup', 'ev.drop': 'drop', 'ev.deliver': 'drop', 'ev.stay': 'stay', 'ev.fill': 'water', 'ev.water': 'water', 'ev.shoo': 'shoo', 'ev.gate': 'nudge', 'ev.plant': 'plant' };
     const need = needs[ev.cardId];
-    if (need && !fetchT && !stage.abilities.includes(need)) out.push({ severity: 'info', code: 'unusable-event', nodeId: r.id, message: `“${label}” needs the ${need === 'pickup' ? 'Pick up' : need === 'drop' ? 'Put down' : need === 'water' ? 'Water' : need === 'shoo' ? 'Shoo' : need === 'nudge' ? 'Nudge gate' : 'Stay'} ability, which ${L.skill} doesn’t have — it will never fire.` });
+    if (need && !fetchT && !stage.abilities.includes(need)) out.push({ severity: 'info', code: 'unusable-event', nodeId: r.id, message: `“${label}” needs the ${need === 'pickup' ? 'Pick up' : need === 'drop' ? 'Put down' : need === 'water' ? 'Water' : need === 'shoo' ? 'Shoo' : need === 'nudge' ? 'Nudge gate' : need === 'plant' ? 'Plant' : 'Stay'} ability, which ${L.skill} doesn’t have — it will never fire.` });
     const conds = r.args.if;
     const hasCloser = (Array.isArray(conds) ? conds : []).some((c) => isNode(c) && c.cardId === 'cond.closer');
     if (hasCloser && reward > 0 && !stage.rules.some((o) => rewardTotal(o) < 0)) out.push({ severity: 'warning', code: 'shaping-loop', nodeId: r.id, message: `“${label}” pays for getting closer but nothing costs moving away — wiggling back and forth may pay.`, repair: { label: 'Add a step nudge', action: 'add-tick-penalty' } });

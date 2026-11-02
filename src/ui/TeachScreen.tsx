@@ -174,7 +174,7 @@ function PenView({ stage, pet }: { stage: StageSpec; pet: Pet }) {
   };
   useEffect(() => {
     if (!play) return;
-    const keys: Record<string, Action> = { ArrowUp: 'N', ArrowRight: 'E', ArrowDown: 'S', ArrowLeft: 'W', ' ': 'wait', p: 'pick', d: 'drop', w: 'water', x: 'shoo', g: 'nudge' };
+    const keys: Record<string, Action> = { ArrowUp: 'N', ArrowRight: 'E', ArrowDown: 'S', ArrowLeft: 'W', ' ': 'wait', p: 'pick', d: 'drop', w: 'water', x: 'shoo', g: 'nudge', l: 'plant' };
     const h = (e: KeyboardEvent) => {
       const a = keys[e.key];
       const tag = (e.target as HTMLElement)?.tagName;
@@ -251,7 +251,7 @@ function PenView({ stage, pet }: { stage: StageSpec; pet: Pet }) {
             <div className="play-log small" aria-live="polite">{play.ended ?? (play.log.length ? `Rules fired: ${play.log.join(' · ')}` : 'Arrow keys to move · Space stay · P pick up · D put down · W water · X shoo · G gate')}</div>
             <div className="play-pad">
               {(['W', 'N', 'S', 'E'] as Action[]).map((a) => <button key={a} className="btn ghost small" aria-label={`Move ${a === 'N' ? 'up' : a === 'S' ? 'down' : a === 'W' ? 'left' : 'right'}`} onClick={() => act(a)}>{a === 'N' ? '↑' : a === 'S' ? '↓' : a === 'W' ? '←' : '→'}</button>)}
-              {([['stay', 'wait', 'Stay'], ['pickup', 'pick', 'Pick up'], ['drop', 'drop', 'Put down'], ['water', 'water', 'Water'], ['shoo', 'shoo', 'Shoo'], ['nudge', 'nudge', 'Nudge gate']] as const).filter(([ab]) => stage.abilities.includes(ab)).map(([, a, label]) => <button key={a} className="btn ghost small" onClick={() => act(a as Action)}>{label}</button>)}
+              {([['stay', 'wait', 'Stay'], ['pickup', 'pick', 'Pick up'], ['drop', 'drop', 'Put down'], ['water', 'water', 'Water'], ['shoo', 'shoo', 'Shoo'], ['nudge', 'nudge', 'Nudge gate'], ['plant', 'plant', 'Plant']] as const).filter(([ab]) => stage.abilities.includes(ab)).map(([, a, label]) => <button key={a} className="btn ghost small" onClick={() => act(a as Action)}>{label}</button>)}
               <button className="btn ghost small" onClick={() => startPlay()}>Restart</button>
               <button className="btn ghost small" onClick={() => { s.setUi({ previewSeed: s.ui.previewSeed + 1 }); startPlay(s.ui.previewSeed + 1); }}>Next layout</button>
               <button className="btn ghost small" onClick={() => setPlay(null)}>Stop</button>

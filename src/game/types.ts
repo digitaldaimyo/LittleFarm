@@ -12,7 +12,7 @@ import type { World } from '../sim/world';
 export const SAVE_VERSION = 6;
 
 export type PaletteId = 'meadow' | 'plum' | 'sky' | 'moss';
-export type JobId = 'forage' | 'deliver' | 'rest' | 'skill';
+export type JobId = 'forage' | 'deliver' | 'plant' | 'rest' | 'skill';
 export type NavigatorName = 'Approach' | 'Avoid';
 
 export interface SkillEval {
@@ -119,6 +119,7 @@ export interface PetStats {
   deliveries: number;
   fireflies?: number;
   waterings?: number;
+  planted?: number;
   crowsShooed?: number;
 }
 
@@ -143,7 +144,8 @@ export interface Pet {
 export interface Plot {
   x: number;
   y: number;
-  crop: 'berry' | 'carrot';
+  /** Berry bushes are perennial; the rest are field crops that are replanted after each harvest. */
+  crop: 'berry' | 'carrot' | 'pumpkin' | 'sunflower';
   objId: number | null;
   timer: number;
   unlock?: string;

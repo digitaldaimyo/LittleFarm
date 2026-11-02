@@ -117,9 +117,10 @@ describe('M6: two pets on duty', () => {
     const a = adoptPet(g, 'Pip', 'meadow');
     const b = adoptPet(g, 'Mochi', 'plum');
     for (const p of [a, b]) { p.traits = { ...DEFAULT_TRAITS }; trainAndSave(g, p, recipeStage('go-to-berry')); p.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' }; }
-    // Farm life: Pip harvests into the basket (knowing Fetch, it stores rather than walking home), Mochi hauls
-    // the basket to the house. Two different jobs.
+    // Farm life: Pip (on Auto) plants and harvests into the basket (knowing Fetch, it stores rather than walking
+    // home), Mochi hauls the basket to the house. Two different jobs.
     for (const p of [a, b]) trainAndSave(g, p, recipeStage('bring-it-home'), activeRevision(getSkill(p, 'Approach'))!.policy);
+    a.assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' }; // harvests and replants
     b.assignment = { mode: 'job', job: 'deliver', navigator: 'Approach' };
     g.farm.dutyPetId = a.id;
     g.farm.duty2PetId = second ? b.id : null;
@@ -143,7 +144,7 @@ describe('M6: two pets on duty', () => {
     }
     expect(sameTile).toBe(0);
     expect(sameClaim).toBe(0);
-    expect(two.resources.coins).toBeGreaterThan(one.resources.coins * 1.3);
+    expect(two.resources.coins).toBeGreaterThan(one.resources.coins * 1.1); // crops (and replanting) cap the farm, so the gain is modest
     expect(two.resources.berries).toBeGreaterThan(one.resources.berries * 0.85); // Pip barely slowed down
     expect(two.resources.carrots).toBeGreaterThan(5);
   });

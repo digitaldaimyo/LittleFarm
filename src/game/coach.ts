@@ -53,6 +53,12 @@ export function farmTips(s: GameState): Tip[] {
   const full = f.world.objects.some((o) => { const st = OBJECT_BY_ID[o.kind]?.storage; return !!o.store && !!st && o.store.reduce((a, x) => a + x.n, 0) >= st.slots * st.perSlot; });
   const hauler = duty.some((p) => !!activeRevision(getSkill(p, 'Fetch')) && (p.assignment.mode !== 'job' || p.assignment.job === 'deliver'));
   if (full && !hauler) tips.push({ id: 'storage-full', text: 'The basket is full and nobody is hauling it, so new crops are left beside it. A pet with Fetch on Auto (or on Haul) carries storage to the house, where it sells.', lesson: 'results' });
+  // Empty soil the farm can afford to plant, and nobody on duty plants.
+  const soil = f.world.objects.filter((o) => o.kind === 'soil' && !o.carried && !o.delivered);
+  const affordable = soil.some((o) => s.resources.coins >= (OBJECT_BY_ID[o.crop ?? 'carrot']?.crop?.seed ?? 0));
+  const planter = duty.some((p) => p.assignment.mode === 'auto' || (p.assignment.mode === 'job' && p.assignment.job === 'plant')
+    || (p.assignment.mode === 'plan' && !!p.plan?.rows.some((r) => (r.args.do as { cardId?: string } | undefined)?.cardId === 'job.plant')));
+  if (soil.length && affordable && duty.length && !planter) tips.push({ id: 'idle-soil', text: `${soil.length === 1 ? 'A field plot is' : `${soil.length} field plots are`} empty. Field crops need replanting after each harvest — put a pet on Auto or Plant (or add a Plant row to your farm plan).` });
   // Two pets both hauling: nobody harvests, so there's soon nothing to haul.
   const [a, b] = duty;
   if (a && b && a.assignment.mode === 'job' && b.assignment.mode === 'job' && a.assignment.job === b.assignment.job && (a.assignment.job === 'deliver' || a.assignment.job === 'rest')) {

@@ -3,7 +3,7 @@ import { isNode, paramOf } from '../domain/spec';
 import { kindOfCard } from '../domain/registry';
 import { Rng, hashSeed } from './rng';
 import type { Obj, SimEvent, Tally, World } from './world';
-import { addObject, bfsDistance, blocks, def, distTo, emptyWorld, eventOfKey, inArea, inBounds, isSolidAt, nearest, objectsAt, onGround } from './world';
+import { addObject, bfsDistance, blocks, def, distTo, emptyWorld, eventOfKey, inArea, inBounds, isSolidAt, nearest, objectsAt, onGround, seedPrice } from './world';
 
 /** How a rule's End try judges the try: by SUCCESS (default), or it counts as a success ✓ / a miss ✗ outright. */
 export type EndOutcome = 'judge' | 'success' | 'fail';
@@ -213,6 +213,9 @@ export function compileCondition(n: SpecNode): Cond {
       const fs = listArg(n, 'all').map(compileCondition);
       return (c) => fs.every((f) => f(c));
     }
+    case 'cond.canAfford':
+      // Coins for at least one empty plot's seed (pens don't track coins: always true).
+      return ({ w }) => w.seedCoins === undefined || w.objects.some((o) => o.kind === 'soil' && onGround(o) && w.seedCoins! >= seedPrice(o.crop ?? 'carrot'));
     case 'cond.storage': {
       // Any basket or shed with something in it / at least half full / full.
       const level = paramOf(n, 'level', 'any');
@@ -301,6 +304,7 @@ export function compileEvent(n: SpecNode): (e: SimEvent) => boolean {
     case 'ev.entersArea': { const a = areaArg(n, 'area'); return (e) => e.type === 'enterArea' && e.kind === k && e.area === a; }
     case 'ev.leavesArea': { const a = areaArg(n, 'area'); return (e) => e.type === 'leaveArea' && e.kind === k && e.area === a; }
     case 'ev.water': return (e) => e.type === 'water' && e.kind === k;
+    case 'ev.plant': return (e) => e.type === 'plant' && e.kind === k;
     default:
       throw new Error(`Cannot compile event ${n.cardId}`);
   }

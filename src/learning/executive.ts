@@ -6,7 +6,7 @@ import { Rng } from '../sim/rng';
  *   - a deterministic rules baseline
  *   - a locally trained contextual bandit (tabular, ε-greedy, running means)
  */
-export type BehaviorId = 'forage' | 'deliver' | 'rest' | 'wander' | 'manual' | 'skill' | 'catch' | 'goto' | 'gate';
+export type BehaviorId = 'forage' | 'deliver' | 'rest' | 'wander' | 'manual' | 'skill' | 'catch' | 'goto' | 'gate' | 'plant';
 
 export interface Invocation {
   behaviorId: BehaviorId;
@@ -27,6 +27,8 @@ export interface ExecContext {
   firefly?: boolean;
   /** Farm life: a basket or shed is at least half full (haul before harvesting more). */
   storeHalf?: boolean;
+  /** Farm life: empty soil whose seed can be afforded. */
+  soil?: boolean;
 }
 
 export interface ExecutiveTable {
@@ -35,7 +37,7 @@ export interface ExecutiveTable {
 }
 
 export function contextKey(c: ExecContext): string {
-  return `${+c.energyLow}${+c.berry}${+c.carrot}${+c.carrying}${+c.recentFail}${+!!c.night}${+!!c.firefly}`;
+  return `${+c.energyLow}${+c.berry}${+c.carrot}${+c.carrying}${+c.recentFail}${+!!c.night}${+!!c.firefly}${c.soil ? 's' : ''}`; // (soil appended only when present, so older tables keep their keys)
 }
 
 export function describeContext(c: ExecContext): string {
@@ -45,6 +47,7 @@ export function describeContext(c: ExecContext): string {
   if (c.carrying) p.push('carrying something');
   if (c.berry) p.push('something ripe');
   if (c.carrot) p.push(c.storeHalf ? 'storage filling up' : 'goods to haul');
+  if (c.soil) p.push('empty soil');
   if (c.firefly) p.push('fireflies out');
   if (c.recentFail) p.push('just had a setback');
   return p.join(', ');
@@ -59,6 +62,7 @@ export function rulesSelect(c: ExecContext, eligible: BehaviorId[]): BehaviorId 
   if (c.carrying && has('deliver')) return 'deliver';
   if (c.carrying && has('forage')) return 'forage'; // no Fetch yet: carry the harvest home
   if (c.storeHalf && has('deliver')) return 'deliver';
+  if (c.soil && has('plant')) return 'plant'; // sow first: a seed in the ground is growing while you harvest
   if (c.berry && has('forage')) return 'forage';
   if (c.carrot && has('deliver')) return 'deliver';
   if (has('wander') && !c.energyLow) return 'wander';
@@ -90,6 +94,7 @@ export function updateExecutive(table: ExecutiveTable, c: ExecContext, b: Behavi
 export const BEHAVIOR_LABEL: Record<BehaviorId, string> = {
   forage: 'Harvest',
   deliver: 'Haul to the house',
+  plant: 'Plant',
   rest: 'Nap',
   wander: 'Wander',
   manual: 'Follow your lead',

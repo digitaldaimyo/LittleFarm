@@ -147,6 +147,8 @@ export interface ObjectDef {
   storage?: { slots: number; perSlot: number };
   /** Farm: bringing produce here sells it. */
   sells?: boolean;
+  /** Crops: how long they take to grow (ticks), what the seed costs (none = perennial), and what they sell for. */
+  crop?: { grows: number; seed?: number; sells: number };
 }
 
 export interface Diagnostic {

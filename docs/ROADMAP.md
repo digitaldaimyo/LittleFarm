@@ -239,7 +239,7 @@ The milestones shipped in the recommended order: M1 → M5 (watering + day/night
 - **Fixes found along the way:** the random baseline never used Shoo or Stay (learned results unchanged); lesson 9 could get stuck on busy farms; a starting lesson's report covered the next one.
 
 ## Next: farm life (in progress)
-Phase A shipped: produce travels to storage (baskets, sheds) and sells only at the house, with Harvest and Haul jobs. Still to come: replanting with seed costs and a few crop types (B), your own farm layout (C), and managing pets by tapping them and the house (D). See `docs/FARM_LIFE_PLAN.md`.
+Phase A shipped: produce travels to storage (baskets, sheds) and sells only at the house, with Harvest and Haul jobs. Phase B shipped: field crops (carrot, sunflower, pumpkin) need replanting, each seed costs coins, and a Plant job, ability and cards do the work. Still to come: your own farm layout (C), and managing pets by tapping them and the house (D). See `docs/FARM_LIFE_PLAN.md`.
 
 ## What could come next
 Not committed; listed roughly smallest first.

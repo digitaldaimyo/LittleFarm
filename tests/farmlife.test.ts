@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { newGame } from '../src/game/state';
 import { activeRevision, adoptPet, getSkill } from '../src/game/pets';
-import { createRuntime, farmTick, harvestDestination, SELL_PRICE } from '../src/game/farm';
+import { createRuntime, farmTick, harvestDestination, seedGift, SELL_PRICE } from '../src/game/farm';
+import { compileCondition } from '../src/sim/compile';
+import { node } from '../src/domain/spec';
+import { ABILITY_ORDER } from '../src/learning/senses';
+import { OBJECT_BY_ID } from '../src/domain/packs/farm';
 import { buy } from '../src/game/progression';
 import { farmTips } from '../src/game/coach';
 import { trackRequests } from '../src/game/requests';
 import { parseGame, serializeGame } from '../src/persistence/save';
-import { addObject, emptyStore, emptyWorld, step, storeCount, type World } from '../src/sim/world';
+import { addObject, emptyStore, emptyWorld, seedPrice, step, storeCount, type World } from '../src/sim/world';
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import type { GameState } from '../src/game/types';
 import { recipeStage, trainAndSave } from './helpers';
@@ -172,5 +176,135 @@ describe('the shed, requests, tips and saves', () => {
     expect(r.ok).toBe(true);
     expect(r.game!.farm.world.objects.find((o) => o.kind === 'bin')!.store).toEqual([{ kind: null, n: 0 }]);
     expect(r.game!.resources.coins).toBe(coins);
+  });
+});
+
+describe('crops and planting (farm life B)', () => {
+  const field = (s: GameState) => s.farm.world.objects.filter((o) => ['soil', 'patch'].includes(o.kind) && o.y === 7);
+  const soilWorld = (crop: string, coins?: number) => {
+    const w = emptyWorld(5, 5);
+    const o = addObject(w, 'soil', 2, 2); o.crop = crop;
+    w.pet.x = 2; w.pet.y = 2;
+    if (coins !== undefined) w.seedCoins = coins;
+    return { w, o };
+  };
+
+  it('plant turns empty soil into a growing patch; without coins for the seed it fumbles', () => {
+    const a = soilWorld('pumpkin', 3);
+    expect(step(a.w, 'plant')).toEqual(expect.arrayContaining([expect.objectContaining({ type: 'plant', kind: 'pumpkin' })]));
+    expect(a.o.kind).toBe('patch');
+    const b = soilWorld('pumpkin', 2);
+    expect(step(b.w, 'plant').map((e) => e.type)).toContain('fumble');
+    expect(b.o.kind).toBe('soil');
+    const pen = soilWorld('carrot'); // pens don't track coins: planting is free
+    step(pen.w, 'plant');
+    expect(pen.o.kind).toBe('patch');
+  });
+
+  it('a harvested (or pecked) field plot goes back to soil and waits; a bush regrows by itself', () => {
+    const s = farmGame();
+    s.progress.unlocks.push('carrots');
+    s.farm.dutyPetId = null; // nobody harvests or replants
+    const rt = createRuntime(s.farm);
+    const w = s.farm.world;
+    for (let i = 0; i < 60; i++) farmTick(s, rt); // carrots ripen (44 ticks)
+    const carrot = w.objects.find((o) => o.kind === 'carrot')!;
+    expect(carrot).toBeDefined();
+    carrot.delivered = true; // as if harvested and sold
+    const bush = w.objects.find((o) => o.kind === 'berry')!;
+    bush.delivered = true;
+    for (let i = 0; i < 200; i++) farmTick(s, rt);
+    const plot = w.objects.find((o) => o.x === carrot.x && o.y === carrot.y && (o.kind === 'soil' || o.kind === 'patch'))!;
+    expect(plot.kind).toBe('soil');
+    expect(plot.crop).toBe('carrot');
+    expect(w.objects.filter((o) => o.kind === 'carrot' && o.x === carrot.x && o.y === carrot.y && !o.delivered)).toHaveLength(0);
+    expect(w.objects.some((o) => o.kind === 'berry' && o.x === bush.x && o.y === bush.y && !o.delivered)).toBe(true);
+  });
+
+  it('a pet on Auto replants, paying for the seed from the farm’s coins', () => {
+    const s = farmGame();
+    s.progress.unlocks.push('carrots');
+    for (const o of field(s)) { o.kind = 'soil'; o.crop = 'carrot'; }
+    s.resources.coins = 10;
+    const rt = createRuntime(s.farm);
+    let planted = 0;
+    for (let i = 0; i < 200 && planted < 2; i++) { farmTick(s, rt); planted = s.pets[0].stats.planted ?? 0; }
+    expect(planted).toBeGreaterThanOrEqual(2);
+    expect(s.journal.some((j) => j.kind === 'first-plant')).toBe(true);
+    expect(s.resources.coins).toBeLessThanOrEqual(10 - 2 * seedPrice('carrot') + s.progress.totalCoins);
+  });
+
+  it('Can afford seeds reads the farm’s coins (always true in pens)', () => {
+    const c = compileCondition(node('cond.canAfford'));
+    const a = soilWorld('sunflower', 1);
+    expect(c({ w: a.w } as never)).toBe(false);
+    a.w.seedCoins = 2;
+    expect(c({ w: a.w } as never)).toBe(true);
+    expect(c({ w: soilWorld('pumpkin').w } as never)).toBe(true);
+  });
+
+  it('crows go for sunflowers before berries', () => {
+    const w = emptyWorld(12, 3);
+    addObject(w, 'berry', 3, 1);
+    addObject(w, 'sunflower', 9, 1);
+    const crow = addObject(w, 'crow', 4, 0); // 2 steps from the berry, 6 from the sunflower
+    w.pet.x = 0; w.pet.y = 2;
+    const xs: number[] = [];
+    for (let i = 0; i < 4; i++) { step(w, 'wait'); xs.push(crow.x); }
+    expect(w.objects.find((o) => o.kind === 'berry')!.delivered).toBeFalsy();
+    expect(Math.max(...xs)).toBeGreaterThan(4); // it flew toward the sunflower
+  });
+
+  it('the shop sells pumpkin and sunflower patches, planted, on free tiles', () => {
+    const s = farmGame();
+    s.progress.unlocks.push('carrots');
+    s.resources.coins = 40;
+    expect(buy(s, 'pumpkins').ok).toBe(true);
+    expect(buy(s, 'sunflowers').ok).toBe(true);
+    for (const crop of ['pumpkin', 'sunflower']) {
+      const plot = s.farm.plots.find((p) => p.crop === crop)!;
+      const o = s.farm.world.objects.filter((x) => x.x === plot.x && x.y === plot.y);
+      expect(o.map((x) => x.kind)).toEqual(['patch']);
+      expect(o[0].crop).toBe(crop);
+    }
+    const rt = createRuntime(s.farm);
+    s.farm.dutyPetId = null;
+    for (let i = 0; i < 130; i++) farmTick(s, rt);
+    expect(s.farm.world.objects.some((o) => o.kind === 'pumpkin')).toBe(true);
+  });
+
+  it('never stuck: with no coins and nothing growing, a neighbour’s seeds plant the cheapest plot at dawn', () => {
+    const s = farmGame();
+    s.progress.unlocks.push('carrots');
+    for (const o of field(s)) { o.kind = 'soil'; o.crop = 'carrot'; }
+    s.resources.coins = 0;
+    expect(seedGift(s)).toBe(true);
+    expect(field(s).filter((o) => o.kind === 'patch')).toHaveLength(1);
+    expect(seedGift(s)).toBe(false); // something is growing now
+  });
+
+  it('every field crop is worth planting: a sale pays several times its seed, and slower crops pay more per trip', () => {
+    const crops = ['carrot', 'sunflower', 'pumpkin'].map((id) => ({ id, ...OBJECT_BY_ID[id].crop! }));
+    for (const c of crops) expect(c.sells).toBeGreaterThanOrEqual(c.seed! * 3);
+    for (let i = 1; i < crops.length; i++) {
+      expect(crops[i].grows).toBeGreaterThan(crops[i - 1].grows);
+      expect(crops[i].sells - crops[i].seed!).toBeGreaterThan(crops[i - 1].sells - crops[i - 1].seed!);
+    }
+    expect(SELL_PRICE.pumpkin).toBe(12);
+  });
+
+  it('the plant ability goes last, so saved policies keep their action indices', () => {
+    expect(ABILITY_ORDER).toEqual(['move', 'stay', 'pickup', 'drop', 'water', 'shoo', 'nudge', 'plant']);
+  });
+
+  it('a farm day with replanting earns more than it spends on seeds', () => {
+    const s = farmGame({ fetch: true });
+    s.progress.unlocks.push('carrots');
+    s.resources.coins = 0;
+    const rt = run(s, 2400);
+    expect(rt).toBeDefined();
+    expect(s.pets[0].stats.planted ?? 0).toBeGreaterThan(3);
+    expect(s.resources.coins).toBeGreaterThan(20);
+    expect(s.resources.carrots).toBeGreaterThan(3);
   });
 });

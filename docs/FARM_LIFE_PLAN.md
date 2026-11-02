@@ -6,7 +6,7 @@
 - You lay out the farm: plots, baskets, sheds and the rest.
 - Pets still do all the work, managed from the farm itself: tap a pet for its details and controls, tap the house for the roster.
 
-Status: **phase A shipped.** Decisions (section 9) all went with the recommendations: perennial berry bushes; harvests to the nearest storage with room; without Fetch, harvests go straight to the house; fireflies stay instant; up to 4 pets on duty (phase D); plain pumpkins; a fixed house; build order A → B → C → D.
+Status: **phases A and B shipped.** Decisions (section 9) all went with the recommendations: perennial berry bushes; harvests to the nearest storage with room; without Fetch, harvests go straight to the house; fireflies stay instant; up to 4 pets on duty (phase D); plain pumpkins; a fixed house; build order A → B → C → D.
 
 ### Phase A: what shipped, and what we learned
 - **Selling and storage:**
@@ -33,6 +33,38 @@ Status: **phase A shipped.** Decisions (section 9) all went with the recommendat
   - an "away from" option for storage.
 - **Tests:** `tests/farmlife.test.ts` (13), updated two-pet, orchard, routine, Fetch and lesson-9 tests, and the full browser test.
 
+
+
+### Phase B: what shipped, and what we learned
+- **The crop cycle:** a field plot is **empty soil → planted → ripe → harvested → empty soil**. Soil is its own object kind (`soil`, carrying `crop`); planting turns it into a growing `patch`. Harvesting or a crow's peck turns it back into soil, which doesn't grow. Berry bushes regrow by themselves, as before.
+- **Crops** (all in the object definitions, `ObjectDef.crop`):
+
+  | Crop | Seed | Grows (ticks) | Sells for |
+  |---|---|---|---|
+  | Berry bush | — | 28, then regrows | 2 |
+  | Carrot | 1 | 44 | 5 |
+  | Sunflower | 2 | 70 | 7 — crows go for it before anything else |
+  | Pumpkin | 3 | 120 | 12 — plain (no carry penalty) |
+
+  Watering still doubles growth speed. The shop sells a **Sunflower patch** (10) and a **Pumpkin patch** (12) once carrots are unlocked; each comes planted, on the first free tile from a short list near the fields.
+- **Planting is pet work:**
+  - the **Plant** ability (last in the ability order, so saved policies keep their action indices) plants the soil under the pet;
+  - the event **Plants** and the condition **Can afford seeds** are cards; "is there empty soil" is the ordinary *Has* card with *Empty soil*;
+  - the farm job **Plant** walks to soil with Approach or Avoid and plants. It is on the job list, in Auto and in the starter plan (row "Empty soil", tick-for-tick equal to the rules).
+  - In pens the world doesn't track coins, so planting there is free.
+- **Seeds are paid when the pet plants**, from the farm's coins (the farm passes them to the sim each tick as `World.seedCoins`).
+- **Never stuck:** at dawn, if no empty plot is affordable and nothing in the fields is growing or ripe, a neighbour's seed packet plants the cheapest plot for free (journal note). Bushes keep a 0-coin farm earning anyway.
+- **UI:** soil and sprout art, pumpkin and sunflower art, a crop badge on non-carrot plots, a Plant job card, a Field Guide glossary entry, a planting sound (45 cues), and a coaching tip when soil sits empty and nobody on duty plants.
+- **Measured** (5 seeds, two farm days, gross sales; TESTING.md): Approach only 104 (unchanged); Fetch + carrots 251 (was 252 before replanting); Fetch + all three field crops 279.
+- **Changes from the plan:**
+  - **Sow before harvesting.** With "harvest first", the two berry bushes kept a pet busy and carrots were never replanted. Auto and the starter plan now plant first; planting is short, and the seed grows while the pet harvests.
+  - Prices: pumpkin 12 and sunflower 7 (not 10 and 5), so each crop's profit per trip rises with its growing time.
+  - The seed packet is more generous than planned: it comes whenever nothing is growing and no seed is affordable, not only when bushes are gone.
+  - Plant works on the pet's own tile, not "next to", so it reads like Pick.
+  - No separate "Empty plots" condition: *Has → Empty soil* says the same thing.
+  - The learned executive adds a "soil" flag to its situation key only when soil is present, so older learned tables keep their keys.
+- **Not done in B:** a "Plant the field" recipe lesson; choosing which crop a plot grows (it keeps the crop it was built for, until the layout phase).
+- **Tests:** `tests/farmlife.test.ts` (23, 10 new: plant and fumble, soil after harvest, Auto replants and pays, Can afford seeds, crows and sunflowers, shop patches, seed packet, crop balance, ability order, a profitable day). The two-pet test now has the harvester on Auto (it replants) and expects +10% rather than +30%: with replanting, the crops limit the farm, not the walking.
 
 ---
 
