@@ -80,6 +80,10 @@ export interface Skill {
   revisions: SkillRevision[];
   /** Composite skills: which navigation skill they invoke for movement. */
   navigator?: NavigatorName;
+  /** Run this revision instead of the active one (the player pinned it). */
+  pinnedRev?: number;
+  /** On the farm: 'on' = usable even if uncertified, 'off' = never on its own; absent = certified only. */
+  farmUse?: 'on' | 'off';
 }
 
 export interface StageMastery {

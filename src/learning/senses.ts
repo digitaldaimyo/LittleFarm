@@ -3,7 +3,7 @@ import { REGISTRY } from '../domain/registry';
 import { node } from '../domain/spec';
 import { compileEvent, countSince, resolveKind, withTarget } from '../sim/compile';
 import type { Action, Tally, World } from '../sim/world';
-import { DIRS, MOVES, def, inArea, isHazardAt, isSolidAt, nearest, nudgeableGate, objectsAt, onGround, plantableHere, storeCount, type Area } from '../sim/world';
+import { DIRS, MOVES, def, inArea, isHazardAt, isSolidAt, nearest, nudgeableGate, objIs, objectsAt, onGround, plantableHere, storeCount, type Area } from '../sim/world';
 
 /**
  * Compiles player-chosen Sense cards into a mixed-radix state encoder.
@@ -138,7 +138,7 @@ function senseFn(n: SpecNode, target: string): (w: World, base?: Tally) => numbe
         return d === 0 ? 0 : d === 1 ? 1 : d <= 3 ? 2 : 3;
       };
     case 'sense.here':
-      return (w) => (objectsAt(w, w.pet.x, w.pet.y).some((o) => o.kind === kind) ? 1 : 0);
+      return (w) => (objectsAt(w, w.pet.x, w.pet.y).some((o) => objIs(w, o, kind)) ? 1 : 0);
     case 'sense.blocked':
       return (w) => {
         let b = 0;

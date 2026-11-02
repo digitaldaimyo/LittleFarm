@@ -152,10 +152,12 @@ export class RoutineRun {
     private rng: Rng,
     private totalTimeout: number,
     private done: ((w: World) => boolean) | null,
+    /** *Survive* routines: at time-up, did it survive? Absent = time-up is a timeout. */
+    private survived: ((w: World) => boolean) | null = null,
   ) {}
   next(w: World): ExecStep {
     if (this.ticks > 0 && this.done?.(w)) return { done: 'success', reason: 'goal reached' };
-    if (this.ticks >= this.totalTimeout) return { done: 'success', reason: 'time up' };
+    if (this.ticks >= this.totalTimeout) return this.survived ? (this.survived(w) ? { done: 'success', reason: 'survived' } : { done: 'fail', reason: 'did not survive' }) : { done: 'timeout', reason: 'time up' };
     for (let guard = 0; guard < 4; guard++) {
       if (!this.cur) {
         const legal = this.r.legal(w);

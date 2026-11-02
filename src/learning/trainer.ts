@@ -13,6 +13,8 @@ import type { EpisodeTrace, Frame, LedgerEntry, Traits } from './episodes';
 import { navTimeout } from './episodes';
 
 export const TRAIN_SEED_MAX = 800000;
+/** Option learners (Fetch, routines) discount per tick: an option lasting k ticks is worth γ^k (0.99^20 ≈ 0.82). */
+export const OPTION_GAMMA_PER_TICK = 0.99;
 
 export interface TrainConfig {
   stage: StageSpec;
@@ -205,18 +207,23 @@ export class Trainer {
         const o = this.rng.next() < eps ? lo[this.rng.int(lo.length)] : this.q.greedy(s, lo);
         options.push(labelOf(o));
         const run = runOf(o);
-        let R = 0;
+        // Semi-Markov update: rewards inside the option are discounted step by step, and the next situation's
+        // value by γ^(the option's length) — a long detour is worth less than the same treats sooner.
+        let R = 0, raw = 0, disc = 1;
         while (w.tick < maxT) {
           const st = run.next(w);
           if (isDone(st)) break;
           const { r, end } = applyStep(st);
-          R += r;
+          R += disc * r;
+          raw += r;
+          disc *= OPTION_GAMMA_PER_TICK;
           if (end) { ended = true; break; }
         }
-        R += this.fb(s, o);
-        total += R;
+        const fb = this.fb(s, o);
+        R += fb;
+        total += raw + fb;
         const s2 = observe(w);
-        this.q.update(s, o, R, ended ? -1 : s2, this.gamma, this.alpha, this.rng.next());
+        this.q.update(s, o, R, ended ? -1 : s2, disc, this.alpha, this.rng.next());
         s = s2;
       }
     }

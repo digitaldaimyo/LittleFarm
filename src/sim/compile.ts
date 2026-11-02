@@ -3,7 +3,7 @@ import { isNode, paramOf } from '../domain/spec';
 import { kindOfCard } from '../domain/registry';
 import { Rng, hashSeed } from './rng';
 import type { Obj, SimEvent, Tally, World } from './world';
-import { addObject, bfsDistance, blocks, def, distTo, emptyStore, emptyWorld, eventOfKey, inArea, inBounds, isSolidAt, nearest, objectsAt, onGround, seedPrice } from './world';
+import { addObject, aimIs, objIs, bfsDistance, blocks, def, distTo, emptyStore, emptyWorld, eventOfKey, inArea, inBounds, isSolidAt, nearest, objectsAt, onGround, seedPrice } from './world';
 
 /** How a rule's End try judges the try: by SUCCESS (default), or it counts as a success ✓ / a miss ✗ outright. */
 export type EndOutcome = 'judge' | 'success' | 'fail';
@@ -126,7 +126,7 @@ function compileQuantity(n: SpecNode): Quantity {
       return ({ w }) => w.counts?.pecks ?? 0;
     case 'q.count': {
       const k = kindArg(n, 'what');
-      return ({ w }) => w.objects.filter((o) => o.kind === k && onGround(o)).length;
+      return ({ w }) => w.objects.filter((o) => objIs(w, o, k) && onGround(o)).length;
     }
     default:
       throw new Error(`Cannot compile quantity ${n.cardId}`);
@@ -137,7 +137,7 @@ export function compileCondition(n: SpecNode): Cond {
   switch (n.cardId) {
     case 'cond.at': {
       const k = kindArg(n, 'what');
-      return ({ w }) => objectsAt(w, w.pet.x, w.pet.y).some((o) => o.kind === k);
+      return ({ w }) => objectsAt(w, w.pet.x, w.pet.y).some((o) => objIs(w, o, k));
     }
     case 'cond.near': {
       const k = kindArg(n, 'what');
@@ -146,7 +146,7 @@ export function compileCondition(n: SpecNode): Cond {
     }
     case 'cond.carrying': {
       const k = kindArg(n, 'what');
-      return ({ w }) => w.pet.carrying !== null && w.objects.find((o) => o.id === w.pet.carrying)?.kind === k;
+      return ({ w }) => w.pet.carrying !== null && aimIs(w.objects.find((o) => o.id === w.pet.carrying)?.kind, k);
     }
     case 'cond.delivered': {
       const k = kindArg(n, 'what');
@@ -169,7 +169,7 @@ export function compileCondition(n: SpecNode): Cond {
     case 'cond.watered': {
       const k = kindArg(n, 'what');
       const c = paramOf(n, 'count', 1);
-      return ({ w }) => w.objects.filter((o) => o.kind === k && o.wet && onGround(o)).length >= c;
+      return ({ w }) => w.objects.filter((o) => objIs(w, o, k) && o.wet && onGround(o)).length >= c;
     }
     case 'cond.inArea': {
       const k = kindArg(n, 'what');
@@ -177,7 +177,7 @@ export function compileCondition(n: SpecNode): Cond {
       const c = paramOf(n, 'count', 1);
       return ({ w }) => {
         const ar = w.areas?.find((x) => x.name === a);
-        return !!ar && w.objects.filter((o) => o.kind === k && onGround(o) && inArea(ar, o.x, o.y)).length >= c;
+        return !!ar && w.objects.filter((o) => objIs(w, o, k) && onGround(o) && inArea(ar, o.x, o.y)).length >= c;
       };
     }
     case 'cond.allInArea': {
@@ -238,7 +238,7 @@ export function compileCondition(n: SpecNode): Cond {
     }
     case 'cond.nextTo': {
       const k = kindArg(n, 'what');
-      return ({ w }) => w.objects.some((o) => o.kind === k && onGround(o) && Math.max(Math.abs(o.x - w.pet.x), Math.abs(o.y - w.pet.y)) === 1);
+      return ({ w }) => w.objects.some((o) => objIs(w, o, k) && onGround(o) && Math.max(Math.abs(o.x - w.pet.x), Math.abs(o.y - w.pet.y)) === 1);
     }
     case 'cond.kindNear': {
       const a = kindArg(n, 'what'), b = kindArg(n, 'near');
@@ -296,29 +296,29 @@ export function compileCondition(n: SpecNode): Cond {
 export function compileEvent(n: SpecNode): (e: SimEvent) => boolean {
   const k = kindArg(n, 'what');
   switch (n.cardId) {
-    case 'ev.reach': return (e) => e.type === 'reach' && e.kind === k;
-    case 'ev.enter': return (e) => e.type === 'enter' && e.kind === k;
-    case 'ev.pickup': return (e) => e.type === 'pickup' && e.kind === k;
-    case 'ev.drop': return (e) => e.type === 'drop' && e.kind === k;
+    case 'ev.reach': return (e) => e.type === 'reach' && aimIs(e.kind, k);
+    case 'ev.enter': return (e) => e.type === 'enter' && aimIs(e.kind, k);
+    case 'ev.pickup': return (e) => e.type === 'pickup' && aimIs(e.kind, k);
+    case 'ev.drop': return (e) => e.type === 'drop' && aimIs(e.kind, k);
     case 'ev.deliver': {
       const into = kindArg(n, 'into');
-      return (e) => e.type === 'deliver' && e.kind === k && e.into === into;
+      return (e) => e.type === 'deliver' && aimIs(e.kind, k) && e.into === into;
     }
     case 'ev.tick': return (e) => e.type === 'tick';
     case 'ev.bump': return (e) => e.type === 'bump';
     case 'ev.stay': return (e) => e.type === 'stay';
     case 'ev.fill': return (e) => e.type === 'fill';
     case 'ev.gate': { const st = paramOf(n, 'state', 'closed'); return (e) => e.type === 'gate' && e.state === st; }
-    case 'ev.shoo': return (e) => (e.type === 'shoo' || e.type === 'scare') && e.kind === k;
-    case 'ev.peck': return (e) => e.type === 'peck' && e.kind === k;
-    case 'ev.entersArea': { const a = areaArg(n, 'area'); return (e) => e.type === 'enterArea' && e.kind === k && e.area === a; }
-    case 'ev.leavesArea': { const a = areaArg(n, 'area'); return (e) => e.type === 'leaveArea' && e.kind === k && e.area === a; }
-    case 'ev.water': return (e) => e.type === 'water' && e.kind === k;
-    case 'ev.plant': return (e) => e.type === 'plant' && e.kind === k;
-    case 'ev.lift': return (e) => e.type === 'lift' && e.kind === k;
+    case 'ev.shoo': return (e) => (e.type === 'shoo' || e.type === 'scare') && aimIs(e.kind, k);
+    case 'ev.peck': return (e) => e.type === 'peck' && aimIs(e.kind, k);
+    case 'ev.entersArea': { const a = areaArg(n, 'area'); return (e) => e.type === 'enterArea' && aimIs(e.kind, k) && e.area === a; }
+    case 'ev.leavesArea': { const a = areaArg(n, 'area'); return (e) => e.type === 'leaveArea' && aimIs(e.kind, k) && e.area === a; }
+    case 'ev.water': return (e) => e.type === 'water' && aimIs(e.kind, k);
+    case 'ev.plant': return (e) => e.type === 'plant' && aimIs(e.kind, k);
+    case 'ev.lift': return (e) => e.type === 'lift' && aimIs(e.kind, k);
     case 'ev.empty': {
       const into = kindArg(n, 'into');
-      return (e) => e.type === 'empty' && e.kind === k && e.into === into;
+      return (e) => e.type === 'empty' && aimIs(e.kind, k) && e.into === into;
     }
     default:
       throw new Error(`Cannot compile event ${n.cardId}`);

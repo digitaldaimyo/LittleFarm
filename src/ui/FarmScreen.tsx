@@ -8,7 +8,13 @@ import { chapterById, startChapter } from '../game/tutorial';
 import { store, useStore } from './store';
 import { WorldView } from './WorldView';
 import { PetSprite, type PetMood } from './art';
-import { activePet, activeRevision, customSkills, getSkill, isCertified, petById } from '../game/pets';
+import { activePet, activeRevision, getSkill, isCertified, petById } from '../game/pets';
+import { capabilityOf, deployedRevision, eligibility, kindOfSkill } from '../game/capability';
+import { TRAIT_AIMS } from '../sim/world';
+import type { Skill } from '../game/types';
+
+/** Skills and routines with a revision that can run (the capabilities a player can assign directly). */
+const runnable = (p: Pet): Skill[] => p.skills.filter((k) => !!deployedRevision(k));
 import { OBJECT_BY_ID } from '../domain/packs/farm';
 
 const FARM_TARGETS = ['berry', 'carrot', 'egg', 'chicken', 'crow', 'firefly', 'gate', 'bin', 'home', 'well', 'pond', 'bush', 'patch', 'rock', 'tree'];
@@ -36,7 +42,7 @@ interface JobCard {
   locked?: string;
 }
 
-function jobCards(pet: Pet, unlocks: string[]): JobCard[] {
+function jobCards(pet: Pet): JobCard[] {
   const hasNav = !!activeRevision(getSkill(pet, 'Approach')) || !!activeRevision(getSkill(pet, 'Avoid'));
   const hasFetch = !!activeRevision(getSkill(pet, 'Fetch'));
   return [
@@ -47,7 +53,7 @@ function jobCards(pet: Pet, unlocks: string[]): JobCard[] {
     { id: 'plant', title: BEHAVIOR_LABEL.plant, blurb: 'Plant empty soil: carrots (seed 1), sunflowers (2), pumpkins (3). Seeds are paid from your coins.', needs: 'Approach', locked: hasNav ? undefined : 'Needs a saved Approach skill' },
     { id: 'tote', title: BEHAVIOR_LABEL.tote, blurb: 'Lift a basket that’s half full, empty it at the house or a shed, and set it down by the crops — six crops in one trip. Also moves an empty basket next to the fields.', needs: 'Fetch', locked: hasFetch ? undefined : 'Needs a saved Fetch skill' },
     { id: 'rest', title: 'Nap', blurb: 'Rest to refill energy.' },
-    { id: 'skill', title: 'Run a skill', blurb: 'Run one of your own skills, aimed at anything on the farm.', locked: customSkills(pet).length ? undefined : unlocks.includes('custom') ? 'Invent a skill in the pen first (Pet binder → New skill)' : 'Unlocks with a certified Approach' },
+    { id: 'skill', title: 'Run a skill', blurb: 'Run any skill or routine it has learned, aimed at anything on the farm — or at any ripe crop, or storage with room.', locked: runnable(pet).length ? undefined : 'Teach a skill in the pen first' },
     { id: 'manual', title: 'Steer', blurb: 'Guide them yourself: tap tiles or use arrow keys.' },
   ];
 }
@@ -118,8 +124,8 @@ export function FarmScreen() {
       else {
         p.assignment.mode = 'job';
         p.assignment.job = id;
-        if (id === 'skill' && !customSkills(p).some((k) => k.name === p.assignment.skillName)) {
-          const k = customSkills(p)[0];
+        if (id === 'skill' && !runnable(p).some((k) => k.name === p.assignment.skillName)) {
+          const k = runnable(p).find((x) => x.custom) ?? runnable(p)[0];
           p.assignment.skillName = k?.name;
           p.assignment.target = activeRevision(k ?? null)?.focus;
         }
@@ -230,7 +236,7 @@ export function FarmScreen() {
         <div className="panel">
           <h3>Jobs</h3>
           <div className="job-deck" role="radiogroup" aria-label="Job assignment">
-            {jobCards(pet, g.progress.unlocks).map((j) => (
+            {jobCards(pet).map((j) => (
               <button key={j.id} data-tut={`job-${j.id}`} role="radio" aria-checked={selected === j.id} disabled={!!j.locked} className={`job ${selected === j.id ? 'sel' : ''} ${j.locked ? 'locked' : ''}`} onClick={() => setJob(j.id)}>
                 <span className="job-title">{j.title}</span>
                 <span className="job-blurb">{j.locked ?? j.blurb}</span>
@@ -251,16 +257,23 @@ export function FarmScreen() {
           {selected === 'skill' && (
             <div className="sleeve-inline">
               <label className="small">Skill{' '}
-                <select value={pet.assignment.skillName ?? ''} onChange={(e) => store.mutate((st) => { const p = st.pets.find((x) => x.id === pet.id)!; p.assignment.skillName = e.target.value; p.assignment.target = activeRevision(getSkill(p, e.target.value))?.focus; store.runtime.exec = null; store.runtime.inv = null; })}>
-                  {customSkills(pet).map((k) => <option key={k.id} value={k.name}>{k.nickname ?? k.name} (r{k.activeRev})</option>)}
+                <select value={pet.assignment.skillName ?? ''} onChange={(e) => store.mutate((st) => { const p = st.pets.find((x) => x.id === pet.id)!; p.assignment.skillName = e.target.value; p.assignment.target = deployedRevision(getSkill(p, e.target.value))?.focus; store.runtime.exec = null; store.runtime.inv = null; })}>
+                  {runnable(pet).map((k) => <option key={k.id} value={k.name}>{k.nickname ?? k.name} (r{deployedRevision(k)?.rev}{k.pinnedRev !== undefined ? ', pinned' : ''}){kindOfSkill(k) === 'routine' ? ' · routine' : ''}</option>)}
                 </select>
               </label>
               <label className="small">aimed at{' '}
                 <select value={pet.assignment.target ?? ''} onChange={(e) => store.mutate((st) => { st.pets.find((x) => x.id === pet.id)!.assignment.target = e.target.value; store.runtime.exec = null; store.runtime.inv = null; })}>
+                  {Object.entries(TRAIT_AIMS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
                   {FARM_TARGETS.map((k) => <option key={k} value={k}>{OBJECT_BY_ID[k]?.name ?? k}</option>)}
                 </select>
               </label>
-              <span className="small muted">Ends when the skill’s own SUCCESS holds (or time runs out), then repeats.</span>
+              {(() => {
+                const k = getSkill(pet, pet.assignment.skillName ?? '');
+                const cap = k ? capabilityOf(k, pet.assignment.target) : null;
+                const el = cap ? eligibility(g, pet, cap) : null;
+                return el && (!el.ok ? <span className="small warn-text" data-tut="skill-eligibility">Can’t run now: {el.text}</span> : el.warnings.map((x, i) => <span key={i} className="small warn-text">{x}</span>));
+              })()}
+              <span className="small muted">Ends when the skill’s own SUCCESS holds — or time runs out, which counts as a timeout, not a success — then repeats.</span>
             </div>
           )}
           {selected === 'auto' && (

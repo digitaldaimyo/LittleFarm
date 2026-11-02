@@ -2,17 +2,15 @@ import type { Action, Obj, PetBody, SimEvent, World } from '../sim/world';
 import { addObject, inBounds, isSolidAt, bfsPath, cloneTally, def, emptyStore, emptyWorld, seedPrice, storeAccepts, storeCount, inArea, nearest, nudgeableGate, objectsAt, onGround, step, type StepOptions } from '../sim/world';
 import { nightfallRequests, postRequests, trackRequests } from './requests';
 import { Rng } from '../sim/rng';
-import { FetchController, FetchRun, NavRun, SkillRun, isDone, randomMove, type ExecStep, type NoteRunner } from '../learning/policies';
+import { FetchController, FetchRun, NavRun, SkillRun, isDone, randomMove, type ExecStep, type Outcome } from '../learning/policies';
 import { navTimeout } from '../learning/episodes';
 import {
   BEHAVIOR_LABEL, describeContext, learnedSelect, rulesSelect, updateExecutive,
   type BehaviorId, type ExecContext, type Invocation,
 } from '../learning/executive';
 import type { FarmPlan, FarmState, GameState, Helper, Pet, Plot } from './types';
-import { activeRevision, getSkill, navPolicyFor, petById, routineRunFor, sensePolicyOf } from './pets';
-import { compileCondition, compileStage, withTarget } from '../sim/compile';
-import type { SpecNode, StageSpec } from '../domain/types';
-import { walk } from '../domain/spec';
+import { activeRevision, getSkill, navPolicyFor, petById, sensePolicyOf } from './pets';
+import { deployedRevision, runCapability } from './capability';
 import { addJournal, addJournalOnce } from './journal';
 import { checkUnlocks } from './progression';
 import { GUARD_HOLD, choosePlanRow, compilePlan, newPlanRuntime, planInvocation, planUsesMemory, starterPlan, updatePlanValue, type PlanRuntime } from './plan';
@@ -219,15 +217,6 @@ export function toteTarget(s: GameState): Obj | null {
   return stray && cropSpot(s) ? stray : null;
 }
 
-/** A skill's note-writing rules, compiled for the farm (aimed at `target`), or null if it writes none. */
-function noteRunnerFor(stage: StageSpec | undefined, target: string): NoteRunner | null {
-  if (!stage) return null;
-  const writes = (r: SpecNode) => { let w = false; walk(r, (x) => { if (x.cardId === 'eff.note') w = true; }); return w; };
-  const rules = stage.rules.filter((r) => r.args.off !== 1 && writes(r));
-  if (!rules.length) return null;
-  return compileStage({ ...stage, rules, learner: { ...stage.learner, focus: target } });
-}
-
 /** Is this object still a valid destination (on the ground)? */
 function storeCountOf(w: World, o: Obj): boolean {
   return onGround(o) && w.objects.includes(o);
@@ -427,7 +416,7 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
           // Carrying: head for the chosen storage, not just the nearest of its kind (there may be several baskets).
           const st = phase === 'carry' && dest && storeCountOf(world, dest) ? only(world, dest.kind, dest.id, () => run!.next(world)) : run!.next(world);
           if (!isDone(st)) return st;
-          if (st.done === 'fail') return st;
+          if (st.done !== 'success') return st;
           if (phase === 'go') { phase = 'pick'; return 'pick'; }
           phase = 'drop';
           return 'drop';
@@ -460,7 +449,7 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
               if (!onGround(b)) return { done: 'fail', reason: 'someone else has it' };
               if (world.pet.x === b.x && world.pet.y === b.y) { phase = storeCount(b) > 0 ? 'unload' : 'place'; return 'lift'; }
               const st = walkTo(world, b.kind, b.id, `b${b.id}`);
-              if (isDone(st) && st.done === 'fail') return st;
+              if (isDone(st) && st.done !== 'success') return st;
               if (isDone(st)) continue;
               return st;
             }
@@ -474,7 +463,7 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
               if (!dest) return { done: 'fail', reason: 'nowhere to empty it' };
               if (world.pet.x === dest.x && world.pet.y === dest.y) return 'drop';
               const st = walkTo(world, dest.kind, dest.id, `d${dest.id}`);
-              if (isDone(st) && st.done === 'fail') return st;
+              if (isDone(st) && st.done !== 'success') return st;
               if (isDone(st)) continue;
               return st;
             }
@@ -495,7 +484,7 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
                 if (path?.length) return path[0];
               }
               const st = walkTo(world, spot.plot.kind, spot.plot.id, `p${spot.plot.id}`);
-              if (isDone(st) && st.done === 'fail') return st;
+              if (isDone(st) && st.done !== 'success') return st;
               if (isDone(st)) { walkFor = 'arrived'; const target = spot; const path = bfsPath(world, world.pet.x, world.pet.y, (x, y) => x === target.x && y === target.y, true); if (path?.length) return path[0]; spot = null; continue; }
               return st;
             }
@@ -517,7 +506,7 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
           if (sowed) return { done: 'success', reason: 'planted' };
           const st = walk.next(world);
           if (!isDone(st)) return st;
-          if (st.done === 'fail') return st;
+          if (st.done !== 'success') return st;
           sowed = true;
           return 'plant';
         },
@@ -532,7 +521,7 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
           const g = world.objects.filter((o) => o.kind === 'gate' && onGround(o) && !!o.open !== want)
             .sort((a, b) => (Math.abs(a.x - world.pet.x) + Math.abs(a.y - world.pet.y)) - (Math.abs(b.x - world.pet.x) + Math.abs(b.y - world.pet.y)))[0];
           if (!g) return { done: 'success', reason: 'gate set' };
-          if (t++ >= inv.timeout) return { done: 'fail', reason: 'timeout' };
+          if (t++ >= inv.timeout) return { done: 'timeout', reason: 'timeout' };
           if (Math.abs(g.x - world.pet.x) + Math.abs(g.y - world.pet.y) <= 1 && nudgeableGate(world) === g) return 'nudge';
           if (Math.abs(g.x - world.pet.x) + Math.abs(g.y - world.pet.y) === 0) return randomMove(world, rt.rng); // step out to shut it
           return nav ? nav.act(world, 'gate') : randomMove(world, rt.rng);
@@ -552,18 +541,9 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
       const soldBefore = totalSold(w);
       return new FetchRun(ctrl, nav, item, 'home', tmo, inv.timeout, rt.rng, soldBefore, totalSold);
     }
-    case 'skill': {
-      const rev = activeRevision(getSkill(pet, inv.args.skill ?? ''));
-      if (rev?.stage && getSkill(pet, inv.args.skill ?? '')?.kind === 'routine') {
-        const run = routineRunFor(pet, rev, inv.args.target || undefined, rt.rng, inv.timeout);
-        return run ?? { next: () => ({ done: 'fail', reason: 'routine missing' }) };
-      }
-      const policy = rev ? sensePolicyOf(rev) : null;
-      if (!rev || !policy) return { next: () => ({ done: 'fail', reason: 'skill missing' }) };
-      const target = inv.args.target || rev.focus || 'berry';
-      const cond = rev.success && rev.outcome !== 'survive' ? withTarget(target, () => compileCondition(rev.success!)) : null;
-      return new SkillRun(policy, target, inv.timeout, cond ? (world, base) => cond({ w: world, prev: world.pet, base }) : null, noteRunnerFor(rev.stage, target));
-    }
+    case 'skill':
+      // One runtime for every learned skill, routine or Fetch (direct jobs and plan rows alike).
+      return runCapability(s, pet, inv.args.skill ?? '', inv.args.target || undefined, rt.rng, inv.timeout);
     case 'rest': {
       let t = 0;
       return {
@@ -606,7 +586,7 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
   const tmo = navTimeout(w.w, w.h, pet.traits.persistence);
   const timeouts: Record<BehaviorId, number> = { forage: tmo * 3 + 6, // farm life: walk to the crop, then carry it to storage or the house
     deliver: tmo * 3, plant: Math.round(tmo * 1.5) + 4, tote: tmo * 4 + 10, rest: 30, wander: 6, manual: 1e9, skill: 60, catch: tmo, goto: tmo, gate: tmo + 2 };
-  const custom = pet.assignment.skillName ? activeRevision(getSkill(pet, pet.assignment.skillName)) : null;
+  const custom = pet.assignment.skillName ? deployedRevision(getSkill(pet, pet.assignment.skillName)) : null;
   if (custom) timeouts.skill = Math.round((custom.maxTicks ?? 40) * (1 + pet.traits.persistence));
   const navigator = pet.assignment.navigator;
   const mk = (b: BehaviorId, chosenBy: Invocation['chosenBy'], why: string): Invocation => ({
@@ -641,7 +621,7 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
     if (rt.plan.starts.length > 60) rt.plan.starts.shift();
     rt.plan.fires[row.id] = (rt.plan.fires[row.id] ?? 0) + 1;
     let t = timeouts[row.job.behaviorId];
-    if (row.job.behaviorId === 'skill') t = Math.round((activeRevision(getSkill(pet, row.job.args.skill ?? ''))?.maxTicks ?? 40) * (1 + pet.traits.persistence));
+    if (row.job.behaviorId === 'skill') t = Math.round((deployedRevision(getSkill(pet, row.job.args.skill ?? ''))?.maxTicks ?? 40) * (1 + pet.traits.persistence));
     const why = `Plan row ${row.index + 1}: ${row.label}${guarded ? ' (sticking with it — rows were flip-flopping)' : learned ? ' (learned pick)' : ''}`;
     const inv = planInvocation(row, t, why);
     if (row.job.behaviorId === 'deliver') inv.args.item = ctx.carrying ? 'carried item' : 'carrot or egg';
@@ -675,32 +655,32 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
   return mk(choice, 'rules', describeContext(ctx));
 }
 
-function finishInvocation(s: GameState, pet: Pet, rt: FarmRuntime, result: 'success' | 'fail', reason: string, fx: FarmFx[]): void {
+function finishInvocation(s: GameState, pet: Pet, rt: FarmRuntime, result: Outcome, reason: string, fx: FarmFx[]): void {
   const inv = rt.inv!;
   const coins = s.resources.coins - rt.startCoins;
   const ticks = s.farm.tick - rt.startTick;
-  rt.recentFail = result === 'fail';
+  rt.recentFail = result !== 'success';
   if (rt.stats) {
     const st = (rt.stats[inv.behaviorId] ??= { started: 0, ok: 0, fail: 0, timeout: 0, ticks: 0 });
     st.started++; st.ticks += ticks;
-    if (result === 'success') st.ok++; else if (reason === 'timeout') st.timeout++; else st.fail++;
+    if (result === 'success') st.ok++; else if (result === 'timeout') st.timeout++; else st.fail++;
   }
   if (inv.chosenBy === 'learned' && rt.ctx) {
     let r = coins - 0.01 * ticks;
     if (inv.behaviorId === 'rest') r += rt.ctx.energyLow ? 1.5 : -0.5;
-    if (result === 'fail') r -= 0.3;
+    if (result !== 'success') r -= 0.3;
     updateExecutive(pet.executive.table, rt.ctx, inv.behaviorId, r);
   }
   if (inv.chosenBy === 'plan' && inv.args.learned && pet.plan && rt.ctx && inv.args.row) {
     let r = coins - 0.01 * ticks;
     if (inv.behaviorId === 'rest') r += rt.ctx.energyLow ? 1.5 : -0.5;
-    if (result === 'fail') r -= 0.3;
+    if (result !== 'success') r -= 0.3;
     updatePlanValue(pet.plan, rt.ctx, inv.args.row, r);
   }
   const w = s.farm.world;
-  if (result === 'fail' && inv.behaviorId !== 'wander') {
+  if (result !== 'success' && inv.behaviorId !== 'wander') {
     fx.push({ type: 'confused', x: w.pet.x, y: w.pet.y, text: reason });
-    if (reason === 'timeout') rt.jitter = 3 + rt.rng.int(3);
+    if (result === 'timeout' && inv.behaviorId !== 'skill') rt.jitter = 3 + rt.rng.int(3); // stuck walking: sniff around
   }
   if (result === 'success' && (inv.behaviorId === 'forage' || inv.behaviorId === 'deliver' || (inv.behaviorId === 'skill' && reason === 'goal reached'))) fx.push({ type: 'celebrate', x: w.pet.x, y: w.pet.y });
   s.farm.current = null;

@@ -58,7 +58,14 @@ export function randomMove(w: World, rng: Rng): Action {
   return rng.pick(open.length ? open : MOVES);
 }
 
-export type ExecStatus = { done: 'success' | 'fail'; reason: string };
+/**
+ * How a run ended. `timeout` is never success: a skill or routine that runs out of time without reaching its goal
+ * timed out (only *survive* skills — "stay dry until time's up" — succeed at time-up, and only if they survived).
+ */
+export type Outcome = 'success' | 'fail' | 'timeout' | 'interrupted' | 'cancelled';
+export type ExecStatus = { done: Outcome; reason: string };
+/** Ended in success (anything else — failure, timeout, interruption, cancellation — is not). */
+export const succeeded = (s: ExecStep): boolean => isDone(s) && s.done === 'success';
 export type ExecStep = Action | ExecStatus;
 export const isDone = (s: ExecStep): s is ExecStatus => typeof s === 'object';
 
@@ -74,7 +81,7 @@ export class NavRun {
   next(w: World): ExecStep {
     if (atFocus(w, this.focus)) return { done: 'success', reason: 'arrived' };
     if (!nearest(w, this.focus)) return { done: 'fail', reason: 'nothing to approach' };
-    if (this.ticks >= this.timeout) return { done: 'fail', reason: 'timeout' };
+    if (this.ticks >= this.timeout) return { done: 'timeout', reason: 'timeout' };
     this.ticks++;
     return this.policy ? this.policy.act(w, this.focus) : randomMove(w, this.rng);
   }
@@ -148,7 +155,7 @@ export class FetchRun {
   ) {}
   next(w: World): ExecStep {
     if ((this.countFn ? this.countFn(w) : w.delivered[this.item] ?? 0) > this.deliveredBefore) return { done: 'success', reason: 'delivered' };
-    if (this.ticks >= this.totalTimeout) return { done: 'fail', reason: 'timeout' };
+    if (this.ticks >= this.totalTimeout) return { done: 'timeout', reason: 'timeout' };
     for (let guard = 0; guard < 4; guard++) {
       if (!this.cur) {
         const o = this.ctrl.choose(w, this.item, this.dest);
@@ -189,6 +196,8 @@ export class SkillRun {
     private done: ((w: World, base?: Tally) => boolean) | null,
     /** The skill's rules that write notes: they run on the farm too (their treats don't). */
     private noteRunner: NoteRunner | null = null,
+    /** *Survive* skills: at time-up, did it survive (its FAIL never held)? Absent = time-up is a timeout. */
+    private survived: ((w: World) => boolean) | null = null,
   ) {}
   /** Lend the run's notes to the shared farm world while it reads or writes them. */
   private withNotes<T>(w: World, fn: () => T): T {
@@ -200,7 +209,7 @@ export class SkillRun {
     if (this.ticks === 0) { w.tally ??= {}; this.base = cloneTally(w.tally); } // start remembering from here
     return this.withNotes(w, () => {
       if (this.ticks > 0 && this.done?.(w, this.base)) return { done: 'success', reason: 'goal reached' };
-      if (this.ticks >= this.timeout) return { done: 'success', reason: 'time up' };
+      if (this.ticks >= this.timeout) return this.survived ? (this.survived(w) ? { done: 'success', reason: 'survived' } : { done: 'fail', reason: 'did not survive' }) : { done: 'timeout', reason: 'time up' };
       this.ticks++;
       return this.policy.act(w, this.target, this.base);
     });

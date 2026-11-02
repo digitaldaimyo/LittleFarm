@@ -262,11 +262,36 @@ export function legalActions(_w: World, abilities: string[]): Action[] {
   return out;
 }
 
+/**
+ * Trait aims: besides one kind ("berry"), a skill can be aimed at any ripe crop or at storage with room for what
+ * the pet carries. They're written `@crop` / `@storage` wherever a kind goes.
+ */
+export const TRAIT_AIMS: Record<string, string> = { '@crop': 'any ripe crop', '@storage': 'storage with room' };
+
+/** Is this kind what the aim means? (Kind level: "any crop" / "any storage"; plain aims are one kind.) */
+export function aimIs(kind: string | undefined, aim: string): boolean {
+  if (kind === undefined) return false;
+  if (aim.charCodeAt(0) !== 64 /* @ */) return kind === aim;
+  const d = def(kind);
+  return aim === '@crop' ? d.traits.includes('Crop') && d.carryable : aim === '@storage' ? !!d.storage : false;
+}
+
+/** Does this object match the aim right now? (`@storage` also needs room for whatever the pet is carrying.) */
+export function objIs(w: World, o: Obj, aim: string): boolean {
+  if (aim.charCodeAt(0) !== 64) return o.kind === aim;
+  if (!aimIs(o.kind, aim)) return false;
+  if (aim !== '@storage' || !o.store) return true;
+  const held = w.pet.carrying !== null ? w.objects.find((x) => x.id === w.pet.carrying) : undefined;
+  if (held && !def(held.kind).portable) return storeAccepts(o, held.kind);
+  return o.store.some((s) => s.kind === null || s.n === 0 || s.n < (def(o.kind).storage?.perSlot ?? Infinity));
+}
+
 export function nearest(w: World, kind: string, x = w.pet.x, y = w.pet.y): Obj | null {
   let best: Obj | null = null;
   let bd = Infinity;
+  const trait = kind.charCodeAt(0) === 64;
   for (const o of w.objects) {
-    if (o.kind !== kind || !onGround(o)) continue;
+    if ((trait ? !objIs(w, o, kind) : o.kind !== kind) || !onGround(o)) continue;
     const d = Math.abs(o.x - x) + Math.abs(o.y - y);
     if (d < bd || (d === bd && best && o.id < best.id)) {
       bd = d;

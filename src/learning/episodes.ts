@@ -89,7 +89,7 @@ export function runEpisode(cs: CompiledStage, seed: number, chooser: Chooser, op
   while (w.tick < cs.spec.maxTicks) {
     const c = chooser(w);
     const a: Action = isDone(c) ? 'wait' : c;
-    if (isDone(c) && c.done === 'fail') break; // executor gave up (timeout / nothing to do)
+    if (isDone(c) && c.done !== 'success') break; // executor gave up (timeout / nothing to do)
     const prev = { x: w.pet.x, y: w.pet.y };
     const events = step(w, a);
     const out = cs.evalStep(w, prev, events, rs);

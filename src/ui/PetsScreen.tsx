@@ -4,6 +4,7 @@ import { exportSkillCard, importSkillCard } from '../game/skillcard';
 import { useStore, store } from './store';
 import { PetSprite } from './art';
 import { activePet, activeRevision, isCertified, rollbackSkill, staleUses, subskillsFor } from '../game/pets';
+import { allowedOnFarm } from '../game/capability';
 import { recipeStage } from '../domain/recipes';
 import { evaluate } from '../learning/episodes';
 import { heldOutSeeds, policySpecFor } from '../learning/report';
@@ -86,6 +87,22 @@ function SkillHistory({ pet, k }: { pet: Pet; k: Skill }) {
       </div>
       {k.custom && <code className="small">{k.signature}</code>}
       {staleUses(pet, activeRevision(k)).length > 0 && <div className="diag warning small">Certified with {staleUses(pet, activeRevision(k)).map((u) => `${u.skill} r${u.trained}`).join(', ')}, which {staleUses(pet, activeRevision(k)).length > 1 ? 'have' : 'has'} changed since. Press “Compare revisions now” or re-test it in Curriculum.</div>}
+      <div className="row gap wrap small" data-tut="farm-use">
+        <label>On the farm{' '}
+          <select value={k.farmUse ?? 'auto'} onChange={(e) => s.mutate((g) => { const kk = g.pets.find((p) => p.id === pet.id)!.skills.find((x) => x.id === k.id)!; const v = e.target.value; if (v === 'auto') delete kk.farmUse; else kk.farmUse = v as 'on' | 'off'; })}>
+            <option value="auto">{isCertified(k) ? 'usable (certified)' : 'not yet (uncertified)'}</option>
+            <option value="on">always usable{isCertified(k) ? '' : ' (opt in)'}</option>
+            <option value="off">never on its own</option>
+          </select>
+        </label>
+        <label>Runs{' '}
+          <select value={k.pinnedRev ?? ''} onChange={(e) => s.mutate((g) => { const kk = g.pets.find((p) => p.id === pet.id)!.skills.find((x) => x.id === k.id)!; if (e.target.value === '') delete kk.pinnedRev; else kk.pinnedRev = Number(e.target.value); store.runtime.exec = null; })}>
+            <option value="">the active revision (follows retraining)</option>
+            {k.revisions.filter((r) => !r.tableDropped).map((r) => <option key={r.rev} value={r.rev}>pinned to r{r.rev}</option>)}
+          </select>
+        </label>
+        <span className="muted">{allowedOnFarm(k) ? `The farm may use ${k.name} on its own.` : `The farm won’t use ${k.name} unless you assign it.`}</span>
+      </div>
       <label className="small">Nickname <input value={k.nickname ?? ''} placeholder={k.name} maxLength={24} onChange={(e) => s.mutate((g) => { const kk = g.pets.find((p) => p.id === pet.id)!.skills.find((x) => x.id === k.id)!; kk.nickname = e.target.value || undefined; })} /></label>
       <table className="ledger">
         <thead><tr><th>Rev</th><th>Lesson</th><th>Tries</th><th>Held-out</th><th>Before</th><th>Transfer</th><th /></tr></thead>

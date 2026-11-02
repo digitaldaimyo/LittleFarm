@@ -1,5 +1,5 @@
 import type { Action, World } from '../sim/world';
-import { DIRS, MOVES, isHazardAt, isSolidAt, nearest, objectsAt } from '../sim/world';
+import { DIRS, MOVES, isHazardAt, isSolidAt, nearest, objIs, objectsAt } from '../sim/world';
 
 /**
  * Navigation observation: a compact, layout-independent state so a skill learned
@@ -53,7 +53,7 @@ export function navIndex(dir: number, db: number, blocked: number, hazard: numbe
 }
 
 export function atFocus(w: World, focus: string): boolean {
-  return objectsAt(w, w.pet.x, w.pet.y).some((o) => o.kind === focus);
+  return objectsAt(w, w.pet.x, w.pet.y).some((o) => objIs(w, o, focus));
 }
 
 /**

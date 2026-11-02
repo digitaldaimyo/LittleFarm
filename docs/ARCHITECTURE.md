@@ -117,6 +117,12 @@ The same simulator runs pens, evaluation and the farm. Fixed seed + fixed action
   - Pets may share container tiles (no `buddy` obstacle there). Claims cover crops and eggs, never storage.
 - **Saves v6:** the farm's bin gets an empty one-slot store; `sold` starts at 0.
 
+### Learned farm: capabilities and one runtime (roadmap phase 1)
+- `Outcome` (`learning/policies.ts`): `success | fail | timeout | interrupted | cancelled`; `succeeded()`. `NavRun`, `FetchRun`, `SkillRun`, `RoutineRun` and the farm's executors return `timeout` when time runs out. `SkillRun` / `RoutineRun` take an optional `survived` check for *survive* skills. The farm's stuck-recovery sniffing follows walking timeouts, not skill timeouts.
+- `game/capability.ts`: `Capability` (skill or routine × aim), `deployedRevision` (`Skill.pinnedRev`, else active), `allowedOnFarm` (`Skill.farmUse`), `eligibility` (reason codes plus warnings), `runCapability` (sense skills via `SkillRun` with notes and survive, Fetch via `FetchRun`, routines via `routineRunFor`), `noteRunnerFor`. The farm's `skill` behaviour (direct jobs and plan rows) calls `runCapability`.
+- Trait aims: `TRAIT_AIMS`, `aimIs(kind, aim)`, `objIs(w, o, aim)` in `sim/world.ts`; `nearest`, `atFocus`, *Standing on* and the compiled conditions and events use them.
+- Option learners (Fetch, routines) use a semi-Markov update: step-discounted option reward, and `OPTION_GAMMA_PER_TICK ** ticks` for the next value.
+
 ### Looser limits: Big brain, longer runs
 - `DoubleQ` keeps dense typed arrays up to `DENSE_MAX_STATES` (100,000) situations and a sparse `Map` of visited rows above that (or when asked). Both use Float32 values and the same update, so they compute identical tables (tested); `visits(s)` replaces direct array access. Serialisation is unchanged (`double-q/v1`, visited rows only).
 - `LearnerSpec.brain` (`'standard' | 'big'`), `BRAINS` limits (senses, situations, warning), `MAX_EPISODES` (100,000 sense / 20,000 composite), `MAX_TICKS` (400). Validation, the Pet binder meter and skill-card import read the brain's limits.

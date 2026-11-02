@@ -5,7 +5,16 @@ Status: **official roadmap**, decisions settled (section 8). **Phase 0 done:**
 - `tests/phase0.test.ts` pins defects 1a/1b, with to-dos for 2 and 3;
 - `FarmRuntime.stats` counts job outcomes, for benchmarks only.
 
-Next: phase 1.
+**Phase 1 done:**
+- **One outcome protocol.** Runs end in `success`, `fail`, `timeout`, `interrupted` or `cancelled`. A timeout is never success, and *survive* skills and routines succeed at time-up only if their FAIL never held (defects 1a/1b fixed).
+- **Capabilities** (`src/game/capability.ts`). A skill or routine plus an aim. `deployedRevision` runs the pinned revision while its table is kept, else the active one. `allowedOnFarm` covers certified-by-default, opt-in and switched off. `eligibility` gives a reason (missing skill, not allowed, nothing to aim at, paws full, too tired) plus stale-dependency warnings.
+- **One runtime.** `runCapability` starts sense skills, Fetch and routines. The farm's *Run a skill* job and plan rows both go through it, and any learned skill or routine can be assigned, presets included.
+- **Trait aims** `@crop` (any ripe crop) and `@storage` (storage with room for what the pet carries), wherever a kind is matched: nearest, at-focus, conditions, events (defect 3).
+- **Duration-aware option learning.** Option rewards are discounted per tick and the next value by 0.99^ticks (defect 2). Recipe numbers are unchanged within noise: Fetch 91% → 92%, Fetch routine 91% → 92%, Morning chores 83% → 82%. A per-tick γ of 0.9 collapsed Chores to 10%, hence 0.99.
+- **UI:** Pets → each skill: *On the farm* (usable when certified / always / never) and *Runs* (the active revision or pinned to rN). Farm → *Run a skill* lists every skill and routine and the trait aims, and says why one can't run now.
+- **Tests:** `tests/capability.test.ts`; the phase-0 defect tests now pass as ordinary tests. The farm baseline is unchanged (`npm run bench:farm`).
+
+Next: phase 2 (pen ↔ farm parity).
 
 **The commitment.** Everything a pet does on its own on the farm comes from a skill or routine the player taught it in the pen. No hidden job scripts. The farm executive is promoted from a fixed rule list to a learned, two-level decision-maker:
 - the **upper level** reads the farm and picks what to work on next (a responsibility);

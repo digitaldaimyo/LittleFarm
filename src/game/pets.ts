@@ -134,8 +134,11 @@ export function routineRunFor(p: Pet, rev: SkillRevision, target: string | undef
   if (!rev.stage) return null;
   const compiled = compileRoutine(rev.stage, subskillsFor(p), p.traits, target);
   const ctrl = RoutineController.from(rev.policy, compiled);
-  const goal = rev.stage.success && rev.stage.outcome !== 'survive' ? withTarget(target ?? rev.stage.learner.focus, () => compileCondition(rev.stage!.success!)) : null;
-  return new RoutineRun(compiled, ctrl, rng, timeout, goal ? (w) => goal({ w, prev: w.pet }) : null);
+  const aim = target ?? rev.stage.learner.focus;
+  const survive = rev.stage.outcome === 'survive';
+  const goal = rev.stage.success && !survive ? withTarget(aim, () => compileCondition(rev.stage!.success!)) : null;
+  const fail = survive && rev.stage.fail ? withTarget(aim, () => compileCondition(rev.stage!.fail!)) : null;
+  return new RoutineRun(compiled, ctrl, rng, timeout, goal ? (w) => goal({ w, prev: w.pet }) : null, survive ? (w) => !fail?.({ w, prev: w.pet }) : null);
 }
 
 export function customSkills(p: Pet): Skill[] {
