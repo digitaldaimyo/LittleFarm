@@ -30,6 +30,8 @@ export interface EpisodeTrace {
   reward: number;
   ticks: number;
   ruleCounts: Record<string, number>;
+  /** Per rule: the most treats one object earned in this try, and what kind it was (the loophole probe). */
+  sameObject?: Record<string, { n: number; kind: string }>;
   options?: string[];
 }
 
@@ -84,6 +86,8 @@ export function runEpisode(cs: CompiledStage, seed: number, chooser: Chooser, op
   const rs = cs.newRuleState();
   const frames: Frame[] = [];
   const ruleCounts: Record<string, number> = {};
+  const perObj = new Map<string, number>();
+  const sameObject: Record<string, { n: number; kind: string }> = {};
   let reward = 0;
   let ended = false;
   while (w.tick < cs.spec.maxTicks) {
@@ -96,7 +100,14 @@ export function runEpisode(cs: CompiledStage, seed: number, chooser: Chooser, op
     let r = out.reward;
     if (opts.extra) r += opts.extra(w, events);
     reward += r;
-    for (const h of out.hits) ruleCounts[h.ruleId] = (ruleCounts[h.ruleId] ?? 0) + 1;
+    for (const h of out.hits) {
+      ruleCounts[h.ruleId] = (ruleCounts[h.ruleId] ?? 0) + 1;
+      if (h.objId === undefined || h.amount <= 0) continue;
+      const k = `${h.ruleId}|${h.objId}`;
+      const n = (perObj.get(k) ?? 0) + 1;
+      perObj.set(k, n);
+      if (n > (sameObject[h.ruleId]?.n ?? 0)) sameObject[h.ruleId] = { n, kind: w.objects.find((o) => o.id === h.objId)?.kind ?? 'thing' };
+    }
     if (opts.record) frames.push({ x: w.pet.x, y: w.pet.y, carrying: w.pet.carrying !== null, a, r, hits: out.hits.length ? out.hits.map((h) => h.label) : undefined });
     if (out.end) { ended = true; break; }
   }
@@ -104,7 +115,7 @@ export function runEpisode(cs: CompiledStage, seed: number, chooser: Chooser, op
   return {
     label: opts.label, seed, initial, frames,
     success: cs.isSuccess(w), failed: cs.isFail(w),
-    reward, ticks: w.tick, ruleCounts,
+    reward, ticks: w.tick, ruleCounts, sameObject,
   };
 }
 

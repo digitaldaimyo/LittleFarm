@@ -43,6 +43,22 @@ Playtesting the learned-farm build turned up four things:
   - The same check feeds the report: "the same berry earned 14 treats in one try" (a sharper coaching tip than today's ratio).
 - **Gate:** the pick / drop / re-pick hack is reproduced in a test before the fix and gone after it. The audit and probe pass for every card and limit.
 
+**Phase 1 done:**
+- **Storage keeps identity:**
+  - Each slot remembers the ids that went in (`StoreSlot.ids`). Taking an item out gives back the same id; the item is revived, or recreated with that id if the farm tidied it away.
+  - Emptying a basket into a shed moves the ids along, and its deliveries now carry the item's id. The house sells, so those items are gone.
+  - Stock with no known identity (old saves, *Stocked storage*) gets an id the first time it comes out and keeps it from then on.
+  - **No save bump was needed:** the field is additive, and stock without ids behaves as described above.
+- **Reproduced first:** "pick up berry (once per object)" with a basket paid 4 treats for one berry over pick → store → pick → store → pick. It now pays 1.
+- **Wiring audit** (`tests/wiring.test.ts`):
+  - every card reads as a sentence, type-checks in its slot, and compiles and runs where it belongs;
+  - every event card (all 18) fires in its own scene, and not when the pet just stands still;
+  - once, once per object and cooldown hold through pick up, put down, storage, lifting and emptying, including deliveries.
+  - **No other wiring faults were found.** Two earlier "failures" were my test's mistakes: the generic sample put "berry" in every slot, and "Pecked" takes the crop that was pecked, not the crow.
+- **Loophole probe:**
+  - Each practice try records, per rule, the most treats any one object earned. The loophole warning now adds "The same berry earned N treats in one try."
+  - In the probe pen (berry, basket, house), *every time* pickups get farmed and named, while *once per object* now shows no loophole.
+
 ### Phase 2: Compare upgrade and new measures
 
 - **Compare:**

@@ -46,7 +46,7 @@ describe('storage: baskets and sheds', () => {
     const { w, c } = holding('berry', 'bin');
     expect(step(w, 'drop').map((e) => e.type)).toContain('deliver');
     for (let i = 0; i < 5; i++) putIn(w, c, 'berry');
-    expect(c.store).toEqual([{ kind: 'berry', n: 6 }]);
+    expect(c.store).toMatchObject([{ kind: 'berry', n: 6 }]);
     expect(putIn(w, c, 'berry').map((e) => e.type)).toContain('full');
     const carrotTry = holding('carrot', 'bin');
     carrotTry.c.store = [{ kind: 'berry', n: 2 }];

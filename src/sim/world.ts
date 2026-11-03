@@ -46,7 +46,17 @@ export function plantableHere(w: World): Obj | undefined {
   return w.seedCoins === undefined || w.seedCoins >= seedPrice(soil.crop ?? 'carrot') ? soil : undefined;
 }
 
-export interface StoreSlot { kind: string | null; n: number }
+/**
+ * One storage slot: what kind it holds and how many. `ids` remembers which items went in (most recent last), so an
+ * item taken out again is the same item — same id — and "once per object" counts it once wherever it has been.
+ * Items whose identity isn't known (old saves, *Stocked storage*) get a new id the first time they come out.
+ */
+export interface StoreSlot { kind: string | null; n: number; ids?: number[] }
+
+/** Take one item's identity out of a slot (undefined if not known). */
+function popId(slot: StoreSlot): number | undefined {
+  return slot.ids?.pop();
+}
 
 /** Can this container take one `kind` right now? (Unlimited if it has no store.) */
 export function storeAccepts(o: Obj, kind: string): boolean {
@@ -351,7 +361,14 @@ export function step(w: World, action: Action, opts: StepOptions = {}): SimEvent
       events.push({ type: 'pickup', x: p.x, y: p.y, kind: target.kind, objId: target.id });
     } else if (store) {
       const slot = store.store!.filter((s) => s.n > 0).sort((a, b) => b.n - a.n)[0];
-      const item = addObject(w, slot.kind!, p.x, p.y);
+      // The same item that went in (revived, or recreated with its id if the farm tidied it away), else a new one.
+      const id = popId(slot);
+      const old = id !== undefined ? w.objects.find((o) => o.id === id) : undefined;
+      const item = old ?? addObject(w, slot.kind!, p.x, p.y);
+      if (id !== undefined && !old) item.id = id;
+      item.kind = slot.kind!;
+      item.x = p.x; item.y = p.y;
+      item.delivered = false;
       slot.n--;
       if (slot.n === 0) slot.kind = null;
       item.carried = true;
@@ -423,6 +440,7 @@ export function step(w: World, action: Action, opts: StepOptions = {}): SimEvent
           const slot = container.store.find((s) => s.kind === c.kind && s.n < cap) ?? container.store.find((s) => s.kind === null || s.n === 0)!;
           slot.kind = c.kind;
           slot.n++;
+          (slot.ids ??= []).push(c.id);
         }
         c.delivered = true;
         w.delivered[c.kind] = (w.delivered[c.kind] ?? 0) + 1;
@@ -456,18 +474,20 @@ function dropBasket(w: World, b: Obj, events: SimEvent[]): void {
     for (const slot of b.store ?? []) {
       while (slot.kind && slot.n > 0 && storeAccepts(into, slot.kind)) {
         const kind = slot.kind;
+        const id = popId(slot);
         if (into.store) {
           const cap = def(into.kind).storage?.perSlot ?? Infinity;
           const to = into.store.find((s) => s.kind === kind && s.n < cap) ?? into.store.find((s) => s.kind === null || s.n === 0)!;
           to.kind = kind;
           to.n++;
+          if (id !== undefined) (to.ids ??= []).push(id); // identity moves with the item (the house sells it: gone)
         }
         slot.n--;
         if (slot.n === 0) slot.kind = null;
         moved++;
         w.delivered[kind] = (w.delivered[kind] ?? 0) + 1;
         if (def(into.kind).sells) w.sold = (w.sold ?? 0) + 1;
-        events.push({ type: 'deliver', x: p.x, y: p.y, kind, into: into.kind });
+        events.push({ type: 'deliver', x: p.x, y: p.y, kind, into: into.kind, ...(id !== undefined ? { objId: id } : {}) });
       }
     }
     if (moved) events.push({ type: 'empty', x: p.x, y: p.y, kind: b.kind, objId: b.id, into: into.kind });

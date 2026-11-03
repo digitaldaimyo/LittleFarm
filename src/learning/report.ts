@@ -1,3 +1,4 @@
+import { REGISTRY } from '../domain/registry';
 import type { Diagnostic, StageSpec } from '../domain/types';
 import { EVAL_SEED_BASE, TRANSFER_SEED_BASE, evalSeeds } from '../domain/recipes';
 import type { SerializedQ } from './qtable';
@@ -70,6 +71,9 @@ export function buildReport(stage: StageSpec, traits: Traits, before: Serialized
  * Heuristic exploit finder: a positive, non-terminal rule that pays many times per try
  * while the actual task mostly fails. This is a hint, not a proof of safety.
  */
+/** A thing's name for messages ("berry"). */
+const OBJ_NAME = (kind: string) => (REGISTRY.objects.get(kind)?.name ?? kind).toLowerCase();
+
 export function findExploits(stage: StageSpec, r: EvalResult): ExploitFinding[] {
   const out: ExploitFinding[] = [];
   for (const e of r.ledger) {
@@ -80,11 +84,16 @@ export function findExploits(stage: StageSpec, r: EvalResult): ExploitFinding[] 
     if (r.successRate >= Math.max(0.5, stage.evaluation.minimumSuccessRate)) continue;
     let replay: EpisodeTrace | undefined;
     for (const t of r.traces) if (!replay || (t.ruleCounts[e.ruleId] ?? 0) > (replay.ruleCounts[e.ruleId] ?? 0)) replay = t;
+    // The loophole probe: did one object keep paying? (Then "once per object" is the repair; if it already has
+    // it, something is wrong with the pen — say so plainly.)
+    let same: { n: number; kind: string } | undefined;
+    for (const t of r.traces) { const x = t.sameObject?.[e.ruleId]; if (x && (!same || x.n > same.n)) same = x; }
+    const repeat = same && same.n >= 3 ? ` The same ${OBJ_NAME(same.kind)} earned ${same.n} treats in one try.` : '';
     out.push({
       ruleId: e.ruleId, perEpisode: perEp, replay,
       diagnostic: {
         severity: 'warning', code: 'reward-exploit', nodeId: e.ruleId,
-        message: `Your pet found a loophole: “${e.label}” paid about ${perEp.toFixed(1)} times per try, but the task succeeded only ${Math.round(r.successRate * 100)}% of the time. The pet is doing exactly what the treats asked for — just not what you meant.`,
+        message: `Your pet found a loophole: “${e.label}” paid about ${perEp.toFixed(1)} times per try, but the task succeeded only ${Math.round(r.successRate * 100)}% of the time.${repeat} The pet is doing exactly what the treats asked for — just not what you meant.`,
         repair: { label: 'Pay only once per object', action: 'limit-per-object', ruleId: e.ruleId },
       },
     });
