@@ -149,6 +149,16 @@ Playtesting the learned-farm build turned up four things:
 - **Keyboard:** focus moves with the picker.
 - **Gate:** browser checks that build a nested rule (WHEN … IF Compare(Stored(nearest basket) ≥ 3) THEN …) with no manual closes; existing lessons still pass.
 
+**Phase 4 done:**
+- **Jumping (`nextEmptySlot` in ui/edit.ts):** after a pick, the picker goes to the first empty *required* slot inside the new card, depth first. If there's none, it goes to the next empty required slot inside the card where this chain of picks began. A saved card's first blank still comes first. Optional slots (Compare's *Than*, Stored's *In this one*, a qualifier's *from*) never hold it open.
+- **Done:** when nothing required is left, the picker closes. If the first card of the chain has settings (Compare's comparison and number, a note's name), it shows only those, with **Change card…** and **Done**; the hand is tucked away.
+- **Leaving:** **Escape** closes it, and so does a tap outside the picker and the cards. Keyboard focus moves to the picker's first card, or its first setting. Tapping any slot by hand starts a fresh chain (`setUi` resets it).
+- **Undo** is unchanged: one step per card placed.
+- **Gate:**
+  - unit tests (`tests/focus.test.ts`) cover the jump order, nested chains, optional slots and fresh chains;
+  - browser checks build IF Compare(Stored(…) ≥ …) in a new rule with no manual closes: Compare → its Measure, Stored → its What, then only Compare's settings, Done closes. Escape and a tap outside close too;
+  - every Field Guide lesson still passes with the new picker.
+
 ### Phase 5: Recipe tune-ups and clean-up
 
 - **Plant** (75% against a 70% bar) and **Open the gate** (65%, so not certified with default traits) are tuned to certify reliably. Gate: ≥ 80% on 5 training seeds at default traits.
