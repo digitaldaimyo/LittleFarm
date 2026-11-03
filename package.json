@@ -15,7 +15,9 @@
     "bench": "vite-node scripts/bench.ts",
     "bench:farm": "vite-node scripts/bench-farm.ts",
     "evidence": "vite-node scripts/tutorial-evidence.ts",
-    "e2e": "node scripts/e2e-guide.mjs"
+    "e2e": "node scripts/e2e-guide.mjs",
+    "e2e:cards": "node scripts/e2e-guide.mjs --only=cards",
+    "cards:ref": "WRITE_CARD_REF=1 vite-node scripts/card-reference.ts"
   },
   "dependencies": {
     "react": "18.3.1",

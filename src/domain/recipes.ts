@@ -495,8 +495,10 @@ function openGate(): StageSpec {
     success: n('cond.gates', { state: 'open' }),
     fail: null,
     seed: 1212, maxTicks: 40,
-    learner: { skill: 'Open the gate', template: 'sense', focus: 'gate', episodes: 3000,
-      senses: [n('sense.nearest', { what: n('ref.target') }), n('sense.blocked')] },
+    // Heading (as Approach has) keeps it from looping around rocks: 2 senses at 3,000 tries scored 55–95% across seeds;
+    // with heading at 6,000, 95–100% on 8 seeds.
+    learner: { skill: 'Open the gate', template: 'sense', focus: 'gate', episodes: 6000,
+      senses: [n('sense.nearest', { what: n('ref.target') }), n('sense.blocked'), n('sense.heading')] },
     evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.7 },
   };
 }
@@ -522,8 +524,9 @@ function shutGate(): StageSpec {
     success: n('cond.gates', { state: 'closed' }),
     fail: null,
     seed: 1313, maxTicks: 40,
-    learner: { skill: 'Shut the gate', template: 'sense', focus: 'gate', episodes: 4000,
-      senses: [n('sense.nearest', { what: n('ref.target') }), n('sense.blocked')] },
+    // With heading (as Approach has): 90–100% on 8 seeds; without it, 65–95%.
+    learner: { skill: 'Shut the gate', template: 'sense', focus: 'gate', episodes: 6000,
+      senses: [n('sense.nearest', { what: n('ref.target') }), n('sense.blocked'), n('sense.heading')] },
     evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.7 },
   };
 }

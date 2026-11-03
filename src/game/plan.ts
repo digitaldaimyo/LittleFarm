@@ -239,7 +239,14 @@ export function execValues(p: Pet): ExecValues {
  * turn that off (phase 6: exploring on the job cost 10–20% against a good order at the earlier 2–10%).
  */
 export function deployExploreExec(p: Pet): number {
-  return p.executive.explore === false ? 0 : 0.01 + 0.04 * p.traits.curiosity;
+  return keepsLearning(p) ? 0.01 + 0.04 * p.traits.curiosity : 0;
+}
+/**
+ * Does the pet keep trying other picks on the farm? The player's choice if they made one; otherwise yes until the
+ * pet has practised in an executive lesson (pen & cards phase 5: exploring on the job cost 10–20% of a good order).
+ */
+export function keepsLearning(p: Pet): boolean {
+  return p.executive.explore ?? !(p.executive.values?.practised ?? 0);
 }
 
 /**

@@ -6,6 +6,7 @@
  * Needs a build (`npm run build`) and Playwright with a Chromium browser available.
  * Run: npm run e2e            (both parts)
  *      npm run e2e -- --from=4 (part 2 only)
+ *      npm run e2e:cards       (pen & card checks only, ~1 minute: editor, focus, your cards, sound)
  */
 import { spawn, execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -21,7 +22,9 @@ const PORT = 4179;
 const CUE_COUNT = 45; // cues in src/audio/kit.ts
 const URL = `http://localhost:${PORT}/`;
 const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'ignore' });
-const FROM = Number(process.argv.find((a) => a.startsWith('--from='))?.slice(7) ?? 1);
+// --only=cards: just the pen & card checks (editor, focus, cards, sound) from the prepared save — no lessons.
+const CARDS_ONLY = process.argv.includes('--only=cards');
+const FROM = CARDS_ONLY ? 4 : Number(process.argv.find((a) => a.startsWith('--from='))?.slice(7) ?? 1);
 const SAVE = join(mkdtempSync(join(tmpdir(), 'pen-deck-e2e-')), 'lessons-4-9.json');
 const failures = [];
 const check = (ok, what) => { console.log(`${ok ? '✓' : '✗'} ${what}`); if (!ok) failures.push(what); };
@@ -143,7 +146,7 @@ try {
   await page.close();
   }
 
-  console.log('\nPart 2: lessons 4–9 from a prepared save');
+  console.log(CARDS_ONLY ? '\nPen & card checks from a prepared save (no lessons)' : '\nPart 2: lessons 4–14 from a prepared save');
   // ── Lessons 4–9, from a prepared save (lessons 1–3 done, certified Approach, Fetch/Avoid/own skills unlocked)
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 950 }, acceptDownloads: true });
@@ -178,6 +181,7 @@ try {
     check(['Pay for results', 'Practise where it works', 'Invent a skill'].every((t) => list.includes(t)) && (await page.locator('.guide-item:has-text("Pay for results") button:has-text("Start")').count()) === 1, 'prepared save: lessons 4–6 offered');
     check(list.includes('Opens once you’ve saved a skill you invented'), 'locked lessons say what opens them');
 
+    if (!CARDS_ONLY) { // lessons 4–14 and the roster (skipped by --only=cards)
     // Lesson 4: Pay for results, not effort
     await start('Pay for results');
     await nav('Teach');
@@ -426,6 +430,7 @@ try {
     check(!/Basket run/.test(await page.textContent('[data-tut="job-auto"]')), 'baskets: no basket runs without a Basket run routine (Fetch alone isn’t enough: no built-in jobs)');
     await page.click('[data-tut="pet-card"] button:has-text("Teach Pip")'); // Pip is the active pet again for what follows
 
+    } // end of lessons 4–14 and the roster
     // Teaching polish (phase A): build "end on shoo chicken" the old way, get warned, repair it, train it.
     await nav('Teach');
     await tab('Curriculum');
@@ -536,7 +541,7 @@ try {
     const a2 = await page.evaluate(() => window.__penDeckAudio);
     const want2 = ['train.loophole', 'train.certified', 'ui.unlock', 'skill.save', 'card.remove', 'guide.step', 'guide.offer', 'guide.done'];
     const missing2 = want2.filter((c) => !a2.cues.includes(c));
-    check(!missing2.length, `sound: lessons 4–9 cues played (loophole, certified, unlock, save) ${missing2.length ? `(missing ${missing2.join(', ')})` : ''}`);
+    if (!CARDS_ONLY) check(!missing2.length, `sound: lessons 4–9 cues played (loophole, certified, unlock, save) ${missing2.length ? `(missing ${missing2.join(', ')})` : ''}`);
     // The music box (off by default): switch it on, hear notes scheduled, switch it off.
     await nav('Settings');
     await page.check('[data-tut="music-on"]');

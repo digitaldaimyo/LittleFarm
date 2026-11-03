@@ -143,7 +143,7 @@ export interface Pet {
    * How Auto picks among responsibilities: the player's order ('rules'), or learned values ('learned', phase 5).
    * `table` is the retired bandit's (kept so old saves load); `values` are the learned executive's.
    */
-  executive: { mode: 'rules' | 'learned'; table: ExecutiveTable; decisions: number; values?: ExecValues; /** Learned picks keep trying things on the farm (default on). */ explore?: boolean };
+  executive: { mode: 'rules' | 'learned'; table: ExecutiveTable; decisions: number; values?: ExecValues; /** Learned picks keep trying things on the farm (unset: on until the pet has practised). */ explore?: boolean };
   /** Which learned skill or routine does each farm job (learned-farm phase 3); absent = the job's own recipe/name. */
   jobSkills?: Partial<Record<string, string>>;
   feedback: Record<string, Record<string, number>>;

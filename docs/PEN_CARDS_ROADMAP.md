@@ -166,6 +166,16 @@ Playtesting the learned-farm build turned up four things:
 - **Browser test split:** pens and cards in one run, the Field Guide lessons in another, so card changes don't replay all 13 lessons.
 - **Docs:** README, GAME_DESIGN, ARCHITECTURE and TESTING; a card reference table generated from the registry.
 
+**Phase 5 done:**
+- **Recipes certify reliably** at default traits (`tests/tuneups.test.ts`, 6 training seeds including each recipe's own):
+  - **Plant** already did: 85–95%. The 75% seen earlier was one unlucky seed.
+  - **Open the gate** and **Shut the gate** gained the **heading** sense, as Approach has, and 6,000 tries. They now score 90–100% on 8 seeds, against 55–95% before. More tries alone didn't help, and neither did a longer try: the pets were looping around rocks.
+- **Learned picks stop exploring on the farm once the pet has practised;** untrained pets keep exploring. The player's "keep learning on the farm" switch overrides either way, and its label says which default applies. In `bench:farm --learned`, learned Auto earns 698 vs 733 for the player's order on the standard farm (95%, up from 83%) and 561 vs 671 held-out (84%; it was 81% with exploring). On the held-out farm the gap comes from what was learned, not from exploring.
+- **Browser test split:** `npm run e2e:cards` runs only the pen and card checks (editor, focus, your cards, play it yourself, sound) from the prepared save, in about 17 seconds. `npm run e2e` still plays every lesson as well.
+- **Card reference:** `docs/CARD_REFERENCE.md` is generated from the registry by `npm run cards:ref` and lists every card by sheet with its slots, settings and hint. `tests/cardref.test.ts` fails if it's out of date.
+
+**The pen & cards roadmap is complete.**
+
 ## Follow-up (not in this push)
 
 - Qualifiers as **aims** for skills and jobs (Approach → furthest berry from the house; Harvest → crop nearest the basket). This needs the farm runtime to aim at one object rather than a kind.

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { PlanMat } from './PlanMat';
-import { compilePlan, rankWeight, starterPlan } from '../game/plan';
+import { compilePlan, keepsLearning, rankWeight, starterPlan } from '../game/plan';
 import { Tips } from './Tips';
 import { LayoutPanel, layoutTap, openLayout } from './LayoutPanel';
 import { farmTips } from '../game/coach';
@@ -349,7 +349,7 @@ function ExecutiveLesson({ pet }: { pet: Pet }) {
         <button className="btn small" data-tut="exec-practise" disabled={busy} onClick={practise}>{busy ? 'Practising…' : 'Practise deciding (4 farm days)'}</button>
         {v && <button className="btn ghost small" onClick={() => { if (confirm(`Forget what ${pet.name} learned about choosing? Skills are kept.`)) { store.mutate((g) => { delete g.pets.find((x) => x.id === pet.id)!.executive.values; }); setCmp(null); } }}>Forget what it learned</button>}
       </div>
-      <label className="small"><input type="checkbox" checked={pet.executive.explore !== false} onChange={(e) => store.mutate((g) => { g.pets.find((x) => x.id === pet.id)!.executive.explore = e.target.checked; })} /> keep learning on the farm (tries something else 1–5% of the time, by Curiosity)</label>
+      <label className="small"><input type="checkbox" checked={keepsLearning(pet)} onChange={(e) => store.mutate((g) => { g.pets.find((x) => x.id === pet.id)!.executive.explore = e.target.checked; })} /> keep learning on the farm (tries something else 1–5% of the time, by Curiosity){pet.executive.explore === undefined ? ` — ${keepsLearning(pet) ? 'on until it has practised' : 'off now that it has practised'}` : ''}</label>
       {v && Object.keys(v.upper).length > 0 && <ExecutiveInspector pet={pet} />}
       {cmp && (
         <table className="small compare" data-tut="exec-compare">
