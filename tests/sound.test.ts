@@ -42,6 +42,7 @@ describe('sound cues', () => {
   it('a real farm run (with a night) only produces effects the mapping knows about, including dusk and dawn', () => {
     const s = newGame();
     const p = adoptPet(s, 'Pip', 'meadow');
+    p.traits = { curiosity: 0.5, persistence: 0.5, caution: 0.5 }; // adoptPet's temperament is random
     trainAndSave(s, p, recipeStage('go-to-berry'));
     giveFarmJobs(s, p);
     const rt = createRuntime(s.farm);

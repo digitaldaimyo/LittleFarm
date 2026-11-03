@@ -1,7 +1,7 @@
 import type { SpecNode } from '../domain/types';
 import { REGISTRY } from '../domain/registry';
 import { node } from '../domain/spec';
-import { compileEvent, countSince, resolveKind, withTarget } from '../sim/compile';
+import { compileEvent, countSince, resolveKind, storedCount, withTarget } from '../sim/compile';
 import type { Action, Tally, World } from '../sim/world';
 import { DIRS, MOVES, def, inArea, isHazardAt, isSolidAt, nearest, nudgeableGate, objIs, objectsAt, onGround, plantableHere, storeCount, type Area } from '../sim/world';
 
@@ -160,6 +160,11 @@ function senseFn(n: SpecNode, target: string): (w: World, base?: Tally) => numbe
       return (w) => MOVES.indexOf(w.pet.facing);
     case 'sense.carrying':
       return (w) => (w.pet.carrying !== null ? 1 : 0);
+    case 'sense.stored': {
+      // How many of a kind are stored (any storage, or the basket carried), in bands: 0, 1–2, 3–5, 6+.
+      const k = resolveKind(n.args.what, target);
+      return (w) => { const c = storedCount(w, k); return c === 0 ? 0 : c <= 2 ? 1 : c <= 5 ? 2 : 3; };
+    }
     case 'sense.stock':
       // How full the nearest storage is — or the basket in its paws: 0 empty (or none), 1 some, 2 full.
       return (w) => {

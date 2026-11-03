@@ -30,6 +30,8 @@ export interface Obj {
   store?: StoreSlot[];
   /** Field plots (soil / patch): which crop is (or will be) planted here. Default carrot. */
   crop?: string;
+  /** Plots on the farm (bush / patch): ticks until the next crop is ripe (the Time until ripe measure). */
+  ripeIn?: number;
   /** Farm layout: part of a fixed structure (the orchard's fence and gate) — can't be moved or removed. */
   fixed?: boolean;
 }
@@ -136,6 +138,8 @@ export interface World {
   energyPen?: boolean;
   /** Items sold (dropped at a container that sells, i.e. the farm's house). */
   sold?: number;
+  /** …and how many of each kind (the Sold measure). */
+  soldKinds?: Record<string, number>;
   /** Notes your rules wrote this try (flags and counters, 0–9). Absent until a rule writes one. */
   notes?: Record<string, number>;
   /** Set when a rule ends the try as a success (✓) or a miss (✗); otherwise SUCCESS decides. */
@@ -444,7 +448,7 @@ export function step(w: World, action: Action, opts: StepOptions = {}): SimEvent
         }
         c.delivered = true;
         w.delivered[c.kind] = (w.delivered[c.kind] ?? 0) + 1;
-        if (def(container.kind).sells) w.sold = (w.sold ?? 0) + 1;
+        if (def(container.kind).sells) { w.sold = (w.sold ?? 0) + 1; (w.soldKinds ??= {})[c.kind] = (w.soldKinds[c.kind] ?? 0) + 1; }
         events.push({ type: 'deliver', x: p.x, y: p.y, kind: c.kind, objId: c.id, into: container.kind });
       } else if (container) {
         events.push({ type: 'full', x: p.x, y: p.y, kind: c.kind, objId: c.id, into: container.kind });
@@ -486,7 +490,7 @@ function dropBasket(w: World, b: Obj, events: SimEvent[]): void {
         if (slot.n === 0) slot.kind = null;
         moved++;
         w.delivered[kind] = (w.delivered[kind] ?? 0) + 1;
-        if (def(into.kind).sells) w.sold = (w.sold ?? 0) + 1;
+        if (def(into.kind).sells) { w.sold = (w.sold ?? 0) + 1; (w.soldKinds ??= {})[kind] = (w.soldKinds[kind] ?? 0) + 1; }
         events.push({ type: 'deliver', x: p.x, y: p.y, kind, into: into.kind, ...(id !== undefined ? { objId: id } : {}) });
       }
     }

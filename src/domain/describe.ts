@@ -43,6 +43,10 @@ export function describe(n: SpecNode | null | undefined, ctx: DescribeCtx): stri
     const count = Number(n.args.count ?? 1);
     return `“${describe(isNode(n.args.event) ? n.args.event : null, ctx)}” has happened${count > 1 ? ` at least ${count} times` : ''}`;
   }
+  if (n.cardId === 'cond.compare' && isNode(n.args.than)) {
+    // Measure against measure: "berries stored in any storage > carrots stored in any storage".
+    return `${describe(isNode(n.args.quantity) ? n.args.quantity : null, ctx)} ${paramText(n, 'op')} ${describe(n.args.than, ctx)}`;
+  }
   if (n.cardId === 'cond.just') return `“${describe(isNode(n.args.event) ? n.args.event : null, ctx)}” just happened`;
   const phrase = card.presentation.phrase ?? card.presentation.title;
   return phrase.replace(/\{([a-zA-Z]+)\}/g, (_, id: string) => {

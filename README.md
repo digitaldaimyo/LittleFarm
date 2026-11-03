@@ -110,6 +110,7 @@ The **First lesson** banner (lesson 1 of the Field Guide) walks you through this
   - The *Orchard expansion* grows the farm to 16×12 with a **gate**; *Nudge* opens or shuts it.
   - From day 2, gentle **rain** waters every plot and keeps crows away.
   - Each dawn, neighbours pin up to three optional **requests**, each with a hint and a lesson link.
+- **Measuring things:** *Compare* checks a measure against a number or another measure (`< ≤ = ≠ ≥ >`). Measures: Count (lying around), **Stored** (in any storage, baskets, sheds or the carried basket), **Sold / delivered**, Distance and **Distance between** two things, Energy, Seed money, Water carried, Step, Note value, **Time until ripe**, Pecks. The **Storage of…** sense lets a pet learn from stock levels. Baskets and sheds in pens hold real storage, as on the farm.
 - **Responsibilities (Auto):** what a pet on Auto looks after, written with the same cards: **WHEN** conditions hold, **USE** a job (**OR USE** others), optionally **UNTIL** a condition holds. Higher in the list = more important.
   - **Needs come first:** a tired pet rests until refreshed (a basket in its paws is put down first); at night it sleeps, unless a responsibility's WHEN mentions night (fireflies).
   - **Commitment:** with UNTIL, the pet sticks with a responsibility until it holds; only a need, or a failed job after 60 ticks, pulls it away. Without UNTIL, each finished job counts.

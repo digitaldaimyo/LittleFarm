@@ -119,12 +119,14 @@ function regrow(s: GameState): void {
       p.timer = 0;
       if (field && plotObj) { plotObj.kind = 'soil'; plotObj.wet = false; plotObj.crop = p.crop; continue; }
     }
-    if (field && (!plotObj || plotObj.kind === 'soil')) { p.timer = 0; continue; } // not planted yet
+    if (field && (!plotObj || plotObj.kind === 'soil')) { p.timer = 0; if (plotObj) delete plotObj.ripeIn; continue; } // not planted yet
     p.timer += plotObj?.wet ? 2 : 1; // watered plots grow twice as fast
     if (p.timer >= GROW_TICKS[p.crop] && !objectsAt(w, p.x, p.y).some((o) => o.kind === p.crop)) {
       p.objId = addObject(w, p.crop, p.x, p.y).id;
       if (plotObj) plotObj.wet = false; // the soil dries out with each harvest
     }
+    // What cards can read (Time until ripe): ticks left, 0 while a ripe crop sits here.
+    if (plotObj) plotObj.ripeIn = p.objId !== null ? 0 : Math.max(0, GROW_TICKS[p.crop] - p.timer);
   }
 }
 

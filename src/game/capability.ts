@@ -111,10 +111,13 @@ export function noteRunnerFor(stage: StageSpec | undefined, target: string): Not
  */
 export function sinceStart(w: World, cond: (ctx: { w: World; prev: World['pet']; base?: Tally }) => boolean): (world: World, base?: Tally) => boolean {
   const before = { ...w.delivered };
+  const soldBefore = { ...(w.soldKinds ?? {}) };
   return (world, base) => {
     const delivered: Record<string, number> = {};
     for (const [k, v] of Object.entries(world.delivered)) delivered[k] = v - (before[k] ?? 0);
-    return cond({ w: { ...world, delivered }, prev: world.pet, base });
+    const soldKinds: Record<string, number> = {};
+    for (const [k, v] of Object.entries(world.soldKinds ?? {})) soldKinds[k] = v - (soldBefore[k] ?? 0);
+    return cond({ w: { ...world, delivered, soldKinds }, prev: world.pet, base });
   };
 }
 

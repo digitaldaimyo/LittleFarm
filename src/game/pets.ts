@@ -141,7 +141,9 @@ export function routineRunFor(p: Pet, rev: SkillRevision, target: string | undef
   const fail = survive && rev.stage.fail ? withTarget(aim, () => compileCondition(rev.stage!.fail!)) : null;
   // On the farm, deliveries made before this run started don't count toward its goal.
   const before = startWorld ? { ...startWorld.delivered } : null;
-  const since = (w: World): World => (before ? { ...w, delivered: Object.fromEntries(Object.entries(w.delivered).map(([k, v]) => [k, v - (before[k] ?? 0)])) } : w);
+  const soldBefore = startWorld ? { ...(startWorld.soldKinds ?? {}) } : null;
+  const minus = (now: Record<string, number>, then: Record<string, number>) => Object.fromEntries(Object.entries(now).map(([k, v]) => [k, v - (then[k] ?? 0)]));
+  const since = (w: World): World => (before ? { ...w, delivered: minus(w.delivered, before), soldKinds: minus(w.soldKinds ?? {}, soldBefore!) } : w);
   return new RoutineRun(compiled, ctrl, rng, timeout, goalOverride ?? (goal ? (w) => goal({ w: since(w), prev: w.pet }) : null), survive ? (w) => !fail?.({ w, prev: w.pet }) : null);
 }
 

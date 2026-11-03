@@ -89,6 +89,20 @@ Playtesting the learned-farm build turned up four things:
   - old saves load with unchanged meaning;
   - a "keep 3 berries in the basket" pen trains without notes.
 
+**Phase 2 done:**
+- **Compare:** the right side is a number (0–100) or another measure (*Than*), with `< ≤ = ≠ ≥ >`. It reads "berry stored in any storage > carrot stored in any storage". Old Compare cards (≤ / ≥ / = with a number) keep their meaning.
+- **New measures:**
+  - **Stored**: any storage, baskets, sheds, or the carried basket.
+  - **Sold / delivered**: per kind. A new `World.soldKinds` counter tracks sales. Pens count this try; on the farm, inside a skill, counting starts when the skill starts.
+  - **Distance between** any two things (the closest pair).
+  - **Energy**, **Seed money**, **Water carried**, **Step**, **Note value**.
+  - **Time until ripe**: the farm mirrors each plot's timer onto its bush or patch (`Obj.ripeIn`). It reads 0 when one is ripe and 99 when nothing grows (pens have no growing plots).
+- **New sense, "Storage of…":** stored counts in bands (none, 1–2, 3–5, 6+).
+- **Pen baskets and sheds now hold real storage, as on the farm** (a basket: 6 of one kind). Before, a pen basket took anything and counted nothing, so *Stored* would always read 0 in a pen. Existing recipes and lessons are unaffected; layouts are identical.
+- **Starter content:** nothing built in counted by hand. The starter responsibilities use storage levels, which already read storage directly, so none needed rewriting.
+- **Gate (`tests/measures.test.ts`):** every measure has a scripted test, plus all six comparisons, measure against measure, old saves, and a farm responsibility that uses Stored. The "keep 3 berries in the basket" pen, with **stored berries ≥ 3** as SUCCESS and no notes, trains to **75% (random choices 0%)**.
+- **What we learned:** this pen is a routine (Approach → berry, pick up, Approach → basket, put down). As a plain sense skill it didn't learn even at 30,000 tries: the "three stored" treat never fired in practice. A chain of several deliveries is a routine's job. The Field Guide's advice ("combine skills") already says so.
+
 ### Phase 3: Qualifiers
 
 - **New object cards** (output: Object):

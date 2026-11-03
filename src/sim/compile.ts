@@ -128,9 +128,68 @@ function compileQuantity(n: SpecNode): Quantity {
       const k = kindArg(n, 'what');
       return ({ w }) => w.objects.filter((o) => objIs(w, o, k) && onGround(o)).length;
     }
+    case 'q.stored': {
+      const k = kindArg(n, 'what');
+      const where = paramOf(n, 'where', 'any');
+      return ({ w }) => storedCount(w, k, where);
+    }
+    case 'q.sold': {
+      const k = kindArg(n, 'what');
+      const mode = paramOf(n, 'mode', 'sold');
+      return ({ w }) => {
+        const tab = mode === 'sold' ? w.soldKinds ?? {} : w.delivered;
+        return Object.entries(tab).reduce((a, [kind, v]) => a + (aimIs(kind, k) ? v : 0), 0);
+      };
+    }
+    case 'q.between': {
+      const a = kindArg(n, 'from'), b = kindArg(n, 'what');
+      return ({ w }) => {
+        let best = 99;
+        for (const o of w.objects) {
+          if (!onGround(o) || !aimIs(o.kind, a)) continue;
+          for (const q of w.objects) if (q !== o && onGround(q) && aimIs(q.kind, b)) best = Math.min(best, Math.abs(o.x - q.x) + Math.abs(o.y - q.y));
+        }
+        return best;
+      };
+    }
+    case 'q.energy':
+      return ({ w }) => w.petEnergy ?? 100;
+    case 'q.seed':
+      return ({ w }) => w.seedCoins ?? 100;
+    case 'q.water':
+      return ({ w }) => w.pet.water ?? 0;
+    case 'q.step':
+      return ({ w }) => w.tick;
+    case 'q.note': {
+      const name = noteName(n);
+      return ({ w }) => w.notes?.[name] ?? 0;
+    }
+    case 'q.ripe': {
+      const k = kindArg(n, 'what');
+      return ({ w }) => {
+        if (w.objects.some((o) => onGround(o) && aimIs(o.kind, k))) return 0;
+        let best = 99;
+        for (const o of w.objects) if (onGround(o) && o.ripeIn !== undefined && aimIs(o.crop ?? (o.kind === 'bush' ? 'berry' : 'carrot'), k)) best = Math.min(best, o.ripeIn);
+        return best;
+      };
+    }
     default:
       throw new Error(`Cannot compile quantity ${n.cardId}`);
   }
+}
+
+/** How many of `kind` are in storage: any, baskets (portable), sheds (fixed storage that doesn't sell), or the carried basket. */
+export function storedCount(w: World, kind: string, where = 'any'): number {
+  let n = 0;
+  for (const o of w.objects) {
+    if (!o.store || o.delivered) continue;
+    const portable = !!def(o.kind).portable;
+    const carried = w.pet.carrying === o.id;
+    if (where === 'carried' ? !carried : where === 'baskets' ? !portable : where === 'sheds' ? portable || !!def(o.kind).sells : false) continue;
+    if (!carried && !onGround(o)) continue;
+    for (const sl of o.store) if (sl.kind && sl.n > 0 && aimIs(sl.kind, kind)) n += sl.n;
+  }
+  return n;
 }
 
 export function compileCondition(n: SpecNode): Cond {
@@ -287,11 +346,13 @@ export function compileCondition(n: SpecNode): Cond {
     case 'cond.compare': {
       const qn = nodeArg(n, 'quantity');
       const q = qn ? compileQuantity(qn) : () => 0;
+      const tn = nodeArg(n, 'than');
+      const than = tn ? compileQuantity(tn) : null;
       const op = paramOf(n, 'op', '<=');
       const v = paramOf(n, 'value', 1);
       return (c) => {
-        const x = q(c);
-        return op === '<=' ? x <= v : op === '>=' ? x >= v : x === v;
+        const x = q(c), y = than ? than(c) : v;
+        return op === '<' ? x < y : op === '<=' ? x <= y : op === '>' ? x > y : op === '>=' ? x >= y : op === '!=' ? x !== y : x === y;
       };
     }
     default:
@@ -424,7 +485,10 @@ export function generateWorld(spec: StageSpec, seed: number): World {
     const put = (k: string, x: number, y: number) => {
       if (k === '@crop') return addObject(w, TRAIT_CROPS[rng.int(TRAIT_CROPS.length)], x, y);
       if (k === '@storage') { const b = addObject(w, 'bin', x, y); b.store = emptyStore('bin'); return b; }
-      return addObject(w, k, x, y);
+      const o = addObject(w, k, x, y);
+      // Baskets and sheds hold real storage in pens too (as on the farm), so Stored / Storage of… can count them.
+      if (def(k).storage) o.store = emptyStore(k);
+      return o;
     };
     for (const p of spec.environment) {
       if (p.cardId !== 'place.fixed') continue;
