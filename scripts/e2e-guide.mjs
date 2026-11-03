@@ -438,6 +438,31 @@ try {
     await newRule.locator('.slot:has-text("+ effect")').click();
     await page.click('.sleeve .card:has-text("End try")');
     check((await newRule.textContent()).includes('Reads: When Pip shoos chicken: end try (judged by SUCCESS)'), 'polish: a new rule reads back as a sentence');
+    // Editor focus (pen & cards phase 4): IF Compare(Stored(…) ≥ …) built without closing anything by hand.
+    const pickCard = async (title) => {
+      const vis = page.locator(`.sleeve .hand-row .card:has-text("${title}")`).first();
+      if (!(await vis.isVisible().catch(() => false))) await page.click('.sleeve details.more > summary');
+      await page.locator(`.sleeve .card:has-text("${title}")`).first().click();
+    };
+    await newRule.locator('.slot:has-text("+ condition")').click();
+    await pickCard('Compare');
+    check(/Measure/.test(await page.textContent('.sleeve .eyebrow')), 'focus: picking Compare jumps into its Measure slot');
+    await pickCard('Stored');
+    check(/What/.test(await page.textContent('.sleeve .eyebrow')), 'focus: picking Stored jumps into its What slot (optional “In this one” is skipped)');
+    await page.locator('.sleeve .hand-row .card:not([disabled])').first().click();
+    check((await page.locator('[data-tut="sleeve-done"]').count()) === 1 && (await page.locator('.sleeve .hand').count()) === 0, 'focus: with nothing required left, only Compare’s settings stay (the hand is tucked away)');
+    await page.click('[data-tut="sleeve-done"]');
+    check((await page.locator('.sleeve').count()) === 0, 'focus: Done closes the picker');
+    check(/stored in any storage/.test(await newRule.textContent()), 'focus: the nested condition reads back');
+    await newRule.locator('.slot:has-text("+ condition")').click();
+    await page.keyboard.press('Escape');
+    check((await page.locator('.sleeve').count()) === 0, 'focus: Escape closes the picker');
+    await newRule.locator('.slot:has-text("+ condition")').click();
+    await page.mouse.click(5, 5);
+    check((await page.locator('.sleeve').count()) === 0, 'focus: a tap outside closes the picker');
+    // Leave the recipe as it was for what follows: remove the experiment condition.
+    await newRule.locator('.node-handle[aria-label="Edit Compare"]').click();
+    await page.click('.sleeve button:has-text("Remove")');
     await page.click('[data-tut="success-slot"] .node-handle');
     await page.click('.sleeve button:has-text("Remove")');
     await page.click('[data-tut="success-slot"] .slot');

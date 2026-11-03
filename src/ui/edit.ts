@@ -1,4 +1,5 @@
 import type { SocketDef, SpecNode, StageSpec, Template, TypeExpr } from '../domain/types';
+import { socketActive } from '../domain/spec';
 import { REGISTRY } from '../domain/registry';
 import { cloneNode, findInStage, findNode, isNode, newId, node, walk } from '../domain/spec';
 import { fits, nominal } from '../domain/typecheck';
@@ -202,4 +203,34 @@ export function slotRole(stage: StageSpec, slot: SlotRef): SlotRole {
     if ((Array.isArray(r.args.if) ? r.args.if : []).some((c) => isNode(c) && inTree(c))) return 'if';
   }
   return 'other';
+}
+
+/** A node's required, active slots that are still empty — depth first (the order the picker visits them). */
+function firstEmptyIn(n: SpecNode, skip?: { slot: SlotRef; node: SpecNode }): SlotRef | null {
+  const card = REGISTRY.cards.get(n.cardId);
+  if (!card) return null;
+  for (const sock of card.sockets) {
+    if (!socketActive(n, sock, card.params?.find((p) => p.id === sock.when?.param)?.default)) continue;
+    const v = n.args[sock.id];
+    const filledHere = skip && skip.slot.parentId === n.id && skip.slot.socket === sock.id;
+    const children = (Array.isArray(v) ? v : isNode(v) ? [v] : []).filter(isNode);
+    if (filledHere && skip!.slot.index === null && !sock.many) children.splice(0, children.length, skip!.node);
+    else if (filledHere && sock.many && skip!.slot.index === null) children.push(skip!.node);
+    if (!children.length) { if (sock.required) return { parentId: n.id, socket: sock.id, index: null }; continue; }
+    for (const c of children) { const r = firstEmptyIn(c, skip); if (r) return r; }
+  }
+  return null;
+}
+
+/**
+ * Where the picker goes next after `node` was put into `slot` (phase 4): the first empty required slot inside it,
+ * else the next one inside the card where this chain of picks began (`root`). Null: nothing required is left.
+ * `stage` may be from before the pick: the filled slot is read as holding `node`.
+ */
+export function nextEmptySlot(stage: StageSpec, slot: SlotRef, node: SpecNode, root: SlotRef | null): SlotRef | null {
+  const inside = firstEmptyIn(node);
+  if (inside) return inside;
+  if (!root || (root.parentId === slot.parentId && root.socket === slot.socket && root.index === slot.index)) return null;
+  const rootNode = slotInfo(stage, root)?.current;
+  return rootNode ? firstEmptyIn(rootNode, { slot, node }) : null;
 }

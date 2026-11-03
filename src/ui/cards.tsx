@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { CardDef, SpecNode, StageSpec } from '../domain/types';
 import { REGISTRY } from '../domain/registry';
 import { isNode, socketActive } from '../domain/spec';
@@ -6,7 +7,7 @@ import { typeToString } from '../domain/typecheck';
 import { ObjectIcon } from './art';
 import type { SlotRef } from './store';
 import { store, useStore } from './store';
-import { createNode, noteNames, placeTemplate, saveTemplate, setSlot, slotInfo, slotRole, templatesFor } from './edit';
+import { createNode, nextEmptySlot, noteNames, placeTemplate, saveTemplate, setSlot, slotInfo, slotRole, templatesFor } from './edit';
 import { describe } from '../domain/describe';
 import { snapshotStage } from '../game/state';
 import { audio } from '../audio/engine';
@@ -102,13 +103,33 @@ export function ManySlot({ stage, parent, socket, label, errors }: { stage: Stag
 export function Sleeve({ stage, onChange }: { stage: StageSpec; onChange: (fn: (st: StageSpec) => void) => void }) {
   const s = useStore();
   const slot = s.ui.slot;
+  const ref = useRef<HTMLDivElement>(null);
+  const slotKey = slot ? `${slot.parentId}|${slot.socket}|${slot.index}|${s.ui.sleeveCompact ? 'c' : ''}` : '';
+  // Escape, or a tap outside the picker and the cards, closes it.
+  useEffect(() => {
+    if (!slotKey) return;
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') store.setUi({ slot: null }); };
+    const down = (e: PointerEvent) => {
+      const t = e.target as Element | null;
+      if (!t || !t.closest || t.closest('.sleeve, .slot, .node, .node-handle, .param, .modal, .tutorial')) return;
+      store.setUi({ slot: null });
+    };
+    document.addEventListener('keydown', key);
+    document.addEventListener('pointerdown', down);
+    return () => { document.removeEventListener('keydown', key); document.removeEventListener('pointerdown', down); };
+  }, [slotKey]);
+  // Keyboard focus follows the picker: its first card (or, with only settings showing, the first setting).
+  useEffect(() => {
+    const el = ref.current?.querySelector<HTMLElement>(s.ui.sleeveCompact ? '.params input, .params select, [data-tut="sleeve-done"]' : '.hand .card:not([disabled])');
+    el?.focus({ preventScroll: true });
+  }, [slotKey]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!slot) return null;
   const info = slotInfo(stage, slot);
   if (!info) return null;
   const n = info.current;
   const card = n ? cardOf(n) : undefined;
   return (
-    <div className="sleeve panel" aria-label="Sleeve">
+    <div className="sleeve panel" aria-label="Sleeve" ref={ref}>
       <div className="row between">
         <div>
           <div className="eyebrow">Sleeve · slot “{info.socket.label}” takes <code>{typeToString(info.socket.type)}</code></div>
@@ -163,16 +184,28 @@ export function Sleeve({ stage, onChange }: { stage: StageSpec; onChange: (fn: (
           }}>Save as one of your cards</button>
         </div>
       )}
+      {s.ui.sleeveCompact ? (
+        <div className="row gap">
+          <button className="btn ghost small" data-tut="sleeve-change" onClick={() => s.setUi({ sleeveCompact: false, pickRoot: null })}>Change card…</button>
+          <button className="btn small" data-tut="sleeve-done" onClick={() => s.setUi({ slot: null })}>Done</button>
+        </div>
+      ) : (
       <Hand stage={stage} slot={slot} onPick={(node, blank) => {
         let next: SlotRef | null = null;
         audio.play('card.snap');
         onChange((st) => { next = setSlot(st, slot, node); });
         store.mutate((g) => { g.recentCards = [node.cardId, ...g.recentCards.filter((x) => x !== node.cardId)].slice(0, 12); }, { save: false });
-        // Move focus to a saved card's first blank, else the first empty required child, else keep the filled slot selected.
-        const card2 = cardOf(node);
-        const empty = card2?.sockets.find((x) => x.required && !node.args[x.id]);
-        s.setUi({ slot: blank ?? (empty ? { parentId: node.id, socket: empty.id, index: null } : next) });
+        // Phase 4: jump to the next empty required slot (a saved card's first blank, else depth first inside the new
+        // card, else elsewhere in the card this chain of picks began with). When nothing required is left, close —
+        // or, if that first card has settings (e.g. Compare's number), show just its settings.
+        const root = s.ui.pickRoot ?? next;
+        const target = blank ?? nextEmptySlot(stage, slot, node, root);
+        if (target) { s.setUi({ slot: target, pickRoot: root, sleeveCompact: false }); return; }
+        const rootNode = root && (root === next ? node : slotInfo(stage, root)?.current);
+        const hasSettings = !!rootNode && (cardOf(rootNode)?.params?.length ?? 0) > 0;
+        s.setUi(hasSettings ? { slot: root, pickRoot: null, sleeveCompact: true } : { slot: null, pickRoot: null, sleeveCompact: false });
       }} />
+      )}
     </div>
   );
 }

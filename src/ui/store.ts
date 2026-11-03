@@ -36,6 +36,10 @@ export interface UiState {
   screen: Screen;
   binder: Binder;
   slot: SlotRef | null;
+  /** Card picking (phase 4): the slot where this chain of picks began (the picker jumps through required slots). */
+  pickRoot?: SlotRef | null;
+  /** The picker shows only the card's settings (the chain is done; the hand is tucked away). */
+  sleeveCompact?: boolean;
   /** Placement card chosen in the Environment binder waiting for a tile tap. */
   placing: string | null;
   placeMode: 'random' | 'fixed';
@@ -120,6 +124,8 @@ class GameStore {
   }
 
   setUi(patch: Partial<UiState>) {
+    // Selecting a slot by hand (a tap) starts afresh: no pick chain, the full hand.
+    if ('slot' in patch && !('pickRoot' in patch)) patch = { ...patch, pickRoot: null, sleeveCompact: false };
     Object.assign(this.ui, patch);
     this.emit();
   }
