@@ -121,6 +121,22 @@ Playtesting the learned-farm build turned up four things:
   - a pen using "furthest berry from the house" trains above random;
   - transfer to a bigger pen holds.
 
+**Phase 3 done:**
+- **Five qualifier cards** ("Which one" in the hand):
+  - **Nearest** / **Furthest** X, from the pet or from another thing ("the furthest berry from the house");
+  - **Fullest** / **Emptiest** storage, optionally only baskets or only sheds;
+  - **What it carries**.
+- **How they work:** a qualifier compiles to a selector, e.g. `#["furthest","berry","home"]`. The world's shared lookups (`nearest`, `objIs`, `aimIs`) resolve it against the current world. So every condition, measure and sense that takes a kind of thing understands qualifiers without being changed one by one: *at*, *next to*, *distance*, *Thing near thing*, Compare's measures, and the *Nearest* / *Distance* senses. Ties go to the lowest id, so pens stay deterministic. With nothing to point at, conditions are false, distances 99, and senses read "none".
+- **Two new slots:**
+  - **Storage of one** (condition): "the nearest basket is full / half full / holding anything / empty".
+  - **Stored** gains an optional **In this one** slot: "berry stored in the nearest basket".
+  - *Object is near* also takes a qualifier now, not only *It*.
+- **Typing:** kind slots accept qualifier objects. Validation refuses them in events ("events happen to a kind of thing — use an IF") and in placements.
+- **Moving targets:**
+  - A warning when a reward rule's IF uses "closer to the nearest …".
+  - The loophole report adds "its IF uses ‘the nearest …’, which changes as the pet moves" when such a rule is what paid.
+- **Gate (`tests/qualifiers.test.ts`):** scripted tests of each qualifier (ties, nothing to point at, the carried thing, storage), in conditions, measures and senses, plus wording, the hand and validation. A pen where the pet must reach **the furthest berry from the house** trains to **100% (random 35%)** and holds **90% in bigger, busier pens it never saw**.
+
 ### Phase 4: Card editor focus
 
 - **Picking a card:**

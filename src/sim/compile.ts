@@ -3,7 +3,7 @@ import { isNode, paramOf } from '../domain/spec';
 import { kindOfCard } from '../domain/registry';
 import { Rng, hashSeed } from './rng';
 import type { Obj, SimEvent, Tally, World } from './world';
-import { TRAIT_CROPS, addObject, aimIs, objIs, bfsDistance, blocks, def, distTo, emptyStore, emptyWorld, eventOfKey, inArea, inBounds, isSolidAt, nearest, objectsAt, onGround, seedPrice } from './world';
+import { TRAIT_CROPS, addObject, aimIs, objIs, resolveSelector, selector, storeCount, type QualifierOp, bfsDistance, blocks, def, distTo, emptyStore, emptyWorld, eventOfKey, inArea, inBounds, isSolidAt, nearest, objectsAt, onGround, seedPrice } from './world';
 
 /** How a rule's End try judges the try: by SUCCESS (default), or it counts as a success ✓ / a miss ✗ outright. */
 export type EndOutcome = 'judge' | 'success' | 'fail';
@@ -71,6 +71,7 @@ export function withTarget<T>(target: string, fn: () => T): T {
 export function resolveKind(v: unknown, target = currentTarget): string {
   if (!isNode(v)) return '';
   if (v.cardId === 'ref.target') return target;
+  if (v.cardId.startsWith('obj.')) return selector(v.cardId.slice(4) as QualifierOp, resolveKind(v.args.what, target), resolveKind(v.args.from, target));
   return kindOfCard(v.cardId) ?? '';
 }
 const kindArg = (n: SpecNode, key: string): string => resolveKind(n.args[key]);
@@ -78,6 +79,14 @@ export const areaArg = (n: SpecNode, key: string): string => {
   const v = n.args[key];
   return isNode(v) ? String(v.args.name ?? '') : '';
 };
+/** An Object slot: “It” (the event's object), or a qualifier resolved against the world. */
+function objectArg(n: SpecNode, key: string): (c: { w: World; it?: Obj }) => Obj | undefined {
+  const v = n.args[key];
+  if (!isNode(v)) return () => undefined;
+  if (v.cardId === 'ref.it') return (c) => c.it;
+  const sel = resolveKind(v);
+  return sel ? (c) => resolveSelector(c.w, sel) : () => undefined;
+}
 const nodeArg = (n: SpecNode, key: string): SpecNode | null => {
   const v = n.args[key];
   return isNode(v) ? v : null;
@@ -131,6 +140,12 @@ function compileQuantity(n: SpecNode): Quantity {
     case 'q.stored': {
       const k = kindArg(n, 'what');
       const where = paramOf(n, 'where', 'any');
+      const inNode = nodeArg(n, 'in');
+      if (inNode) {
+        // One particular basket or shed (e.g. the nearest basket).
+        const obj = objectArg(n, 'in');
+        return (c) => (obj(c)?.store ?? []).reduce((a, sl) => a + (sl.kind && aimIs(sl.kind, k) ? sl.n : 0), 0);
+      }
       return ({ w }) => storedCount(w, k, where);
     }
     case 'q.sold': {
@@ -341,7 +356,19 @@ export function compileCondition(n: SpecNode): Cond {
     case 'cond.itNear': {
       const k = kindArg(n, 'what');
       const d = paramOf(n, 'dist', 1);
-      return ({ w, it }) => !!it && distTo(w, k, it.x, it.y) <= d;
+      const obj = objectArg(n, 'object');
+      return (c) => { const it = obj(c); return !!it && distTo(c.w, k, it.x, it.y) <= d; };
+    }
+    case 'cond.storageOf': {
+      const obj = objectArg(n, 'which');
+      const level = paramOf(n, 'level', 'full');
+      return (c) => {
+        const o = obj(c);
+        if (!o?.store) return level === 'empty';
+        const st = def(o.kind).storage;
+        const k = storeCount(o), cap = st ? st.slots * st.perSlot : Infinity;
+        return level === 'empty' ? k === 0 : level === 'any' ? k > 0 : level === 'half' ? k * 2 >= cap : k >= cap;
+      };
     }
     case 'cond.compare': {
       const qn = nodeArg(n, 'quantity');

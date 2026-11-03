@@ -43,6 +43,14 @@ export function describe(n: SpecNode | null | undefined, ctx: DescribeCtx): stri
     const count = Number(n.args.count ?? 1);
     return `“${describe(isNode(n.args.event) ? n.args.event : null, ctx)}” has happened${count > 1 ? ` at least ${count} times` : ''}`;
   }
+  if (n.cardId === 'obj.nearest' || n.cardId === 'obj.furthest') {
+    // "the furthest berry from the house" / "the nearest basket" (to the pet unless said otherwise).
+    const what = describe(isNode(n.args.what) ? n.args.what : null, ctx);
+    const from = isNode(n.args.from) ? ` ${n.cardId === 'obj.nearest' ? 'to' : 'from'} ${describe(n.args.from, ctx)}` : '';
+    return `the ${n.cardId === 'obj.nearest' ? 'nearest' : 'furthest'} ${what}${from}`;
+  }
+  if ((n.cardId === 'obj.fullest' || n.cardId === 'obj.emptiest') && isNode(n.args.what)) return `the ${n.cardId === 'obj.fullest' ? 'fullest' : 'emptiest'} ${describe(n.args.what, ctx)}`;
+  if (n.cardId === 'q.stored' && isNode(n.args.in)) return `${describe(isNode(n.args.what) ? n.args.what : null, ctx)} stored in ${describe(n.args.in, ctx)}`;
   if (n.cardId === 'cond.compare' && isNode(n.args.than)) {
     // Measure against measure: "berries stored in any storage > carrots stored in any storage".
     return `${describe(isNode(n.args.quantity) ? n.args.quantity : null, ctx)} ${paramText(n, 'op')} ${describe(n.args.than, ctx)}`;

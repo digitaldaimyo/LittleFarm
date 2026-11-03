@@ -119,6 +119,7 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
   if (stage.size.w < 4 || stage.size.h < 4 || stage.size.w > 16 || stage.size.h > 16) out.push({ severity: 'error', code: 'bad-size', message: 'Pens must be between 4×4 and 16×16 tiles.' });
   for (const p of stage.environment) {
     validateNode(p, nominal('Placement'), envCtx);
+    walk(p, (x) => { if (x.cardId.startsWith('obj.')) out.push({ severity: 'error', code: 'qualifier-in-placement', nodeId: x.id, message: 'Placements put kinds of things in the pen; “the nearest …” and other qualifiers only work in rules, SUCCESS and senses.' }); });
     const k = p.args.kind;
     if (isNode(k)) {
       const card = reg.cards.get(k.cardId);
@@ -190,6 +191,16 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
     const sensed = new Set((L.senses ?? []).filter((x) => x.cardId === 'sense.note').map(name));
     if (template === 'sense') for (const [n, id] of writes) if (reads.has(n) && !sensed.has(n)) out.push({ severity: 'info', code: 'note-not-sensed', nodeId: id, message: `Your rules use the note “${n}”, but ${L.skill || 'the pet'} can’t sense it. If what to do next depends on it, add the Note sense (“${n}”).` });
     for (const [n, id] of writes) if (!reads.has(n)) out.push({ severity: 'info', code: 'note-never-read', nodeId: id, message: `The note “${n}” is written but nothing reads it. Add the Note sense so ${L.skill || 'the pet'} can use it, or test it in a rule.` });
+  }
+  // Qualifiers (phase 3): not inside events (an event happens to a kind of thing; use a condition to pick one), and
+  // a warning for the classic moving-target trap: rewarding "closer to the nearest X" pays for walking between two.
+  for (const r of stage.rules) {
+    const when = isNode(r.args.when) ? r.args.when : null;
+    if (when) walk(when, (x) => { if (x.cardId.startsWith('obj.')) out.push({ severity: 'error', code: 'qualifier-in-event', nodeId: x.id, message: `“${reg.cards.get(x.cardId)?.presentation.title ?? x.cardId}” can’t go inside an event (WHEN): events happen to a kind of thing. Put the qualifier in an IF condition instead, e.g. “Pip is at the furthest berry”.` }); });
+    const pays = (Array.isArray(r.args.then) ? r.args.then : []).some((e) => isNode(e) && e.cardId === 'eff.reward');
+    if (pays) for (const c of (Array.isArray(r.args.if) ? r.args.if : []).filter(isNode)) walk(c, (x) => {
+      if (x.cardId === 'cond.closer' && isNode(x.args.what) && x.args.what.cardId === 'obj.nearest') out.push({ severity: 'warning', code: 'moving-target', nodeId: x.id, message: '“Closer to the nearest …” changes target as the pet moves: walking back and forth between two of them keeps getting closer to “the nearest” one. Reward reaching it, or aim at a fixed choice (e.g. the furthest from the house).' });
+    });
   }
   if (template === 'routine') {
     const R = L.routine ?? { options: [], watch: [] };

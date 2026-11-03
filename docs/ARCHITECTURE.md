@@ -199,6 +199,10 @@ Saves are v2. The v1 → v2 migration adds templates and explicit preset senses.
 
 **Feedback:** 👍/👎 on a replayed movement episode adds ±0.5 (clamped to ±1) to those (state, action) pairs. That bonus is added to reward in later lessons for that stage and shown as "Your feedback" in the ledger.
 
+### Qualifiers
+
+`obj.*` cards compile (`resolveKind`) to selector strings such as `#["furthest","berry","home"]` (`selector` in sim/world.ts). `nearest`, `objIs` and `aimIs` resolve them with `resolveSelector`, so kind-taking conditions, measures and senses work with them unchanged. Kind-level checks (`aimIs`, used for events and carried kinds) fall back to the kind a qualifier picks from, which is why validation keeps qualifiers out of events. `typecheck.fits` lets `Object<Qualifier>` into `Kind` slots; `objectArg` (compile.ts) reads an Object slot as *It* or a qualifier.
+
 ### Storage identity
 
 `StoreSlot.ids` (sim/world.ts) remembers which items went into a slot. `pick` from storage gives back the same id, and emptying a basket moves ids along. So "once per object" (`lim.perObject`, keyed by object id) counts an item once, wherever it has travelled. `runEpisode` records `sameObject` (the most treats one object earned per rule), and `findExploits` names it in the loophole warning.

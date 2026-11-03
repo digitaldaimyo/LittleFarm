@@ -13,6 +13,8 @@ export const generic = (name: string, ...args: string[]): TypeExpr => ({
  * produced type to carry every listed trait argument.
  */
 export function fits(socket: TypeExpr, out: TypeExpr): boolean {
+  // Qualifiers (one specific object) fit wherever a kind of thing does: "the nearest basket", "the furthest berry".
+  if (socket.name === 'Kind' && out.name === 'Object' && out.kind === 'generic' && out.args.some((a) => a.name === 'Qualifier')) return true;
   if (socket.name !== out.name) return false;
   if (socket.kind === 'nominal') return true;
   const have = out.kind === 'generic' ? out.args.map((a) => a.name) : [];

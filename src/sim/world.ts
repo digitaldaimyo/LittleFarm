@@ -286,9 +286,57 @@ export const TRAIT_AIMS: Record<string, string> = { '@crop': 'any ripe crop', '@
 /** The crops "any ripe crop" stands for. */
 export const TRAIT_CROPS = ['berry', 'carrot', 'pumpkin', 'sunflower'];
 
+/**
+ * Qualifiers (pen & cards phase 3) turn a kind into one specific object: the nearest / furthest X (from the pet, or
+ * from another thing), the fullest / emptiest storage, the thing being carried. They travel as selector strings,
+ * `#["nearest","berry","home"]`, wherever a kind does, and are resolved against the world when read.
+ */
+export type QualifierOp = 'nearest' | 'furthest' | 'fullest' | 'emptiest' | 'carried';
+export function selector(op: QualifierOp, what = '', from = ''): string {
+  return `#${JSON.stringify([op, what, from])}`;
+}
+const SEL = new Map<string, [QualifierOp, string, string]>();
+function parseSel(sel: string): [QualifierOp, string, string] {
+  let p = SEL.get(sel);
+  if (!p) { p = JSON.parse(sel.slice(1)) as [QualifierOp, string, string]; SEL.set(sel, p); }
+  return p;
+}
+export const isSelector = (k: string) => k.charCodeAt(0) === 35; /* # */
+/** The kind a qualifier picks from ("the nearest berry" → berry; storage qualifiers → storage). */
+export function selectorKind(sel: string): string {
+  const [op, what] = parseSel(sel);
+  return op === 'carried' ? '' : what || (op === 'fullest' || op === 'emptiest' ? '@storage' : '');
+}
+/** The one object a qualifier points at right now, or undefined (nothing to point at). Ties: the lowest id. */
+export function resolveSelector(w: World, sel: string): Obj | undefined {
+  const [op, what, from] = parseSel(sel);
+  if (op === 'carried') return w.pet.carrying !== null ? w.objects.find((o) => o.id === w.pet.carrying) : undefined;
+  if (op === 'fullest' || op === 'emptiest') {
+    const k = what || '@storage';
+    let best: Obj | undefined;
+    for (const o of w.objects) {
+      if (!o.store || o.delivered || (!onGround(o) && w.pet.carrying !== o.id) || !aimIs(o.kind, k)) continue;
+      const n = storeCount(o);
+      if (!best || (op === 'fullest' ? n > storeCount(best) : n < storeCount(best)) || (n === storeCount(best) && o.id < best.id)) best = o;
+    }
+    return best;
+  }
+  const ref = from ? nearest(w, from) : w.pet;
+  if (!ref) return undefined;
+  let best: Obj | undefined;
+  let bd = 0;
+  for (const o of w.objects) {
+    if (!onGround(o) || o === ref || !objIs(w, o, what)) continue;
+    const d = Math.abs(o.x - ref.x) + Math.abs(o.y - ref.y);
+    if (!best || (op === 'nearest' ? d < bd : d > bd) || (d === bd && o.id < best.id)) { best = o; bd = d; }
+  }
+  return best;
+}
+
 /** Is this kind what the aim means? (Kind level: "any crop" / "any storage"; plain aims are one kind.) */
 export function aimIs(kind: string | undefined, aim: string): boolean {
   if (kind === undefined) return false;
+  if (isSelector(aim)) { const k = selectorKind(aim); return k ? aimIs(kind, k) : true; } // kind level: what it picks from
   if (aim.charCodeAt(0) !== 64 /* @ */) return kind === aim;
   const d = def(kind);
   return aim === '@crop' ? d.traits.includes('Crop') && d.carryable : aim === '@storage' ? !!d.storage : false;
@@ -296,6 +344,7 @@ export function aimIs(kind: string | undefined, aim: string): boolean {
 
 /** Does this object match the aim right now? (`@storage` also needs room for whatever the pet is carrying.) */
 export function objIs(w: World, o: Obj, aim: string): boolean {
+  if (isSelector(aim)) return resolveSelector(w, aim)?.id === o.id;
   if (aim.charCodeAt(0) !== 64) return o.kind === aim;
   if (!aimIs(o.kind, aim)) return false;
   if (aim !== '@storage' || !o.store) return true;
@@ -305,9 +354,10 @@ export function objIs(w: World, o: Obj, aim: string): boolean {
 }
 
 export function nearest(w: World, kind: string, x = w.pet.x, y = w.pet.y): Obj | null {
+  if (isSelector(kind)) { const o = resolveSelector(w, kind); return o && onGround(o) ? o : null; } // the one it points at
   let best: Obj | null = null;
   let bd = Infinity;
-  const trait = kind.charCodeAt(0) === 64;
+  const trait = kind.charCodeAt(0) === 64 || isSelector(kind);
   for (const o of w.objects) {
     if ((trait ? !objIs(w, o, kind) : o.kind !== kind) || !onGround(o)) continue;
     const d = Math.abs(o.x - x) + Math.abs(o.y - y);
