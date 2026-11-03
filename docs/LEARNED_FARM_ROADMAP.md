@@ -137,6 +137,17 @@ Status: **official roadmap**, decisions settled (section 8). **Phase 0 done:**
 | Old saves keep every trained skill | done.test (v9 → v10), parity (v8 → v9) |
 | No timeout counts as success | phase0.test (phase 1) |
 
+**Farm output with nothing built in** (`bench:farm --learned`, after phase 6, coins vs the phase-0 baseline):
+
+| Setup | Standard farm | Held-out farm |
+|---|---|---|
+| Auto, in your order | 733 (92%) | 671 (102%) |
+| Two pets | 745 (84%) | 750 (87%) |
+| Harvest only | 444 (125%) | 660 (99%) |
+| Auto, learned picks (exploring 1–5%) | 611 (174% of the old learned chooser) | 557 (242%) |
+
+Learned picks with exploration on are at 83% of the player's order on this good starter order (it was 81–88% at 2–10% exploration). With exploring off, they pick like the order where nothing better was learned.
+
 The learned-farm roadmap is complete.
 
 **The commitment.** Everything a pet does on its own on the farm comes from a skill or routine the player taught it in the pen. No hidden job scripts. The farm executive is promoted from a fixed rule list to a learned, two-level decision-maker:

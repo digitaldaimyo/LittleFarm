@@ -10,37 +10,37 @@
    "setup": "auto-rules",
    "seed": 101,
    "layout": "standard",
-   "coins": 265,
-   "sold": 58,
-   "jobs": 200,
-   "ok": 191,
-   "fail": 7,
-   "timeouts": 2,
-   "switchesPerMin": 17.8,
-   "restShare": 26,
-   "idleShare": 9,
-   "msPerTick": 0.127,
+   "coins": 259,
+   "sold": 57,
+   "jobs": 201,
+   "ok": 197,
+   "fail": 3,
+   "timeouts": 1,
+   "switchesPerMin": 17.9,
+   "restShare": 25,
+   "idleShare": 8,
+   "msPerTick": 0.08,
    "byJob": {
     "tote": {
-     "started": 11,
-     "ok": 11,
+     "started": 10,
+     "ok": 10,
      "fail": 0,
      "timeout": 0,
-     "ticks": 237
+     "ticks": 202
     },
     "forage": {
-     "started": 62,
+     "started": 60,
      "ok": 57,
-     "fail": 5,
+     "fail": 3,
      "timeout": 0,
-     "ticks": 887
+     "ticks": 902
     },
     "plant": {
      "started": 35,
      "ok": 35,
      "fail": 0,
      "timeout": 0,
-     "ticks": 330
+     "ticks": 360
     },
     "deliver": {
      "started": 1,
@@ -50,18 +50,18 @@
      "ticks": 14
     },
     "rest": {
-     "started": 87,
-     "ok": 87,
+     "started": 86,
+     "ok": 86,
      "fail": 0,
      "timeout": 0,
-     "ticks": 608
+     "ticks": 603
     },
     "catch": {
-     "started": 4,
-     "ok": 0,
-     "fail": 2,
-     "timeout": 2,
-     "ticks": 111
+     "started": 9,
+     "ok": 8,
+     "fail": 0,
+     "timeout": 1,
+     "ticks": 112
     }
    }
   },
@@ -69,58 +69,58 @@
    "setup": "auto-rules",
    "seed": 202,
    "layout": "standard",
-   "coins": 196,
+   "coins": 222,
    "sold": 47,
-   "jobs": 185,
-   "ok": 175,
-   "fail": 9,
-   "timeouts": 1,
-   "switchesPerMin": 16.5,
-   "restShare": 27,
+   "jobs": 188,
+   "ok": 181,
+   "fail": 5,
+   "timeouts": 2,
+   "switchesPerMin": 16.8,
+   "restShare": 26,
    "idleShare": 8,
-   "msPerTick": 0.09,
+   "msPerTick": 0.058,
    "byJob": {
     "tote": {
-     "started": 9,
-     "ok": 9,
+     "started": 7,
+     "ok": 7,
      "fail": 0,
      "timeout": 0,
-     "ticks": 230
+     "ticks": 166
     },
     "forage": {
      "started": 47,
-     "ok": 39,
-     "fail": 7,
+     "ok": 41,
+     "fail": 5,
      "timeout": 1,
-     "ticks": 924
+     "ticks": 840
     },
     "deliver": {
-     "started": 8,
-     "ok": 8,
+     "started": 6,
+     "ok": 6,
      "fail": 0,
      "timeout": 0,
-     "ticks": 132
+     "ticks": 88
     },
     "plant": {
-     "started": 23,
-     "ok": 23,
+     "started": 31,
+     "ok": 31,
      "fail": 0,
      "timeout": 0,
-     "ticks": 228
+     "ticks": 403
     },
     "rest": {
-     "started": 96,
-     "ok": 96,
+     "started": 89,
+     "ok": 89,
      "fail": 0,
      "timeout": 0,
-     "ticks": 654
+     "ticks": 617
     },
     "catch": {
-     "started": 2,
-     "ok": 0,
-     "fail": 2,
-     "timeout": 0,
-     "ticks": 43
+     "started": 8,
+     "ok": 7,
+     "fail": 0,
+     "timeout": 1,
+     "ticks": 96
     }
    }
   },
@@ -128,37 +128,37 @@
    "setup": "auto-rules",
    "seed": 303,
    "layout": "standard",
-   "coins": 229,
-   "sold": 51,
-   "jobs": 197,
-   "ok": 192,
-   "fail": 5,
+   "coins": 252,
+   "sold": 53,
+   "jobs": 203,
+   "ok": 199,
+   "fail": 4,
    "timeouts": 0,
-   "switchesPerMin": 17.6,
-   "restShare": 28,
+   "switchesPerMin": 18.1,
+   "restShare": 27,
    "idleShare": 8,
-   "msPerTick": 0.073,
+   "msPerTick": 0.055,
    "byJob": {
     "tote": {
-     "started": 9,
-     "ok": 9,
+     "started": 8,
+     "ok": 8,
      "fail": 0,
      "timeout": 0,
-     "ticks": 209
+     "ticks": 192
     },
     "forage": {
-     "started": 55,
+     "started": 56,
      "ok": 52,
-     "fail": 3,
+     "fail": 4,
      "timeout": 0,
-     "ticks": 944
+     "ticks": 919
     },
     "plant": {
-     "started": 31,
-     "ok": 31,
+     "started": 37,
+     "ok": 37,
      "fail": 0,
      "timeout": 0,
-     "ticks": 318
+     "ticks": 363
     },
     "deliver": {
      "started": 1,
@@ -168,18 +168,18 @@
      "ticks": 20
     },
     "rest": {
-     "started": 99,
-     "ok": 99,
+     "started": 94,
+     "ok": 94,
      "fail": 0,
      "timeout": 0,
-     "ticks": 673
+     "ticks": 645
     },
     "catch": {
-     "started": 2,
-     "ok": 0,
-     "fail": 2,
+     "started": 7,
+     "ok": 7,
+     "fail": 0,
      "timeout": 0,
-     "ticks": 36
+     "ticks": 58
     }
    }
   },
@@ -187,16 +187,16 @@
    "setup": "auto-learned",
    "seed": 101,
    "layout": "standard",
-   "coins": 252,
-   "sold": 57,
-   "jobs": 221,
-   "ok": 218,
-   "fail": 3,
+   "coins": 265,
+   "sold": 58,
+   "jobs": 230,
+   "ok": 229,
+   "fail": 1,
    "timeouts": 0,
-   "switchesPerMin": 19.7,
+   "switchesPerMin": 20.5,
    "restShare": 26,
    "idleShare": 10,
-   "msPerTick": 0.1,
+   "msPerTick": 0.077,
    "byJob": {
     "tote": {
      "started": 1,
@@ -206,46 +206,39 @@
      "ticks": 15
     },
     "forage": {
-     "started": 57,
-     "ok": 56,
+     "started": 58,
+     "ok": 57,
      "fail": 1,
      "timeout": 0,
-     "ticks": 972
+     "ticks": 973
     },
     "plant": {
      "started": 36,
      "ok": 36,
      "fail": 0,
      "timeout": 0,
-     "ticks": 159
+     "ticks": 167
     },
     "deliver": {
      "started": 35,
      "ok": 35,
      "fail": 0,
      "timeout": 0,
-     "ticks": 359
+     "ticks": 350
     },
     "rest": {
-     "started": 88,
-     "ok": 88,
+     "started": 92,
+     "ok": 92,
      "fail": 0,
      "timeout": 0,
-     "ticks": 611
+     "ticks": 625
     },
     "catch": {
-     "started": 2,
-     "ok": 0,
-     "fail": 2,
-     "timeout": 0,
-     "ticks": 46
-    },
-    "wander": {
-     "started": 2,
-     "ok": 2,
+     "started": 8,
+     "ok": 8,
      "fail": 0,
      "timeout": 0,
-     "ticks": 12
+     "ticks": 37
     }
    }
   },
@@ -253,58 +246,58 @@
    "setup": "auto-learned",
    "seed": 202,
    "layout": "standard",
-   "coins": 142,
-   "sold": 28,
-   "jobs": 133,
-   "ok": 124,
+   "coins": 127,
+   "sold": 29,
+   "jobs": 158,
+   "ok": 150,
    "fail": 5,
-   "timeouts": 4,
-   "switchesPerMin": 11.9,
-   "restShare": 23,
-   "idleShare": 6,
-   "msPerTick": 0.058,
+   "timeouts": 3,
+   "switchesPerMin": 14.1,
+   "restShare": 27,
+   "idleShare": 7,
+   "msPerTick": 0.043,
    "byJob": {
     "tote": {
-     "started": 4,
-     "ok": 4,
+     "started": 3,
+     "ok": 3,
      "fail": 0,
      "timeout": 0,
-     "ticks": 86
+     "ticks": 76
     },
     "forage": {
-     "started": 29,
-     "ok": 23,
-     "fail": 3,
-     "timeout": 3,
-     "ticks": 1161
+     "started": 32,
+     "ok": 25,
+     "fail": 5,
+     "timeout": 2,
+     "ticks": 1011
     },
     "plant": {
-     "started": 14,
-     "ok": 14,
+     "started": 15,
+     "ok": 15,
      "fail": 0,
      "timeout": 0,
-     "ticks": 176
+     "ticks": 199
     },
     "deliver": {
-     "started": 8,
-     "ok": 7,
+     "started": 9,
+     "ok": 8,
      "fail": 0,
      "timeout": 1,
-     "ticks": 207
+     "ticks": 249
     },
     "rest": {
-     "started": 76,
-     "ok": 76,
+     "started": 92,
+     "ok": 92,
      "fail": 0,
      "timeout": 0,
-     "ticks": 548
+     "ticks": 636
     },
     "catch": {
-     "started": 2,
-     "ok": 0,
-     "fail": 2,
+     "started": 7,
+     "ok": 7,
+     "fail": 0,
      "timeout": 0,
-     "ticks": 70
+     "ticks": 67
     }
    }
   },
@@ -312,16 +305,16 @@
    "setup": "auto-learned",
    "seed": 303,
    "layout": "standard",
-   "coins": 212,
-   "sold": 45,
-   "jobs": 207,
-   "ok": 203,
-   "fail": 4,
+   "coins": 219,
+   "sold": 48,
+   "jobs": 211,
+   "ok": 210,
+   "fail": 1,
    "timeouts": 0,
-   "switchesPerMin": 18.5,
-   "restShare": 27,
-   "idleShare": 10,
-   "msPerTick": 0.087,
+   "switchesPerMin": 18.8,
+   "restShare": 26,
+   "idleShare": 9,
+   "msPerTick": 0.056,
    "byJob": {
     "tote": {
      "started": 1,
@@ -331,46 +324,39 @@
      "ticks": 15
     },
     "forage": {
-     "started": 47,
-     "ok": 45,
-     "fail": 2,
+     "started": 48,
+     "ok": 47,
+     "fail": 1,
      "timeout": 0,
-     "ticks": 735
+     "ticks": 725
     },
     "plant": {
-     "started": 28,
-     "ok": 28,
+     "started": 33,
+     "ok": 33,
      "fail": 0,
      "timeout": 0,
-     "ticks": 133
+     "ticks": 139
     },
     "deliver": {
-     "started": 30,
-     "ok": 30,
+     "started": 32,
+     "ok": 32,
      "fail": 0,
      "timeout": 0,
-     "ticks": 583
-    },
-    "wander": {
-     "started": 4,
-     "ok": 4,
-     "fail": 0,
-     "timeout": 0,
-     "ticks": 24
+     "ticks": 650
     },
     "rest": {
-     "started": 95,
-     "ok": 95,
+     "started": 90,
+     "ok": 90,
      "fail": 0,
      "timeout": 0,
-     "ticks": 653
+     "ticks": 614
     },
     "catch": {
-     "started": 2,
-     "ok": 0,
-     "fail": 2,
+     "started": 7,
+     "ok": 7,
+     "fail": 0,
      "timeout": 0,
-     "ticks": 47
+     "ticks": 42
     }
    }
   },
@@ -378,37 +364,37 @@
    "setup": "starter-plan",
    "seed": 101,
    "layout": "standard",
-   "coins": 265,
-   "sold": 58,
-   "jobs": 200,
-   "ok": 191,
-   "fail": 7,
-   "timeouts": 2,
-   "switchesPerMin": 17.8,
-   "restShare": 26,
-   "idleShare": 9,
-   "msPerTick": 0.086,
+   "coins": 259,
+   "sold": 57,
+   "jobs": 201,
+   "ok": 197,
+   "fail": 3,
+   "timeouts": 1,
+   "switchesPerMin": 17.9,
+   "restShare": 25,
+   "idleShare": 8,
+   "msPerTick": 0.06,
    "byJob": {
     "tote": {
-     "started": 11,
-     "ok": 11,
+     "started": 10,
+     "ok": 10,
      "fail": 0,
      "timeout": 0,
-     "ticks": 237
+     "ticks": 202
     },
     "forage": {
-     "started": 62,
+     "started": 60,
      "ok": 57,
-     "fail": 5,
+     "fail": 3,
      "timeout": 0,
-     "ticks": 887
+     "ticks": 902
     },
     "plant": {
      "started": 35,
      "ok": 35,
      "fail": 0,
      "timeout": 0,
-     "ticks": 330
+     "ticks": 360
     },
     "deliver": {
      "started": 1,
@@ -418,18 +404,18 @@
      "ticks": 14
     },
     "rest": {
-     "started": 87,
-     "ok": 87,
+     "started": 86,
+     "ok": 86,
      "fail": 0,
      "timeout": 0,
-     "ticks": 608
+     "ticks": 603
     },
     "catch": {
-     "started": 4,
-     "ok": 0,
-     "fail": 2,
-     "timeout": 2,
-     "ticks": 111
+     "started": 9,
+     "ok": 8,
+     "fail": 0,
+     "timeout": 1,
+     "ticks": 112
     }
    }
   },
@@ -437,58 +423,58 @@
    "setup": "starter-plan",
    "seed": 202,
    "layout": "standard",
-   "coins": 196,
+   "coins": 222,
    "sold": 47,
-   "jobs": 185,
-   "ok": 175,
-   "fail": 9,
-   "timeouts": 1,
-   "switchesPerMin": 16.5,
-   "restShare": 27,
+   "jobs": 188,
+   "ok": 181,
+   "fail": 5,
+   "timeouts": 2,
+   "switchesPerMin": 16.8,
+   "restShare": 26,
    "idleShare": 8,
-   "msPerTick": 0.084,
+   "msPerTick": 0.051,
    "byJob": {
     "tote": {
-     "started": 9,
-     "ok": 9,
+     "started": 7,
+     "ok": 7,
      "fail": 0,
      "timeout": 0,
-     "ticks": 230
+     "ticks": 166
     },
     "forage": {
      "started": 47,
-     "ok": 39,
-     "fail": 7,
+     "ok": 41,
+     "fail": 5,
      "timeout": 1,
-     "ticks": 924
+     "ticks": 840
     },
     "deliver": {
-     "started": 8,
-     "ok": 8,
+     "started": 6,
+     "ok": 6,
      "fail": 0,
      "timeout": 0,
-     "ticks": 132
+     "ticks": 88
     },
     "plant": {
-     "started": 23,
-     "ok": 23,
+     "started": 31,
+     "ok": 31,
      "fail": 0,
      "timeout": 0,
-     "ticks": 228
+     "ticks": 403
     },
     "rest": {
-     "started": 96,
-     "ok": 96,
+     "started": 89,
+     "ok": 89,
      "fail": 0,
      "timeout": 0,
-     "ticks": 654
+     "ticks": 617
     },
     "catch": {
-     "started": 2,
-     "ok": 0,
-     "fail": 2,
-     "timeout": 0,
-     "ticks": 43
+     "started": 8,
+     "ok": 7,
+     "fail": 0,
+     "timeout": 1,
+     "ticks": 96
     }
    }
   },
@@ -496,37 +482,37 @@
    "setup": "starter-plan",
    "seed": 303,
    "layout": "standard",
-   "coins": 229,
-   "sold": 51,
-   "jobs": 197,
-   "ok": 192,
-   "fail": 5,
+   "coins": 252,
+   "sold": 53,
+   "jobs": 203,
+   "ok": 199,
+   "fail": 4,
    "timeouts": 0,
-   "switchesPerMin": 17.6,
-   "restShare": 28,
+   "switchesPerMin": 18.1,
+   "restShare": 27,
    "idleShare": 8,
-   "msPerTick": 0.076,
+   "msPerTick": 0.058,
    "byJob": {
     "tote": {
-     "started": 9,
-     "ok": 9,
+     "started": 8,
+     "ok": 8,
      "fail": 0,
      "timeout": 0,
-     "ticks": 209
+     "ticks": 192
     },
     "forage": {
-     "started": 55,
+     "started": 56,
      "ok": 52,
-     "fail": 3,
+     "fail": 4,
      "timeout": 0,
-     "ticks": 944
+     "ticks": 919
     },
     "plant": {
-     "started": 31,
-     "ok": 31,
+     "started": 37,
+     "ok": 37,
      "fail": 0,
      "timeout": 0,
-     "ticks": 318
+     "ticks": 363
     },
     "deliver": {
      "started": 1,
@@ -536,18 +522,18 @@
      "ticks": 20
     },
     "rest": {
-     "started": 99,
-     "ok": 99,
+     "started": 94,
+     "ok": 94,
      "fail": 0,
      "timeout": 0,
-     "ticks": 673
+     "ticks": 645
     },
     "catch": {
-     "started": 2,
-     "ok": 0,
-     "fail": 2,
+     "started": 7,
+     "ok": 7,
+     "fail": 0,
      "timeout": 0,
-     "ticks": 36
+     "ticks": 58
     }
    }
   },
@@ -555,30 +541,30 @@
    "setup": "harvest-job",
    "seed": 101,
    "layout": "standard",
-   "coins": 145,
-   "sold": 63,
-   "jobs": 106,
-   "ok": 71,
-   "fail": 35,
+   "coins": 151,
+   "sold": 65,
+   "jobs": 105,
+   "ok": 73,
+   "fail": 32,
    "timeouts": 0,
-   "switchesPerMin": 9.5,
-   "restShare": 5,
+   "switchesPerMin": 9.4,
+   "restShare": 7,
    "idleShare": 4,
-   "msPerTick": 0.061,
+   "msPerTick": 0.076,
    "byJob": {
     "forage": {
-     "started": 100,
-     "ok": 65,
-     "fail": 35,
+     "started": 99,
+     "ok": 67,
+     "fail": 32,
      "timeout": 0,
-     "ticks": 2165
+     "ticks": 2126
     },
     "rest": {
      "started": 6,
      "ok": 6,
      "fail": 0,
      "timeout": 0,
-     "ticks": 123
+     "ticks": 159
     }
    }
   },
@@ -586,30 +572,30 @@
    "setup": "harvest-job",
    "seed": 202,
    "layout": "standard",
-   "coins": 137,
-   "sold": 63,
-   "jobs": 98,
-   "ok": 69,
+   "coins": 140,
+   "sold": 65,
+   "jobs": 101,
+   "ok": 72,
    "fail": 29,
    "timeouts": 0,
-   "switchesPerMin": 8.7,
-   "restShare": 5,
+   "switchesPerMin": 9,
+   "restShare": 6,
    "idleShare": 4,
-   "msPerTick": 0.054,
+   "msPerTick": 0.048,
    "byJob": {
     "forage": {
-     "started": 94,
-     "ok": 65,
+     "started": 96,
+     "ok": 67,
      "fail": 29,
      "timeout": 0,
-     "ticks": 2180
+     "ticks": 2159
     },
     "rest": {
-     "started": 4,
-     "ok": 4,
+     "started": 5,
+     "ok": 5,
      "fail": 0,
      "timeout": 0,
-     "ticks": 120
+     "ticks": 132
     }
    }
   },
@@ -617,30 +603,30 @@
    "setup": "harvest-job",
    "seed": 303,
    "layout": "standard",
-   "coins": 149,
-   "sold": 67,
+   "coins": 153,
+   "sold": 66,
    "jobs": 101,
    "ok": 73,
    "fail": 28,
    "timeouts": 0,
    "switchesPerMin": 9,
-   "restShare": 5,
+   "restShare": 6,
    "idleShare": 4,
-   "msPerTick": 0.055,
+   "msPerTick": 0.047,
    "byJob": {
     "forage": {
-     "started": 97,
-     "ok": 69,
+     "started": 96,
+     "ok": 68,
      "fail": 28,
      "timeout": 0,
-     "ticks": 2177
+     "ticks": 2150
     },
     "rest": {
-     "started": 4,
-     "ok": 4,
+     "started": 5,
+     "ok": 5,
      "fail": 0,
      "timeout": 0,
-     "ticks": 120
+     "ticks": 131
     }
    }
   },
@@ -648,16 +634,16 @@
    "setup": "two-pets",
    "seed": 101,
    "layout": "standard",
-   "coins": 293,
-   "sold": 67,
-   "jobs": 254,
-   "ok": 243,
-   "fail": 11,
+   "coins": 300,
+   "sold": 71,
+   "jobs": 257,
+   "ok": 253,
+   "fail": 4,
    "timeouts": 0,
-   "switchesPerMin": 22.6,
+   "switchesPerMin": 22.9,
    "restShare": 28,
    "idleShare": 11,
-   "msPerTick": 0.181,
+   "msPerTick": 0.182,
    "byJob": {
     "tote": {
      "started": 1,
@@ -667,39 +653,39 @@
      "ticks": 15
     },
     "forage": {
-     "started": 107,
-     "ok": 98,
-     "fail": 9,
+     "started": 108,
+     "ok": 104,
+     "fail": 4,
      "timeout": 0,
-     "ticks": 1133
+     "ticks": 1176
     },
     "plant": {
-     "started": 43,
-     "ok": 43,
+     "started": 42,
+     "ok": 42,
      "fail": 0,
      "timeout": 0,
-     "ticks": 248
+     "ticks": 220
     },
     "deliver": {
-     "started": 2,
-     "ok": 2,
+     "started": 1,
+     "ok": 1,
      "fail": 0,
      "timeout": 0,
-     "ticks": 24
+     "ticks": 11
     },
     "rest": {
-     "started": 99,
-     "ok": 99,
+     "started": 97,
+     "ok": 97,
      "fail": 0,
      "timeout": 0,
-     "ticks": 677
+     "ticks": 669
     },
     "catch": {
-     "started": 2,
-     "ok": 0,
-     "fail": 2,
+     "started": 8,
+     "ok": 8,
+     "fail": 0,
      "timeout": 0,
-     "ticks": 44
+     "ticks": 51
     }
    }
   },
@@ -707,16 +693,16 @@
    "setup": "two-pets",
    "seed": 202,
    "layout": "standard",
-   "coins": 136,
-   "sold": 32,
-   "jobs": 134,
-   "ok": 129,
-   "fail": 2,
+   "coins": 135,
+   "sold": 28,
+   "jobs": 116,
+   "ok": 113,
+   "fail": 0,
    "timeouts": 3,
-   "switchesPerMin": 11.9,
-   "restShare": 22,
-   "idleShare": 6,
-   "msPerTick": 0.14,
+   "switchesPerMin": 10.3,
+   "restShare": 19,
+   "idleShare": 5,
+   "msPerTick": 0.06,
    "byJob": {
     "tote": {
      "started": 1,
@@ -726,39 +712,39 @@
      "ticks": 16
     },
     "forage": {
-     "started": 33,
-     "ok": 30,
+     "started": 28,
+     "ok": 25,
      "fail": 0,
      "timeout": 3,
-     "ticks": 1301
+     "ticks": 1409
     },
     "deliver": {
+     "started": 5,
+     "ok": 5,
+     "fail": 0,
+     "timeout": 0,
+     "ticks": 82
+    },
+    "plant": {
+     "started": 17,
+     "ok": 17,
+     "fail": 0,
+     "timeout": 0,
+     "ticks": 249
+    },
+    "rest": {
+     "started": 57,
+     "ok": 57,
+     "fail": 0,
+     "timeout": 0,
+     "ticks": 455
+    },
+    "catch": {
      "started": 8,
      "ok": 8,
      "fail": 0,
      "timeout": 0,
-     "ticks": 120
-    },
-    "plant": {
-     "started": 16,
-     "ok": 16,
-     "fail": 0,
-     "timeout": 0,
-     "ticks": 235
-    },
-    "rest": {
-     "started": 74,
-     "ok": 74,
-     "fail": 0,
-     "timeout": 0,
-     "ticks": 534
-    },
-    "catch": {
-     "started": 2,
-     "ok": 0,
-     "fail": 2,
-     "timeout": 0,
-     "ticks": 38
+     "ticks": 72
     }
    }
   },
@@ -766,16 +752,16 @@
    "setup": "two-pets",
    "seed": 303,
    "layout": "standard",
-   "coins": 318,
+   "coins": 310,
    "sold": 70,
-   "jobs": 266,
-   "ok": 243,
-   "fail": 23,
+   "jobs": 270,
+   "ok": 253,
+   "fail": 17,
    "timeouts": 0,
-   "switchesPerMin": 23.7,
+   "switchesPerMin": 24.1,
    "restShare": 27,
    "idleShare": 11,
-   "msPerTick": 0.161,
+   "msPerTick": 0.132,
    "byJob": {
     "tote": {
      "started": 1,
@@ -786,17 +772,17 @@
     },
     "forage": {
      "started": 121,
-     "ok": 100,
-     "fail": 21,
+     "ok": 104,
+     "fail": 17,
      "timeout": 0,
-     "ticks": 1147
+     "ticks": 1182
     },
     "plant": {
-     "started": 46,
-     "ok": 46,
+     "started": 45,
+     "ok": 45,
      "fail": 0,
      "timeout": 0,
-     "ticks": 246
+     "ticks": 206
     },
     "deliver": {
      "started": 1,
@@ -806,18 +792,18 @@
      "ticks": 11
     },
     "rest": {
-     "started": 95,
-     "ok": 95,
+     "started": 94,
+     "ok": 94,
      "fail": 0,
      "timeout": 0,
-     "ticks": 650
+     "ticks": 644
     },
     "catch": {
-     "started": 2,
-     "ok": 0,
-     "fail": 2,
+     "started": 8,
+     "ok": 8,
+     "fail": 0,
      "timeout": 0,
-     "ticks": 63
+     "ticks": 67
     }
    }
   },
@@ -825,30 +811,30 @@
    "setup": "learned-harvest",
    "seed": 101,
    "layout": "standard",
-   "coins": 168,
-   "sold": 71,
-   "jobs": 79,
-   "ok": 76,
-   "fail": 3,
+   "coins": 176,
+   "sold": 72,
+   "jobs": 78,
+   "ok": 78,
+   "fail": 0,
    "timeouts": 0,
    "switchesPerMin": 7,
    "restShare": 6,
    "idleShare": 3,
-   "msPerTick": 0.063,
+   "msPerTick": 0.047,
    "byJob": {
     "skill": {
-     "started": 74,
-     "ok": 71,
-     "fail": 3,
-     "timeout": 0,
-     "ticks": 2135
-    },
-    "rest": {
-     "started": 5,
-     "ok": 5,
+     "started": 72,
+     "ok": 72,
      "fail": 0,
      "timeout": 0,
-     "ticks": 150
+     "ticks": 2168
+    },
+    "rest": {
+     "started": 6,
+     "ok": 6,
+     "fail": 0,
+     "timeout": 0,
+     "ticks": 149
     }
    }
   },
@@ -856,30 +842,30 @@
    "setup": "learned-harvest",
    "seed": 202,
    "layout": "standard",
-   "coins": 163,
-   "sold": 68,
-   "jobs": 79,
-   "ok": 72,
-   "fail": 7,
+   "coins": 147,
+   "sold": 56,
+   "jobs": 124,
+   "ok": 118,
+   "fail": 6,
    "timeouts": 0,
-   "switchesPerMin": 7,
-   "restShare": 5,
-   "idleShare": 3,
-   "msPerTick": 0.048,
+   "switchesPerMin": 11.1,
+   "restShare": 19,
+   "idleShare": 5,
+   "msPerTick": 0.038,
    "byJob": {
     "skill": {
-     "started": 75,
-     "ok": 68,
-     "fail": 7,
+     "started": 62,
+     "ok": 56,
+     "fail": 6,
      "timeout": 0,
-     "ticks": 2198
+     "ticks": 1827
     },
     "rest": {
-     "started": 4,
-     "ok": 4,
+     "started": 62,
+     "ok": 62,
      "fail": 0,
      "timeout": 0,
-     "ticks": 120
+     "ticks": 448
     }
    }
   },
@@ -887,30 +873,30 @@
    "setup": "learned-harvest",
    "seed": 303,
    "layout": "standard",
-   "coins": 167,
-   "sold": 71,
-   "jobs": 76,
-   "ok": 75,
-   "fail": 1,
+   "coins": 163,
+   "sold": 65,
+   "jobs": 104,
+   "ok": 100,
+   "fail": 4,
    "timeouts": 0,
-   "switchesPerMin": 6.8,
-   "restShare": 5,
-   "idleShare": 3,
-   "msPerTick": 0.044,
+   "switchesPerMin": 9.3,
+   "restShare": 13,
+   "idleShare": 4,
+   "msPerTick": 0.042,
    "byJob": {
     "skill": {
-     "started": 72,
-     "ok": 71,
-     "fail": 1,
+     "started": 69,
+     "ok": 65,
+     "fail": 4,
      "timeout": 0,
-     "ticks": 2184
+     "ticks": 1968
     },
     "rest": {
-     "started": 4,
-     "ok": 4,
+     "started": 35,
+     "ok": 35,
      "fail": 0,
      "timeout": 0,
-     "ticks": 120
+     "ticks": 310
     }
    }
   },
@@ -918,58 +904,58 @@
    "setup": "auto-rules",
    "seed": 101,
    "layout": "held-out",
-   "coins": 214,
-   "sold": 44,
-   "jobs": 204,
-   "ok": 185,
-   "fail": 19,
+   "coins": 225,
+   "sold": 54,
+   "jobs": 227,
+   "ok": 197,
+   "fail": 30,
    "timeouts": 0,
-   "switchesPerMin": 18.2,
+   "switchesPerMin": 20.2,
    "restShare": 28,
    "idleShare": 9,
-   "msPerTick": 0.082,
+   "msPerTick": 0.077,
    "byJob": {
     "tote": {
-     "started": 10,
-     "ok": 10,
+     "started": 9,
+     "ok": 9,
      "fail": 0,
      "timeout": 0,
-     "ticks": 146
+     "ticks": 137
     },
     "forage": {
-     "started": 45,
-     "ok": 28,
-     "fail": 17,
+     "started": 55,
+     "ok": 25,
+     "fail": 30,
      "timeout": 0,
-     "ticks": 767
+     "ticks": 762
     },
     "deliver": {
-     "started": 17,
-     "ok": 17,
+     "started": 30,
+     "ok": 30,
      "fail": 0,
      "timeout": 0,
-     "ticks": 230
+     "ticks": 300
     },
     "plant": {
-     "started": 33,
-     "ok": 33,
+     "started": 27,
+     "ok": 27,
      "fail": 0,
      "timeout": 0,
-     "ticks": 344
+     "ticks": 264
     },
     "rest": {
-     "started": 97,
-     "ok": 97,
+     "started": 98,
+     "ok": 98,
      "fail": 0,
      "timeout": 0,
-     "ticks": 660
+     "ticks": 666
     },
     "catch": {
-     "started": 2,
-     "ok": 0,
-     "fail": 2,
+     "started": 8,
+     "ok": 8,
+     "fail": 0,
      "timeout": 0,
-     "ticks": 48
+     "ticks": 42
     }
    }
   },
@@ -977,58 +963,58 @@
    "setup": "auto-rules",
    "seed": 202,
    "layout": "held-out",
-   "coins": 204,
-   "sold": 41,
-   "jobs": 199,
-   "ok": 175,
-   "fail": 23,
-   "timeouts": 1,
-   "switchesPerMin": 17.7,
-   "restShare": 27,
+   "coins": 183,
+   "sold": 36,
+   "jobs": 181,
+   "ok": 151,
+   "fail": 25,
+   "timeouts": 5,
+   "switchesPerMin": 16.1,
+   "restShare": 23,
    "idleShare": 8,
-   "msPerTick": 0.079,
+   "msPerTick": 0.054,
    "byJob": {
     "tote": {
-     "started": 7,
-     "ok": 7,
+     "started": 4,
+     "ok": 4,
      "fail": 0,
      "timeout": 0,
-     "ticks": 152
+     "ticks": 94
     },
     "forage": {
-     "started": 58,
-     "ok": 37,
-     "fail": 21,
+     "started": 51,
+     "ok": 26,
+     "fail": 25,
      "timeout": 0,
-     "ticks": 717
+     "ticks": 705
     },
     "deliver": {
-     "started": 7,
-     "ok": 6,
+     "started": 11,
+     "ok": 10,
      "fail": 0,
      "timeout": 1,
-     "ticks": 177
+     "ticks": 223
     },
     "plant": {
-     "started": 29,
-     "ok": 29,
+     "started": 26,
+     "ok": 26,
      "fail": 0,
      "timeout": 0,
-     "ticks": 446
+     "ticks": 482
     },
     "rest": {
-     "started": 96,
-     "ok": 96,
+     "started": 79,
+     "ok": 79,
      "fail": 0,
      "timeout": 0,
-     "ticks": 656
+     "ticks": 557
     },
     "catch": {
-     "started": 2,
-     "ok": 0,
-     "fail": 2,
-     "timeout": 0,
-     "ticks": 50
+     "started": 10,
+     "ok": 6,
+     "fail": 0,
+     "timeout": 4,
+     "ticks": 157
     }
    }
   },
@@ -1036,58 +1022,58 @@
    "setup": "auto-rules",
    "seed": 303,
    "layout": "held-out",
-   "coins": 256,
-   "sold": 54,
-   "jobs": 225,
-   "ok": 205,
-   "fail": 20,
+   "coins": 263,
+   "sold": 65,
+   "jobs": 241,
+   "ok": 212,
+   "fail": 29,
    "timeouts": 0,
-   "switchesPerMin": 20.1,
-   "restShare": 28,
-   "idleShare": 9,
-   "msPerTick": 0.09,
+   "switchesPerMin": 21.5,
+   "restShare": 27,
+   "idleShare": 10,
+   "msPerTick": 0.065,
    "byJob": {
     "tote": {
      "started": 13,
      "ok": 13,
      "fail": 0,
      "timeout": 0,
-     "ticks": 217
+     "ticks": 223
     },
     "forage": {
-     "started": 55,
-     "ok": 37,
-     "fail": 18,
+     "started": 65,
+     "ok": 36,
+     "fail": 29,
      "timeout": 0,
-     "ticks": 609
+     "ticks": 729
     },
     "deliver": {
-     "started": 18,
-     "ok": 18,
+     "started": 29,
+     "ok": 29,
      "fail": 0,
      "timeout": 0,
-     "ticks": 201
+     "ticks": 206
     },
     "plant": {
-     "started": 41,
-     "ok": 41,
+     "started": 34,
+     "ok": 34,
      "fail": 0,
      "timeout": 0,
-     "ticks": 448
+     "ticks": 301
     },
     "rest": {
-     "started": 96,
-     "ok": 96,
+     "started": 95,
+     "ok": 95,
      "fail": 0,
      "timeout": 0,
-     "ticks": 656
+     "ticks": 651
     },
     "catch": {
-     "started": 2,
-     "ok": 0,
-     "fail": 2,
+     "started": 5,
+     "ok": 5,
+     "fail": 0,
      "timeout": 0,
-     "ticks": 40
+     "ticks": 47
     }
    }
   },
@@ -1095,16 +1081,16 @@
    "setup": "auto-learned",
    "seed": 101,
    "layout": "held-out",
-   "coins": 201,
-   "sold": 53,
-   "jobs": 235,
-   "ok": 232,
-   "fail": 3,
+   "coins": 198,
+   "sold": 52,
+   "jobs": 233,
+   "ok": 231,
+   "fail": 2,
    "timeouts": 0,
-   "switchesPerMin": 21,
+   "switchesPerMin": 20.8,
    "restShare": 28,
-   "idleShare": 11,
-   "msPerTick": 0.102,
+   "idleShare": 10,
+   "msPerTick": 0.067,
    "byJob": {
     "tote": {
      "started": 1,
@@ -1114,46 +1100,39 @@
      "ticks": 13
     },
     "forage": {
-     "started": 54,
-     "ok": 53,
-     "fail": 1,
-     "timeout": 0,
-     "ticks": 724
-    },
-    "deliver": {
      "started": 53,
-     "ok": 53,
-     "fail": 0,
-     "timeout": 0,
-     "ticks": 524
-    },
-    "plant": {
-     "started": 22,
-     "ok": 22,
-     "fail": 0,
-     "timeout": 0,
-     "ticks": 148
-    },
-    "rest": {
-     "started": 97,
-     "ok": 97,
-     "fail": 0,
-     "timeout": 0,
-     "ticks": 663
-    },
-    "wander": {
-     "started": 6,
-     "ok": 6,
-     "fail": 0,
-     "timeout": 0,
-     "ticks": 36
-    },
-    "catch": {
-     "started": 2,
-     "ok": 0,
+     "ok": 51,
      "fail": 2,
      "timeout": 0,
-     "ticks": 54
+     "ticks": 721
+    },
+    "deliver": {
+     "started": 52,
+     "ok": 52,
+     "fail": 0,
+     "timeout": 0,
+     "ticks": 559
+    },
+    "plant": {
+     "started": 24,
+     "ok": 24,
+     "fail": 0,
+     "timeout": 0,
+     "ticks": 167
+    },
+    "rest": {
+     "started": 96,
+     "ok": 96,
+     "fail": 0,
+     "timeout": 0,
+     "ticks": 657
+    },
+    "catch": {
+     "started": 7,
+     "ok": 7,
+     "fail": 0,
+     "timeout": 0,
+     "ticks": 46
     }
    }
   },
@@ -1161,16 +1140,16 @@
    "setup": "auto-learned",
    "seed": 202,
    "layout": "held-out",
-   "coins": 154,
-   "sold": 48,
-   "jobs": 202,
-   "ok": 196,
-   "fail": 4,
-   "timeouts": 2,
-   "switchesPerMin": 18,
-   "restShare": 25,
+   "coins": 159,
+   "sold": 53,
+   "jobs": 219,
+   "ok": 218,
+   "fail": 1,
+   "timeouts": 0,
+   "switchesPerMin": 19.5,
+   "restShare": 27,
    "idleShare": 9,
-   "msPerTick": 0.095,
+   "msPerTick": 0.058,
    "byJob": {
     "tote": {
      "started": 1,
@@ -1180,46 +1159,39 @@
      "ticks": 15
     },
     "forage": {
-     "started": 51,
-     "ok": 49,
-     "fail": 2,
+     "started": 53,
+     "ok": 52,
+     "fail": 1,
      "timeout": 0,
-     "ticks": 944
-    },
-    "plant": {
-     "started": 12,
-     "ok": 12,
-     "fail": 0,
-     "timeout": 0,
-     "ticks": 146
+     "ticks": 947
     },
     "deliver": {
-     "started": 46,
-     "ok": 46,
+     "started": 53,
+     "ok": 53,
      "fail": 0,
      "timeout": 0,
-     "ticks": 356
+     "ticks": 395
     },
-    "wander": {
-     "started": 1,
-     "ok": 1,
+    "plant": {
+     "started": 9,
+     "ok": 9,
      "fail": 0,
      "timeout": 0,
-     "ticks": 6
+     "ticks": 108
     },
     "rest": {
-     "started": 87,
-     "ok": 87,
+     "started": 96,
+     "ok": 96,
      "fail": 0,
      "timeout": 0,
-     "ticks": 602
+     "ticks": 652
     },
     "catch": {
-     "started": 4,
-     "ok": 0,
-     "fail": 2,
-     "timeout": 2,
-     "ticks": 119
+     "started": 7,
+     "ok": 7,
+     "fail": 0,
+     "timeout": 0,
+     "ticks": 60
     }
    }
   },
@@ -1227,16 +1199,16 @@
    "setup": "auto-learned",
    "seed": 303,
    "layout": "held-out",
-   "coins": 189,
-   "sold": 47,
-   "jobs": 223,
-   "ok": 219,
-   "fail": 4,
+   "coins": 200,
+   "sold": 51,
+   "jobs": 224,
+   "ok": 222,
+   "fail": 2,
    "timeouts": 0,
-   "switchesPerMin": 19.9,
-   "restShare": 29,
-   "idleShare": 10,
-   "msPerTick": 0.083,
+   "switchesPerMin": 20,
+   "restShare": 26,
+   "idleShare": 9,
+   "msPerTick": 0.056,
    "byJob": {
     "tote": {
      "started": 1,
@@ -1246,46 +1218,39 @@
      "ticks": 13
     },
     "forage": {
-     "started": 48,
-     "ok": 46,
+     "started": 52,
+     "ok": 50,
      "fail": 2,
      "timeout": 0,
-     "ticks": 548
+     "ticks": 601
     },
     "deliver": {
-     "started": 47,
-     "ok": 47,
+     "started": 51,
+     "ok": 51,
      "fail": 0,
      "timeout": 0,
-     "ticks": 732
+     "ticks": 753
     },
     "plant": {
      "started": 23,
      "ok": 23,
      "fail": 0,
      "timeout": 0,
-     "ticks": 145
-    },
-    "wander": {
-     "started": 2,
-     "ok": 2,
-     "fail": 0,
-     "timeout": 0,
-     "ticks": 12
+     "ticks": 108
     },
     "rest": {
-     "started": 100,
-     "ok": 100,
+     "started": 89,
+     "ok": 89,
      "fail": 0,
      "timeout": 0,
-     "ticks": 682
+     "ticks": 620
     },
     "catch": {
-     "started": 2,
-     "ok": 0,
-     "fail": 2,
+     "started": 8,
+     "ok": 8,
+     "fail": 0,
      "timeout": 0,
-     "ticks": 43
+     "ticks": 79
     }
    }
   },
@@ -1293,58 +1258,58 @@
    "setup": "starter-plan",
    "seed": 101,
    "layout": "held-out",
-   "coins": 214,
-   "sold": 44,
-   "jobs": 204,
-   "ok": 185,
-   "fail": 19,
+   "coins": 225,
+   "sold": 54,
+   "jobs": 227,
+   "ok": 197,
+   "fail": 30,
    "timeouts": 0,
-   "switchesPerMin": 18.2,
+   "switchesPerMin": 20.2,
    "restShare": 28,
    "idleShare": 9,
-   "msPerTick": 0.097,
+   "msPerTick": 0.058,
    "byJob": {
     "tote": {
-     "started": 10,
-     "ok": 10,
+     "started": 9,
+     "ok": 9,
      "fail": 0,
      "timeout": 0,
-     "ticks": 146
+     "ticks": 137
     },
     "forage": {
-     "started": 45,
-     "ok": 28,
-     "fail": 17,
+     "started": 55,
+     "ok": 25,
+     "fail": 30,
      "timeout": 0,
-     "ticks": 767
+     "ticks": 762
     },
     "deliver": {
-     "started": 17,
-     "ok": 17,
+     "started": 30,
+     "ok": 30,
      "fail": 0,
      "timeout": 0,
-     "ticks": 230
+     "ticks": 300
     },
     "plant": {
-     "started": 33,
-     "ok": 33,
+     "started": 27,
+     "ok": 27,
      "fail": 0,
      "timeout": 0,
-     "ticks": 344
+     "ticks": 264
     },
     "rest": {
-     "started": 97,
-     "ok": 97,
+     "started": 98,
+     "ok": 98,
      "fail": 0,
      "timeout": 0,
-     "ticks": 660
+     "ticks": 666
     },
     "catch": {
-     "started": 2,
-     "ok": 0,
-     "fail": 2,
+     "started": 8,
+     "ok": 8,
+     "fail": 0,
      "timeout": 0,
-     "ticks": 48
+     "ticks": 42
     }
    }
   },
@@ -1352,58 +1317,58 @@
    "setup": "starter-plan",
    "seed": 202,
    "layout": "held-out",
-   "coins": 204,
-   "sold": 41,
-   "jobs": 199,
-   "ok": 175,
-   "fail": 23,
-   "timeouts": 1,
-   "switchesPerMin": 17.7,
-   "restShare": 27,
+   "coins": 183,
+   "sold": 36,
+   "jobs": 181,
+   "ok": 151,
+   "fail": 25,
+   "timeouts": 5,
+   "switchesPerMin": 16.1,
+   "restShare": 23,
    "idleShare": 8,
-   "msPerTick": 0.083,
+   "msPerTick": 0.048,
    "byJob": {
     "tote": {
-     "started": 7,
-     "ok": 7,
+     "started": 4,
+     "ok": 4,
      "fail": 0,
      "timeout": 0,
-     "ticks": 152
+     "ticks": 94
     },
     "forage": {
-     "started": 58,
-     "ok": 37,
-     "fail": 21,
+     "started": 51,
+     "ok": 26,
+     "fail": 25,
      "timeout": 0,
-     "ticks": 717
+     "ticks": 705
     },
     "deliver": {
-     "started": 7,
-     "ok": 6,
+     "started": 11,
+     "ok": 10,
      "fail": 0,
      "timeout": 1,
-     "ticks": 177
+     "ticks": 223
     },
     "plant": {
-     "started": 29,
-     "ok": 29,
+     "started": 26,
+     "ok": 26,
      "fail": 0,
      "timeout": 0,
-     "ticks": 446
+     "ticks": 482
     },
     "rest": {
-     "started": 96,
-     "ok": 96,
+     "started": 79,
+     "ok": 79,
      "fail": 0,
      "timeout": 0,
-     "ticks": 656
+     "ticks": 557
     },
     "catch": {
-     "started": 2,
-     "ok": 0,
-     "fail": 2,
-     "timeout": 0,
-     "ticks": 50
+     "started": 10,
+     "ok": 6,
+     "fail": 0,
+     "timeout": 4,
+     "ticks": 157
     }
    }
   },
@@ -1411,58 +1376,58 @@
    "setup": "starter-plan",
    "seed": 303,
    "layout": "held-out",
-   "coins": 256,
-   "sold": 54,
-   "jobs": 225,
-   "ok": 205,
-   "fail": 20,
+   "coins": 263,
+   "sold": 65,
+   "jobs": 241,
+   "ok": 212,
+   "fail": 29,
    "timeouts": 0,
-   "switchesPerMin": 20.1,
-   "restShare": 28,
-   "idleShare": 9,
-   "msPerTick": 0.099,
+   "switchesPerMin": 21.5,
+   "restShare": 27,
+   "idleShare": 10,
+   "msPerTick": 0.065,
    "byJob": {
     "tote": {
      "started": 13,
      "ok": 13,
      "fail": 0,
      "timeout": 0,
-     "ticks": 217
+     "ticks": 223
     },
     "forage": {
-     "started": 55,
-     "ok": 37,
-     "fail": 18,
+     "started": 65,
+     "ok": 36,
+     "fail": 29,
      "timeout": 0,
-     "ticks": 609
+     "ticks": 729
     },
     "deliver": {
-     "started": 18,
-     "ok": 18,
+     "started": 29,
+     "ok": 29,
      "fail": 0,
      "timeout": 0,
-     "ticks": 201
+     "ticks": 206
     },
     "plant": {
-     "started": 41,
-     "ok": 41,
+     "started": 34,
+     "ok": 34,
      "fail": 0,
      "timeout": 0,
-     "ticks": 448
+     "ticks": 301
     },
     "rest": {
-     "started": 96,
-     "ok": 96,
+     "started": 95,
+     "ok": 95,
      "fail": 0,
      "timeout": 0,
-     "ticks": 656
+     "ticks": 651
     },
     "catch": {
-     "started": 2,
-     "ok": 0,
-     "fail": 2,
+     "started": 5,
+     "ok": 5,
+     "fail": 0,
      "timeout": 0,
-     "ticks": 40
+     "ticks": 47
     }
    }
   },
@@ -1470,30 +1435,30 @@
    "setup": "harvest-job",
    "seed": 101,
    "layout": "held-out",
-   "coins": 206,
-   "sold": 92,
-   "jobs": 104,
-   "ok": 103,
+   "coins": 215,
+   "sold": 91,
+   "jobs": 103,
+   "ok": 102,
    "fail": 1,
    "timeouts": 0,
-   "switchesPerMin": 9.3,
-   "restShare": 5,
+   "switchesPerMin": 9.2,
+   "restShare": 6,
    "idleShare": 4,
-   "msPerTick": 0.058,
+   "msPerTick": 0.051,
    "byJob": {
     "forage": {
-     "started": 100,
-     "ok": 99,
+     "started": 98,
+     "ok": 97,
      "fail": 1,
      "timeout": 0,
-     "ticks": 2168
+     "ticks": 2154
     },
     "rest": {
-     "started": 4,
-     "ok": 4,
+     "started": 5,
+     "ok": 5,
      "fail": 0,
      "timeout": 0,
-     "ticks": 120
+     "ticks": 132
     }
    }
   },
@@ -1503,28 +1468,28 @@
    "layout": "held-out",
    "coins": 215,
    "sold": 95,
-   "jobs": 107,
-   "ok": 105,
-   "fail": 2,
+   "jobs": 108,
+   "ok": 107,
+   "fail": 1,
    "timeouts": 0,
-   "switchesPerMin": 9.5,
-   "restShare": 5,
-   "idleShare": 4,
-   "msPerTick": 0.06,
+   "switchesPerMin": 9.6,
+   "restShare": 6,
+   "idleShare": 5,
+   "msPerTick": 0.053,
    "byJob": {
     "forage": {
-     "started": 103,
+     "started": 102,
      "ok": 101,
-     "fail": 2,
+     "fail": 1,
      "timeout": 0,
-     "ticks": 2170
+     "ticks": 2143
     },
     "rest": {
-     "started": 4,
-     "ok": 4,
+     "started": 6,
+     "ok": 6,
      "fail": 0,
      "timeout": 0,
-     "ticks": 115
+     "ticks": 143
     }
    }
   },
@@ -1532,30 +1497,30 @@
    "setup": "harvest-job",
    "seed": 303,
    "layout": "held-out",
-   "coins": 229,
+   "coins": 230,
    "sold": 103,
-   "jobs": 115,
-   "ok": 113,
+   "jobs": 116,
+   "ok": 114,
    "fail": 2,
    "timeouts": 0,
    "switchesPerMin": 10.3,
    "restShare": 5,
    "idleShare": 5,
-   "msPerTick": 0.065,
+   "msPerTick": 0.054,
    "byJob": {
     "forage": {
      "started": 111,
      "ok": 109,
      "fail": 2,
      "timeout": 0,
-     "ticks": 2134
+     "ticks": 2152
     },
     "rest": {
-     "started": 4,
-     "ok": 4,
+     "started": 5,
+     "ok": 5,
      "fail": 0,
      "timeout": 0,
-     "ticks": 120
+     "ticks": 131
     }
    }
   },
@@ -1563,16 +1528,16 @@
    "setup": "two-pets",
    "seed": 101,
    "layout": "held-out",
-   "coins": 216,
-   "sold": 46,
-   "jobs": 200,
-   "ok": 194,
-   "fail": 6,
+   "coins": 249,
+   "sold": 51,
+   "jobs": 226,
+   "ok": 219,
+   "fail": 7,
    "timeouts": 0,
-   "switchesPerMin": 17.8,
+   "switchesPerMin": 20.2,
    "restShare": 27,
-   "idleShare": 8,
-   "msPerTick": 0.141,
+   "idleShare": 9,
+   "msPerTick": 0.098,
    "byJob": {
     "tote": {
      "started": 1,
@@ -1582,11 +1547,11 @@
      "ticks": 13
     },
     "forage": {
-     "started": 73,
-     "ok": 69,
-     "fail": 4,
+     "started": 87,
+     "ok": 80,
+     "fail": 7,
      "timeout": 0,
-     "ticks": 1053
+     "ticks": 1018
     },
     "deliver": {
      "started": 1,
@@ -1596,25 +1561,25 @@
      "ticks": 21
     },
     "plant": {
-     "started": 33,
-     "ok": 33,
+     "started": 36,
+     "ok": 36,
      "fail": 0,
      "timeout": 0,
-     "ticks": 401
+     "ticks": 407
     },
     "rest": {
-     "started": 90,
-     "ok": 90,
+     "started": 93,
+     "ok": 93,
      "fail": 0,
      "timeout": 0,
-     "ticks": 637
+     "ticks": 655
     },
     "catch": {
-     "started": 2,
-     "ok": 0,
-     "fail": 2,
+     "started": 8,
+     "ok": 8,
+     "fail": 0,
      "timeout": 0,
-     "ticks": 69
+     "ticks": 59
     }
    }
   },
@@ -1622,16 +1587,16 @@
    "setup": "two-pets",
    "seed": 202,
    "layout": "held-out",
-   "coins": 245,
-   "sold": 53,
-   "jobs": 224,
-   "ok": 213,
-   "fail": 10,
-   "timeouts": 1,
-   "switchesPerMin": 20,
-   "restShare": 28,
+   "coins": 219,
+   "sold": 46,
+   "jobs": 210,
+   "ok": 201,
+   "fail": 7,
+   "timeouts": 2,
+   "switchesPerMin": 18.7,
+   "restShare": 27,
    "idleShare": 9,
-   "msPerTick": 0.151,
+   "msPerTick": 0.098,
    "byJob": {
     "tote": {
      "started": 1,
@@ -1641,39 +1606,39 @@
      "ticks": 15
     },
     "forage": {
-     "started": 73,
-     "ok": 65,
-     "fail": 8,
+     "started": 54,
+     "ok": 47,
+     "fail": 7,
      "timeout": 0,
-     "ticks": 809
+     "ticks": 734
     },
     "deliver": {
-     "started": 15,
-     "ok": 14,
+     "started": 20,
+     "ok": 18,
      "fail": 0,
-     "timeout": 1,
-     "ticks": 223
+     "timeout": 2,
+     "ticks": 345
     },
     "plant": {
-     "started": 36,
-     "ok": 36,
+     "started": 32,
+     "ok": 32,
      "fail": 0,
      "timeout": 0,
-     "ticks": 416
+     "ticks": 382
     },
     "rest": {
-     "started": 97,
-     "ok": 97,
+     "started": 95,
+     "ok": 95,
      "fail": 0,
      "timeout": 0,
-     "ticks": 664
+     "ticks": 658
     },
     "catch": {
-     "started": 2,
-     "ok": 0,
-     "fail": 2,
+     "started": 8,
+     "ok": 8,
+     "fail": 0,
      "timeout": 0,
-     "ticks": 46
+     "ticks": 56
     }
    }
   },
@@ -1681,16 +1646,16 @@
    "setup": "two-pets",
    "seed": 303,
    "layout": "held-out",
-   "coins": 292,
-   "sold": 63,
-   "jobs": 235,
-   "ok": 233,
-   "fail": 2,
+   "coins": 282,
+   "sold": 61,
+   "jobs": 239,
+   "ok": 238,
+   "fail": 1,
    "timeouts": 0,
-   "switchesPerMin": 21,
-   "restShare": 27,
+   "switchesPerMin": 21.3,
+   "restShare": 28,
    "idleShare": 10,
-   "msPerTick": 0.168,
+   "msPerTick": 0.097,
    "byJob": {
     "tote": {
      "started": 1,
@@ -1700,11 +1665,11 @@
      "ticks": 13
     },
     "forage": {
-     "started": 90,
-     "ok": 90,
-     "fail": 0,
+     "started": 89,
+     "ok": 88,
+     "fail": 1,
      "timeout": 0,
-     "ticks": 972
+     "ticks": 961
     },
     "deliver": {
      "started": 1,
@@ -1714,25 +1679,25 @@
      "ticks": 6
     },
     "plant": {
-     "started": 46,
-     "ok": 46,
+     "started": 45,
+     "ok": 45,
      "fail": 0,
      "timeout": 0,
-     "ticks": 467
+     "ticks": 473
     },
     "rest": {
      "started": 95,
      "ok": 95,
      "fail": 0,
      "timeout": 0,
-     "ticks": 652
+     "ticks": 665
     },
     "catch": {
-     "started": 2,
-     "ok": 0,
-     "fail": 2,
+     "started": 8,
+     "ok": 8,
+     "fail": 0,
      "timeout": 0,
-     "ticks": 52
+     "ticks": 40
     }
    }
   },
@@ -1740,30 +1705,30 @@
    "setup": "learned-harvest",
    "seed": 101,
    "layout": "held-out",
-   "coins": 230,
+   "coins": 237,
    "sold": 104,
-   "jobs": 109,
-   "ok": 109,
+   "jobs": 110,
+   "ok": 110,
    "fail": 0,
    "timeouts": 0,
-   "switchesPerMin": 9.7,
+   "switchesPerMin": 9.8,
    "restShare": 6,
    "idleShare": 5,
-   "msPerTick": 0.069,
+   "msPerTick": 0.052,
    "byJob": {
     "skill": {
      "started": 104,
      "ok": 104,
      "fail": 0,
      "timeout": 0,
-     "ticks": 2141
+     "ticks": 2131
     },
     "rest": {
-     "started": 5,
-     "ok": 5,
+     "started": 6,
+     "ok": 6,
      "fail": 0,
      "timeout": 0,
-     "ticks": 150
+     "ticks": 151
     }
    }
   },
@@ -1771,30 +1736,30 @@
    "setup": "learned-harvest",
    "seed": 202,
    "layout": "held-out",
-   "coins": 236,
-   "sold": 100,
-   "jobs": 104,
-   "ok": 104,
+   "coins": 230,
+   "sold": 101,
+   "jobs": 107,
+   "ok": 107,
    "fail": 0,
    "timeouts": 0,
-   "switchesPerMin": 9.3,
-   "restShare": 5,
+   "switchesPerMin": 9.5,
+   "restShare": 6,
    "idleShare": 4,
-   "msPerTick": 0.06,
+   "msPerTick": 0.055,
    "byJob": {
     "skill": {
-     "started": 100,
-     "ok": 100,
+     "started": 101,
+     "ok": 101,
      "fail": 0,
      "timeout": 0,
-     "ticks": 2169
+     "ticks": 2152
     },
     "rest": {
-     "started": 4,
-     "ok": 4,
+     "started": 6,
+     "ok": 6,
      "fail": 0,
      "timeout": 0,
-     "ticks": 120
+     "ticks": 137
     }
    }
   },
@@ -1802,30 +1767,30 @@
    "setup": "learned-harvest",
    "seed": 303,
    "layout": "held-out",
-   "coins": 236,
-   "sold": 104,
-   "jobs": 108,
-   "ok": 108,
+   "coins": 239,
+   "sold": 107,
+   "jobs": 113,
+   "ok": 113,
    "fail": 0,
    "timeouts": 0,
-   "switchesPerMin": 9.6,
-   "restShare": 5,
+   "switchesPerMin": 10.1,
+   "restShare": 6,
    "idleShare": 5,
-   "msPerTick": 0.067,
+   "msPerTick": 0.062,
    "byJob": {
     "skill": {
-     "started": 104,
-     "ok": 104,
+     "started": 107,
+     "ok": 107,
      "fail": 0,
      "timeout": 0,
-     "ticks": 2168
+     "ticks": 2138
     },
     "rest": {
-     "started": 4,
-     "ok": 4,
+     "started": 6,
+     "ok": 6,
      "fail": 0,
      "timeout": 0,
-     "ticks": 120
+     "ticks": 138
     }
    }
   }
