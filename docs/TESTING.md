@@ -1,7 +1,7 @@
 # Testing and benchmarks
 
 ## Automated suites (`npm test`)
-301 tests in 38 files. CI-style check before every push: `npm run typecheck && npm run lint && npm test && npm run build`. Browser checks: `npm run e2e:cards` (pens and cards only, about 17 s) or `npm run e2e` (every lesson too, about 10 min).
+306 tests in 39 files. CI-style check before every push: `npm run typecheck && npm run lint && npm test && npm run build`. Browser checks: `npm run e2e:cards` (pens and cards only, about 17 s) or `npm run e2e` (every lesson too, about 10 min).
 
 | File | Covers |
 |---|---|
@@ -34,6 +34,7 @@
 | `tests/focus.test.ts` | Pen & cards phase 4: the card picker's next slot after a pick (depth first inside the new card, then back up the chain), optional slots skipped, nothing left → close, and tapping a slot by hand starts afresh |
 | `tests/tuneups.test.ts` | Pen & cards phase 5: Plant, Open the gate and Shut the gate certify at ≥ 80% on 6 training seeds at default traits; learned picks explore until practised, then stop, unless the player chose |
 | `tests/cardref.test.ts` | `docs/CARD_REFERENCE.md` matches the card registry (`npm run cards:ref` regenerates it) |
+| `tests/aims.test.ts` | Follow-up: “picks up the furthest berry from the house” pays for that berry, judged before the step (not the near one); a qualifier still can't go in a delivery's Into; aims read as words; Harvest aimed at the furthest berry picks it first; Go to aimed at a qualifier gets there |
 | `tests/capability.test.ts` | Phase 1: walking out of time is a timeout; a survive skill succeeds at time-up only if it survived; pinned vs active revision (and a pin to a dropped table falls back); farm use certified by default, opt-in and switch-off; eligibility reasons (missing skill, not allowed, nothing to aim at, paws full, too tired); trait aims `@crop` / `@storage` in nearest, conditions, and a learned Approach on the farm aimed at any ripe crop; routines, Fetch, direct jobs and plan rows through `runCapability`; option updates discounted by 0.99^ticks |
 | `tests/notes.test.ts` | Notes: write ops and clamping, the conditions, the sense (value and size), rules writing notes when they fire and notes starting empty each try; validation (never written with a suggestion, rules use it but the pet can't sense it, more than 4); new note cards take the lesson's note name; *Patrol* learns with the note (≥ 60%, measured 70–80%) and not without (≤ 35%, measured 10–20%); on the farm the skill keeps its own notebook (the farm world never holds notes or a verdict); lesson 11's offering and steps (including *Counts up to* 2) |
 | `tests/limits.test.ts` | Looser limits: a sparse table computes exactly what the dense one does (20,000 random updates, decisions and serialisation); a 6-sense lesson (279,936 situations) is refused by a Standard brain and learns with a Big one (≥ 55% at 30,000 tries, measured 70%), with a bounded learning curve; more than 8 senses is refused even for Big; a Big skill keeps only its two newest tables, older revisions can't be rolled back to, and it exports as a skill card; limits and lesson-card ranges |

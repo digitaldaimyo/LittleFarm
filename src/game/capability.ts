@@ -2,7 +2,7 @@ import type { GameState, Pet, Skill, SkillRevision } from './types';
 import { activeRevision, deployExplore, getSkill, isCertified, navPolicyFor, routineRunFor, sensePolicyOf, staleUses } from './pets';
 import { FetchController, FetchRun, SkillRun, type ExecStep, type NoteRunner } from '../learning/policies';
 import { compileCondition, compileStage, withTarget } from '../sim/compile';
-import { TRAIT_AIMS, nearest, def, type SimEvent, type Tally, type World } from '../sim/world';
+import { TRAIT_AIMS, aimIs, isSelector, nearest, def, selectorText, type SimEvent, type Tally, type World } from '../sim/world';
 import { walk } from '../domain/spec';
 import type { SpecNode, StageSpec } from '../domain/types';
 import type { Rng } from '../sim/rng';
@@ -75,6 +75,7 @@ export function capabilitiesOf(p: Pet): Capability[] {
 
 /** A human name for an aim. */
 export function aimLabel(aim: string): string {
+  if (isSelector(aim)) return selectorText(aim);
   return TRAIT_AIMS[aim] ?? def(aim).name ?? aim;
 }
 
@@ -143,7 +144,9 @@ export function runCapability(s: GameState, p: Pet, name: string, aim: string | 
     const nav = navPolicyFor(p, k.navigator ?? 'Approach');
     const ctrl = FetchController.from(rev.policy) ?? new FetchController();
     const dest = opts.dest ?? rev.stage?.learner.destination ?? 'home';
-    return new FetchRun(ctrl, nav ? sensePolicyOf(nav.rev) : null, target, dest, navTimeout(w.w, w.h, p.traits.persistence), timeout, rng, opts.count ? opts.count(w) : w.delivered[target] ?? 0, opts.count);
+    // Aimed at a qualifier ("the berry nearest the basket"): deliveries count by the kind it picks from.
+    const count = opts.count ?? (isSelector(target) || target.startsWith('@') ? (world: World) => Object.entries(world.delivered).reduce((a, [kind, v]) => a + (aimIs(kind, target) ? v : 0), 0) : undefined);
+    return new FetchRun(ctrl, nav ? sensePolicyOf(nav.rev) : null, target, dest, navTimeout(w.w, w.h, p.traits.persistence), timeout, rng, count ? count(w) : w.delivered[target] ?? 0, count);
   }
   const policy = sensePolicyOf(rev);
   if (!policy) return missing('skill missing');

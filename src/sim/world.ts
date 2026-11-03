@@ -104,6 +104,10 @@ export function inArea(a: Area, x: number, y: number): boolean {
 }
 
 export interface World {
+  /** Qualifiers used inside events (e.g. "picks up the furthest berry"): resolved at the start of every step… */
+  watchSel?: string[];
+  /** …into what they pointed at then, so an event is judged against the object as it was before the step. */
+  selBefore?: Record<string, number | null>;
   w: number;
   h: number;
   tick: number;
@@ -302,6 +306,15 @@ function parseSel(sel: string): [QualifierOp, string, string] {
   return p;
 }
 export const isSelector = (k: string) => k.charCodeAt(0) === 35; /* # */
+/** A qualifier in words: "the furthest berry from home". */
+export function selectorText(sel: string): string {
+  const [op, what, from] = parseSel(sel);
+  const name = (k: string) => (isSelector(k) ? selectorText(k) : k === '@crop' ? 'ripe crop' : k === '@storage' ? 'storage' : (def(k).name ?? k).toLowerCase());
+  if (op === 'carried') return 'what it carries';
+  if (op === 'fullest' || op === 'emptiest') return `the ${op} ${what ? name(what) : 'storage'}`;
+  return `the ${op} ${name(what)}${from ? ` ${op === 'nearest' ? 'to' : 'from'} ${name(from)}` : ''}`;
+}
+
 /** The kind a qualifier picks from ("the nearest berry" → berry; storage qualifiers → storage). */
 export function selectorKind(sel: string): string {
   const [op, what] = parseSel(sel);
@@ -381,6 +394,7 @@ export interface StepOptions {
 }
 
 export function step(w: World, action: Action, opts: StepOptions = {}): SimEvent[] {
+  if (w.watchSel) { const m: Record<string, number | null> = {}; for (const sel of w.watchSel) m[sel] = resolveSelector(w, sel)?.id ?? null; w.selBefore = m; }
   const p = w.pet;
   const events: SimEvent[] = [{ type: 'tick', x: p.x, y: p.y }];
   if (action === 'wait') {

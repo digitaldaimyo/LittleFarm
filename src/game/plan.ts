@@ -3,7 +3,7 @@ import { jobCapability } from './capability';
 import { isNode, node, paramOf } from '../domain/spec';
 import { compileCondition, resolveKind, withTarget } from '../sim/compile';
 import type { Tally, World } from '../sim/world';
-import { nearest } from '../sim/world';
+import { isSelector, nearest, selectorText } from '../sim/world';
 import { atFocus } from '../learning/features';
 import type { BehaviorId, ExecContext, Invocation } from '../learning/executive';
 import { BEHAVIOR_LABEL, contextKey } from '../learning/executive';
@@ -112,11 +112,15 @@ function compileJob(j: SpecNode | null, rowId: string): DutyJob {
     if (behaviorId === 'deliver') args.into = 'bin';
     if (behaviorId === 'goto') args.target = resolveKind(j.args.aim, 'berry') || 'home';
     if (behaviorId === 'skill') { args.skill = paramOf(j, 'skill', ''); const t = resolveKind(j.args.aim, ''); if (t) args.target = t; }
+    // A job aimed at something particular (e.g. Harvest → the crop nearest the basket; a qualifier or a kind).
+    if (['forage', 'deliver', 'plant', 'tote'].includes(behaviorId)) { const t = resolveKind(j.args.aim, ''); if (t) args.aim = t; }
   }
   const key = behaviorId === 'skill' ? `skill:${args.skill ?? ''}` : behaviorId === 'goto' ? `goto:${args.target}` : behaviorId === 'gate' ? `gate:${args.state}` : behaviorId;
-  const label = behaviorId === 'skill' ? (args.skill || 'a skill') : behaviorId === 'goto' ? `Go to ${args.target}` : behaviorId === 'gate' ? `Mind the gate (${args.state})` : BEHAVIOR_LABEL[behaviorId];
+  const label = behaviorId === 'skill' ? (args.skill || 'a skill') : behaviorId === 'goto' ? `Go to ${isSelector(args.target) ? selectorText(args.target) : args.target}` : behaviorId === 'gate' ? `Mind the gate (${args.state})` : BEHAVIOR_LABEL[behaviorId];
   args.cap = key;
-  return { behaviorId, args, key, label };
+  // Aimed at a qualifier: say which one ("Harvest → the berry nearest to basket").
+  const aimed = args.aim ?? (behaviorId === 'skill' ? args.target : undefined);
+  return { behaviorId, args, key, label: aimed && isSelector(aimed) ? `${label} → ${selectorText(aimed)}` : label };
 }
 
 export function compilePlan(plan: FarmPlan): CompiledRow[] {
@@ -140,6 +144,8 @@ export function compilePlan(plan: FarmPlan): CompiledRow[] {
 /** Can this row's job do anything right now? (same eligibility as the built-in executive) */
 export function jobPossible(p: Pet, w: World, ctx: ExecContext, job: { behaviorId: BehaviorId; args: Record<string, string> }): boolean {
   const nav = navPolicyFor(p, (job.args.navigator as NavigatorName) ?? p.assignment.navigator);
+  // Aimed at something particular: only while there is one to aim at (or something is already in the paws).
+  if (job.args.aim && !ctx.carrying && !ctx.basket && !nearest(w, job.args.aim)) return false;
   switch (job.behaviorId) {
     case 'rest': return true;
     case 'forage': return !!jobCapability(p, 'forage') && ((ctx.berry && !ctx.carrying) || (ctx.carrying && !ctx.basket));

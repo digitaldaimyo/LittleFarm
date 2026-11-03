@@ -76,14 +76,14 @@ Things (kinds) you can place or name: Berry, Carrot, Pumpkin, Sunflower, Target,
 
 | Card | Slots | Settings | What it does |
 |---|---|---|---|
-| **Basket run** `job.tote` | — | Move with: Approach / Avoid | Runs the pet’s own Basket run routine: lift a half-full basket, empty it at the house, set it down by the crops. |
+| **Basket run** `job.tote` | Aimed at (default: the basket that needs it) (optional): Kind | Move with: Approach / Avoid | Runs the pet’s own Basket run routine: lift a half-full basket, empty it at the house, set it down by the crops. |
 | **Catch fireflies** `job.catch` | — | Move with: Approach / Avoid | catch fireflies ({navigator}) |
 | **Go to…** `job.goto` | Go to: Kind | Move with: Approach / Avoid | Walk to the nearest one using Approach or Avoid. |
-| **Harvest** `job.forage` | — | Move with: Approach / Avoid | Runs the pet’s own Harvest routine: a ripe crop to the house (or storage with room, with Harvest to storage). |
-| **Haul** `job.deliver` | — | Move with: Approach / Avoid | Runs the pet’s own Fetch: eggs and stored goods to the house, where they sell. |
+| **Harvest** `job.forage` | Aimed at (default: any ripe crop) (optional): Kind | Move with: Approach / Avoid | Runs the pet’s own Harvest routine: a ripe crop to the house (or storage with room, with Harvest to storage). |
+| **Haul** `job.deliver` | Aimed at (default: eggs or the fullest storage) (optional): Kind | Move with: Approach / Avoid | Runs the pet’s own Fetch: eggs and stored goods to the house, where they sell. |
 | **Mind the gate** `job.gate` | — | Make it: closed / open; Move with: Approach / Avoid | Runs the pet’s own Open the gate / Shut the gate skill. |
 | **Nap** `job.nap` | — | — | nap |
-| **Plant** `job.plant` | — | Move with: Approach / Avoid | Runs the pet’s own Plant routine: empty soil gets its seed, paid from your coins. |
+| **Plant** `job.plant` | Aimed at (default: any empty soil) (optional): Kind | Move with: Approach / Avoid | Runs the pet’s own Plant routine: empty soil gets its seed, paid from your coins. |
 | **Run skill** `job.skill` | Aimed at (optional): Kind | Skill | Run one of your own skills or routines. |
 
 ## Limits

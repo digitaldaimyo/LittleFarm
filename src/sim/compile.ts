@@ -1,9 +1,9 @@
 import type { SpecNode, StageSpec } from '../domain/types';
-import { isNode, paramOf } from '../domain/spec';
+import { isNode, paramOf, walk } from '../domain/spec';
 import { kindOfCard } from '../domain/registry';
 import { Rng, hashSeed } from './rng';
 import type { Obj, SimEvent, Tally, World } from './world';
-import { TRAIT_CROPS, addObject, aimIs, objIs, resolveSelector, selector, storeCount, type QualifierOp, bfsDistance, blocks, def, distTo, emptyStore, emptyWorld, eventOfKey, inArea, inBounds, isSolidAt, nearest, objectsAt, onGround, seedPrice } from './world';
+import { TRAIT_CROPS, addObject, aimIs, isSelector, objIs, resolveSelector, selector, storeCount, type QualifierOp, bfsDistance, blocks, def, distTo, emptyStore, emptyWorld, eventOfKey, inArea, inBounds, isSolidAt, nearest, objectsAt, onGround, seedPrice } from './world';
 
 /** How a rule's End try judges the try: by SUCCESS (default), or it counts as a success ✓ / a miss ✗ outright. */
 export type EndOutcome = 'judge' | 'success' | 'fail';
@@ -42,7 +42,7 @@ type Quantity = (c: CondCtx) => number;
 interface CompiledRule {
   id: string;
   label: string;
-  match: (e: SimEvent) => boolean;
+  match: (e: SimEvent, w?: World) => boolean;
   conds: Cond[];
   reward: number;
   end: EndOutcome | null;
@@ -387,32 +387,40 @@ export function compileCondition(n: SpecNode): Cond {
   }
 }
 
-export function compileEvent(n: SpecNode): (e: SimEvent) => boolean {
+export function compileEvent(n: SpecNode): (e: SimEvent, w?: World) => boolean {
   const k = kindArg(n, 'what');
+  // A qualifier ("the furthest berry from the house") means that one object, as it was before the step — after a
+  // pickup the berry is in the paws and "the furthest" has moved on. Without a world, it falls back to the kind.
+  const isK = (e: SimEvent, w?: World) => {
+    if (!isSelector(k)) return aimIs(e.kind, k);
+    if (!w) return aimIs(e.kind, k);
+    const id = w.selBefore && k in w.selBefore ? w.selBefore[k] : resolveSelector(w, k)?.id ?? null;
+    return e.objId !== undefined && e.objId === id;
+  };
   switch (n.cardId) {
-    case 'ev.reach': return (e) => e.type === 'reach' && aimIs(e.kind, k);
-    case 'ev.enter': return (e) => e.type === 'enter' && aimIs(e.kind, k);
-    case 'ev.pickup': return (e) => e.type === 'pickup' && aimIs(e.kind, k);
-    case 'ev.drop': return (e) => e.type === 'drop' && aimIs(e.kind, k);
+    case 'ev.reach': return (e, w) => e.type === 'reach' && isK(e, w);
+    case 'ev.enter': return (e, w) => e.type === 'enter' && isK(e, w);
+    case 'ev.pickup': return (e, w) => e.type === 'pickup' && isK(e, w);
+    case 'ev.drop': return (e, w) => e.type === 'drop' && isK(e, w);
     case 'ev.deliver': {
       const into = kindArg(n, 'into');
-      return (e) => e.type === 'deliver' && aimIs(e.kind, k) && aimIs(e.into, into);
+      return (e, w) => e.type === 'deliver' && isK(e, w) && aimIs(e.into, into);
     }
     case 'ev.tick': return (e) => e.type === 'tick';
     case 'ev.bump': return (e) => e.type === 'bump';
     case 'ev.stay': return (e) => e.type === 'stay';
     case 'ev.fill': return (e) => e.type === 'fill';
     case 'ev.gate': { const st = paramOf(n, 'state', 'closed'); return (e) => e.type === 'gate' && e.state === st; }
-    case 'ev.shoo': return (e) => (e.type === 'shoo' || e.type === 'scare') && aimIs(e.kind, k);
-    case 'ev.peck': return (e) => e.type === 'peck' && aimIs(e.kind, k);
-    case 'ev.entersArea': { const a = areaArg(n, 'area'); return (e) => e.type === 'enterArea' && aimIs(e.kind, k) && e.area === a; }
-    case 'ev.leavesArea': { const a = areaArg(n, 'area'); return (e) => e.type === 'leaveArea' && aimIs(e.kind, k) && e.area === a; }
-    case 'ev.water': return (e) => e.type === 'water' && aimIs(e.kind, k);
-    case 'ev.plant': return (e) => e.type === 'plant' && aimIs(e.kind, k);
-    case 'ev.lift': return (e) => e.type === 'lift' && aimIs(e.kind, k);
+    case 'ev.shoo': return (e, w) => (e.type === 'shoo' || e.type === 'scare') && isK(e, w);
+    case 'ev.peck': return (e, w) => e.type === 'peck' && isK(e, w);
+    case 'ev.entersArea': { const a = areaArg(n, 'area'); return (e, w) => e.type === 'enterArea' && isK(e, w) && e.area === a; }
+    case 'ev.leavesArea': { const a = areaArg(n, 'area'); return (e, w) => e.type === 'leaveArea' && isK(e, w) && e.area === a; }
+    case 'ev.water': return (e, w) => e.type === 'water' && isK(e, w);
+    case 'ev.plant': return (e, w) => e.type === 'plant' && isK(e, w);
+    case 'ev.lift': return (e, w) => e.type === 'lift' && isK(e, w);
     case 'ev.empty': {
       const into = kindArg(n, 'into');
-      return (e) => e.type === 'empty' && aimIs(e.kind, k) && aimIs(e.into, into);
+      return (e, w) => e.type === 'empty' && isK(e, w) && aimIs(e.into, into);
     }
     default:
       throw new Error(`Cannot compile event ${n.cardId}`);
@@ -680,10 +688,16 @@ function compileStageInner(spec: StageSpec): CompiledStage {
   const rules = spec.rules.filter((r) => r.cardId === 'rule' && r.args.off !== 1).map(compileRule);
   const success = spec.success ? compileCondition(spec.success) : () => false;
   const fail = spec.fail ? compileCondition(spec.fail) : () => false;
+  // Qualifiers inside rules' events: each try's world resolves them at the start of every step (see compileEvent).
+  const eventSels: string[] = [];
+  for (const r of spec.rules) {
+    const when = isNode(r.args.when) ? r.args.when : null;
+    if (when) walk(when, (x) => { if (x.cardId.startsWith('obj.')) { const sel = resolveKind(x); if (sel && !eventSels.includes(sel)) eventSels.push(sel); } });
+  }
   return {
     spec,
     rules,
-    generate: (seed) => generateWorld(spec, seed),
+    generate: (seed) => { const w = generateWorld(spec, seed); if (eventSels.length) w.watchSel = eventSels; return w; },
     newRuleState: () => ({ fired: new Map(), lastTick: new Map(), perObj: new Map() }),
     // A rule that ended the try as a success ✓ or a miss ✗ decides it; otherwise SUCCESS does.
     // 'survive' lessons: success is judged at the end of the try, and only if nothing failed.
@@ -695,7 +709,7 @@ function compileStageInner(spec: StageSpec): CompiledStage {
       const hits: RuleHit[] = [];
       for (const r of rules) {
         for (const e of events) {
-          if (!r.match(e)) continue;
+          if (!r.match(e, w)) continue;
           const it = e.objId !== undefined ? w.objects.find((o) => o.id === e.objId) : undefined;
           const ctx = { w, prev, it };
           if (!r.conds.every((c) => c(ctx))) continue;

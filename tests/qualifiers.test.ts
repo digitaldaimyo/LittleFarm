@@ -104,10 +104,10 @@ describe('qualifiers in conditions, measures and senses', () => {
     expect(ids).toEqual(expect.arrayContaining(['obj.nearest', 'obj.furthest']));
   });
 
-  it('validation: not inside an event; a warning for rewarding “closer to the nearest …”', () => {
+  it('validation: not in an event’s “Into”; a warning for rewarding “closer to the nearest …”', () => {
     const st = recipeStage('go-to-berry');
     st.rules = [
-      node('rule', { label: 'bad', when: node('ev.reach', { actor: pet(), what: node('obj.nearest', { what: node('kind:berry') }) }), then: [node('eff.reward', { amount: 1 })] }),
+      node('rule', { label: 'bad', when: node('ev.deliver', { what: node('kind:berry'), into: node('obj.nearest', { what: node('kind:bin') }) }), then: [node('eff.reward', { amount: 1 })] }),
       node('rule', { label: 'trap', when: node('ev.tick'), if: [node('cond.closer', { actor: pet(), what: node('obj.nearest', { what: node('kind:berry') }) })], then: [node('eff.reward', { amount: 0.1 })] }),
     ];
     const d = validateStage(st);

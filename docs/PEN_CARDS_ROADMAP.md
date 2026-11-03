@@ -176,6 +176,16 @@ Playtesting the learned-farm build turned up four things:
 
 **The pen & cards roadmap is complete.**
 
-## Follow-up (not in this push)
+## Follow-up: qualifiers as aims and inside events (done)
 
-- Qualifiers as **aims** for skills and jobs (Approach → furthest berry from the house; Harvest → crop nearest the basket). This needs the farm runtime to aim at one object rather than a kind.
+- **Inside events:** "picks up / reaches / … *the furthest berry from the house*" now works.
+  - Each pen world records what its event qualifiers point at at the start of every step (`World.watchSel` → `selBefore`), and the event pays only if it happened to that object. So picking up the far berry pays, even though "the furthest" is a different berry once it's in the paws.
+  - Without that record (e.g. on the farm), it falls back to the kind.
+  - Still refused: a qualifier in a delivery's **Into**, because a delivery only knows what kind of container it went into. Use an IF such as "stored in the nearest basket ≥ 1".
+- **As aims:**
+  - Responsibilities can aim **Run a skill** and **Go to** at a qualifier.
+  - **Harvest**, **Haul**, **Plant** and **Basket run** have a new optional **Aimed at** slot, e.g. Harvest → the furthest berry from the house, or Haul → the fullest storage.
+  - Aims are selector strings, so skills, routines and errands use them unchanged: their senses and goals resolve "the target" through the same lookups. Fetch counts deliveries by the kind a qualifier picks from.
+  - A job aimed at something is only eligible while there's one to aim at, or while something is already in the paws.
+  - The "Why…" trace and job labels say it in words ("Harvest → the furthest berry from home").
+- **Tests (`tests/aims.test.ts`):** an event judged before the step, Into still refused, wording, Harvest aimed at the furthest berry picks that one first, and Go to aimed at a qualifier gets there.

@@ -345,7 +345,7 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
       // Harvest: the pet's own Harvest skill or routine, aimed at any ripe crop (learned-farm phase 3).
       const cap = jobCapability(pet, 'forage', s);
       if (!cap) return { next: () => ({ done: 'fail', reason: 'no Harvest skill' }) };
-      return runCapability(s, pet, cap.name, cap.aim, rt.rng, inv.timeout);
+      return runCapability(s, pet, cap.name, inv.args.aim ?? cap.aim, rt.rng, inv.timeout);
     }
     case 'goto': {
       // An errand: the pet's own walking skill (Approach, or Avoid), aimed at the target — through the one runtime.
@@ -359,7 +359,7 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
       if (!cap) return { next: () => ({ done: 'fail', reason: 'no Basket run skill' }) };
       let lifted = !!heldBasket(w);
       const goal = (world: World) => { if (heldBasket(world)) lifted = true; return lifted && world.pet.carrying === null; };
-      return runCapability(s, pet, cap.name, cap.aim, rt.rng, inv.timeout, { goal });
+      return runCapability(s, pet, cap.name, inv.args.aim ?? cap.aim, rt.rng, inv.timeout, { goal });
     }
     case 'plant': {
       // Plant: the pet's own Plant routine (learned-farm phase 3c). Done once a plot has been sown.
@@ -367,7 +367,7 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
       if (!cap) return { next: () => ({ done: 'fail', reason: 'no Plant skill' }) };
       const soil = (world: World) => world.objects.filter((o) => o.kind === 'soil' && onGround(o)).length;
       const before = soil(w);
-      return runCapability(s, pet, cap.name, cap.aim, rt.rng, inv.timeout, { goal: (world) => soil(world) < before });
+      return runCapability(s, pet, cap.name, inv.args.aim ?? cap.aim, rt.rng, inv.timeout, { goal: (world) => soil(world) < before });
     }
     case 'gate': {
       // Mind the gate: the pet's own gate skill (it learned to nudge a gate from beside it). Done when every gate is
@@ -387,7 +387,7 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
       const cap = jobCapability(pet, 'deliver');
       if (!cap) return { next: () => ({ done: 'fail', reason: 'no Fetch skill' }) };
       const fullest = w.objects.filter((o) => o.store && storeCount(o) > 0).sort((a, b) => storeCount(b) - storeCount(a))[0];
-      const item = w.pet.carrying !== null ? (w.objects.find((o) => o.id === w.pet.carrying)?.kind ?? 'carrot') : nearest(w, 'egg') ? 'egg' : fullest?.kind ?? 'bin';
+      const item = w.pet.carrying !== null ? (w.objects.find((o) => o.id === w.pet.carrying)?.kind ?? 'carrot') : inv.args.aim ?? (nearest(w, 'egg') ? 'egg' : fullest?.kind ?? 'bin');
       return runCapability(s, pet, cap.name, item, rt.rng, inv.timeout, { dest: 'home', count: totalSold });
     }
     case 'skill':

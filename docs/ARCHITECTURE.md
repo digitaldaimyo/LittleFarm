@@ -201,7 +201,7 @@ Saves are v2. The v1 → v2 migration adds templates and explicit preset senses.
 
 ### Qualifiers
 
-`obj.*` cards compile (`resolveKind`) to selector strings such as `#["furthest","berry","home"]` (`selector` in sim/world.ts). `nearest`, `objIs` and `aimIs` resolve them with `resolveSelector`, so kind-taking conditions, measures and senses work with them unchanged. Kind-level checks (`aimIs`, used for events and carried kinds) fall back to the kind a qualifier picks from, which is why validation keeps qualifiers out of events. `typecheck.fits` lets `Object<Qualifier>` into `Kind` slots; `objectArg` (compile.ts) reads an Object slot as *It* or a qualifier.
+`obj.*` cards compile (`resolveKind`) to selector strings such as `#["furthest","berry","home"]` (`selector` in sim/world.ts). `nearest`, `objIs` and `aimIs` resolve them with `resolveSelector`, so kind-taking conditions, measures and senses work with them unchanged. Kind-level checks (`aimIs`, used for events and carried kinds) fall back to the kind a qualifier picks from, which is why validation keeps qualifiers out of events. `typecheck.fits` lets `Object<Qualifier>` into `Kind` slots; `objectArg` (compile.ts) reads an Object slot as *It* or a qualifier. Inside events, `compileEvent` matches the event's object against `World.selBefore` (what each qualifier pointed at when the step began, recorded by `step` for the selectors in `watchSel`, which `compileStage`'s `generate` sets). As aims, selectors travel like any target string; farm jobs read an optional `args.aim` (compilePlan).
 
 ### Storage identity
 

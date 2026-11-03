@@ -196,7 +196,9 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
   // a warning for the classic moving-target trap: rewarding "closer to the nearest X" pays for walking between two.
   for (const r of stage.rules) {
     const when = isNode(r.args.when) ? r.args.when : null;
-    if (when) walk(when, (x) => { if (x.cardId.startsWith('obj.')) out.push({ severity: 'error', code: 'qualifier-in-event', nodeId: x.id, message: `“${reg.cards.get(x.cardId)?.presentation.title ?? x.cardId}” can’t go inside an event (WHEN): events happen to a kind of thing. Put the qualifier in an IF condition instead, e.g. “Pip is at the furthest berry”.` }); });
+    // Events take a qualifier in “what” (judged against that object as it was before the step), not in “into”:
+    // a delivery only knows what kind of container it went into.
+    if (when) for (const key of ['into']) { const v = when.args[key]; if (isNode(v) && v.cardId.startsWith('obj.')) out.push({ severity: 'error', code: 'qualifier-in-event', nodeId: v.id, message: `“${reg.cards.get(v.cardId)?.presentation.title ?? v.cardId}” can’t go in “Into”: a delivery only knows what kind of container it went into. Check which one in an IF instead (e.g. “stored in the nearest basket ≥ 1”).` }); }
     const pays = (Array.isArray(r.args.then) ? r.args.then : []).some((e) => isNode(e) && e.cardId === 'eff.reward');
     if (pays) for (const c of (Array.isArray(r.args.if) ? r.args.if : []).filter(isNode)) walk(c, (x) => {
       if (x.cardId === 'cond.closer' && isNode(x.args.what) && x.args.what.cardId === 'obj.nearest') out.push({ severity: 'warning', code: 'moving-target', nodeId: x.id, message: '“Closer to the nearest …” changes target as the pet moves: walking back and forth between two of them keeps getting closer to “the nearest” one. Reward reaching it, or aim at a fixed choice (e.g. the furthest from the house).' });
