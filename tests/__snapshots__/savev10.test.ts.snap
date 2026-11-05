@@ -1,0 +1,28 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`a v10 save > loads with every skill, revision and responsibility 1`] = `
+[
+  "if: Pip carries basket | do: basket run (Approach) | also:  | until:  | night: ",
+  "if: Pip is at home | do: harvest the furthest berry from home (Approach) | also:  | until:  | night: work",
+  "if: it's night & number of firefly lying around ≥ 1 | do: catch fireflies (Approach) | also:  | until:  | night: ",
+  "if: Pip carries something | do: haul to the house (Approach) | also: harvest (Approach) | until:  | night: ",
+  "if:  | do: basket run (Approach) | also:  | until:  | night: ",
+  "if: storage is at least half full | do: haul to the house (Approach) | also: basket run (Approach) | until: not (storage is at least half full) | night: ",
+  "if: number of empty soil lying around ≥ 1 & can afford seeds | do: plant (Approach) | also:  | until:  | night: ",
+  "if: number of berry lying around ≥ 1 or number of carrot lying around ≥ 1 or number of pumpkin lying around ≥ 1 or number of sunflower lying around ≥ 1 | do: harvest (Approach) | also:  | until:  | night: ",
+  "if: storage has anything in it or number of egg lying around ≥ 1 | do: haul to the house (Approach) | also:  | until:  | night: ",
+  "if:  | do: nap | also:  | until:  | night: ",
+]
+`;
+
+exports[`a v10 save > plays the next farm day exactly as it did at v10 1`] = `
+{
+  "coins": 161,
+  "path": "bc70ae25",
+  "sold": {
+    "berry": 29,
+    "carrot": 13,
+  },
+  "tick": 2400,
+}
+`;
