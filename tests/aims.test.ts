@@ -12,7 +12,7 @@ import { createRuntime, farmTick } from '../src/game/farm';
 import { compilePlan } from '../src/game/plan';
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import { recipeStage, trainAndSave, giveFarmJobs } from './helpers';
-import type { FarmPlan } from '../src/game/types';
+import type { Responsibilities } from '../src/game/types';
 
 const furthestFromHome = () => node('obj.furthest', { what: node('kind:berry'), from: node('kind:home') });
 
@@ -55,7 +55,7 @@ describe('qualifiers as aims on the farm', () => {
 
   it('they read as words in the trace and on jobs', () => {
     expect(selectorText(resolveKind(furthestFromHome()))).toBe('the furthest berry from home');
-    const plan: FarmPlan = { chooser: 'first', guard: true, rows: [node('plan.row', { label: 'Far berries', if: [], do: node('job.forage', { aim: furthestFromHome() }) })] };
+    const plan: Responsibilities = { guard: true, rows: [node('plan.responsibility', { label: 'Far berries', if: [], do: node('job.harvest', { aim: furthestFromHome() }) })] };
     expect(compilePlan(plan)[0].job.label).toBe('Harvest → the furthest berry from home');
   });
 
@@ -68,7 +68,7 @@ describe('qualifiers as aims on the farm', () => {
     const bushes = w.objects.filter((o) => o.kind === 'bush').sort((a, b) => (Math.abs(b.x - home.x) + Math.abs(b.y - home.y)) - (Math.abs(a.x - home.x) + Math.abs(a.y - home.y)));
     const far = addObject(w, 'berry', bushes[0].x, bushes[0].y);
     addObject(w, 'berry', bushes.at(-1)!.x, bushes.at(-1)!.y); // a nearer one
-    p.plan = { chooser: 'first', guard: true, rows: [node('plan.row', { label: 'Far berries', if: [], do: node('job.forage', { aim: furthestFromHome() }) }), node('plan.row', { label: 'Otherwise nap', if: [], do: node('job.nap') })] };
+    p.plan = { guard: true, rows: [node('plan.responsibility', { label: 'Far berries', if: [], do: node('job.harvest', { aim: furthestFromHome() }) }), node('plan.responsibility', { label: 'Otherwise nap', if: [], do: node('job.nap') })] };
     const rt = createRuntime(g.farm);
     let first: number | null = null;
     for (let t = 0; t < 300 && first === null; t++) { farmTick(g, rt); if (w.pet.carrying !== null) first = w.pet.carrying; }
@@ -78,7 +78,7 @@ describe('qualifiers as aims on the farm', () => {
   it('Run a skill (Approach) aimed at a qualifier walks to that one', () => {
     const { g, p } = farm();
     const w = g.farm.world;
-    p.plan = { chooser: 'first', guard: true, rows: [node('plan.row', { label: 'To the far berry', if: [], do: node('job.goto', { aim: furthestFromHome() }) }), node('plan.row', { label: 'Otherwise nap', if: [], do: node('job.nap') })] };
+    p.plan = { guard: true, rows: [node('plan.responsibility', { label: 'To the far berry', if: [], do: node('job.goto', { aim: furthestFromHome() }) }), node('plan.responsibility', { label: 'Otherwise nap', if: [], do: node('job.nap') })] };
     const rt = createRuntime(g.farm);
     rt.stats = {};
     for (let t = 0; t < 200 && !(rt.stats.goto?.ok); t++) farmTick(g, rt);

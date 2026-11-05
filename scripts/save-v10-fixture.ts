@@ -45,7 +45,7 @@ st.rules.push(node('rule', { label: 'Two stored', when: node('ev.tick'), if: [no
 s.stages.push(st);
 // Run the farm so storage holds ids, evidence builds up and a job is under way.
 const rt = createRuntime(s.farm);
-for (let t = 0; t < 900 || s.farm.current?.behaviorId !== 'forage'; t++) farmTick(s, rt);
+for (let t = 0; t < 900 || !['forage', 'harvest'].includes(String(s.farm.current?.behaviorId)); t++) farmTick(s, rt);
 const errs = [...validateStage(st), ...validateNodes(pip.plan.rows, nominal('PlanRow'), { placed: new Set(FARM_OBJECTS.map((o) => o.id)), areas: new Set(['coop']) })].filter((d) => d.severity === 'error');
 if (errs.length) throw new Error(JSON.stringify(errs));
 writeFileSync(process.argv[2], serializeGame(s));

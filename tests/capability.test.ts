@@ -11,7 +11,7 @@ import { node } from '../src/domain/spec';
 import { Rng } from '../src/sim/rng';
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import type { GameState, Pet } from '../src/game/types';
-import { recipeStage, trainAndSave, trainAndSaveRoutine } from './helpers';
+import { recipeStage, trainAndSave, trainAndSaveRoutine, onJob } from './helpers';
 
 function pet(): { s: GameState; p: Pet } {
   const s = newGame();
@@ -112,7 +112,7 @@ describe('trait aims: any ripe crop, storage with room', () => {
   it('a learned Approach aimed at “any ripe crop” walks to whichever crop is nearest', () => {
     const { s, p } = pet();
     s.progress.unlocks.push('carrots');
-    p.assignment = { mode: 'job', job: 'skill', navigator: 'Approach', skillName: 'Approach', target: '@crop' };
+    onJob(p, 'skill', { skillName: 'Approach', target: '@crop' });
     s.farm.dutyPetId = p.id;
     const rt = createRuntime(s.farm);
     let onCrop = 0;
@@ -133,8 +133,8 @@ describe('one runtime for skills, Fetch and routines', () => {
     expect(runOut(routine as never, s.farm.world, 50)).not.toBe('success'); // nothing steps the world here: time runs out
     expect(runCapability(s, p, 'Nope', undefined, new Rng(1), 5).next(s.farm.world)).toEqual({ done: 'fail', reason: 'skill missing' });
     // Direct job and a plan row: both end up as the farm's 'skill' behaviour, started by runCapability.
-    p.plan = { chooser: 'first', guard: true, rows: [node('plan.row', { label: 'Run it', if: [], do: node('job.skill', { skill: 'Fetch routine', aim: node('kind:berry') }) })] } as never;
-    p.assignment = { mode: 'plan', job: 'forage', navigator: 'Approach' };
+    p.plan = { guard: true, rows: [node('plan.responsibility', { label: 'Run it', if: [], do: node('job.skill', { skill: 'Fetch routine', aim: node('kind:berry') }) })] } as never;
+    p.assignment = { mode: 'auto', job: 'harvest', navigator: 'Approach' }; // (was plan mode, which Auto replaced)
     s.farm.dutyPetId = p.id;
     const rt = createRuntime(s.farm);
     for (let t = 0; t < 5; t++) farmTick(s, rt);

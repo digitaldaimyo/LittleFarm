@@ -162,8 +162,8 @@ describe('wiring audit: every card in the registry', () => {
         st.rules = [node('rule', { label: 'x', when: node('ev.tick'), then: out === 'Effect' ? [n] : [node('eff.reward', { amount: 1 })], ...(out === 'Limit' ? { limit: n } : {}) })];
         expect(() => compileStage(st), c.id).not.toThrow();
       } else if (out === 'Job') {
-        expect(compilePlan({ chooser: 'first', guard: true, rows: [node('plan.row', { label: 'r', if: [], do: n })] })[0].job, c.id).toBeTruthy();
-      } else expect(['kind', 'actor', 'reference', 'rule', 'option'].includes(g) || ['Area', 'PlanRow', 'Rule', 'Option'].includes(out), `${c.id} (${out}) has no audit`).toBe(true);
+        expect(compilePlan({ guard: true, rows: [node('plan.responsibility', { label: 'r', if: [], do: n })] })[0].job, c.id).toBeTruthy();
+      } else expect(['kind', 'actor', 'reference', 'rule', 'option'].includes(g) || ['Area', 'Responsibility', 'Rule', 'Option'].includes(out), `${c.id} (${out}) has no audit`).toBe(true);
     }
   });
 });

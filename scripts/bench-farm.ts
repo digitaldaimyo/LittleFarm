@@ -17,7 +17,7 @@ import { startLayout, move, place, applyLayout } from '../src/game/layout';
 import { recipeStage } from '../src/domain/recipes';
 import type { GameState, Pet } from '../src/game/types';
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
-import { trainAndSave, trainAndSaveRoutine } from '../tests/helpers';
+import { trainAndSave, trainAndSaveRoutine, onJob } from '../tests/helpers';
 
 const SEEDS = [101, 202, 303, 404, 505]; // polish phase 2: 5 seeds (was 3); each row also reports the spread
 const LEARNED = process.argv.includes('--learned');
@@ -59,18 +59,18 @@ function run(setup: Setup, seed: number, layout: 'standard' | 'held-out') {
   g.progress.unlocks.push('fetch', 'carrots');
   g.resources.coins = 30;
   g.farm.dutyPetId = a.id;
-  a.assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' };
+  a.assignment = { mode: 'auto', job: 'harvest', navigator: 'Approach' };
   if (setup === 'auto-learned') a.executive.mode = 'learned'; // practised below, once the farm is set up
-  if (setup === 'starter-plan') { a.plan = starterPlan(); a.assignment.mode = 'plan'; }
-  if (setup === 'harvest-job') a.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' };
+  if (setup === 'starter-plan') a.plan = starterPlan(); // (was plan mode, which Auto replaced)
+  if (setup === 'harvest-job') onJob(a, 'harvest'); // (was a direct job: now that job as responsibilities)
   if (setup === 'learned-harvest') {
     const hv = recipeStage('harvest'); hv.seed = seed;
     if (!LEARNED) trainAndSaveRoutine(g, a, hv);
-    a.assignment = { mode: 'job', job: 'skill', navigator: 'Approach', skillName: 'Harvest', target: '@crop' };
+    onJob(a, 'skill', { skillName: 'Harvest', target: '@crop' });
   }
   if (setup === 'two-pets') {
     const b = skilledPet(g, 'Mochi', seed);
-    b.assignment = { mode: 'job', job: 'deliver', navigator: 'Approach' };
+    onJob(b, 'haul');
     setOnDuty(g, b.id, true);
   }
   if (layout === 'held-out') heldOut(g);

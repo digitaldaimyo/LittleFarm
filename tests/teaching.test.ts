@@ -190,8 +190,8 @@ describe('validation and repairs for memory', () => {
     const st = shooLesson('has');
     st.success = node('cond.happened', { event: node('ev.tick'), count: 1 });
     expect(validateStage(st).some((d) => d.code === 'memory-every-step')).toBe(true);
-    const row = node('plan.row', { label: 'x', if: [node('cond.happened', { event: shoo(), count: 1 })], do: node('job.nap') });
-    expect(validateNodes([row], nominal('PlanRow'), { placed: new Set(['chicken']), areas: new Set(['coop']) }).filter((d) => d.severity === 'error')).toEqual([]);
+    const row = node('plan.responsibility', { label: 'x', if: [node('cond.happened', { event: shoo(), count: 1 })], do: node('job.nap') });
+    expect(validateNodes([row], nominal('Responsibility'), { placed: new Set(['chicken']), areas: new Set(['coop']) }).filter((d) => d.severity === 'error')).toEqual([]);
   });
 });
 
@@ -233,7 +233,7 @@ describe('saves and skill cards (v5)', () => {
     expect(r.ok).toBe(true);
     const then = r.game!.stages[0].rules[0].args.then as ReturnType<typeof node>[];
     expect(then.map((e) => e.args.outcome)).toEqual(['judge', 'fail']);
-    expect(SAVE_VERSION).toBe(10);
+    expect(SAVE_VERSION).toBe(11);
   });
 
   it('the v1 fixture save migrates all the way and its old “done ✓” ends are judged by SUCCESS', () => {

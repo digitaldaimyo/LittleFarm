@@ -116,12 +116,12 @@ describe('M6: two pets on duty', () => {
     const g = newGame();
     const a = adoptPet(g, 'Pip', 'meadow');
     const b = adoptPet(g, 'Mochi', 'plum');
-    for (const p of [a, b]) { p.traits = { ...DEFAULT_TRAITS }; trainAndSave(g, p, recipeStage('go-to-berry')); giveFarmJobs(g, p); p.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' }; }
+    for (const p of [a, b]) { p.traits = { ...DEFAULT_TRAITS }; trainAndSave(g, p, recipeStage('go-to-berry')); giveFarmJobs(g, p); }
     // Both on Auto with their learned Harvest (learned-farm phase 3: harvests sell at the house, so a dedicated
     // hauler has little to do until a learned "harvest into storage" exists).
     for (const p of [a, b]) trainAndSave(g, p, recipeStage('bring-it-home'), activeRevision(getSkill(p, 'Approach'))!.policy);
-    a.assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' }; // harvests and replants
-    b.assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' };
+    a.assignment = { mode: 'auto', job: 'harvest', navigator: 'Approach' }; // harvests and replants
+    b.assignment = { mode: 'auto', job: 'harvest', navigator: 'Approach' };
     g.farm.dutyPetId = a.id;
     if (second) setOnDuty(g, b.id, true);
     g.resources.coins = 30;

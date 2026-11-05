@@ -49,7 +49,7 @@ export function PetsScreen() {
             <span>Lessons <b>{pet.stats.trainingRuns}</b></span>
             <span>Practice tries <b>{pet.stats.episodes.toLocaleString()}</b></span>
           </div>
-          <div className="small muted">On Auto: {pet.executive.mode === 'rules' ? 'picks in your order' : 'learns what pays off'} · {pet.executive.decisions} decisions · {Object.keys(pet.executive.values?.upper ?? {}).length} situations learned</div>
+          <div className="small muted">On Auto: {pet.executive.mode === 'order' ? 'picks in your order' : 'learns what pays off'} · {pet.executive.decisions} decisions · {Object.keys(pet.executive.values?.upper ?? {}).length} situations learned</div>
         </div>
       </section>
       <aside className="side-col">

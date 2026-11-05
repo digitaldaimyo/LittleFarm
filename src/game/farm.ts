@@ -1,17 +1,17 @@
 import type { Action, Obj, PetBody, SimEvent, World } from '../sim/world';
-import { addObject, inBounds, isSolidAt, bfsPath, cloneTally, def, emptyStore, emptyWorld, seedPrice, storeAccepts, storeCount, inArea, nearest, objectsAt, onGround, step, type StepOptions } from '../sim/world';
+import { addObject, inBounds, isSolidAt, bfsPath, cloneTally, def, emptyStore, emptyWorld, seedPrice, storeCount, inArea, nearest, objectsAt, onGround, step, type StepOptions } from '../sim/world';
 import { nightfallRequests, postRequests, trackRequests } from './requests';
 import { Rng } from '../sim/rng';
 import { SkillRun, isDone, type ExecStep, type Outcome } from '../learning/policies';
 import { navTimeout } from '../learning/episodes';
 import { atFocus } from '../learning/features';
 import type { BehaviorId, ExecContext, Invocation } from '../learning/executive';
-import type { FarmPlan, FarmState, GameState, Helper, Pet, Plot } from './types';
+import type { Responsibilities, FarmState, GameState, Helper, Pet, Plot } from './types';
 import { getSkill, petById } from './pets';
 import { deployedRevision, jobCapability, runCapability } from './capability';
 import { addJournal, addJournalOnce } from './journal';
 import { checkUnlocks } from './progression';
-import { GUARD_HOLD, jobPlan, afterDutyJob, chooseDuty, compilePlan, deployExploreExec, execValues, newPlanRuntime, planUsesMemory, starterPlan, traceDecision, type ExecHow, type PlanRuntime } from './plan';
+import { GUARD_HOLD, afterDutyJob, chooseDuty, compilePlan, deployExploreExec, execValues, newPlanRuntime, planUsesMemory, starterPlan, traceDecision, type ExecHow, type PlanRuntime } from './plan';
 
 export const FARM_W = 12;
 export const FARM_H = 9;
@@ -131,18 +131,6 @@ function regrow(s: GameState): void {
 }
 
 
-/** Where a harvested item goes: without Fetch straight to the house; with it, the nearest storage with room (or the house). */
-export function harvestDestination(w: World, kind: string, hasFetch: boolean): string {
-  return harvestTarget(w, kind, hasFetch)?.kind ?? 'home';
-}
-
-/** The exact storage (or house) a harvest goes to — with several baskets, the walk must head for this one. */
-export function harvestTarget(w: World, kind: string, hasFetch: boolean): Obj | undefined {
-  const options = w.objects.filter((o) => onGround(o) && (o.kind === 'home' || (hasFetch && o.store && storeAccepts(o, kind))));
-  options.sort((a, b) => (Math.abs(a.x - w.pet.x) + Math.abs(a.y - w.pet.y)) - (Math.abs(b.x - w.pet.x) + Math.abs(b.y - w.pet.y)));
-  return options[0];
-}
-
 /** Empty soil whose seed the farm can afford right now. */
 export function canPlantSomewhere(w: World): boolean {
   return w.objects.some((o) => o.kind === 'soil' && onGround(o) && (w.seedCoins ?? 0) >= seedPrice(o.crop ?? 'carrot'));
@@ -213,7 +201,7 @@ export function farmContext(s: GameState, pet: Pet, recentFail: boolean): ExecCo
     storeHalf: storeHalfFull(w),
     soil: canPlantSomewhere(w),
     ...(heldBasket(w) ? { basket: true } : {}),
-    ...(jobCapability(pet, 'tote') && toteTarget(s) ? { tote: true } : {}),
+    ...(jobCapability(pet, 'basketRun') && toteTarget(s) ? { tote: true } : {}),
     carrying: w.pet.carrying !== null,
     recentFail,
     night: !!w.night,
@@ -341,9 +329,9 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
   // The walking skill errands, fireflies and the walk home use: Avoid if asked for and learned, else Approach.
   const walker = (inv.args.navigator ?? pet.assignment.navigator) === 'Avoid' && getSkill(pet, 'Avoid') ? 'Avoid' : 'Approach';
   switch (inv.behaviorId) {
-    case 'forage': {
+    case 'harvest': {
       // Harvest: the pet's own Harvest skill or routine, aimed at any ripe crop (learned-farm phase 3).
-      const cap = jobCapability(pet, 'forage', s);
+      const cap = jobCapability(pet, 'harvest', s);
       if (!cap) return { next: () => ({ done: 'fail', reason: 'no Harvest skill' }) };
       return runCapability(s, pet, cap.name, inv.args.aim ?? cap.aim, rt.rng, inv.timeout);
     }
@@ -352,10 +340,10 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
       const target = inv.args.target ?? 'home';
       return runCapability(s, pet, walker, target, rt.rng, inv.timeout, { goal: (world) => atFocus(world, target) });
     }
-    case 'tote': {
+    case 'basketRun': {
       // Basket run: the pet's own Basket run routine (learned-farm phase 3b). The job is done once a basket it
       // lifted is set down again (the routine's own goal also needs every basket empty, which a farm rarely is).
-      const cap = jobCapability(pet, 'tote');
+      const cap = jobCapability(pet, 'basketRun');
       if (!cap) return { next: () => ({ done: 'fail', reason: 'no Basket run skill' }) };
       let lifted = !!heldBasket(w);
       const goal = (world: World) => { if (heldBasket(world)) lifted = true; return lifted && world.pet.carrying === null; };
@@ -382,9 +370,9 @@ function buildExecutor(s: GameState, pet: Pet, inv: Invocation, rt: FarmRuntime)
       const before = w.objects.filter((o) => o.kind === 'firefly' && onGround(o)).length;
       return runCapability(s, pet, walker, 'firefly', rt.rng, inv.timeout, { goal: (world) => world.objects.filter((o) => o.kind === 'firefly' && onGround(o)).length < before });
     }
-    case 'deliver': {
+    case 'haul': {
       // Haul: the pet's own Fetch, aimed at eggs or stored goods (fullest storage first), delivered to the house.
-      const cap = jobCapability(pet, 'deliver');
+      const cap = jobCapability(pet, 'haul');
       if (!cap) return { next: () => ({ done: 'fail', reason: 'no Fetch skill' }) };
       const fullest = w.objects.filter((o) => o.store && storeCount(o) > 0).sort((a, b) => storeCount(b) - storeCount(a))[0];
       const item = w.pet.carrying !== null ? (w.objects.find((o) => o.id === w.pet.carrying)?.kind ?? 'carrot') : inv.args.aim ?? (nearest(w, 'egg') ? 'egg' : fullest?.kind ?? 'bin');
@@ -424,19 +412,19 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
   rt.ctx = ctx;
   const w = s.farm.world;
   const tmo = navTimeout(w.w, w.h, pet.traits.persistence);
-  const harvestRev = deployedRevision(jobCapability(pet, 'forage') ? getSkill(pet, jobCapability(pet, 'forage')!.name) : null);
-  const timeouts: Record<BehaviorId, number> = { forage: Math.max(tmo * 3 + 6, Math.round((harvestRev?.stage?.maxTicks ?? 0) * (1 + pet.traits.persistence))), // a whole harvest trip (the routine's own time per try)
-    deliver: tmo * 3, plant: Math.round(tmo * 1.5) + 4, tote: tmo * 4 + 10, rest: 30, wander: 0, manual: 1e9, skill: 60, catch: tmo, goto: tmo, gate: tmo + 2 };
+  const harvestRev = deployedRevision(jobCapability(pet, 'harvest') ? getSkill(pet, jobCapability(pet, 'harvest')!.name) : null);
+  const timeouts: Record<BehaviorId, number> = { harvest: Math.max(tmo * 3 + 6, Math.round((harvestRev?.stage?.maxTicks ?? 0) * (1 + pet.traits.persistence))), // a whole harvest trip (the routine's own time per try)
+    haul: tmo * 3, plant: Math.round(tmo * 1.5) + 4, basketRun: tmo * 4 + 10, rest: 30, wander: 0, manual: 1e9, skill: 60, catch: tmo, goto: tmo, gate: tmo + 2 };
   const custom = pet.assignment.skillName ? deployedRevision(getSkill(pet, pet.assignment.skillName)) : null;
   if (custom) timeouts.skill = Math.round((custom.maxTicks ?? 40) * (1 + pet.traits.persistence));
   const navigator = pet.assignment.navigator;
   const mk = (b: BehaviorId, chosenBy: Invocation['chosenBy'], why: string): Invocation => ({
     behaviorId: b,
-    args: b === 'forage' ? { target: 'berry', navigator }
-      : b === 'deliver' ? { item: ctx.carrying ? 'carried item' : 'carrot or egg', into: 'bin', navigator }
+    args: b === 'harvest' ? { target: 'berry', navigator }
+      : b === 'haul' ? { item: ctx.carrying ? 'carried item' : 'carrot or egg', into: 'bin', navigator }
       : b === 'catch' ? { target: 'firefly', navigator }
       : b === 'plant' ? { target: 'soil', navigator }
-      : b === 'tote' ? { target: 'bin', navigator }
+      : b === 'basketRun' ? { target: 'bin', navigator }
       : b === 'skill' ? { skill: pet.assignment.skillName ?? '', target: pet.assignment.target || custom?.focus || 'berry' }
       : {},
     intention: why,
@@ -446,13 +434,12 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
   if (pet.assignment.mode === 'manual') return mk('manual', 'player', 'Following your lead');
   if (pet.energy <= 5) return mk('rest', 'rules', 'Too sleepy to work — nap first');
   // Direct jobs were retired in phase 6: an old one becomes a responsibility (do it, otherwise nap).
-  if (pet.assignment.mode === 'job' || pet.assignment.mode === 'plan') retireDirectJob(pet);
   // Auto: the responsibility executive (phase 4) — needs first, then the pet's responsibilities (or the starter ones).
   pet.executive.decisions++;
   const plan = (pet.plan ??= starterPlan());
   const rows = compilePlan(plan);
   // Learned (phase 5): learned values, exploring with Curiosity; practice and comparisons set their own (rt.execHow).
-  const how: ExecHow = rt.execHow ?? (pet.executive.mode === 'learned' ? { mode: 'learned', eps: deployExploreExec(pet) } : { mode: 'rules', eps: 0 });
+  const how: ExecHow = rt.execHow ?? (pet.executive.mode === 'learned' ? { mode: 'learned', eps: deployExploreExec(pet) } : { mode: 'order', eps: 0 });
   const d = chooseDuty(s, pet, plan, rows, ctx, rt.plan, rt.rng, how);
   if (d.guarded) rt.plan.guarded++;
   traceDecision(rt.plan, s.farm.tick, d.row ? `${d.row.label} → ${d.job!.label}: ${d.why}` : d.why);
@@ -466,7 +453,7 @@ function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invocation {
   let t = timeouts[job.behaviorId];
   if (job.behaviorId === 'skill') t = Math.round((deployedRevision(getSkill(pet, job.args.skill ?? ''))?.maxTicks ?? 40) * (1 + pet.traits.persistence));
   const inv: Invocation = { behaviorId: job.behaviorId, args: { ...job.args }, intention: `${row.label}: ${d.why}`, timeout: t, chosenBy: 'plan' };
-  if (job.behaviorId === 'deliver') inv.args.item = ctx.carrying ? 'carried item' : 'carrot or egg';
+  if (job.behaviorId === 'haul') inv.args.item = ctx.carrying ? 'carried item' : 'carrot or egg';
   if (d.learned) inv.args.learned = '1';
   return inv;
 }
@@ -485,7 +472,7 @@ function finishInvocation(s: GameState, pet: Pet, rt: FarmRuntime, result: Outco
   if (result !== 'success') {
     fx.push({ type: 'confused', x: w.pet.x, y: w.pet.y, text: reason });
   }
-  if (result === 'success' && (inv.behaviorId === 'forage' || inv.behaviorId === 'deliver' || (inv.behaviorId === 'skill' && reason === 'goal reached'))) fx.push({ type: 'celebrate', x: w.pet.x, y: w.pet.y });
+  if (result === 'success' && (inv.behaviorId === 'harvest' || inv.behaviorId === 'haul' || (inv.behaviorId === 'skill' && reason === 'goal reached'))) fx.push({ type: 'celebrate', x: w.pet.x, y: w.pet.y });
   s.farm.current = null;
   rt.exec = null;
   rt.inv = null;
@@ -647,7 +634,7 @@ export function petActivity(s: GameState, petId: string): { current: Invocation 
 
 /** "Who does what" across the pets on duty, e.g. "2 harvesting, 1 hauling". */
 export function crewSummary(s: GameState): string {
-  const VERB: Partial<Record<BehaviorId, string>> = { forage: 'harvesting', deliver: 'hauling', plant: 'planting', tote: 'on a basket run', rest: 'napping', catch: 'catching fireflies', wander: 'sniffing around', skill: 'running a skill', goto: 'on an errand', gate: 'minding the gate', manual: 'steered by you' };
+  const VERB: Partial<Record<BehaviorId, string>> = { harvest: 'harvesting', haul: 'hauling', plant: 'planting', basketRun: 'on a basket run', rest: 'napping', catch: 'catching fireflies', wander: 'sniffing around', skill: 'running a skill', goto: 'on an errand', gate: 'minding the gate', manual: 'steered by you' };
   const n = new Map<string, number>();
   for (const p of dutyPets(s)) {
     const a = petActivity(s, p.id);
@@ -856,7 +843,7 @@ function claimFor(w: World, inv: Invocation | null): number | null {
   if (!inv) return null;
   // Harvesters claim the crop they're heading for; haulers claim eggs. Storage is shared, never claimed
   // (hiding a basket would stop the other pet storing there).
-  const kinds = inv.behaviorId === 'forage' && w.pet.carrying === null ? [...CROPS] : inv.behaviorId === 'plant' ? ['soil'] : inv.behaviorId === 'tote' && w.pet.carrying === null ? ['bin'] : inv.behaviorId === 'catch' ? ['firefly'] : inv.behaviorId === 'goto' ? [inv.args.target ?? ''] : inv.behaviorId === 'deliver' && w.pet.carrying === null ? ['egg'] : [];
+  const kinds = inv.behaviorId === 'harvest' && w.pet.carrying === null ? [...CROPS] : inv.behaviorId === 'plant' ? ['soil'] : inv.behaviorId === 'basketRun' && w.pet.carrying === null ? ['bin'] : inv.behaviorId === 'catch' ? ['firefly'] : inv.behaviorId === 'goto' ? [inv.args.target ?? ''] : inv.behaviorId === 'haul' && w.pet.carrying === null ? ['egg'] : [];
   let best: number | null = null, bd = Infinity;
   for (const k of kinds) {
     const o = nearest(w, k);
@@ -881,7 +868,7 @@ function petTurn(s: GameState, pet: Pet, rt: FarmRuntime, fx: FarmFx[], opts: St
   if (rt.inv && ((pet.assignment.mode === 'manual') !== (rt.inv.behaviorId === 'manual'))) { rt.exec = null; rt.inv = null; f.current = null; }
   if (!rt.exec) {
     // Plans with "Has done…" rows need the farm to remember events; they count from each job's start.
-    const remembers = (pet.assignment.mode === 'plan' || pet.assignment.mode === 'auto') && !!pet.plan && planUsesMemory(pet.plan);
+    const remembers = pet.assignment.mode === 'auto' && !!pet.plan && planUsesMemory(pet.plan);
     if (remembers) f.world.tally ??= {};
     const inv = chooseInvocation(s, pet, rt);
     if (remembers) rt.plan.base = cloneTally(f.world.tally);
@@ -938,7 +925,7 @@ export function applyPlan(s: GameState, rt: FarmRuntime, petId: string): void {
   if (!p) return;
   p.plan ??= starterPlan();
   p.assignment.mode = 'auto'; // Auto works on the pet's responsibilities
-  p.executive.mode = 'rules';
+  p.executive.mode = 'order';
   s.progress.flags.dutiesApplied = true;
   const hi = (s.farm.helpers ?? []).findIndex((h) => h.petId === petId);
   if (hi >= 0) {
@@ -977,7 +964,7 @@ export interface PlanPreview {
  * Dry-run a plan on a copy of the farm. The simulator is deterministic, so this is exactly
  * what the real farm will do over the same ticks if the plan is applied now.
  */
-export function previewPlan(s: GameState, petId: string, plan: FarmPlan, ticks = 300): PlanPreview {
+export function previewPlan(s: GameState, petId: string, plan: Responsibilities, ticks = 300): PlanPreview {
   const copy: GameState = structuredClone(s);
   const p = petById(copy, petId)!;
   p.plan = structuredClone(plan);
@@ -1054,7 +1041,7 @@ export interface ExecComparisonRow {
 }
 /** Held-out farm seeds for comparisons (practice never uses them). */
 export const EXEC_EVAL_SEEDS = [900101, 900202, 900303];
-export const EXEC_MODES = ['rules', 'learned', 'random'] as const;
+export const EXEC_MODES = ['order', 'learned', 'random'] as const;
 
 /** One way of choosing on one held-out farm copy (a step of the comparison). */
 export interface ExecRun { coins: number; tiredWork: number; switches: number }
@@ -1066,7 +1053,7 @@ export function compareExecutiveRun(s: GameState, petId: string, mode: ExecHow['
     const before = g.farm.current;
     farmTick(g, rt);
     const cur = g.farm.current;
-    if (cur && cur !== before && p.energy < TIRED && !['rest', 'tote', 'wander'].includes(cur.behaviorId)) tiredWork++;
+    if (cur && cur !== before && p.energy < TIRED && !['rest', 'basketRun', 'wander'].includes(cur.behaviorId)) tiredWork++;
   }
   return { coins: g.progress.totalCoins - c0, tiredWork, switches: rt.plan.switches };
 }
@@ -1081,11 +1068,3 @@ export function compareExecutives(s: GameState, petId: string, ticks = DAY_TICKS
   return EXEC_MODES.map((mode) => comparisonRow(mode, seeds.map((seed) => compareExecutiveRun(s, petId, mode, seed, ticks)), ticks));
 }
 
-/** Phase 6 retired direct jobs: a pet on one (an old save) gets it as responsibilities instead and goes on Auto. */
-export function retireDirectJob(p: Pet): void {
-  if (p.assignment.mode === 'job') {
-    p.plan = jobPlan(p.assignment.job, { skill: p.assignment.skillName, target: p.assignment.target, navigator: p.assignment.navigator });
-    p.executive.mode = 'rules';
-  }
-  if (p.assignment.mode === 'job' || p.assignment.mode === 'plan') p.assignment.mode = 'auto';
-}

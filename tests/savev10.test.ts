@@ -10,6 +10,9 @@ import { parseGame } from '../src/persistence/save';
 import { createRuntime, farmTick } from '../src/game/farm';
 import { describe as words } from '../src/domain/describe';
 import type { GameState } from '../src/game/types';
+import { exportLessonCard, importLessonCard } from '../src/game/lessoncard';
+import { exportSkillCard, importSkillCard } from '../src/game/skillcard';
+import { renameOldCards } from '../src/domain/aliases';
 
 const text = gunzipSync(readFileSync(new URL('./fixtures/save-v10.json.gz', import.meta.url))).toString('utf8');
 const load = () => { const r = parseGame(text); expect(r.ok).toBe(true); return r.game!; };
@@ -39,6 +42,32 @@ describe('a v10 save', () => {
     expect(Object.keys(pip.executive.values!.upper).length).toBeGreaterThan(0);
     expect(pip.executive.values!.practised).toBe(1200);
     expect(g.stages.find((s) => s.id === 'stage-custom')!.rules.at(-1)!.args.label).toBe('Two stored');
+  });
+
+  it('comes out as v11: new card and job ids everywhere, retired fields gone, key order kept', () => {
+    const g = load();
+    const pip = g.pets[0];
+    const json = JSON.stringify(g);
+    for (const old of ['job.forage', 'job.deliver', 'job.tote', 'plan.row', '"forage"', '|forage', '"tote"', '"chooser"']) expect(json).not.toContain(old);
+    expect(pip.plan!.rows.every((r) => r.cardId === 'plan.responsibility')).toBe(true);
+    expect(Object.keys(pip.evidence!)).toEqual(['harvest', 'plant', 'haul', 'basketRun', 'catch']); // same order as at v10
+    expect(Object.keys(pip.executive.values!.lower).some((k) => k.endsWith('|harvest'))).toBe(true);
+    expect(pip.executive.mode).toBe('learned');
+    expect(g.pets[1].executive.mode).toBe('order');
+    expect('table' in pip.executive).toBe(false);
+    expect(g.farm.current?.behaviorId).toBe('harvest');
+    expect(g.farm.current?.args.cap).toBe('harvest');
+  });
+
+  it('cards with old ids load under the new names (skill cards; lesson cards go through the same rename)', () => {
+    const g = load();
+    expect(importLessonCard(g, JSON.stringify(exportLessonCard(g.stages.find((s) => s.id === 'stage-custom')!))).ok).toBe(true);
+    const sk = JSON.stringify(exportSkillCard(g.pets[0], 'Harvest')).replaceAll('"job.harvest"', '"job.forage"');
+    const back = JSON.parse(sk);
+    back.revision.stage.rules.push({ id: 'x1', cardId: 'plan.row', args: {} }); // an old id deep inside
+    renameOldCards(back);
+    expect(JSON.stringify(back)).not.toContain('plan.row');
+    expect(importSkillCard(g, g.pets[1], sk).ok).toBe(true);
   });
 
   it('plays the next farm day exactly as it did at v10', () => {

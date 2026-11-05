@@ -106,7 +106,7 @@ import { suggestedRules, recipeStage } from '../src/domain/recipes';
 import { node } from '../src/domain/spec';
 import { getSkill } from '../src/game/pets';
 import { reportTips, farmTips } from '../src/game/coach';
-import { trainAndSave, giveFarmJobs } from './helpers';
+import { trainAndSave, giveFarmJobs, onJob } from './helpers';
 import type { SerializedQ } from '../src/learning/qtable';
 
 function runNav(s: GameState, stageId: string, nav?: SerializedQ) {
@@ -382,7 +382,7 @@ describe('Side quests on the requests board', () => {
     expect(req).toBeDefined();
     s.farm.world.objects.find((o) => o.kind === 'gate')!.open = false;
     const rt = createRuntime(s.farm);
-    p.assignment = { mode: 'job', job: 'rest', navigator: 'Approach' };
+    onJob(p, 'rest');
     while (s.farm.tick < Math.floor(DAY_TICKS * NIGHT_FROM) + 1) farmTick(s, rt);
     expect(req.status).toBe('done');
   });

@@ -1,3 +1,4 @@
+import { renameOldCards } from '../domain/aliases';
 import type { Pet, Skill, SkillRevision } from './types';
 import { REGISTRY } from '../domain/registry';
 import { migrateLegacyEndOutcomes, stageRoots, walk } from '../domain/spec';
@@ -40,6 +41,7 @@ const isObj = (v: unknown): v is Record<string, any> => !!v && typeof v === 'obj
 export function importSkillCard(s: GameState, p: Pet, text: string): ImportResult {
   let c: any;
   try { c = JSON.parse(text); } catch { return { ok: false, reason: 'Not valid JSON.' }; }
+  renameOldCards(c); // cards made before the polish-phase-3 renames
   if (!isObj(c) || c.format !== 'pen-deck-skill' || (c.version !== 1 && c.version !== 2)) return { ok: false, reason: 'This is not a Pen Deck skill card.' };
   if (c.version === 1) { migrateLegacyEndOutcomes(c.revision); c.version = 2; }
   const k = c.skill, r = c.revision;

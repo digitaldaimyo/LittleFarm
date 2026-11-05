@@ -52,7 +52,7 @@ describe('your cards: names and blanks', () => {
     expect(conds).toEqual(['Chickens home']);
     // Used in a plan row: compiles and reads the farm.
     const plan = starterPlan();
-    plan.rows.unshift(node('plan.row', { label: 'All home: nap', if: [placeTemplate(s.templates[0]).node], do: node('job.nap') }));
+    plan.rows.unshift(node('plan.responsibility', { label: 'All home: nap', if: [placeTemplate(s.templates[0]).node], do: node('job.nap') }));
     const rows = compilePlan(plan);
     const w = generateWorld(recipeStage('herd-chicken'), 3);
     const inCoop = w.objects.filter((o) => o.kind === 'chicken').every((c) => w.areas!.some((a) => c.x >= a.x && c.x < a.x + a.w && c.y >= a.y && c.y < a.y + a.h));
@@ -125,8 +125,8 @@ describe('farm plans remember (since the current job started)', () => {
     p.plan = starterPlan();
     const picked = node('cond.happened', { event: node('ev.pickup', { actor: node('actor.pet'), what: node('kind:berry') }), count: 1 });
     p.plan.rows = [
-      node('plan.row', { label: 'Rest after a berry', if: [picked], do: node('job.nap') }),
-      node('plan.row', { label: 'Forage', if: [], do: node('job.forage', { navigator: 'Approach' }) }),
+      node('plan.responsibility', { label: 'Rest after a berry', if: [picked], do: node('job.nap') }),
+      node('plan.responsibility', { label: 'Forage', if: [], do: node('job.harvest', { navigator: 'Approach' }) }),
     ];
     const rt = createRuntime(s.farm);
     applyPlan(s, rt, p.id);
@@ -146,7 +146,7 @@ describe('farm plans remember (since the current job started)', () => {
     for (const { i } of naps) {
       const before = jobs.slice(0, i).reverse().find((x) => x.id !== 'wander'); // skip "sniffing around" after a stuck job
       expect(before?.picked).toBe(true);
-      if (jobs[i + 1]) expect(['forage', 'wander']).toContain(jobs[i + 1].id);
+      if (jobs[i + 1]) expect(['harvest', 'wander']).toContain(jobs[i + 1].id);
     }
     expect(s.farm.world.tally).toBeDefined();
   });

@@ -18,7 +18,7 @@ import { navIndex, navObserve } from '../src/learning/features';
 import { newGame } from '../src/game/state';
 import { createRuntime, farmTick } from '../src/game/farm';
 import type { StageSpec } from '../src/domain/types';
-import { trainAndSave } from './helpers';
+import { trainAndSave, onJob } from './helpers';
 
 const fixture = readFileSync(new URL('./fixtures/save-v1.json', import.meta.url), 'utf8');
 const expected: Record<string, string[]> = JSON.parse(readFileSync(new URL('./fixtures/save-v1-expected.json', import.meta.url), 'utf8'));
@@ -131,7 +131,7 @@ describe('M1: player-made skills from cards only', () => {
     expect(k.custom).toBe(true);
     expect(rev.learner?.senses.map((x) => x.cardId)).toEqual(['sense.nearest', 'sense.blocked', 'sense.heading', 'sense.still']);
     expect(k.signature).toContain('Patience');
-    pet.assignment = { mode: 'job', job: 'skill', navigator: 'Approach', skillName: 'Wait for it', target: 'bin' };
+    onJob(pet, 'skill', { skillName: 'Wait for it', target: 'bin' });
     const rt = createRuntime(g.farm);
     let reached = 0;
     for (let t = 0; t < 400; t++) {

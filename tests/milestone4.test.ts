@@ -6,7 +6,7 @@ import { applyPlan, createRuntime, farmTick, previewPlan, DAY_TICKS } from '../s
 import { planWarnings, starterPlan } from '../src/game/plan';
 import { node } from '../src/domain/spec';
 import { giveFarmJobs, recipeStage, trainAndSave } from './helpers';
-import type { FarmPlan, GameState } from '../src/game/types';
+import type { Responsibilities, GameState } from '../src/game/types';
 
 /** A busy farm: Approach + Fetch, carrots, chickens, crows, nights. */
 function busyFarm(): GameState {
@@ -29,7 +29,7 @@ describe('M4 gate 1: the starter plan is the built-in rules executive', () => {
     const a = busyFarm();
     const b: GameState = structuredClone(a);
     a.pets[0].assignment.mode = 'auto';
-    a.pets[0].executive.mode = 'rules';
+    a.pets[0].executive.mode = 'order';
     const ra = createRuntime(a.farm);
     const rb = createRuntime(b.farm);
     b.pets[0].plan = starterPlan();
@@ -50,7 +50,7 @@ describe('M4 gate 2: preview = reality', () => {
     const rt = createRuntime(g.farm);
     for (let t = 0; t < 500; t++) farmTick(g, rt); // mid-game state
     const plan = starterPlan();
-    plan.rows.splice(2, 0, node('plan.row', { label: 'Eggs first', if: [node('cond.compare', { quantity: node('q.count', { what: node('kind:egg') }), op: '>=', value: 1 })], do: node('job.deliver', { navigator: 'Approach' }) }));
+    plan.rows.splice(2, 0, node('plan.responsibility', { label: 'Eggs first', if: [node('cond.compare', { quantity: node('q.count', { what: node('kind:egg') }), op: '>=', value: 1 })], do: node('job.haul', { navigator: 'Approach' }) }));
     const pid = g.pets[0].id;
     const preview = previewPlan(g, pid, plan, 300);
     g.pets[0].plan = plan;
@@ -66,11 +66,11 @@ describe('M4 gate 2: preview = reality', () => {
 
 describe('M4 gate 3: the anti-dithering guard', () => {
   /** Two rows that fight: at the bin → go home; otherwise → go to the bin. */
-  const fighting = (guard: boolean): FarmPlan => ({
-    chooser: 'first', guard,
+  const fighting = (guard: boolean): Responsibilities => ({
+    guard,
     rows: [
-      node('plan.row', { label: 'At the bin? go home', if: [node('cond.near', { actor: node('actor.pet'), what: node('kind:bin'), dist: 0 })], do: node('job.goto', { aim: node('kind:home') }) }),
-      node('plan.row', { label: 'Go to the bin', if: [], do: node('job.goto', { aim: node('kind:bin') }) }),
+      node('plan.responsibility', { label: 'At the bin? go home', if: [node('cond.near', { actor: node('actor.pet'), what: node('kind:bin'), dist: 0 })], do: node('job.goto', { aim: node('kind:home') }) }),
+      node('plan.responsibility', { label: 'Go to the bin', if: [], do: node('job.goto', { aim: node('kind:bin') }) }),
     ],
   });
   it('detects flip-flopping rows and cuts the switching rate', () => {
@@ -89,19 +89,19 @@ describe('M4: plans in play', () => {
   it('a player plan using a learned skill outearns doing nothing, and warns about unknown skills', () => {
     const g = busyFarm();
     const pid = g.pets[0].id;
-    const plan: FarmPlan = {
-      chooser: 'first', guard: true,
+    const plan: Responsibilities = {
+      guard: true,
       rows: [
-        node('plan.row', { label: 'Tired', if: [node('cond.energyBelow', { value: 25 })], do: node('job.nap') }),
-        node('plan.row', { label: 'Eggs', if: [node('cond.compare', { quantity: node('q.count', { what: node('kind:egg') }), op: '>=', value: 1 })], do: node('job.deliver') }),
-        node('plan.row', { label: 'Herd', if: [], do: node('job.skill', { skill: 'Herd', aim: node('kind:chicken') }) }),
-        node('plan.row', { label: 'Berries', if: [], do: node('job.forage') }),
+        node('plan.responsibility', { label: 'Tired', if: [node('cond.energyBelow', { value: 25 })], do: node('job.nap') }),
+        node('plan.responsibility', { label: 'Eggs', if: [node('cond.compare', { quantity: node('q.count', { what: node('kind:egg') }), op: '>=', value: 1 })], do: node('job.haul') }),
+        node('plan.responsibility', { label: 'Herd', if: [], do: node('job.skill', { skill: 'Herd', aim: node('kind:chicken') }) }),
+        node('plan.responsibility', { label: 'Berries', if: [], do: node('job.harvest') }),
       ],
     };
     expect(planWarnings(g.pets[0], plan).some((w) => /hasn’t learned “Herd”/.test(w.message))).toBe(true);
     const p = previewPlan(g, pid, plan, 600);
     expect(p.coins).toBeGreaterThan(0);
-    const napOnly = previewPlan(g, pid, { chooser: 'first', guard: true, rows: [node('plan.row', { label: 'Nap', if: [], do: node('job.nap') })] }, 600);
+    const napOnly = previewPlan(g, pid, { guard: true, rows: [node('plan.responsibility', { label: 'Nap', if: [], do: node('job.nap') })] }, 600);
     expect(napOnly.coins).toBe(0);
   });
 });

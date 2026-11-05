@@ -32,7 +32,7 @@ export function PlanMat({ pet }: { pet: Pet }) {
   const [preview, setPreview] = useState<PlanPreview | null>(null);
   const plan = pet.plan ?? starterPlan();
   const stage = planStage(pet);
-  const diags = validateNodes(plan.rows, nominal('PlanRow'), { placed: new Set(FARM_KINDS), areas: new Set(['coop']) });
+  const diags = validateNodes(plan.rows, nominal('Responsibility'), { placed: new Set(FARM_KINDS), areas: new Set(['coop']) });
   const errs = nodesWithErrors(diags);
   const warnings = planWarnings(pet, plan);
   const rows = useMemo(() => compilePlan(plan), [plan, plan.rows.length, s.version]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -101,7 +101,7 @@ export function PlanMat({ pet }: { pet: Pet }) {
           );
         })}
       </ol>
-      <button className="btn ghost small" onClick={() => edit((p) => { p.plan!.rows.push(node('plan.row', { label: `Responsibility ${p.plan!.rows.length + 1}`, if: [], do: node('job.nap') })); })}>+ Add responsibility</button>
+      <button className="btn ghost small" onClick={() => edit((p) => { p.plan!.rows.push(node('plan.responsibility', { label: `Responsibility ${p.plan!.rows.length + 1}`, if: [], do: node('job.nap') })); })}>+ Add responsibility</button>
       {s.ui.slot && plan.rows.some((r) => r.id === s.ui.slot!.parentId || JSON.stringify(r).includes(`"id":"${s.ui.slot!.parentId}"`)) && <Sleeve stage={stage} onChange={onChange} />}
       {(diags.length > 0 || warnings.length > 0) && (
         <div className="diags">

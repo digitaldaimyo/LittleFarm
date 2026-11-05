@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { newGame } from '../src/game/state';
 import { activeRevision, adoptPet, getSkill } from '../src/game/pets';
-import { createRuntime, farmTick, harvestDestination, seedGift, SELL_PRICE } from '../src/game/farm';
+import { createRuntime, farmTick, seedGift, SELL_PRICE } from '../src/game/farm';
 import { compileCondition } from '../src/sim/compile';
 import { node } from '../src/domain/spec';
 import { ABILITY_ORDER } from '../src/learning/senses';
@@ -9,10 +9,10 @@ import { OBJECT_BY_ID } from '../src/domain/packs/farm';
 import { farmTips } from '../src/game/coach';
 import { trackRequests } from '../src/game/requests';
 import { parseGame, serializeGame } from '../src/persistence/save';
-import { addObject, emptyStore, emptyWorld, seedPrice, step, storeCount, type World } from '../src/sim/world';
+import { addObject, emptyStore, emptyWorld, nearest, seedPrice, step, storeCount, type World } from '../src/sim/world';
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import type { GameState } from '../src/game/types';
-import { recipeStage, trainAndSave, giveFarmJobs } from './helpers';
+import { recipeStage, trainAndSave, giveFarmJobs, onJob } from './helpers';
 
 /** A tiny world: the pet stands on a container with a crop in its paws. */
 function holding(kind: string, container: string, store = true): { w: World; c: ReturnType<typeof addObject> } {
@@ -27,14 +27,15 @@ function holding(kind: string, container: string, store = true): { w: World; c: 
 }
 const putIn = (w: World, c: ReturnType<typeof addObject>, kind: string) => { const it = addObject(w, kind, c.x, c.y); it.carried = true; w.pet.carrying = it.id; return step(w, 'drop'); };
 
-function farmGame(opts: { fetch?: boolean; mode?: 'auto' | 'forage' | 'deliver' } = {}): GameState {
+function farmGame(opts: { fetch?: boolean; mode?: 'auto' | 'harvest' | 'haul' } = {}): GameState {
   const s = newGame();
   const p = adoptPet(s, 'Pip', 'meadow');
   p.traits = { ...DEFAULT_TRAITS };
   trainAndSave(s, p, recipeStage('go-to-berry'));
   giveFarmJobs(s, p);
   if (opts.fetch) trainAndSave(s, p, recipeStage('bring-it-home'), activeRevision(getSkill(p, 'Approach'))!.policy);
-  p.assignment = opts.mode === 'auto' || !opts.mode ? { mode: 'auto', job: 'forage', navigator: 'Approach' } : { mode: 'job', job: opts.mode, navigator: 'Approach' };
+  if (opts.mode === 'auto' || !opts.mode) p.assignment = { mode: 'auto', job: 'harvest', navigator: 'Approach' };
+  else onJob(p, opts.mode);
   s.farm.dutyPetId = p.id;
   return s;
 }
@@ -77,7 +78,7 @@ describe('produce travels; the house sells', () => {
     const { w } = holding('berry', 'home', false);
     expect(step(w, 'drop')).toEqual(expect.arrayContaining([expect.objectContaining({ type: 'deliver', kind: 'berry', into: 'home' })]));
     expect(w.sold).toBe(1);
-    const s = farmGame({ mode: 'forage' });
+    const s = farmGame({ mode: 'harvest' });
     const rt = createRuntime(s.farm);
     let firstPickTick = -1, firstCoinTick = -1;
     for (let i = 0; i < 400 && firstCoinTick < 0; i++) {
@@ -91,16 +92,16 @@ describe('produce travels; the house sells', () => {
     expect(s.journal.some((j) => j.kind === 'first-sale')).toBe(true);
   });
 
-  it('without Fetch, harvests go straight to the house; with it, to the nearest storage with room (or the house)', () => {
+  it('storage with room: a basket that holds another kind, or is full, is not a place for a berry', () => {
     const s = farmGame();
     const w = s.farm.world;
-    w.pet.x = 3; w.pet.y = 4; // nearer the basket (2,3) than the house (1,1)
-    expect(harvestDestination(w, 'berry', false)).toBe('home');
-    expect(harvestDestination(w, 'berry', true)).toBe('bin');
+    w.pet.x = 3; w.pet.y = 4;
+    const held = addObject(w, 'berry', w.pet.x, w.pet.y); held.carried = true; w.pet.carrying = held.id;
+    expect(nearest(w, '@storage')?.kind).toBe('bin');
     basket(s).store = [{ kind: 'carrot', n: 1 }];
-    expect(harvestDestination(w, 'berry', true)).toBe('home'); // the basket holds carrots
+    expect(nearest(w, '@storage')).toBeNull(); // the basket holds carrots
     basket(s).store = [{ kind: 'berry', n: 6 }];
-    expect(harvestDestination(w, 'berry', true)).toBe('home'); // full
+    expect(nearest(w, '@storage')).toBeNull(); // full
   });
 
   it('a pet with Fetch on Auto harvests with its learned Harvest (selling at the house) and hauls stored goods', () => {
@@ -116,7 +117,7 @@ describe('produce travels; the house sells', () => {
   });
 
   it('Haul empties storage into the house', () => {
-    const s = farmGame({ fetch: true, mode: 'deliver' });
+    const s = farmGame({ fetch: true, mode: 'haul' });
     basket(s).store = [{ kind: 'carrot', n: 5 }];
     s.farm.world.objects = s.farm.world.objects.filter((o) => o.kind !== 'berry'); // nothing else to do
     run(s, 600);

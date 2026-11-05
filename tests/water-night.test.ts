@@ -109,7 +109,7 @@ describe('day and night', () => {
     const pick = () => { const d = chooseDuty(g, p, plan, rows, farmContext(g, p, false), newPlanRuntime(), new Rng(1)); return d.need ?? d.job?.behaviorId; };
     w.night = false;
     addObject(w, 'berry', 6, 6); // something ripe
-    expect(pick()).toBe('forage');
+    expect(pick()).toBe('harvest');
     w.night = true;
     expect(pick()).toBe('night');
     addObject(w, 'firefly', 5, 5);

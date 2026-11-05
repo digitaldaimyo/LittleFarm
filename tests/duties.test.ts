@@ -12,7 +12,7 @@ import { addObject } from '../src/sim/world';
 import { node } from '../src/domain/spec';
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import { recipeStage, trainAndSave, giveFarmJobs, giveRoutine } from './helpers';
-import type { FarmPlan, GameState } from '../src/game/types';
+import type { Responsibilities, GameState } from '../src/game/types';
 
 function farm(seed = 101): GameState {
   const g = newGame();
@@ -27,7 +27,7 @@ function farm(seed = 101): GameState {
   return g;
 }
 const duty = (label: string, when: ReturnType<typeof node>[], use: ReturnType<typeof node>, also: ReturnType<typeof node>[] = [], until?: ReturnType<typeof node>) =>
-  node('plan.row', { label, if: when, do: use, ...(also.length ? { also } : {}), ...(until ? { until } : {}) });
+  node('plan.responsibility', { label, if: when, do: use, ...(also.length ? { also } : {}), ...(until ? { until } : {}) });
 
 describe('responsibilities: the phase-4 gate', () => {
   it('a responsibility served by two jobs (Haul or Basket run) is worked on until its UNTIL holds', () => {
@@ -37,8 +37,8 @@ describe('responsibilities: the phase-4 gate', () => {
     const bin = g.farm.world.objects.find((o) => o.kind === 'bin')!;
     bin.store = [{ kind: 'berry', n: 6 }]; // full
     const half = node('cond.storage', { level: 'half' });
-    const plan: FarmPlan = { chooser: 'first', guard: true, rows: [
-      duty('Storage at most half full', [half], node('job.deliver'), [node('job.tote')], node('cond.not', { inner: half })),
+    const plan: Responsibilities = { guard: true, rows: [
+      duty('Storage at most half full', [half], node('job.haul'), [node('job.basketRun')], node('cond.not', { inner: half })),
       duty('Otherwise nap', [], node('job.nap')),
     ] };
     p.plan = plan;
@@ -49,7 +49,7 @@ describe('responsibilities: the phase-4 gate', () => {
     for (; t < 1500 && !done({ w: g.farm.world, prev: g.farm.world.pet }); t++) farmTick(g, rt);
     expect(done({ w: g.farm.world, prev: g.farm.world.pet })).toBe(true);
     expect(rt.plan.fires[plan.rows[0].id]).toBeGreaterThanOrEqual(1);
-    expect(Object.keys(p.evidence ?? {}).some((k) => k === 'deliver' || k === 'tote')).toBe(true);
+    expect(Object.keys(p.evidence ?? {}).some((k) => k === 'haul' || k === 'basketRun')).toBe(true);
     expect(rt.plan.trace.some((x) => x.text.startsWith('Storage at most half full'))).toBe(true);
   }, 60000);
 
@@ -85,7 +85,7 @@ describe('responsibilities: the phase-4 gate', () => {
     const g = farm();
     const p = g.pets[0];
     // A rock can never be stood on: “Go to the rock” always times out.
-    const plan: FarmPlan = { chooser: 'first', guard: true, rows: [
+    const plan: Responsibilities = { guard: true, rows: [
       duty('Visit the rock', [], node('job.goto', { aim: node('kind:rock') })),
       duty('Otherwise nap', [], node('job.nap')),
     ] };

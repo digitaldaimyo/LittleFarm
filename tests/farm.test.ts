@@ -4,7 +4,7 @@ import { adoptPet, getSkill, activeRevision, rollbackSkill } from '../src/game/p
 import { createRuntime, farmTick, recentProduction } from '../src/game/farm';
 import { ackStep, advanceTutorial, currentStep, recordGuideRun } from '../src/game/tutorial';
 import { trainingCost } from '../src/game/state';
-import { recipeStage, trainAndSave, giveFarmJobs, trainAndSaveRoutine } from './helpers';
+import { recipeStage, trainAndSave, giveFarmJobs, trainAndSaveRoutine, onJob } from './helpers';
 import { node } from '../src/domain/spec';
 import { suggestedRules } from '../src/domain/recipes';
 
@@ -23,7 +23,7 @@ describe('farm', () => {
     p.traits = { curiosity: 0.5, persistence: 0.5, caution: 0.5 };
     trainAndSave(trained, p, recipeStage('go-to-berry'));
     giveFarmJobs(trained, p);
-    p.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' };
+    onJob(p, 'harvest');
     expect(runFarm(untrained, 800)).toBe(0);
     expect(runFarm(trained, 800)).toBeGreaterThanOrEqual(8);
     expect(recentProduction(trained.farm, 800)).toBeGreaterThan(0);
@@ -83,7 +83,7 @@ describe('farm', () => {
     trainAndSaveRoutine(s, pet, hv);
     advanceTutorial(s);
     expect(currentStep(s)?.id).toBe('assign');
-    pet.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' };
+    onJob(pet, 'harvest');
     s.progress.flags.assignedJob = true;
     runFarm(s, 900);
     advanceTutorial(s);
@@ -101,7 +101,7 @@ describe('farm', () => {
     giveFarmJobs(s, pet);
     trainAndSave(s, pet, recipeStage('bring-it-home'), ap.policy);
     s.progress.unlocks.push('fetch', 'carrots');
-    pet.assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' };
+    pet.assignment = { mode: 'auto', job: 'harvest', navigator: 'Approach' };
     runFarm(s, 1200);
     expect(s.resources.carrots).toBeGreaterThan(2); // sold at the house (the learned Harvest takes crops home)
   });
@@ -117,7 +117,7 @@ describe('farm robustness', () => {
       giveFarmJobs(s, pet);
       trainAndSave(s, pet, { ...recipeStage('bring-it-home'), seed }, ap.policy);
       s.progress.unlocks.push('fetch', 'carrots');
-      pet.executive.mode = seed === 202 ? 'learned' : 'rules';
+      pet.executive.mode = seed === 202 ? 'learned' : 'order';
       const rt = createRuntime(s.farm);
       let windowStart = 0;
       for (let t = 1; t <= 3000; t++) {

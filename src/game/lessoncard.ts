@@ -3,6 +3,7 @@
  * saves. Data only — never code — and validated like a save on import. Learned skills are not included
  * (share those with skill cards).
  */
+import { renameOldCards } from '../domain/aliases';
 import type { StageSpec } from '../domain/types';
 import { REGISTRY } from '../domain/registry';
 import { cloneStage, newId, stageRoots, walk } from '../domain/spec';
@@ -32,6 +33,7 @@ export function importLessonCard(s: GameState, text: string): LessonImport {
   if (text.length > MAX_BYTES) return { ok: false, reason: 'That file is too big to be a lesson card.' };
   let c: any;
   try { c = JSON.parse(text); } catch { return { ok: false, reason: 'Not valid JSON.' }; }
+  renameOldCards(c); // cards made before the polish-phase-3 renames
   if (!isObj(c) || c.format !== 'pen-deck-lesson' || c.version !== 1 || !isObj(c.lesson)) return { ok: false, reason: 'This is not a Pen Deck lesson card.' };
   const L = c.lesson;
   if (!Array.isArray(L.environment) || !Array.isArray(L.rules) || !isObj(L.learner) || typeof L.learner.skill !== 'string' || !isObj(L.size) || !isObj(L.evaluation)) {

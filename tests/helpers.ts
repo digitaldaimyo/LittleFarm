@@ -6,7 +6,8 @@ import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import type { SerializedQ } from '../src/learning/qtable';
 import { saveRevision, subskillsFor } from '../src/game/pets';
 import * as pets from '../src/game/pets';
-import type { GameState, Pet } from '../src/game/types';
+import type { GameState, JobId, NavigatorName, Pet } from '../src/game/types';
+import { jobPlan } from '../src/game/plan';
 
 export function trainAndSave(s: GameState, pet: Pet, stage: StageSpec, navigator?: SerializedQ) {
   const t = new Trainer({ stage, episodes: stage.learner.episodes, traits: pet.traits, navigator });
@@ -65,6 +66,16 @@ export function giveRoutine(s: GameState, pet: Pet, recipe: string) {
 }
 
 export { recipeStage, DEFAULT_TRAITS };
+
+/**
+ * Put a pet on one job, the way the retired direct jobs now work (and old saves are converted): that job as its
+ * responsibilities (then nap), on Auto in the player's order.
+ */
+export function onJob(p: Pet, job: JobId, opts: { skillName?: string; target?: string; navigator?: NavigatorName } = {}) {
+  p.plan = jobPlan(job, { skill: opts.skillName, target: opts.target, navigator: opts.navigator ?? 'Approach' });
+  p.assignment = { ...p.assignment, mode: 'auto', job, ...opts, navigator: opts.navigator ?? 'Approach' };
+  p.executive.mode = 'order';
+}
 
 /** A pet with a random temperament, as in the game (tests/setup.ts gives every other test pet the default one). */
 export function adoptRandomPet(s: GameState, name: string, palette: Parameters<typeof import('../src/game/pets').adoptPet>[2]): Pet {

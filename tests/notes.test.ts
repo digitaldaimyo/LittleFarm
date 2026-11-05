@@ -14,7 +14,7 @@ import { createRuntime, farmTick } from '../src/game/farm';
 import { CHAPTERS, advanceTutorial, currentStep, guide, startChapter } from '../src/game/tutorial';
 import { createNode } from '../src/ui/edit';
 import type { StageSpec } from '../src/domain/types';
-import { recipeStage, trainAndSave } from './helpers';
+import { recipeStage, trainAndSave, onJob } from './helpers';
 
 const codes = (st: StageSpec) => validateStage(st).map((d) => d.code);
 /** The Field Guide's Patrol after its step “Let it read the note”: the lesson's pen plus the Note sense. */
@@ -106,7 +106,7 @@ describe('Patrol: the note makes the job learnable', () => {
     const p = adoptPet(s, 'Pip', 'meadow');
     p.traits = { ...DEFAULT_TRAITS };
     trainAndSave(s, p, recipeStage('patrol'));
-    p.assignment = { mode: 'job', job: 'skill', navigator: 'Approach', skillName: 'Patrol', target: 'well' };
+    onJob(p, 'skill', { skillName: 'Patrol', target: 'well' });
     s.farm.dutyPetId = p.id;
     const rt = createRuntime(s.farm);
     let maxLeg = 0;

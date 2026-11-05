@@ -52,7 +52,7 @@ export function farmTips(s: GameState): Tip[] {
   // Farm life: storage is full and nobody on duty can (or is set to) haul it to the house.
   const full = f.world.objects.some((o) => { const st = OBJECT_BY_ID[o.kind]?.storage; return !!o.store && !!st && o.store.reduce((a, x) => a + x.n, 0) >= st.slots * st.perSlot; });
   const uses = (p: (typeof duty)[number], card: string) => p.assignment.mode !== 'manual' && (!p.plan || JSON.stringify(p.plan.rows).includes(`"${card}"`));
-  const hauler = duty.some((p) => (!!jobCapability(p, 'deliver') && uses(p, 'job.deliver')) || (!!jobCapability(p, 'tote') && uses(p, 'job.tote')));
+  const hauler = duty.some((p) => (!!jobCapability(p, 'haul') && uses(p, 'job.haul')) || (!!jobCapability(p, 'basketRun') && uses(p, 'job.basketRun')));
   if (full && !hauler) tips.push({ id: 'storage-full', text: 'The basket is full and nobody is hauling it, so new crops are left beside it. A pet with a certified Fetch on Auto carries storage to the house, where it sells (a Basket run routine empties it six at a time).', lesson: 'results' });
   // Empty soil the farm can afford to plant, and nobody on duty plants.
   const soil = f.world.objects.filter((o) => o.kind === 'soil' && !o.carried && !o.delivered);
@@ -61,7 +61,7 @@ export function farmTips(s: GameState): Tip[] {
   const canPlant = duty.some((p) => !!jobCapability(p, 'plant'));
   if (soil.length && affordable && duty.length && !planter) tips.push({ id: 'idle-soil', text: `${soil.length === 1 ? 'A field plot is' : `${soil.length} field plots are`} empty. Field crops need replanting after each harvest — ${canPlant ? 'put a pet that knows Plant on Auto (with a responsibility that uses Plant).' : 'teach a pet the Plant routine (Train), then put it on Auto.'}` });
   // Pets on duty, and none of them can harvest: the farm earns nothing.
-  if (duty.length && !duty.some((p) => !!jobCapability(p, 'forage'))) tips.push({ id: 'no-harvester', text: `${duty.length === 1 ? `${duty[0].name} is` : 'The pets on duty are'} on the farm, but nobody can harvest yet — a pet only does what it has learned. Teach Harvest (Guide: “Teach a job: Harvest”).`, lesson: 'harvest' });
+  if (duty.length && !duty.some((p) => !!jobCapability(p, 'harvest'))) tips.push({ id: 'no-harvester', text: `${duty.length === 1 ? `${duty[0].name} is` : 'The pets on duty are'} on the farm, but nobody can harvest yet — a pet only does what it has learned. Teach Harvest (Guide: “Teach a job: Harvest”).`, lesson: 'harvest' });
   return tips;
 }
 

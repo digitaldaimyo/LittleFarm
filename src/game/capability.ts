@@ -171,9 +171,9 @@ export interface LearnedJob {
   names: string[];
 }
 export const LEARNED_JOBS: Record<string, LearnedJob> = {
-  forage: { label: 'Harvest', recipes: ['harvest-store', 'harvest'], aim: '@crop', names: ['Harvest to storage', 'Harvest'] },
-  deliver: { label: 'Haul', recipes: ['bring-it-home'], aim: 'bin', names: ['Fetch'] },
-  tote: { label: 'Basket run', recipes: ['basket-run'], aim: 'bin', names: ['Basket run'] },
+  harvest: { label: 'Harvest', recipes: ['harvest-store', 'harvest'], aim: '@crop', names: ['Harvest to storage', 'Harvest'] },
+  haul: { label: 'Haul', recipes: ['bring-it-home'], aim: 'bin', names: ['Fetch'] },
+  basketRun: { label: 'Basket run', recipes: ['basket-run'], aim: 'bin', names: ['Basket run'] },
   plant: { label: 'Plant', recipes: ['plant'], aim: 'soil', names: ['Plant'] },
   gateOpen: { label: 'Open the gate', recipes: ['open-gate'], aim: 'gate', names: ['Open the gate'] },
   gateShut: { label: 'Shut the gate', recipes: ['shut-gate'], aim: 'gate', names: ['Shut the gate'] },
@@ -210,7 +210,7 @@ export function jobCapability(p: Pet, job: string, s?: GameState): Capability | 
   const ks = jobSkills(p, job).filter(allowedOnFarm);
   if (!ks.length) return null;
   let k = ks[0];
-  if (job === 'forage' && s && ks.length > 1 && deployedRevision(k)?.stage?.recipeId === 'harvest-store') {
+  if (job === 'harvest' && s && ks.length > 1 && deployedRevision(k)?.stage?.recipeId === 'harvest-store') {
     const w = s.farm.world;
     // Storage only when it's nearer than the house (from the crop in paws, or the nearest ripe crop).
     const from = w.pet.carrying !== null ? w.pet : nearest(w, '@crop') ?? w.pet;
@@ -218,7 +218,7 @@ export function jobCapability(p: Pet, job: string, s?: GameState): Capability | 
     const d = (o: { x: number; y: number } | null) => (o ? Math.abs(o.x - from.x) + Math.abs(o.y - from.y) : Infinity);
     const room = !!store && d(store) < d(home);
     const haulers = s.pets.filter((q) => q.id === s.farm.dutyPetId || s.farm.helpers?.some((h) => h.petId === q.id));
-    const emptied = haulers.some((q) => jobSkills(q, 'deliver').some(allowedOnFarm) || jobSkills(q, 'tote').some(allowedOnFarm));
+    const emptied = haulers.some((q) => jobSkills(q, 'haul').some(allowedOnFarm) || jobSkills(q, 'basketRun').some(allowedOnFarm));
     if (!room || !emptied) k = ks[1];
   }
   return capabilityOf(k, LEARNED_JOBS[job].aim);

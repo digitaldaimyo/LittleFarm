@@ -11,7 +11,7 @@ import { nominal } from '../src/domain/typecheck';
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import { objectsAt } from '../src/sim/world';
 import type { GameState } from '../src/game/types';
-import { recipeStage, trainAndSave, giveFarmJobs } from './helpers';
+import { recipeStage, trainAndSave, giveFarmJobs, onJob } from './helpers';
 
 function farm(coins = 100, unlocks: string[] = []): GameState {
   const s = newGame();
@@ -19,7 +19,7 @@ function farm(coins = 100, unlocks: string[] = []): GameState {
   p.traits = { ...DEFAULT_TRAITS };
   trainAndSave(s, p, recipeStage('go-to-berry'));
   giveFarmJobs(s, p);
-  p.assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' };
+  p.assignment = { mode: 'auto', job: 'harvest', navigator: 'Approach' };
   s.farm.dutyPetId = p.id;
   s.resources.coins = coins;
   s.progress.unlocks.push(...unlocks);
@@ -181,7 +181,7 @@ describe('farm layout: two pets and the Field Guide', () => {
     const b = adoptPet(s, 'Mochi', 'plum');
     b.traits = { ...DEFAULT_TRAITS };
     trainAndSave(s, b, recipeStage('go-to-berry')); // the walk home is the pet's own Approach
-    b.assignment = { mode: 'job', job: 'rest', navigator: 'Approach' };
+    onJob(b, 'rest');
     setOnDuty(s, b.id, true);
     const rt = createRuntime(s.farm);
     for (let i = 0; i < 40; i++) farmTick(s, rt);

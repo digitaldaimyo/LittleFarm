@@ -10,7 +10,7 @@ import type { StageSpec } from '../src/domain/types';
 import { newGame } from '../src/game/state';
 import { activeRevision, adoptPet, getSkill, staleUses, subskillsFor } from '../src/game/pets';
 import { createRuntime, farmTick } from '../src/game/farm';
-import { trainAndSave } from './helpers';
+import { trainAndSave, onJob } from './helpers';
 import type { Pet, GameState } from '../src/game/types';
 
 function train(stage: StageSpec, extra: Record<string, unknown> = {}) {
@@ -100,7 +100,7 @@ describe('M3: routines elsewhere', () => {
     trainAndSaveRoutine(g, pet, stage, subskillsFor(pet));
     expect(activeRevision(getSkill(pet, 'Fetch routine'))?.stage).toBeDefined();
     g.progress.unlocks.push('carrots');
-    pet.assignment = { mode: 'job', job: 'skill', navigator: 'Approach', skillName: 'Fetch routine', target: 'carrot' };
+    onJob(pet, 'skill', { skillName: 'Fetch routine', target: 'carrot' });
     const rt = createRuntime(g.farm);
     for (let t = 0; t < 800; t++) farmTick(g, rt);
     // The routine's destination is the basket: carrots are stored there (to be hauled and sold later).

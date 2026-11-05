@@ -413,7 +413,7 @@ export const FARM_CARDS: CardDef[] = [
     presentation: { title: 'Do action', group: 'option', sheet: 'Options', hint: 'One step of a basic action.', phrase: '{action} {when}' } }),
 
   // Farm plan (Milestone 4)
-  N({ id: 'plan.row', output: nominal('PlanRow'), evaluator: 'plan.row',
+  N({ id: 'plan.responsibility', output: nominal('Responsibility'), evaluator: 'plan.responsibility',
     sockets: [
       { id: 'if', label: 'When', type: nominal('Condition'), required: false, many: true },
       { id: 'do', label: 'Use', type: nominal('Job'), required: true },
@@ -422,13 +422,13 @@ export const FARM_CARDS: CardDef[] = [
     ],
     params: [{ id: 'label', label: 'Name', kind: 'text', default: 'Responsibility' }, { id: 'night', label: 'At night', kind: 'choice', default: 'sleep', choices: [{ value: 'sleep', label: 'sleep instead' }, { value: 'work', label: 'keep at it' }] }],
     presentation: { title: 'Responsibility', group: 'rule', sheet: 'Plan', hint: 'WHEN every condition holds, work on it with one of the jobs it may USE (the pet picks the one that has worked best). With UNTIL, the pet sticks with it until that holds; without, each finished job counts. Higher in the list = more important.' } }),
-  N({ id: 'job.forage', output: nominal('Job'), evaluator: 'job.forage', sockets: [{ id: 'aim', label: 'Aimed at (default: any ripe crop)', type: KIND, required: false }], params: [{ id: 'navigator', label: 'Move with', kind: 'choice', default: 'Approach', choices: [{ value: 'Approach', label: 'Approach' }, { value: 'Avoid', label: 'Avoid' }] }],
+  N({ id: 'job.harvest', output: nominal('Job'), evaluator: 'job.harvest', sockets: [{ id: 'aim', label: 'Aimed at (default: any ripe crop)', type: KIND, required: false }], params: [{ id: 'navigator', label: 'Move with', kind: 'choice', default: 'Approach', choices: [{ value: 'Approach', label: 'Approach' }, { value: 'Avoid', label: 'Avoid' }] }],
     presentation: { title: 'Harvest', group: 'job', sheet: 'Jobs', hint: 'Runs the pet’s own Harvest routine: a ripe crop to the house (or storage with room, with Harvest to storage).', phrase: 'harvest {aim} ({navigator})' } }),
-  N({ id: 'job.deliver', output: nominal('Job'), evaluator: 'job.deliver', sockets: [{ id: 'aim', label: 'Aimed at (default: eggs or the fullest storage)', type: KIND, required: false }], params: [{ id: 'navigator', label: 'Move with', kind: 'choice', default: 'Approach', choices: [{ value: 'Approach', label: 'Approach' }, { value: 'Avoid', label: 'Avoid' }] }],
+  N({ id: 'job.haul', output: nominal('Job'), evaluator: 'job.haul', sockets: [{ id: 'aim', label: 'Aimed at (default: eggs or the fullest storage)', type: KIND, required: false }], params: [{ id: 'navigator', label: 'Move with', kind: 'choice', default: 'Approach', choices: [{ value: 'Approach', label: 'Approach' }, { value: 'Avoid', label: 'Avoid' }] }],
     presentation: { title: 'Haul', group: 'job', sheet: 'Jobs', hint: 'Runs the pet’s own Fetch: eggs and stored goods to the house, where they sell.', phrase: 'haul {aim} to the house ({navigator})' } }),
   N({ id: 'job.plant', output: nominal('Job'), evaluator: 'job.plant', sockets: [{ id: 'aim', label: 'Aimed at (default: any empty soil)', type: KIND, required: false }], params: [{ id: 'navigator', label: 'Move with', kind: 'choice', default: 'Approach', choices: [{ value: 'Approach', label: 'Approach' }, { value: 'Avoid', label: 'Avoid' }] }],
     presentation: { title: 'Plant', group: 'job', sheet: 'Jobs', hint: 'Runs the pet’s own Plant routine: empty soil gets its seed, paid from your coins.', phrase: 'plant {aim} ({navigator})' } }),
-  N({ id: 'job.tote', output: nominal('Job'), evaluator: 'job.tote', sockets: [{ id: 'aim', label: 'Aimed at (default: the basket that needs it)', type: KIND, required: false }], params: [{ id: 'navigator', label: 'Move with', kind: 'choice', default: 'Approach', choices: [{ value: 'Approach', label: 'Approach' }, { value: 'Avoid', label: 'Avoid' }] }],
+  N({ id: 'job.basketRun', output: nominal('Job'), evaluator: 'job.basketRun', sockets: [{ id: 'aim', label: 'Aimed at (default: the basket that needs it)', type: KIND, required: false }], params: [{ id: 'navigator', label: 'Move with', kind: 'choice', default: 'Approach', choices: [{ value: 'Approach', label: 'Approach' }, { value: 'Avoid', label: 'Avoid' }] }],
     presentation: { title: 'Basket run', group: 'job', sheet: 'Jobs', hint: 'Runs the pet’s own Basket run routine: lift a half-full basket, empty it at the house, set it down by the crops.', phrase: 'basket run {aim} ({navigator})' } }),
   N({ id: 'job.catch', output: nominal('Job'), evaluator: 'job.catch', params: [{ id: 'navigator', label: 'Move with', kind: 'choice', default: 'Approach', choices: [{ value: 'Approach', label: 'Approach' }, { value: 'Avoid', label: 'Avoid' }] }],
     presentation: { title: 'Catch fireflies', group: 'job', sheet: 'Jobs', phrase: 'catch fireflies ({navigator})' } }),

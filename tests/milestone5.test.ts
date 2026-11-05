@@ -13,7 +13,7 @@ import { buy } from '../src/game/progression';
 import { applyPlan, createRuntime, farmTick, previewPlan, DAY_TICKS } from '../src/game/farm';
 import { BIG_H, BIG_W, ORCHARD_GATE } from '../src/game/expand';
 import { describeRequest, trackRequests } from '../src/game/requests';
-import { trainAndSave, giveFarmJobs } from './helpers';
+import { trainAndSave, giveFarmJobs, onJob } from './helpers';
 import type { GameState } from '../src/game/types';
 
 function farmWithPet(): GameState {
@@ -72,7 +72,7 @@ describe('M5: orchard expansion', () => {
     expect(w.areas?.map((a) => a.name)).toContain('orchard');
     expect(g.journal.some((j) => j.kind === 'expand')).toBe(true);
     const pet = g.pets[0];
-    pet.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' };
+    onJob(pet, 'harvest');
     // Farm life: every berry now travels home, and the near bushes regrow during each trip, so a lone pet
     // never needs the orchard. Make the orchard the only source, to test that it can be harvested at all.
     for (const p of g.farm.plots) if (p.crop === 'berry' && p.x < 13) p.unlock = 'never';
@@ -94,7 +94,7 @@ describe('M5: orchard expansion', () => {
     buy(g, 'orchard');
     const pid = g.pets[0].id;
     trainAndSave(g, g.pets[0], recipeStage('shut-gate')); // Mind the gate (shut) runs the pet's own Shut the gate skill
-    const plan = { chooser: 'first' as const, guard: true, rows: [node('plan.row', { label: 'Shut the gate', if: [node('cond.gates', { state: 'open' })], do: node('job.gate', { state: 'closed' }) }), node('plan.row', { label: 'Nap', if: [], do: node('job.nap') })] };
+    const plan = { guard: true, rows: [node('plan.responsibility', { label: 'Shut the gate', if: [node('cond.gates', { state: 'open' })], do: node('job.gate', { state: 'closed' }) }), node('plan.responsibility', { label: 'Nap', if: [], do: node('job.nap') })] };
     // Approach r1 is shaky right next to the fence (rare in 8×8 pens); the stuck-recovery gets it there.
     const p = previewPlan(g, pid, plan, 300);
     g.pets[0].plan = plan;
@@ -167,7 +167,7 @@ describe('M5: requests board', () => {
 
   it('a whole day of play judges requests at nightfall and posts fresh ones at dawn', () => {
     const g = farmWithPet();
-    g.pets[0].assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' };
+    g.pets[0].assignment = { mode: 'auto', job: 'harvest', navigator: 'Approach' };
     const rt = createRuntime(g.farm);
     for (let t = 0; t < DAY_TICKS + 5; t++) farmTick(g, rt);
     const reqs = g.farm.requests ?? [];

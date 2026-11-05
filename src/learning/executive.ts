@@ -4,7 +4,7 @@
  * Choices are made by the responsibility executive (game/plan.ts, `chooseDuty`): in the player's order (phase 4) or
  * by learned values (phase 5; it replaced the old contextual bandit). This file keeps the shared invocation contract.
  */
-export type BehaviorId = 'forage' | 'deliver' | 'rest' | 'wander' | 'manual' | 'skill' | 'catch' | 'goto' | 'gate' | 'plant' | 'tote';
+export type BehaviorId = 'harvest' | 'haul' | 'rest' | 'wander' | 'manual' | 'skill' | 'catch' | 'goto' | 'gate' | 'plant' | 'basketRun';
 
 export interface Invocation {
   behaviorId: BehaviorId;
@@ -33,32 +33,14 @@ export interface ExecContext {
   tote?: boolean;
 }
 
-export interface ExecutiveTable {
-  /** contextKey|behavior → running mean reward and count */
-  [key: string]: { n: number; v: number };
-}
-
 export function contextKey(c: ExecContext): string {
   return `${+c.energyLow}${+c.berry}${+c.carrot}${+c.carrying}${+c.recentFail}${+!!c.night}${+!!c.firefly}${c.soil ? 's' : ''}${c.basket ? 'b' : ''}${c.tote ? 't' : ''}`; // (soil appended only when present, so older tables keep their keys)
 }
 
-export function describeContext(c: ExecContext): string {
-  const p: string[] = [];
-  p.push(c.night ? 'night' : 'day');
-  p.push(c.energyLow ? 'tired' : 'rested');
-  if (c.carrying) p.push('carrying something');
-  if (c.berry) p.push('something ripe');
-  if (c.carrot) p.push(c.storeHalf ? 'storage filling up' : 'goods to haul');
-  if (c.soil) p.push('empty soil');
-  if (c.firefly) p.push('fireflies out');
-  if (c.recentFail) p.push('just had a setback');
-  return p.join(', ');
-}
-
 export const BEHAVIOR_LABEL: Record<BehaviorId, string> = {
-  forage: 'Harvest',
-  tote: 'Basket run',
-  deliver: 'Haul to the house',
+  harvest: 'Harvest',
+  basketRun: 'Basket run',
+  haul: 'Haul to the house',
   plant: 'Plant',
   rest: 'Nap',
   wander: 'Wander',

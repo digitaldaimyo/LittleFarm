@@ -21,16 +21,16 @@
    "switchesPerMin": 19.3,
    "restShare": 27,
    "idleShare": 9,
-   "msPerTick": 0.125,
+   "msPerTick": 0.096,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 12,
      "ok": 12,
      "fail": 0,
      "timeout": 0,
      "ticks": 424
     },
-    "forage": {
+    "harvest": {
      "started": 64,
      "ok": 55,
      "fail": 9,
@@ -44,7 +44,7 @@
      "timeout": 0,
      "ticks": 250
     },
-    "deliver": {
+    "haul": {
      "started": 1,
      "ok": 1,
      "fail": 0,
@@ -80,16 +80,16 @@
    "switchesPerMin": 19.8,
    "restShare": 28,
    "idleShare": 9,
-   "msPerTick": 0.072,
+   "msPerTick": 0.095,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 12,
      "ok": 12,
      "fail": 0,
      "timeout": 0,
      "ticks": 325
     },
-    "forage": {
+    "harvest": {
      "started": 67,
      "ok": 57,
      "fail": 10,
@@ -103,7 +103,7 @@
      "timeout": 0,
      "ticks": 266
     },
-    "deliver": {
+    "haul": {
      "started": 1,
      "ok": 1,
      "fail": 0,
@@ -139,16 +139,16 @@
    "switchesPerMin": 17.2,
    "restShare": 26,
    "idleShare": 8,
-   "msPerTick": 0.064,
+   "msPerTick": 0.087,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 9,
      "ok": 9,
      "fail": 0,
      "timeout": 0,
      "ticks": 397
     },
-    "forage": {
+    "harvest": {
      "started": 54,
      "ok": 50,
      "fail": 4,
@@ -162,7 +162,7 @@
      "timeout": 0,
      "ticks": 322
     },
-    "deliver": {
+    "haul": {
      "started": 1,
      "ok": 1,
      "fail": 0,
@@ -198,16 +198,16 @@
    "switchesPerMin": 19.3,
    "restShare": 28,
    "idleShare": 9,
-   "msPerTick": 0.066,
+   "msPerTick": 0.082,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 10,
      "ok": 10,
      "fail": 0,
      "timeout": 0,
      "ticks": 243
     },
-    "forage": {
+    "harvest": {
      "started": 62,
      "ok": 57,
      "fail": 5,
@@ -221,7 +221,7 @@
      "timeout": 0,
      "ticks": 378
     },
-    "deliver": {
+    "haul": {
      "started": 1,
      "ok": 1,
      "fail": 0,
@@ -257,16 +257,16 @@
    "switchesPerMin": 18.5,
    "restShare": 26,
    "idleShare": 9,
-   "msPerTick": 0.058,
+   "msPerTick": 0.059,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 9,
      "ok": 9,
      "fail": 0,
      "timeout": 0,
      "ticks": 233
     },
-    "forage": {
+    "harvest": {
      "started": 60,
      "ok": 56,
      "fail": 4,
@@ -280,7 +280,7 @@
      "timeout": 0,
      "ticks": 366
     },
-    "deliver": {
+    "haul": {
      "started": 1,
      "ok": 1,
      "fail": 0,
@@ -316,16 +316,16 @@
    "switchesPerMin": 20.1,
    "restShare": 27,
    "idleShare": 9,
-   "msPerTick": 0.081,
+   "msPerTick": 0.082,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 2,
      "ok": 2,
      "fail": 0,
      "timeout": 0,
      "ticks": 42
     },
-    "forage": {
+    "harvest": {
      "started": 53,
      "ok": 51,
      "fail": 2,
@@ -339,7 +339,7 @@
      "timeout": 0,
      "ticks": 256
     },
-    "deliver": {
+    "haul": {
      "started": 28,
      "ok": 28,
      "fail": 0,
@@ -375,16 +375,16 @@
    "switchesPerMin": 19,
    "restShare": 26,
    "idleShare": 9,
-   "msPerTick": 0.07,
+   "msPerTick": 0.063,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 11,
      "ok": 11,
      "fail": 0,
      "timeout": 0,
      "ticks": 342
     },
-    "forage": {
+    "harvest": {
      "started": 58,
      "ok": 50,
      "fail": 8,
@@ -398,7 +398,7 @@
      "timeout": 0,
      "ticks": 329
     },
-    "deliver": {
+    "haul": {
      "started": 7,
      "ok": 7,
      "fail": 0,
@@ -434,16 +434,16 @@
    "switchesPerMin": 19.9,
    "restShare": 26,
    "idleShare": 9,
-   "msPerTick": 0.06,
+   "msPerTick": 0.063,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 1,
      "ok": 1,
      "fail": 0,
      "timeout": 0,
      "ticks": 15
     },
-    "forage": {
+    "harvest": {
      "started": 54,
      "ok": 53,
      "fail": 1,
@@ -457,7 +457,7 @@
      "timeout": 0,
      "ticks": 164
     },
-    "deliver": {
+    "haul": {
      "started": 34,
      "ok": 34,
      "fail": 0,
@@ -493,16 +493,16 @@
    "switchesPerMin": 21.8,
    "restShare": 28,
    "idleShare": 10,
-   "msPerTick": 0.067,
+   "msPerTick": 0.077,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 1,
      "ok": 1,
      "fail": 0,
      "timeout": 0,
      "ticks": 15
     },
-    "forage": {
+    "harvest": {
      "started": 60,
      "ok": 59,
      "fail": 1,
@@ -516,7 +516,7 @@
      "timeout": 0,
      "ticks": 188
     },
-    "deliver": {
+    "haul": {
      "started": 39,
      "ok": 39,
      "fail": 0,
@@ -552,16 +552,16 @@
    "switchesPerMin": 17.5,
    "restShare": 27,
    "idleShare": 8,
-   "msPerTick": 0.051,
+   "msPerTick": 0.047,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 1,
      "ok": 1,
      "fail": 0,
      "timeout": 0,
      "ticks": 15
     },
-    "forage": {
+    "harvest": {
      "started": 44,
      "ok": 43,
      "fail": 1,
@@ -575,7 +575,7 @@
      "timeout": 0,
      "ticks": 140
     },
-    "deliver": {
+    "haul": {
      "started": 25,
      "ok": 25,
      "fail": 0,
@@ -611,16 +611,16 @@
    "switchesPerMin": 19.3,
    "restShare": 27,
    "idleShare": 9,
-   "msPerTick": 0.067,
+   "msPerTick": 0.075,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 12,
      "ok": 12,
      "fail": 0,
      "timeout": 0,
      "ticks": 424
     },
-    "forage": {
+    "harvest": {
      "started": 64,
      "ok": 55,
      "fail": 9,
@@ -634,7 +634,7 @@
      "timeout": 0,
      "ticks": 250
     },
-    "deliver": {
+    "haul": {
      "started": 1,
      "ok": 1,
      "fail": 0,
@@ -670,16 +670,16 @@
    "switchesPerMin": 19.8,
    "restShare": 28,
    "idleShare": 9,
-   "msPerTick": 0.065,
+   "msPerTick": 0.071,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 12,
      "ok": 12,
      "fail": 0,
      "timeout": 0,
      "ticks": 325
     },
-    "forage": {
+    "harvest": {
      "started": 67,
      "ok": 57,
      "fail": 10,
@@ -693,7 +693,7 @@
      "timeout": 0,
      "ticks": 266
     },
-    "deliver": {
+    "haul": {
      "started": 1,
      "ok": 1,
      "fail": 0,
@@ -729,16 +729,16 @@
    "switchesPerMin": 17.2,
    "restShare": 26,
    "idleShare": 8,
-   "msPerTick": 0.063,
+   "msPerTick": 0.053,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 9,
      "ok": 9,
      "fail": 0,
      "timeout": 0,
      "ticks": 397
     },
-    "forage": {
+    "harvest": {
      "started": 54,
      "ok": 50,
      "fail": 4,
@@ -752,7 +752,7 @@
      "timeout": 0,
      "ticks": 322
     },
-    "deliver": {
+    "haul": {
      "started": 1,
      "ok": 1,
      "fail": 0,
@@ -788,16 +788,16 @@
    "switchesPerMin": 19.3,
    "restShare": 28,
    "idleShare": 9,
-   "msPerTick": 0.063,
+   "msPerTick": 0.068,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 10,
      "ok": 10,
      "fail": 0,
      "timeout": 0,
      "ticks": 243
     },
-    "forage": {
+    "harvest": {
      "started": 62,
      "ok": 57,
      "fail": 5,
@@ -811,7 +811,7 @@
      "timeout": 0,
      "ticks": 378
     },
-    "deliver": {
+    "haul": {
      "started": 1,
      "ok": 1,
      "fail": 0,
@@ -849,14 +849,14 @@
    "idleShare": 9,
    "msPerTick": 0.061,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 9,
      "ok": 9,
      "fail": 0,
      "timeout": 0,
      "ticks": 233
     },
-    "forage": {
+    "harvest": {
      "started": 60,
      "ok": 56,
      "fail": 4,
@@ -870,7 +870,7 @@
      "timeout": 0,
      "ticks": 366
     },
-    "deliver": {
+    "haul": {
      "started": 1,
      "ok": 1,
      "fail": 0,
@@ -906,9 +906,9 @@
    "switchesPerMin": 10.8,
    "restShare": 6,
    "idleShare": 5,
-   "msPerTick": 0.064,
+   "msPerTick": 0.061,
    "byJob": {
-    "forage": {
+    "harvest": {
      "started": 115,
      "ok": 78,
      "fail": 37,
@@ -937,9 +937,9 @@
    "switchesPerMin": 9.5,
    "restShare": 6,
    "idleShare": 4,
-   "msPerTick": 0.051,
+   "msPerTick": 0.052,
    "byJob": {
-    "forage": {
+    "harvest": {
      "started": 100,
      "ok": 69,
      "fail": 31,
@@ -968,9 +968,9 @@
    "switchesPerMin": 8.2,
    "restShare": 5,
    "idleShare": 4,
-   "msPerTick": 0.046,
+   "msPerTick": 0.052,
    "byJob": {
-    "forage": {
+    "harvest": {
      "started": 87,
      "ok": 54,
      "fail": 33,
@@ -999,9 +999,9 @@
    "switchesPerMin": 9.6,
    "restShare": 5,
    "idleShare": 5,
-   "msPerTick": 0.061,
+   "msPerTick": 0.052,
    "byJob": {
-    "forage": {
+    "harvest": {
      "started": 103,
      "ok": 71,
      "fail": 32,
@@ -1030,9 +1030,9 @@
    "switchesPerMin": 9.2,
    "restShare": 5,
    "idleShare": 4,
-   "msPerTick": 0.057,
+   "msPerTick": 0.055,
    "byJob": {
-    "forage": {
+    "harvest": {
      "started": 98,
      "ok": 66,
      "fail": 32,
@@ -1061,16 +1061,16 @@
    "switchesPerMin": 24.4,
    "restShare": 26,
    "idleShare": 11,
-   "msPerTick": 0.15,
+   "msPerTick": 0.129,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 1,
      "ok": 1,
      "fail": 0,
      "timeout": 0,
      "ticks": 17
     },
-    "forage": {
+    "harvest": {
      "started": 126,
      "ok": 114,
      "fail": 12,
@@ -1084,7 +1084,7 @@
      "timeout": 0,
      "ticks": 218
     },
-    "deliver": {
+    "haul": {
      "started": 1,
      "ok": 1,
      "fail": 0,
@@ -1120,16 +1120,16 @@
    "switchesPerMin": 24.7,
    "restShare": 27,
    "idleShare": 12,
-   "msPerTick": 0.118,
+   "msPerTick": 0.141,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 1,
      "ok": 1,
      "fail": 0,
      "timeout": 0,
      "ticks": 23
     },
-    "forage": {
+    "harvest": {
      "started": 129,
      "ok": 110,
      "fail": 19,
@@ -1143,7 +1143,7 @@
      "timeout": 0,
      "ticks": 229
     },
-    "deliver": {
+    "haul": {
      "started": 1,
      "ok": 1,
      "fail": 0,
@@ -1179,16 +1179,16 @@
    "switchesPerMin": 23.5,
    "restShare": 27,
    "idleShare": 11,
-   "msPerTick": 0.126,
+   "msPerTick": 0.131,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 1,
      "ok": 1,
      "fail": 0,
      "timeout": 0,
      "ticks": 15
     },
-    "forage": {
+    "harvest": {
      "started": 113,
      "ok": 96,
      "fail": 17,
@@ -1202,7 +1202,7 @@
      "timeout": 0,
      "ticks": 267
     },
-    "deliver": {
+    "haul": {
      "started": 1,
      "ok": 1,
      "fail": 0,
@@ -1238,16 +1238,16 @@
    "switchesPerMin": 18.8,
    "restShare": 23,
    "idleShare": 9,
-   "msPerTick": 0.135,
+   "msPerTick": 0.105,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 1,
      "ok": 1,
      "fail": 0,
      "timeout": 0,
      "ticks": 15
     },
-    "forage": {
+    "harvest": {
      "started": 91,
      "ok": 78,
      "fail": 13,
@@ -1261,7 +1261,7 @@
      "timeout": 0,
      "ticks": 214
     },
-    "deliver": {
+    "haul": {
      "started": 1,
      "ok": 1,
      "fail": 0,
@@ -1297,16 +1297,16 @@
    "switchesPerMin": 23.4,
    "restShare": 26,
    "idleShare": 11,
-   "msPerTick": 0.143,
+   "msPerTick": 0.117,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 2,
      "ok": 2,
      "fail": 0,
      "timeout": 0,
      "ticks": 38
     },
-    "forage": {
+    "harvest": {
      "started": 115,
      "ok": 99,
      "fail": 16,
@@ -1320,7 +1320,7 @@
      "timeout": 0,
      "ticks": 259
     },
-    "deliver": {
+    "haul": {
      "started": 1,
      "ok": 1,
      "fail": 0,
@@ -1356,7 +1356,7 @@
    "switchesPerMin": 9.5,
    "restShare": 13,
    "idleShare": 4,
-   "msPerTick": 0.05,
+   "msPerTick": 0.049,
    "byJob": {
     "skill": {
      "started": 74,
@@ -1387,7 +1387,7 @@
    "switchesPerMin": 11.3,
    "restShare": 19,
    "idleShare": 5,
-   "msPerTick": 0.047,
+   "msPerTick": 0.042,
    "byJob": {
     "skill": {
      "started": 65,
@@ -1418,7 +1418,7 @@
    "switchesPerMin": 5.4,
    "restShare": 5,
    "idleShare": 3,
-   "msPerTick": 0.04,
+   "msPerTick": 0.036,
    "byJob": {
     "skill": {
      "started": 56,
@@ -1449,7 +1449,7 @@
    "switchesPerMin": 9.3,
    "restShare": 11,
    "idleShare": 4,
-   "msPerTick": 0.049,
+   "msPerTick": 0.056,
    "byJob": {
     "skill": {
      "started": 76,
@@ -1480,7 +1480,7 @@
    "switchesPerMin": 6.5,
    "restShare": 5,
    "idleShare": 3,
-   "msPerTick": 0.044,
+   "msPerTick": 0.04,
    "byJob": {
     "skill": {
      "started": 68,
@@ -1511,23 +1511,23 @@
    "switchesPerMin": 19.1,
    "restShare": 27,
    "idleShare": 9,
-   "msPerTick": 0.059,
+   "msPerTick": 0.061,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 1,
      "ok": 1,
      "fail": 0,
      "timeout": 0,
      "ticks": 13
     },
-    "forage": {
+    "harvest": {
      "started": 39,
      "ok": 2,
      "fail": 37,
      "timeout": 0,
      "ticks": 210
     },
-    "deliver": {
+    "haul": {
      "started": 37,
      "ok": 37,
      "fail": 0,
@@ -1570,23 +1570,23 @@
    "switchesPerMin": 20,
    "restShare": 26,
    "idleShare": 9,
-   "msPerTick": 0.068,
+   "msPerTick": 0.095,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 13,
      "ok": 13,
      "fail": 0,
      "timeout": 0,
      "ticks": 227
     },
-    "forage": {
+    "harvest": {
      "started": 58,
      "ok": 37,
      "fail": 21,
      "timeout": 0,
      "ticks": 699
     },
-    "deliver": {
+    "haul": {
      "started": 20,
      "ok": 20,
      "fail": 0,
@@ -1629,23 +1629,23 @@
    "switchesPerMin": 18.4,
    "restShare": 27,
    "idleShare": 9,
-   "msPerTick": 0.05,
+   "msPerTick": 0.058,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 3,
      "ok": 3,
      "fail": 0,
      "timeout": 0,
      "ticks": 55
     },
-    "forage": {
+    "harvest": {
      "started": 38,
      "ok": 7,
      "fail": 31,
      "timeout": 0,
      "ticks": 246
     },
-    "deliver": {
+    "haul": {
      "started": 31,
      "ok": 31,
      "fail": 0,
@@ -1688,23 +1688,23 @@
    "switchesPerMin": 20.7,
    "restShare": 27,
    "idleShare": 10,
-   "msPerTick": 0.062,
+   "msPerTick": 0.072,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 10,
      "ok": 10,
      "fail": 0,
      "timeout": 0,
      "ticks": 160
     },
-    "forage": {
+    "harvest": {
      "started": 53,
      "ok": 28,
      "fail": 25,
      "timeout": 0,
      "ticks": 501
     },
-    "deliver": {
+    "haul": {
      "started": 25,
      "ok": 25,
      "fail": 0,
@@ -1747,23 +1747,23 @@
    "switchesPerMin": 17.3,
    "restShare": 25,
    "idleShare": 8,
-   "msPerTick": 0.062,
+   "msPerTick": 0.086,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 11,
      "ok": 11,
      "fail": 0,
      "timeout": 0,
      "ticks": 185
     },
-    "forage": {
+    "harvest": {
      "started": 44,
      "ok": 31,
      "fail": 13,
      "timeout": 0,
      "ticks": 562
     },
-    "deliver": {
+    "haul": {
      "started": 13,
      "ok": 13,
      "fail": 0,
@@ -1806,23 +1806,23 @@
    "switchesPerMin": 21,
    "restShare": 27,
    "idleShare": 10,
-   "msPerTick": 0.067,
+   "msPerTick": 0.069,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 1,
      "ok": 1,
      "fail": 0,
      "timeout": 0,
      "ticks": 13
     },
-    "forage": {
+    "harvest": {
      "started": 56,
      "ok": 55,
      "fail": 1,
      "timeout": 0,
      "ticks": 728
     },
-    "deliver": {
+    "haul": {
      "started": 56,
      "ok": 56,
      "fail": 0,
@@ -1865,23 +1865,23 @@
    "switchesPerMin": 21,
    "restShare": 28,
    "idleShare": 10,
-   "msPerTick": 0.062,
+   "msPerTick": 0.064,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 1,
      "ok": 1,
      "fail": 0,
      "timeout": 0,
      "ticks": 15
     },
-    "forage": {
+    "harvest": {
      "started": 54,
      "ok": 53,
      "fail": 1,
      "timeout": 0,
      "ticks": 803
     },
-    "deliver": {
+    "haul": {
      "started": 54,
      "ok": 54,
      "fail": 0,
@@ -1924,23 +1924,23 @@
    "switchesPerMin": 21.7,
    "restShare": 28,
    "idleShare": 10,
-   "msPerTick": 0.062,
+   "msPerTick": 0.104,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 1,
      "ok": 1,
      "fail": 0,
      "timeout": 0,
      "ticks": 13
     },
-    "forage": {
+    "harvest": {
      "started": 63,
      "ok": 62,
      "fail": 1,
      "timeout": 0,
      "ticks": 829
     },
-    "deliver": {
+    "haul": {
      "started": 63,
      "ok": 63,
      "fail": 0,
@@ -1983,23 +1983,23 @@
    "switchesPerMin": 22.1,
    "restShare": 28,
    "idleShare": 10,
-   "msPerTick": 0.063,
+   "msPerTick": 0.096,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 1,
      "ok": 1,
      "fail": 0,
      "timeout": 0,
      "ticks": 13
     },
-    "forage": {
+    "harvest": {
      "started": 63,
      "ok": 62,
      "fail": 1,
      "timeout": 0,
      "ticks": 770
     },
-    "deliver": {
+    "haul": {
      "started": 62,
      "ok": 62,
      "fail": 0,
@@ -2042,23 +2042,23 @@
    "switchesPerMin": 20.1,
    "restShare": 28,
    "idleShare": 9,
-   "msPerTick": 0.059,
+   "msPerTick": 0.058,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 1,
      "ok": 1,
      "fail": 0,
      "timeout": 0,
      "ticks": 13
     },
-    "forage": {
+    "harvest": {
      "started": 48,
      "ok": 47,
      "fail": 1,
      "timeout": 0,
      "ticks": 593
     },
-    "deliver": {
+    "haul": {
      "started": 48,
      "ok": 48,
      "fail": 0,
@@ -2101,23 +2101,23 @@
    "switchesPerMin": 19.1,
    "restShare": 27,
    "idleShare": 9,
-   "msPerTick": 0.053,
+   "msPerTick": 0.055,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 1,
      "ok": 1,
      "fail": 0,
      "timeout": 0,
      "ticks": 13
     },
-    "forage": {
+    "harvest": {
      "started": 39,
      "ok": 2,
      "fail": 37,
      "timeout": 0,
      "ticks": 210
     },
-    "deliver": {
+    "haul": {
      "started": 37,
      "ok": 37,
      "fail": 0,
@@ -2160,23 +2160,23 @@
    "switchesPerMin": 20,
    "restShare": 26,
    "idleShare": 9,
-   "msPerTick": 0.065,
+   "msPerTick": 0.066,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 13,
      "ok": 13,
      "fail": 0,
      "timeout": 0,
      "ticks": 227
     },
-    "forage": {
+    "harvest": {
      "started": 58,
      "ok": 37,
      "fail": 21,
      "timeout": 0,
      "ticks": 699
     },
-    "deliver": {
+    "haul": {
      "started": 20,
      "ok": 20,
      "fail": 0,
@@ -2219,23 +2219,23 @@
    "switchesPerMin": 18.4,
    "restShare": 27,
    "idleShare": 9,
-   "msPerTick": 0.054,
+   "msPerTick": 0.05,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 3,
      "ok": 3,
      "fail": 0,
      "timeout": 0,
      "ticks": 55
     },
-    "forage": {
+    "harvest": {
      "started": 38,
      "ok": 7,
      "fail": 31,
      "timeout": 0,
      "ticks": 246
     },
-    "deliver": {
+    "haul": {
      "started": 31,
      "ok": 31,
      "fail": 0,
@@ -2278,23 +2278,23 @@
    "switchesPerMin": 20.7,
    "restShare": 27,
    "idleShare": 10,
-   "msPerTick": 0.062,
+   "msPerTick": 0.067,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 10,
      "ok": 10,
      "fail": 0,
      "timeout": 0,
      "ticks": 160
     },
-    "forage": {
+    "harvest": {
      "started": 53,
      "ok": 28,
      "fail": 25,
      "timeout": 0,
      "ticks": 501
     },
-    "deliver": {
+    "haul": {
      "started": 25,
      "ok": 25,
      "fail": 0,
@@ -2337,23 +2337,23 @@
    "switchesPerMin": 17.3,
    "restShare": 25,
    "idleShare": 8,
-   "msPerTick": 0.057,
+   "msPerTick": 0.055,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 11,
      "ok": 11,
      "fail": 0,
      "timeout": 0,
      "ticks": 185
     },
-    "forage": {
+    "harvest": {
      "started": 44,
      "ok": 31,
      "fail": 13,
      "timeout": 0,
      "ticks": 562
     },
-    "deliver": {
+    "haul": {
      "started": 13,
      "ok": 13,
      "fail": 0,
@@ -2396,9 +2396,9 @@
    "switchesPerMin": 10.2,
    "restShare": 6,
    "idleShare": 5,
-   "msPerTick": 0.054,
+   "msPerTick": 0.057,
    "byJob": {
-    "forage": {
+    "harvest": {
      "started": 108,
      "ok": 107,
      "fail": 1,
@@ -2427,9 +2427,9 @@
    "switchesPerMin": 9.9,
    "restShare": 7,
    "idleShare": 5,
-   "msPerTick": 0.053,
+   "msPerTick": 0.05,
    "byJob": {
-    "forage": {
+    "harvest": {
      "started": 101,
      "ok": 97,
      "fail": 4,
@@ -2458,9 +2458,9 @@
    "switchesPerMin": 9.4,
    "restShare": 5,
    "idleShare": 4,
-   "msPerTick": 0.055,
+   "msPerTick": 0.052,
    "byJob": {
-    "forage": {
+    "harvest": {
      "started": 99,
      "ok": 98,
      "fail": 1,
@@ -2489,9 +2489,9 @@
    "switchesPerMin": 8.9,
    "restShare": 5,
    "idleShare": 4,
-   "msPerTick": 0.047,
+   "msPerTick": 0.063,
    "byJob": {
-    "forage": {
+    "harvest": {
      "started": 91,
      "ok": 89,
      "fail": 2,
@@ -2520,9 +2520,9 @@
    "switchesPerMin": 9.7,
    "restShare": 5,
    "idleShare": 5,
-   "msPerTick": 0.056,
+   "msPerTick": 0.057,
    "byJob": {
-    "forage": {
+    "harvest": {
      "started": 104,
      "ok": 103,
      "fail": 1,
@@ -2551,23 +2551,23 @@
    "switchesPerMin": 19.9,
    "restShare": 28,
    "idleShare": 9,
-   "msPerTick": 0.094,
+   "msPerTick": 0.098,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 1,
      "ok": 1,
      "fail": 0,
      "timeout": 0,
      "ticks": 13
     },
-    "forage": {
+    "harvest": {
      "started": 67,
      "ok": 62,
      "fail": 5,
      "timeout": 0,
      "ticks": 873
     },
-    "deliver": {
+    "haul": {
      "started": 17,
      "ok": 17,
      "fail": 0,
@@ -2610,23 +2610,23 @@
    "switchesPerMin": 22.7,
    "restShare": 27,
    "idleShare": 11,
-   "msPerTick": 0.099,
+   "msPerTick": 0.131,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 1,
      "ok": 1,
      "fail": 0,
      "timeout": 0,
      "ticks": 15
     },
-    "forage": {
+    "harvest": {
      "started": 75,
      "ok": 63,
      "fail": 12,
      "timeout": 0,
      "ticks": 665
     },
-    "deliver": {
+    "haul": {
      "started": 32,
      "ok": 32,
      "fail": 0,
@@ -2669,23 +2669,23 @@
    "switchesPerMin": 21.8,
    "restShare": 27,
    "idleShare": 10,
-   "msPerTick": 0.122,
+   "msPerTick": 0.109,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 1,
      "ok": 1,
      "fail": 0,
      "timeout": 0,
      "ticks": 13
     },
-    "forage": {
+    "harvest": {
      "started": 101,
      "ok": 99,
      "fail": 2,
      "timeout": 0,
      "ticks": 979
     },
-    "deliver": {
+    "haul": {
      "started": 2,
      "ok": 2,
      "fail": 0,
@@ -2728,23 +2728,23 @@
    "switchesPerMin": 21.3,
    "restShare": 27,
    "idleShare": 10,
-   "msPerTick": 0.097,
+   "msPerTick": 0.092,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 1,
      "ok": 1,
      "fail": 0,
      "timeout": 0,
      "ticks": 13
     },
-    "forage": {
+    "harvest": {
      "started": 79,
      "ok": 72,
      "fail": 7,
      "timeout": 0,
      "ticks": 821
     },
-    "deliver": {
+    "haul": {
      "started": 19,
      "ok": 19,
      "fail": 0,
@@ -2787,23 +2787,23 @@
    "switchesPerMin": 17.7,
    "restShare": 27,
    "idleShare": 8,
-   "msPerTick": 0.086,
+   "msPerTick": 0.084,
    "byJob": {
-    "tote": {
+    "basketRun": {
      "started": 1,
      "ok": 1,
      "fail": 0,
      "timeout": 0,
      "ticks": 13
     },
-    "forage": {
+    "harvest": {
      "started": 62,
      "ok": 62,
      "fail": 0,
      "timeout": 0,
      "ticks": 728
     },
-    "deliver": {
+    "haul": {
      "started": 1,
      "ok": 1,
      "fail": 0,
@@ -2846,7 +2846,7 @@
    "switchesPerMin": 10.2,
    "restShare": 6,
    "idleShare": 5,
-   "msPerTick": 0.064,
+   "msPerTick": 0.057,
    "byJob": {
     "skill": {
      "started": 108,
@@ -2877,7 +2877,7 @@
    "switchesPerMin": 10.9,
    "restShare": 11,
    "idleShare": 5,
-   "msPerTick": 0.052,
+   "msPerTick": 0.056,
    "byJob": {
     "skill": {
      "started": 91,
@@ -2908,7 +2908,7 @@
    "switchesPerMin": 9.2,
    "restShare": 5,
    "idleShare": 4,
-   "msPerTick": 0.054,
+   "msPerTick": 0.055,
    "byJob": {
     "skill": {
      "started": 98,
@@ -2939,7 +2939,7 @@
    "switchesPerMin": 10.5,
    "restShare": 11,
    "idleShare": 5,
-   "msPerTick": 0.05,
+   "msPerTick": 0.051,
    "byJob": {
     "skill": {
      "started": 86,
@@ -2970,7 +2970,7 @@
    "switchesPerMin": 9.6,
    "restShare": 6,
    "idleShare": 5,
-   "msPerTick": 0.06,
+   "msPerTick": 0.065,
    "byJob": {
     "skill": {
      "started": 102,

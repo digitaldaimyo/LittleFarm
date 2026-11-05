@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { SAVE_VERSION } from '../src/game/types';
 import { node } from '../src/domain/spec';
 import { compileCondition, generateWorld } from '../src/sim/compile';
 import { addObject, aimIs, emptyWorld, step } from '../src/sim/world';
@@ -14,7 +15,7 @@ import { NavRun, isDone } from '../src/learning/policies';
 import { Rng } from '../src/sim/rng';
 import type { GameState } from '../src/game/types';
 import type { StageSpec } from '../src/domain/types';
-import { giveRoutine, recipeStage, trainAndSave, trainAndSaveRoutine } from './helpers';
+import { giveRoutine, recipeStage, trainAndSave, trainAndSaveRoutine, onJob } from './helpers';
 
 const withEnv = (extra: ReturnType<typeof node>[]): StageSpec => { const st = recipeStage('go-to-berry'); st.environment.push(...extra); return st; };
 
@@ -103,7 +104,7 @@ describe('pen → farm transfer: a Harvest routine trained in a pen runs the far
     const p = g.pets[0];
     const hv = recipeStage('harvest'); hv.seed = seed;
     trainAndSaveRoutine(g, p, hv);
-    p.assignment = { mode: 'job', job: 'skill', navigator: 'Approach', skillName: 'Harvest', target: '@crop' };
+    onJob(p, 'skill', { skillName: 'Harvest', target: '@crop' });
     const { coins, rt } = runFarm(g);
     expect(Object.keys(rt.stats!).filter((k) => k !== 'skill' && k !== 'rest')).toEqual([]); // no scripted job ran: the learned routine, and innate rest when tired
     expect(coins).toBeGreaterThanOrEqual(0.8 * base); // measured 218 vs 237 (92%)
@@ -130,11 +131,11 @@ describe('learned jobs (phase 3): no skill, no job', () => {
     p.traits = { ...DEFAULT_TRAITS };
     trainAndSave(g, p, recipeStage('go-to-berry'));
     g.farm.dutyPetId = p.id;
-    p.assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' };
+    p.assignment = { mode: 'auto', job: 'harvest', navigator: 'Approach' };
     const { coins, rt } = runFarm(g, 800); // daytime only (no fireflies yet)
     expect(coins).toBe(0);
-    expect(rt.stats!.forage).toBeUndefined();
-    expect(jobCapability(p, 'forage')).toBeNull();
+    expect(rt.stats!.harvest).toBeUndefined();
+    expect(jobCapability(p, 'harvest')).toBeNull();
   });
 
   it('Harvest is bound to the pet’s Harvest routine, or to any skill the player picks; uncertified ones need opting in', () => {
@@ -143,16 +144,16 @@ describe('learned jobs (phase 3): no skill, no job', () => {
     p.traits = { ...DEFAULT_TRAITS };
     trainAndSave(g, p, recipeStage('go-to-berry'));
     trainAndSaveRoutine(g, p, recipeStage('harvest'));
-    expect(jobSkill(p, 'forage')?.name).toBe('Harvest');
-    expect(jobCapability(p, 'forage')).toMatchObject({ name: 'Harvest', aim: '@crop' });
-    p.jobSkills = { forage: 'Approach' };
-    expect(jobSkill(p, 'forage')?.name).toBe('Approach');
+    expect(jobSkill(p, 'harvest')?.name).toBe('Harvest');
+    expect(jobCapability(p, 'harvest')).toMatchObject({ name: 'Harvest', aim: '@crop' });
+    p.jobSkills = { harvest: 'Approach' };
+    expect(jobSkill(p, 'harvest')?.name).toBe('Approach');
     const k = getSkill(p, 'Harvest')!;
     p.jobSkills = {};
     k.revisions.forEach((r) => { r.eval.passed = false; });
-    expect(jobCapability(p, 'forage')).toBeNull(); // uncertified: the farm won't use it on its own…
+    expect(jobCapability(p, 'harvest')).toBeNull(); // uncertified: the farm won't use it on its own…
     k.farmUse = 'on';
-    expect(jobCapability(p, 'forage')?.name).toBe('Harvest'); // …until the player opts in
+    expect(jobCapability(p, 'harvest')?.name).toBe('Harvest'); // …until the player opts in
   });
 });
 
@@ -160,20 +161,20 @@ describe('learned jobs (phase 3b): Haul, Basket run, Harvest to storage', () => 
   it('Haul runs the pet’s Fetch, Basket run its Basket run routine; Harvest prefers storage only when it’s nearer than the house', () => {
     const g = farmFor(101, false);
     const p = g.pets[0];
-    expect(jobCapability(p, 'deliver')?.name).toBe('Fetch');
-    expect(jobCapability(p, 'tote')).toBeNull(); // no Basket run routine yet
+    expect(jobCapability(p, 'haul')?.name).toBe('Fetch');
+    expect(jobCapability(p, 'basketRun')).toBeNull(); // no Basket run routine yet
     giveRoutine(g, p, 'harvest');
     giveRoutine(g, p, 'harvest-store');
     giveRoutine(g, p, 'basket-run');
-    expect(jobCapability(p, 'tote')?.name).toBe('Basket run');
+    expect(jobCapability(p, 'basketRun')?.name).toBe('Basket run');
     const w = g.farm.world;
     const bin = w.objects.find((o) => o.kind === 'bin')!;
     const home = w.objects.find((o) => o.kind === 'home')!;
     for (const o of w.objects.filter((x) => aimIs(x.kind, '@crop'))) o.delivered = true; // one ripe berry, by the basket
     const berry = addObject(w, 'berry', bin.x + 1, bin.y);
-    expect(jobCapability(p, 'forage', g)?.name).toBe('Harvest to storage');
+    expect(jobCapability(p, 'harvest', g)?.name).toBe('Harvest to storage');
     berry.x = home.x; berry.y = home.y + 1; // now the house is nearer
-    expect(jobCapability(p, 'forage', g)?.name).toBe('Harvest');
+    expect(jobCapability(p, 'harvest', g)?.name).toBe('Harvest');
   }, 60000);
 
   it('a routine with nothing it may do gives up (so the farm can choose again) instead of waiting out its time', () => {
@@ -232,12 +233,12 @@ describe('saves v9 (learned farm, phase 3d)', () => {
     env.game.pets[0].plan = { chooser: 'first', guard: true, rows: [] };
     const r = parseGame(JSON.stringify(env));
     expect(r.ok).toBe(true);
-    expect(r.game!.version).toBe(10);
+    expect(r.game!.version).toBe(SAVE_VERSION);
     expect(r.game!.farm.current).toBeNull();
     expect(r.game!.farm.queue).toEqual([]);
     expect(r.game!.progress.flags.learnedFarmNotice).toBe(true);
     expect(r.game!.journal[0].kind).toBe('learned-farm');
-    expect(r.game!.pets[0].assignment).toEqual({ mode: 'auto', job: 'forage', navigator: 'Avoid' }); // old assignments and plans are dropped
+    expect(r.game!.pets[0].assignment).toEqual({ mode: 'auto', job: 'harvest', navigator: 'Avoid' }); // old assignments and plans are dropped
     expect(r.game!.pets[0].plan).toBeUndefined();
     // A fresh v9 game has no notice.
     expect(newGame().progress.flags.learnedFarmNotice).toBeUndefined();

@@ -5,7 +5,7 @@ import { MAX_ON_DUTY, createRuntime, crewSummary, describeTile, dutyPets, farmTi
 import { parseGame, serializeGame } from '../src/persistence/save';
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import type { GameState } from '../src/game/types';
-import { recipeStage, trainAndSave, giveFarmJobs } from './helpers';
+import { recipeStage, trainAndSave, giveFarmJobs, onJob } from './helpers';
 
 const NAMES = ['Pip', 'Mochi', 'Bean', 'Juniper', 'Clover'] as const;
 const PALS = ['meadow', 'plum', 'sky', 'moss', 'meadow'] as const;
@@ -22,7 +22,7 @@ function crewFarm(n: number): GameState {
       // Same skills for everyone (copied revisions keep this fast).
       p.skills = structuredClone(pets[0].skills);
     }
-    p.assignment = { mode: i === 1 ? 'job' : 'auto', job: i === 1 ? 'deliver' : 'forage', navigator: 'Approach' };
+    if (i === 1) onJob(p, 'haul'); else p.assignment = { mode: 'auto', job: 'harvest', navigator: 'Approach' };
   }
   void fe;
   g.farm.dutyPetId = pets[0].id;

@@ -33,7 +33,7 @@ describe('the learned executive (phase 5)', () => {
     const p = g.pets[0];
     const rows = compilePlan(p.plan!);
     const ctx = farmContext(g, p, false);
-    const a = chooseDuty(g, p, p.plan!, rows, ctx, newPlanRuntime(), new Rng(3), { mode: 'rules', eps: 0 });
+    const a = chooseDuty(g, p, p.plan!, rows, ctx, newPlanRuntime(), new Rng(3), { mode: 'order', eps: 0 });
     const b = chooseDuty(g, p, p.plan!, rows, ctx, newPlanRuntime(), new Rng(3), { mode: 'learned', eps: 0 });
     expect(b.row?.id).toBe(a.row?.id);
     expect(b.job?.key).toBe(a.job?.key);
@@ -46,9 +46,9 @@ describe('the learned executive (phase 5)', () => {
     r.unshift(r.splice(r.findIndex((x) => x.args.label === 'Otherwise nap'), 1)[0]);
     practiseExecutive(g, p.id, 4);
     const cmp = compareExecutives(g, p.id);
-    expect(by(cmp, 'rules').coins).toBeLessThan(60); // the order just naps
+    expect(by(cmp, 'order').coins).toBeLessThan(60); // the order just naps
     expect(by(cmp, 'learned').coins).toBeGreaterThan(by(cmp, 'random').coins);
-    expect(by(cmp, 'learned').coins).toBeGreaterThan(3 * by(cmp, 'rules').coins);
+    expect(by(cmp, 'learned').coins).toBeGreaterThan(3 * by(cmp, 'order').coins);
     for (const row of cmp) expect(row.tiredWork).toBe(0);
   }, 60000);
 
@@ -56,7 +56,7 @@ describe('the learned executive (phase 5)', () => {
     const g = farm(202);
     practiseExecutive(g, g.pets[0].id, 4);
     const cmp = compareExecutives(g, g.pets[0].id);
-    expect(by(cmp, 'learned').coins).toBeGreaterThanOrEqual(0.9 * by(cmp, 'rules').coins);
+    expect(by(cmp, 'learned').coins).toBeGreaterThanOrEqual(0.9 * by(cmp, 'order').coins);
     expect(by(cmp, 'learned').coins).toBeGreaterThan(by(cmp, 'random').coins);
     expect(by(cmp, 'learned').tiredWork).toBe(0);
   }, 60000);

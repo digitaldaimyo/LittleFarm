@@ -4,6 +4,7 @@ import type { GameState } from '../game/types';
 import { SAVE_VERSION } from '../game/types';
 import { newGame } from '../game/state';
 import { jobPlan } from '../game/plan';
+import { renameJob, renameOldCards } from '../domain/aliases';
 import { REGISTRY } from '../domain/registry';
 import { stageRoots, walk } from '../domain/spec';
 import type { SpecNode } from '../domain/types';
@@ -143,7 +144,7 @@ const MIGRATIONS: Record<number, Migration> = {
     if (Array.isArray(g.pets)) for (const p of g.pets) if (isObj(p) && isObj(p.assignment)) {
       const a = p.assignment;
       if (a.mode === 'job') {
-        p.plan = jobPlan(String(a.job), { skill: a.skillName, target: a.target, navigator: a.navigator });
+        p.plan = jobPlan(renameJob(String(a.job)) as never, { skill: a.skillName, target: a.target, navigator: a.navigator });
         if (isObj(p.executive)) p.executive.mode = 'rules';
       }
       if (a.mode === 'job' || a.mode === 'plan') a.mode = 'auto';
@@ -154,6 +155,40 @@ const MIGRATIONS: Record<number, Migration> = {
       }
     }
     g.version = 10;
+    return g;
+  },
+  /**
+   * v10 → v11 (polish phase 3): internal names match the player's. Old card ids (job.forage, job.deliver, job.tote,
+   * plan.row) and job ids (forage, deliver, tote) are renamed wherever they are stored, keeping key order; the
+   * executive's 'rules' mode is 'order'; the retired bandit's table and the plan's chooser are dropped.
+   */
+  10: (g) => {
+    renameOldCards(g);
+    const rekey = <T,>(o: Record<string, T>, f: (k: string) => string): Record<string, T> => Object.fromEntries(Object.entries(o).map(([k, v]) => [f(k), v]));
+    const lastPart = (k: string) => { const i = k.lastIndexOf('|'); return i < 0 ? renameJob(k) : k.slice(0, i + 1) + renameJob(k.slice(i + 1)); };
+    const inv = (x: any) => { if (!isObj(x)) return; if (typeof x.behaviorId === 'string') x.behaviorId = renameJob(x.behaviorId); if (isObj(x.args) && typeof x.args.cap === 'string') x.args.cap = renameJob(x.args.cap); };
+    if (Array.isArray(g.pets)) for (const p of g.pets) if (isObj(p)) {
+      if (isObj(p.executive)) {
+        if (p.executive.mode !== 'learned') p.executive.mode = 'order';
+        delete p.executive.table;
+        p.executive.decisions = Number(p.executive.decisions) || 0;
+        const v = p.executive.values;
+        if (isObj(v) && isObj(v.lower)) v.lower = rekey(v.lower, lastPart);
+      }
+      if (isObj(p.assignment)) {
+        p.assignment.job = renameJob(String(p.assignment.job ?? 'harvest'));
+        if (p.assignment.mode !== 'manual') p.assignment.mode = 'auto';
+      }
+      if (isObj(p.jobSkills)) p.jobSkills = rekey(p.jobSkills, renameJob);
+      p.evidence = isObj(p.evidence) ? rekey(p.evidence, renameJob) : {};
+      if (isObj(p.plan)) { delete p.plan.chooser; delete p.plan.table; }
+    }
+    if (isObj(g.farm)) {
+      inv(g.farm.current);
+      if (Array.isArray(g.farm.queue)) g.farm.queue.forEach(inv);
+      if (Array.isArray(g.farm.helpers)) for (const h of g.farm.helpers) if (isObj(h)) { inv(h.current); if (Array.isArray(h.queue)) h.queue.forEach(inv); }
+    }
+    g.version = 11;
     return g;
   },
   /** v4 → v5: "End try (done ✓)" meant "SUCCESS decides"; it is now spelled 'judge' ('success' counts outright). */

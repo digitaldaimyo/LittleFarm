@@ -76,11 +76,11 @@ Things (kinds) you can place or name: Berry, Carrot, Pumpkin, Sunflower, Target,
 
 | Card | Slots | Settings | What it does |
 |---|---|---|---|
-| **Basket run** `job.tote` | Aimed at (default: the basket that needs it) (optional): Kind | Move with: Approach / Avoid | Runs the pet’s own Basket run routine: lift a half-full basket, empty it at the house, set it down by the crops. |
+| **Basket run** `job.basketRun` | Aimed at (default: the basket that needs it) (optional): Kind | Move with: Approach / Avoid | Runs the pet’s own Basket run routine: lift a half-full basket, empty it at the house, set it down by the crops. |
 | **Catch fireflies** `job.catch` | — | Move with: Approach / Avoid | catch fireflies ({navigator}) |
 | **Go to…** `job.goto` | Go to: Kind | Move with: Approach / Avoid | Walk to the nearest one using Approach or Avoid. |
-| **Harvest** `job.forage` | Aimed at (default: any ripe crop) (optional): Kind | Move with: Approach / Avoid | Runs the pet’s own Harvest routine: a ripe crop to the house (or storage with room, with Harvest to storage). |
-| **Haul** `job.deliver` | Aimed at (default: eggs or the fullest storage) (optional): Kind | Move with: Approach / Avoid | Runs the pet’s own Fetch: eggs and stored goods to the house, where they sell. |
+| **Harvest** `job.harvest` | Aimed at (default: any ripe crop) (optional): Kind | Move with: Approach / Avoid | Runs the pet’s own Harvest routine: a ripe crop to the house (or storage with room, with Harvest to storage). |
+| **Haul** `job.haul` | Aimed at (default: eggs or the fullest storage) (optional): Kind | Move with: Approach / Avoid | Runs the pet’s own Fetch: eggs and stored goods to the house, where they sell. |
 | **Mind the gate** `job.gate` | — | Make it: closed / open; Move with: Approach / Avoid | Runs the pet’s own Open the gate / Shut the gate skill. |
 | **Nap** `job.nap` | — | — | nap |
 | **Plant** `job.plant` | Aimed at (default: any empty soil) (optional): Kind | Move with: Approach / Avoid | Runs the pet’s own Plant routine: empty soil gets its seed, paid from your coins. |
@@ -139,7 +139,7 @@ Things (kinds) you can place or name: Berry, Carrot, Pumpkin, Sunflower, Target,
 
 | Card | Slots | Settings | What it does |
 |---|---|---|---|
-| **Responsibility** `plan.row` | When (optional) (several): Condition; Use: Job; Or use (optional) (several): Job; Until (optional): Condition | Name; At night: sleep instead / keep at it | WHEN every condition holds, work on it with one of the jobs it may USE (the pet picks the one that has worked best). With UNTIL, the pet sticks with it until that holds; without, each finished job counts. Higher in the list = more important. |
+| **Responsibility** `plan.responsibility` | When (optional) (several): Condition; Use: Job; Or use (optional) (several): Job; Until (optional): Condition | Name; At night: sleep instead / keep at it | WHEN every condition holds, work on it with one of the jobs it may USE (the pet picks the one that has worked best). With UNTIL, the pet sticks with it until that holds; without, each finished job counts. Higher in the list = more important. |
 
 ## Rules
 

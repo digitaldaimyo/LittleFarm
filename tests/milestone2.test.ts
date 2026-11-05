@@ -15,7 +15,7 @@ import { adoptPet } from '../src/game/pets';
 import { buy } from '../src/game/progression';
 import { createRuntime, farmTick, DAY_TICKS } from '../src/game/farm';
 import { parseGame, serializeGame } from '../src/persistence/save';
-import { trainAndSave, recipeStage as rs } from './helpers';
+import { trainAndSave, recipeStage as rs, onJob } from './helpers';
 
 function train(stage: StageSpec) {
   const t = new Trainer({ stage, episodes: stage.learner.episodes, traits: DEFAULT_TRAITS });
@@ -120,7 +120,7 @@ describe('M2: the farm comes alive', () => {
     expect(chickens.length).toBe(2);
     const ap = trainAndSave(g, pet, rs('go-to-berry'));
     trainAndSave(g, pet, rs('bring-it-home'), ap.policy);
-    pet.assignment = { mode: 'job', job: 'deliver', navigator: 'Approach' };
+    onJob(pet, 'haul');
     const rt = createRuntime(g.farm);
     let laidOutside = false;
     const before = new Set(g.farm.world.objects.map((o) => o.id));
@@ -150,7 +150,7 @@ describe('M2: the farm comes alive', () => {
     const home = { id: w.nextId++, kind: 'chicken', x: 0, y: 5, carried: false, delivered: false };
     const stray = { id: w.nextId++, kind: 'chicken', x: 6, y: 6, carried: false, delivered: false };
     w.objects.push(home, stray);
-    pet.assignment = { mode: 'job', job: 'skill', navigator: 'Approach', skillName: 'Herd', target: 'chicken' };
+    onJob(pet, 'skill', { skillName: 'Herd', target: 'chicken' });
     const rt = createRuntime(g.farm);
     let allHome = false;
     for (let t = 0; t < 600 && !allHome; t++) {

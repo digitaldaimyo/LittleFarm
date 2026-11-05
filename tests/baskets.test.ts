@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { addObject, emptyStore, emptyWorld, step, storeCount } from '../src/sim/world';
+import { addObject, emptyStore, emptyWorld, nearest, step, storeCount } from '../src/sim/world';
 import { compileCondition, generateWorld } from '../src/sim/compile';
 import { compileEncoder } from '../src/learning/senses';
 import { node } from '../src/domain/spec';
 import { newGame } from '../src/game/state';
 import { activeRevision, adoptPet, getSkill } from '../src/game/pets';
-import { createRuntime, cropSpot, farmTick, harvestTarget, heldBasket, toteTarget } from '../src/game/farm';
+import { createRuntime, cropSpot, farmTick, heldBasket, toteTarget } from '../src/game/farm';
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import { recipeStage, trainAndSave, trainAndSaveRoutine, giveFarmJobs, giveRoutine } from './helpers';
 
@@ -118,7 +118,7 @@ function basketFarm() {
   giveFarmJobs(s, p);
   trainAndSave(s, p, recipeStage('bring-it-home'), activeRevision(getSkill(p, 'Approach'))!.policy);
   giveRoutine(s, p, 'basket-run');
-  p.assignment = { mode: 'auto', job: 'forage', navigator: 'Approach' };
+  p.assignment = { mode: 'auto', job: 'harvest', navigator: 'Approach' };
   s.farm.dutyPetId = p.id;
   s.progress.unlocks.push('fetch', 'carrots');
   return s;
@@ -157,7 +157,8 @@ describe('basket runs on the farm', () => {
     const far = addObject(w, 'bin', 6, 6);
     far.store = emptyStore('bin');
     w.pet.x = near.x; w.pet.y = near.y;
-    expect(harvestTarget(w, 'berry', true)?.id).not.toBe(near.id);
+    const held = addObject(w, 'berry', w.pet.x, w.pet.y); held.carried = true; w.pet.carrying = held.id;
+    expect(nearest(w, '@storage')?.id).toBe(far.id); // Harvest to storage aims at “storage with room”
   });
 
   it('with Harvest to storage and a Basket run, crops go into the basket and baskets are emptied at the house', () => {
@@ -174,7 +175,7 @@ describe('basket runs on the farm', () => {
     }
     expect(stored).toBeGreaterThan(0); // a harvest went into the basket
     expect(emptied).toBeGreaterThan(0); // and a Basket run took it to the house
-    expect(rt.stats!.tote?.ok ?? 0).toBeGreaterThan(0);
+    expect(rt.stats!.basketRun?.ok ?? 0).toBeGreaterThan(0);
     expect(s.progress.totalCoins).toBeGreaterThan(40);
   });
 
@@ -185,7 +186,7 @@ describe('basket runs on the farm', () => {
     const rt = createRuntime(s.farm);
     rt.stats = {};
     for (let t = 0; t < 600; t++) farmTick(s, rt);
-    expect(rt.stats!.tote).toBeUndefined();
+    expect(rt.stats!.basketRun).toBeUndefined();
   });
 
   it('a pet holding a basket finishes the run before anything else, even when tired', () => {
@@ -198,7 +199,7 @@ describe('basket runs on the farm', () => {
     s.pets[0].energy = 10;
     const rt = createRuntime(s.farm);
     farmTick(s, rt);
-    expect(s.farm.current?.behaviorId).toBe('tote');
+    expect(s.farm.current?.behaviorId).toBe('basketRun');
     for (let t = 0; t < 200 && heldBasket(w); t++) farmTick(s, rt);
     expect(heldBasket(w)).toBeUndefined();
     expect(storeCount(b)).toBe(0);

@@ -6,14 +6,14 @@ import type { BehaviorSummary } from '../learning/summary';
 import type { GuideRun, GuideState } from './tutorial';
 import type { SerializedQ } from '../learning/qtable';
 import type { Traits } from '../learning/episodes';
-import type { ExecutiveTable, Invocation } from '../learning/executive';
+import type { Invocation } from '../learning/executive';
 import type { ExecValues } from './plan';
 import type { World } from '../sim/world';
 
-export const SAVE_VERSION = 10;
+export const SAVE_VERSION = 11;
 
 export type PaletteId = 'meadow' | 'plum' | 'sky' | 'moss';
-export type JobId = 'forage' | 'deliver' | 'plant' | 'tote' | 'rest' | 'skill';
+export type JobId = 'harvest' | 'haul' | 'plant' | 'basketRun' | 'rest' | 'skill';
 export type NavigatorName = 'Approach' | 'Avoid';
 
 export interface SkillEval {
@@ -98,17 +98,15 @@ export interface StageMastery {
   transfer?: number;
 }
 
-export interface FarmPlan {
+export interface Responsibilities {
   rows: SpecNode[];
-  /** 'first': the first applicable row wins. 'learned': a small bandit picks among applicable rows. */
-  chooser: 'first' | 'learned';
   /** Anti-dithering guard (on by default). */
   guard: boolean;
-  table?: ExecutiveTable;
 }
 
 export interface Assignment {
-  mode: 'auto' | 'job' | 'manual' | 'plan';
+  /** Auto works on the pet's responsibilities; Steer is the player's. (Direct jobs and plan mode were retired: saves v9/v11.) */
+  mode: 'auto' | 'manual';
   job: JobId;
   navigator: NavigatorName;
   /** For the "Run a skill" job: which skill, aimed at what. */
@@ -140,10 +138,9 @@ export interface Pet {
   mood: number;
   skills: Skill[];
   /**
-   * How Auto picks among responsibilities: the player's order ('rules'), or learned values ('learned', phase 5).
-   * `table` is the retired bandit's (kept so old saves load); `values` are the learned executive's.
+   * How Auto picks among responsibilities: the player's order ('order'), or learned values ('learned', phase 5).
    */
-  executive: { mode: 'rules' | 'learned'; table: ExecutiveTable; decisions: number; values?: ExecValues; /** Learned picks keep trying things on the farm (unset: on until the pet has practised). */ explore?: boolean };
+  executive: { mode: 'order' | 'learned'; decisions: number; values?: ExecValues; /** Learned picks keep trying things on the farm (unset: on until the pet has practised). */ explore?: boolean };
   /** Which learned skill or routine does each farm job (learned-farm phase 3); absent = the job's own recipe/name. */
   jobSkills?: Partial<Record<string, string>>;
   feedback: Record<string, Record<string, number>>;
@@ -151,7 +148,7 @@ export interface Pet {
   assignment: Assignment;
   mastery: Record<string, StageMastery>;
   /** Responsibilities (phase 4; the farm plan's rows grew into them). Auto starts from the starter ones. */
-  plan?: FarmPlan;
+  plan?: Responsibilities;
   /** Evidence from the farm, per job (`forage`, `skill:Patrol`…): uses, successes, ticks. Used to pick jobs. */
   evidence?: Record<string, { n: number; ok: number; ticks: number }>;
   nicknames?: Record<string, string>;

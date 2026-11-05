@@ -39,7 +39,7 @@ interface JobCard {
 
 function jobCards(pet: Pet): JobCard[] {
   // Phase 6: no direct jobs. Auto works on the pet's responsibilities with its own skills; Steer is you.
-  const ready = (['forage', 'deliver', 'plant', 'tote'] as const).filter((j) => jobCapability(pet, j)).map((j) => BEHAVIOR_LABEL[j]);
+  const ready = (['harvest', 'haul', 'plant', 'basketRun'] as const).filter((j) => jobCapability(pet, j)).map((j) => BEHAVIOR_LABEL[j]);
   return [
     { id: 'auto', title: 'Auto', blurb: `${pet.name} works on their responsibilities (edit them below) with the skills they know: needs first — rest when tired, sleep at night — then the most important thing that needs doing. ${ready.length ? `Can do: ${ready.join(', ')}.` : 'Can’t do any farm job yet — teach Harvest first (Guide: “Teach a job: Harvest”).'}` },
     { id: 'manual', title: 'Steer', blurb: 'Guide them yourself: tap tiles or use arrow keys.' },
@@ -243,8 +243,8 @@ export function FarmScreen() {
             <div className="sleeve-inline">
               <span className="small">Picks</span>
               <div className="seg" role="radiogroup" aria-label="Executive selector">
-                {(['rules', 'learned'] as const).map((m) => (
-                  <button key={m} data-tut={`exec-${m}`} role="radio" aria-checked={pet.executive.mode === m} className={pet.executive.mode === m ? 'on' : ''} onClick={() => store.mutate((st) => { st.pets.find((x) => x.id === pet.id)!.executive.mode = m; })}>{m === 'rules' ? 'In your order' : 'Learns what pays off'}</button>
+                {(['order', 'learned'] as const).map((m) => (
+                  <button key={m} data-tut={`exec-${m}`} role="radio" aria-checked={pet.executive.mode === m} className={pet.executive.mode === m ? 'on' : ''} onClick={() => store.mutate((st) => { st.pets.find((x) => x.id === pet.id)!.executive.mode = m; })}>{m === 'order' ? 'In your order' : 'Learns what pays off'}</button>
                 ))}
               </div>
             </div>
@@ -353,7 +353,7 @@ function ExecutiveLesson({ pet }: { pet: Pet }) {
     runRef.current = handle;
     setRun({ handle, progress: null });
   };
-  const label = { rules: 'In your order', learned: 'Learned picks', random: 'Random picks (baseline)' } as const;
+  const label = { order: 'In your order', learned: 'Learned picks', random: 'Random picks (baseline)' } as const;
   return (
     <div className="exec-lesson" data-tut="exec-lesson">
       <p className="small muted">

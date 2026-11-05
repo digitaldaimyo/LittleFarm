@@ -66,10 +66,10 @@ export function adoptPet(s: GameState, name: string, palette: PaletteId): Pet {
     energy: 100,
     mood: 70,
     skills: [],
-    executive: { mode: 'rules', table: {}, decisions: 0 },
+    executive: { mode: 'order', decisions: 0 },
     feedback: {},
     stats: { coins: 0, berries: 0, carrots: 0, dips: 0, trainingRuns: 0, episodes: 0, deliveries: 0 },
-    assignment: { mode: 'auto', job: 'forage', navigator: 'Approach' },
+    assignment: { mode: 'auto', job: 'harvest', navigator: 'Approach' },
     mastery: {},
   };
   s.pets.push(pet);

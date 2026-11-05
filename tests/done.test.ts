@@ -36,14 +36,14 @@ describe('definition of done (learned farm)', () => {
     const rt = createRuntime(g.farm);
     const invs: Invocation[] = [];
     for (let t = 0; t < 2 * DAY_TICKS; t++) { const before = g.farm.current; farmTick(g, rt); if (g.farm.current && g.farm.current !== before) invs.push(g.farm.current); }
-    const JOB: Record<string, string> = { forage: 'forage', deliver: 'deliver', tote: 'tote', plant: 'plant' };
+    const JOB: Record<string, string> = { harvest: 'harvest', haul: 'haul', basketRun: 'basketRun', plant: 'plant' };
     for (const inv of invs) {
       expect(inv.behaviorId).not.toBe('wander');
       expect(inv.intention).not.toMatch(/sniffing/);
       if (JOB[inv.behaviorId]) expect(jobCapability(p, JOB[inv.behaviorId])).not.toBeNull();
       if (inv.behaviorId === 'catch' || inv.behaviorId === 'goto') expect(getSkill(p, 'Approach')).toBeTruthy();
     }
-    expect(invs.some((i) => i.behaviorId === 'forage')).toBe(true);
+    expect(invs.some((i) => i.behaviorId === 'harvest')).toBe(true);
     expect(g.progress.totalCoins).toBeGreaterThan(40);
   }, 60000);
 
@@ -53,7 +53,7 @@ describe('definition of done (learned farm)', () => {
     p.traits = { ...DEFAULT_TRAITS };
     trainAndSave(g, p, recipeStage('go-to-berry'));
     trainAndSave(g, p, recipeStage('wait-for-it')); // "Wait for it": the player's own skill
-    p.plan = { chooser: 'first', guard: true, rows: [node('plan.row', { label: 'Sit by the well', if: [], do: node('job.skill', { skill: 'Wait for it', aim: node('kind:well') }) }), node('plan.row', { label: 'Otherwise nap', if: [], do: node('job.nap') })] };
+    p.plan = { guard: true, rows: [node('plan.responsibility', { label: 'Sit by the well', if: [], do: node('job.skill', { skill: 'Wait for it', aim: node('kind:well') }) }), node('plan.responsibility', { label: 'Otherwise nap', if: [], do: node('job.nap') })] };
     g.farm.dutyPetId = p.id;
     const rt = createRuntime(g.farm);
     rt.stats = {};
@@ -69,7 +69,7 @@ describe('definition of done (learned farm)', () => {
     const env = JSON.parse(serializeGame(g));
     env.version = 9; env.game.version = 9;
     const pet = env.game.pets[0];
-    pet.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' };
+    pet.assignment = { mode: 'job', job: 'forage', navigator: 'Approach' }; // a v9 save: a direct job, old names
     const adopted = adoptPet(g, 'Mochi', 'plum');
     const env2 = JSON.parse(serializeGame(g)).game.pets[1];
     env2.assignment = { mode: 'plan', job: 'forage', navigator: 'Approach' };
@@ -80,11 +80,12 @@ describe('definition of done (learned farm)', () => {
     expect(r.ok).toBe(true);
     const [a, b] = r.game!.pets;
     expect(a.assignment.mode).toBe('auto');
-    expect(a.plan!.rows.map((x) => (x.args.do as { cardId: string }).cardId)).toEqual(['job.forage', 'job.nap']);
+    expect(a.plan!.rows.map((x) => (x.args.do as { cardId: string }).cardId)).toEqual(['job.harvest', 'job.nap']);
     expect(a.plan!.rows[0].args.night).toBe('work');
     expect(a.skills.map((k) => k.name)).toEqual(['Approach']); // skills survive
     expect(b.assignment.mode).toBe('auto');
     expect(b.plan!.rows.map((x) => x.args.label)).toEqual(['Nap']);
-    expect(b.plan!.chooser).toBe('first');
+    expect(b.plan!.rows.map((x) => x.cardId)).toEqual(['plan.responsibility']); // v11: the card's new id
+    expect('chooser' in b.plan!).toBe(false); // v11: the retired chooser is dropped
   });
 });

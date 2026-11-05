@@ -115,7 +115,7 @@ describe('Compare', () => {
     const s = newGame();
     const p = adoptPet(s, 'Pip', 'meadow');
     s.farm.dutyPetId = p.id;
-    p.plan = { chooser: 'first', guard: true, rows: [node('plan.row', { label: 'Plenty stored', if: [cmp(node('q.stored', { what: node('kind:berry') }), '>=', 3)], do: node('job.nap') }), node('plan.row', { label: 'Else', if: [], do: node('job.nap') })] };
+    p.plan = { guard: true, rows: [node('plan.responsibility', { label: 'Plenty stored', if: [cmp(node('q.stored', { what: node('kind:berry') }), '>=', 3)], do: node('job.nap') }), node('plan.responsibility', { label: 'Else', if: [], do: node('job.nap') })] };
     const rows = compilePlan(p.plan);
     const pick = () => chooseDuty(s, p, p.plan!, rows, farmContext(s, p, false), newPlanRuntime(), new Rng(1)).row?.label;
     expect(pick()).toBe('Else');
