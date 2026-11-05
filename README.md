@@ -139,7 +139,7 @@ The **Guide** tab offers short, free lessons on setting up training that works, 
 12. *Give your pet a notebook* (Patrol without and with the Note sense)
 13. *Let them choose* (the learned executive: practise deciding, then compare your order, learned picks and random picks)
 
-It also holds the **Trainer's notebook** (a checklist built from measured results) and a **glossary**. **Coaching tips** appear in reports and on the farm when the evidence suggests a common mistake, each linking to its lesson.
+It also holds the **Trainer's notebook** (a checklist built from measured results) and a **glossary** with **every card**: search by title or by a word in its hint, and each card says where it fits and how it reads. **Coaching tips** appear in reports and on the farm when the evidence suggests a common mistake, each linking to its lesson.
 
 ## Sound and music
 

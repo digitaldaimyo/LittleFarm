@@ -31,6 +31,17 @@ function title(reg: Registry, cardId: string) {
   return reg.cards.get(cardId)?.presentation.title ?? cardId;
 }
 
+/**
+ * Is this kind in the pen? A trait kind (“Any ripe crop”, “Storage with room”) is there when any placed object has
+ * that trait (polish phase 4: on the farm, a responsibility aimed at any ripe crop was flagged as missing).
+ */
+function placedHas(placed: Set<string>, kind: string, reg: Registry): boolean {
+  if (placed.has(kind)) return true;
+  if (kind === '@crop') return [...placed].some((k) => { const o = reg.objects.get(k); return !!o && o.traits.includes('Crop') && o.carryable; });
+  if (kind === '@storage') return [...placed].some((k) => !!reg.objects.get(k)?.storage);
+  return false;
+}
+
 export function validateNode(n: SpecNode, expected: TypeExpr, ctx: Ctx): void {
   const card = ctx.reg.cards.get(n.cardId);
   if (!card) {
@@ -48,7 +59,7 @@ export function validateNode(n: SpecNode, expected: TypeExpr, ctx: Ctx): void {
     ctx.out.push({ severity: 'error', code: 'missing-reference', nodeId: n.id, message: `There is no area called “${String(n.args.name ?? '')}” in the pen. Add one with the Area card (on the farm, the coop is called “coop”).` });
   }
   const kind = kindOfCard(card.id);
-  if (kind && ctx.placed && !ctx.placed.has(kind)) {
+  if (kind && ctx.placed && !placedHas(ctx.placed, kind, ctx.reg)) {
     ctx.out.push({ severity: 'error', code: 'missing-reference', nodeId: n.id, message: `This refers to ${card.presentation.title}, but no ${card.presentation.title} is placed in the pen.` });
   }
   const known = new Set<string>([...card.sockets.map((s) => s.id), ...(card.params ?? []).map((p) => p.id), ...(card.id === 'rule' ? ['off'] : [])]);
@@ -189,7 +200,12 @@ export function validateStage(stage: StageSpec, reg: Registry = REGISTRY, unlock
     if (all.size > 4) out.push({ severity: 'error', code: 'too-many-notes', message: `At most 4 notes per skill (this one uses ${all.size}: ${[...all].map((n) => `“${n}”`).join(', ')}).` });
     for (const [n, id] of reads) if (!writes.has(n)) out.push({ severity: 'warning', code: 'note-never-written', nodeId: id, message: `Nothing writes the note “${n}”, so it is always 0.${writes.size ? ` Did you mean ${[...writes.keys()].map((w) => `“${w}”`).join(' or ')}?` : ' Add a rule with “Write a note”.'}` });
     const sensed = new Set((L.senses ?? []).filter((x) => x.cardId === 'sense.note').map(name));
-    if (template === 'sense') for (const [n, id] of writes) if (reads.has(n) && !sensed.has(n)) out.push({ severity: 'info', code: 'note-not-sensed', nodeId: id, message: `Your rules use the note “${n}”, but ${L.skill || 'the pet'} can’t sense it. If what to do next depends on it, add the Note sense (“${n}”).` });
+    // One notice for all of them (polish phase 4: a playtester's pen with three counting notes got three).
+    const unsensed = template === 'sense' ? [...writes].filter(([n]) => reads.has(n) && !sensed.has(n)) : [];
+    if (unsensed.length) {
+      const names = unsensed.map(([n]) => `“${n}”`).join(', ');
+      out.push({ severity: 'info', code: 'note-not-sensed', nodeId: unsensed[0][1], message: `Your rules use the note${unsensed.length > 1 ? 's' : ''} ${names}, but ${L.skill || 'the pet'} can’t sense ${unsensed.length > 1 ? 'them' : 'it'}. That’s fine for notes that only decide treats. If what to do next depends on one, add the Note sense for it.` });
+    }
     for (const [n, id] of writes) if (!reads.has(n)) out.push({ severity: 'info', code: 'note-never-read', nodeId: id, message: `The note “${n}” is written but nothing reads it. Add the Note sense so ${L.skill || 'the pet'} can use it, or test it in a rule.` });
   }
   // Qualifiers (phase 3): not inside events (an event happens to a kind of thing; use a condition to pick one), and

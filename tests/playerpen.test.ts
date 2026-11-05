@@ -25,6 +25,10 @@ describe('a player-built pen keeps working', () => {
     const st = (rev as unknown as { stage: StageSpec }).stage;
     expect(st.rules.length).toBe(19);
     expect(validateStage(st).filter((d) => d.severity === 'error')).toEqual([]);
+    // Notes that only decide treats are fine: one calm notice for all of them (polish phase 4), not one each.
+    const notes = validateStage(st).filter((d) => d.code === 'note-not-sensed');
+    expect(notes).toHaveLength(1);
+    expect(notes[0].message).toMatch(/“Result”, “TroubleCount”, “CloserCount”.*fine for notes that only decide treats/);
     const r = buildReport(st, p.traits, null, rev.policy, null);
     expect(r.after.successRate).toBe(rev.eval.successRate);
     expect(r.after.successRate).toBe(0.95);

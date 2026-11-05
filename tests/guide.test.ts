@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import type { SpecNode } from '../src/domain/types';
+import { validateNodes } from '../src/domain/validate';
+import { nominal } from '../src/domain/typecheck';
+import { FARM_OBJECTS } from '../src/domain/packs/farm';
 import { newGame, trainingCost } from '../src/game/state';
 import { adoptPet } from '../src/game/pets';
 import { ackStep, advanceTutorial, currentStep, guide, guideComparison, isPinned, PINNED_STAGE, PRACTICE_STAGE, recordGuideRun, skipChapter, startChapter } from '../src/game/tutorial';
@@ -292,6 +296,8 @@ describe('Field Guide phase C lessons', () => {
     expect(seeing.after.successRate).toBeGreaterThan(seeing.randomOptions!.successRate + 0.4);
     expect(guideComparison(s, 'routines').map((c) => c.label)).toEqual(['Watching 2 things', 'Watching 3 (+ at the basket)']);
     ackStep(s);
+    expect(currentStep(s)?.id).toBe('chain'); // polish phase 4: why routines exist (the long-chain finding)
+    ackStep(s);
     saveRevision(s, s.pets[0], { stage: st, policy: q, report: seeing, episodes: st.learner.episodes, durationMs: 1, simTicks: 0, uses: [{ skill: 'Approach', rev: 1 }] });
     advanceTutorial(s);
     expect(guide(s).status.routines).toBe('done');
@@ -350,7 +356,27 @@ describe('Field Guide phase C lessons', () => {
     expect(fires()).toBeGreaterThan(0);
     s.progress.flags.planRowFired = true;
     advanceTutorial(s);
+    // Polish phase 4: the new cards, as the lesson asks for them.
+    expect(currentStep(s)?.id).toBe('until');
+    const goods = plan.rows.find((r) => r.args.label === 'Goods waiting')!;
+    goods.args.until = node('cond.compare', { quantity: node('q.stored', { what: node('kind:@crop'), where: 'any' }), op: '<=', value: 1 });
+    advanceTutorial(s);
+    expect(currentStep(s)?.id).toBe('until'); // “≤ 1” isn't empty yet: set the number to 0
+    (goods.args.until as SpecNode).args.value = 0;
+    advanceTutorial(s);
+    expect(currentStep(s)?.id).toBe('or-use');
+    goods.args.also = [node('job.basketRun', { navigator: 'Approach' })];
+    advanceTutorial(s);
+    expect(currentStep(s)?.id).toBe('aim');
+    const ripe = plan.rows.find((r) => r.args.label === 'Harvest what’s ripe')!;
+    (ripe.args.do as SpecNode).args.aim = node('obj.nearest', { what: node('kind:@crop') });
+    advanceTutorial(s);
+    expect(currentStep(s)?.id).toBe('aim'); // nearest the pet isn't it: nearest the house
+    ((ripe.args.do as SpecNode).args.aim as SpecNode).args.from = node('kind:home');
+    advanceTutorial(s);
     expect(currentStep(s)?.id).toBe('apply');
+    expect(validateNodes(plan.rows, nominal('Responsibility'), { placed: new Set(FARM_OBJECTS.map((o) => o.id)), areas: new Set(['coop']) }).filter((d) => d.severity === 'error')).toEqual([]);
+    expect(previewPlan(s, pet.id, plan, 600).coins).toBeGreaterThan(0); // the edited responsibilities still earn
     applyPlan(s, createRuntime(s.farm), pet.id);
     advanceTutorial(s);
     expect(currentStep(s)?.id).toBe('apply'); // the experiment row is still in the plan

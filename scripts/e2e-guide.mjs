@@ -32,7 +32,7 @@ const errors = [], external = [];
 let lastPage = null;
 const watch = (page) => {
   lastPage = page;
-  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('pageerror', (e) => { errors.push(e.message); console.log('PAGE ERROR:', e.message, (e.stack ?? '').split('\n').slice(0, 4).join(' | ')); });
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('request', (r) => { if (!r.url().startsWith(URL)) external.push(r.url()); });
 };
@@ -292,6 +292,8 @@ try {
     console.log('   L8 comparison:', c8.slice(0, 170));
     const pct = (label) => Number((c8.split(label)[1] ?? '').match(/(\d+)%/)?.[1] ?? -1);
     check(pct('Watching 3') > pct('Watching 2'), `L8: watching the bin beats watching 2 things (${pct('Watching 2')}% → ${pct('Watching 3')}%)`);
+    await step('Why routines exist', 'L8: explains why routines exist (the “Long chain” finding)');
+    await looked();
     await nav('Teach');
     await page.click('[data-tut="save-skill"]');
     await lessonDone('Combine skills');
@@ -316,6 +318,36 @@ try {
     }
     console.log(`   moved up ${moves}×: ${(await rowNames()).join(' | ')}`);
     check(ran, 'L9: moved high enough, the row runs in the preview');
+    // Polish phase 4: UNTIL with a measure, OR USE, and a “which one” aim — built with the picker like a player.
+    const pick = async (title) => {
+      const vis = page.locator(`.sleeve .hand-row .card:has-text("${title}")`).first();
+      if (!(await vis.isVisible().catch(() => false)) && (await page.locator('.sleeve details.more > summary').count())) await page.click('.sleeve details.more > summary');
+      await page.locator(`.sleeve .card:has-text("${title}")`).first().click();
+    };
+    const closeSleeve = async () => { if (await page.locator('[data-tut="sleeve-done"]').count()) await page.click('[data-tut="sleeve-done"]'); };
+    const rowNamed = async (name) => page.locator('[data-tut="plan-rows"] > li').nth((await rowNames()).indexOf(name));
+    await step('Haul until it’s all in', 'L9: asks for an UNTIL built from a measure');
+    const goods = await rowNamed('Goods waiting');
+    await goods.locator('.rule-line:has-text("UNTIL") .slot').first().click();
+    await pick('Compare');
+    await pick('Stored');
+    await pick('Any ripe crop');
+    await page.click('.sleeve button[aria-label="Decrease Than (a number)"]');
+    await closeSleeve();
+    await step('Another way to do it', 'L9: UNTIL “any ripe crop stored in any storage ≤ 0” built (Compare → Stored)');
+    await goods.locator('.rule-line:has-text("OR USE") .slot:has-text("+ job")').click();
+    await pick('Basket run');
+    await closeSleeve();
+    await step('Pick which one', 'L9: OR USE Basket run added');
+    const ripe = await rowNamed('Harvest what’s ripe');
+    await ripe.locator('.slot:has-text("Aimed at")').click();
+    await pick('Nearest');
+    await pick('Any ripe crop');
+    await closeSleeve();
+    await ripe.locator('.slot:has-text("Nearest to")').click();
+    await pick('Home');
+    await closeSleeve();
+    check(/the nearest any ripe crop|Any ripe crop/i.test(await ripe.textContent()) && (await ripe.locator('.extra-slot:has-text("nearest to")').count()) === 1, 'L9: the aim reads “nearest … to Home” (the Nearest to slot is reachable)');
     await step('Tidy up and use them', 'L9: asks to tidy up the experiment responsibility');
     await (await wellRow()).locator('button[aria-label="Delete row"]').click();
     await page.click('[data-tut="plan-apply"]');
@@ -381,6 +413,8 @@ try {
     const c11 = await compareInGuide();
     console.log('   L11 comparison:', c11.slice(0, 170));
     check(c11.includes('Can’t read the note') && c11.includes('Reads the note'), 'L11: comparison shows without vs with the note');
+    await step('Note or measure?', 'L11: when a measure (Stored, Sold) replaces a note');
+    await looked();
     await nav('Teach');
     await page.click('[data-tut="save-skill"]');
     await lessonDone('Give your pet a notebook');
@@ -473,6 +507,7 @@ try {
     await page.click('[data-tut="sleeve-done"]');
     check((await page.locator('.sleeve').count()) === 0, 'focus: Done closes the picker');
     check(/stored in any storage/.test(await newRule.textContent()), 'focus: the nested condition reads back');
+    check((await newRule.locator('.extra-slot .slot:has-text("Than (a measure)")').count()) === 1 && (await newRule.locator('.extra-slot .slot:has-text("In this one")').count()) === 1, 'polish 4: optional slots the phrase leaves out (Than, In this one) are reachable');
     await newRule.locator('.slot:has-text("+ condition")').click();
     await page.keyboard.press('Escape');
     check((await page.locator('.sleeve').count()) === 0, 'focus: Escape closes the picker');
@@ -511,6 +546,15 @@ try {
     const after = Number(rep.split('After')[1]?.match(/(\d{1,2})\/20/)?.[1] ?? -1), rnd = Number(rep.split('Random')[1]?.match(/(\d{1,2})\/20/)?.[1] ?? -1);
     check(after >= 0 && after > rnd, `polish: trained, it beats random wandering (${after}/20 vs ${rnd}/20)`);
 
+    // Polish phase 4: the Guide's card reference finds cards by title or by a word in their hint.
+    await nav('Guide');
+    await page.click('[role="tab"]:has-text("Glossary")');
+    await page.fill('[data-tut="card-search"]', 'stored');
+    check((await page.locator('[data-tut="card-ref"] .card-ref li strong').first().textContent()) === 'Stored', 'card reference: “stored” finds Stored first');
+    await page.fill('[data-tut="card-search"]', 'counting by hand');
+    const byHint = (await page.textContent('[data-tut="card-ref"] .card-ref')).replace(/\s+/g, ' ');
+    check(byHint.includes('Stored') && byHint.includes('Fits: Inside Compare') && byHint.includes('Reads like:'), 'card reference: found by a hint word, with where it fits and an example');
+    await nav('Teach');
     // Teaching polish (phase B): better pens, example layouts, play it yourself, rule housekeeping.
     await tab('Environment');
     await page.click('[data-tut="pen-size"] button:has-text("varies")');

@@ -309,7 +309,8 @@ export const isSelector = (k: string) => k.charCodeAt(0) === 35; /* # */
 /** A qualifier in words: "the furthest berry from home". */
 export function selectorText(sel: string): string {
   const [op, what, from] = parseSel(sel);
-  const name = (k: string) => (isSelector(k) ? selectorText(k) : k === '@crop' ? 'ripe crop' : k === '@storage' ? 'storage' : (def(k).name ?? k).toLowerCase());
+  // A half-built card (nothing in What yet) reads as “…” instead of failing: the farm runs while you edit.
+  const name = (k: string) => (isSelector(k) ? selectorText(k) : k === '@crop' ? 'ripe crop' : k === '@storage' ? 'storage' : (OBJECT_BY_ID[k]?.name ?? (k || '…')).toLowerCase());
   if (op === 'carried') return 'what it carries';
   if (op === 'fullest' || op === 'emptiest') return `the ${op} ${what ? name(what) : 'storage'}`;
   return `the ${op} ${name(what)}${from ? ` ${op === 'nearest' ? 'to' : 'from'} ${name(from)}` : ''}`;

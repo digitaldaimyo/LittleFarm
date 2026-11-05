@@ -50,6 +50,12 @@ Large files were split by purpose; each original module re-exports its parts, so
 - `harvestTarget` / `harvestDestination`: Harvest aims at `@storage`, which `objIs` resolves to storage with room.
 - The runtime conversion of direct jobs and plan mode: the v9 migration does it, and `Assignment.mode` is `auto` or `manual`.
 
+**Polish phase 4:**
+- `domain/cardref.ts` builds the Guide's card reference from the registry: where each card fits (by its output type), a one-line example (its required slots filled with simple cards, read back by `describe`), and `searchCards`.
+- `NodeChip` shows active slots that a card's phrase doesn't mention after the phrase (Nearest to, Furthest from, Which storage, Compare's Than, Stored's In this one), so they can be filled.
+- Validation counts a trait kind (Any ripe crop, Storage with room) as placed when any placed object has the trait.
+- `selectorText` reads a half-built qualifier as "…" instead of throwing.
+
 Game rules never import React. The UI edits the **canonical spec** (`StageSpec`, `SpecNode`) and the simulator and learners compile from it. The Inspect binder shows that exact JSON.
 
 ## Canonical spec and registry

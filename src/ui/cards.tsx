@@ -83,6 +83,13 @@ export function NodeChip({ stage, n, slot, errors }: { stage: StageSpec; n: Spec
         if (sock) return <SlotChip key={i} stage={stage} slot={{ parentId: n.id, socket: id, index: null }} label={sock.label} errors={errors} />;
         return <button key={i} className="param" onClick={select}>{paramText(card, n, id)}</button>;
       })}
+      {/* Polish phase 4: slots the phrase doesn't mention (Nearest to…, In this one…, Than a measure) stay reachable. */}
+      {card.sockets.filter((so) => !phrase.includes(`{${so.id}}`) && !so.many && socketActive(n, so, card.params?.find((x) => x.id === so.when?.param)?.default)).map((so) => (
+        <span key={`x-${so.id}`} className="extra-slot">
+          {isNode(n.args[so.id]) && <span className="ptext">{so.label.replace(/\s*\(.*\)\s*$/, '').toLowerCase()}</span>}
+          <SlotChip stage={stage} slot={{ parentId: n.id, socket: so.id, index: null }} label={so.label} errors={errors} />
+        </span>
+      ))}
     </span>
   );
 }

@@ -13,7 +13,7 @@ The tutorial teaches *how a good trainer thinks*, not just which buttons exist. 
 - **Lessons 3–12** appear in the **Guide** tab when they become useful (a locked lesson says what opens it): *Read the report: practice*, *Scatter, don't pin*, *Pay for results, not effort*, *Practise where it works*, *Invent a skill*, *See what your pet learned* (now opened by an invented *sense* skill, not a routine), *Combine skills*, *Plan the farm*, *Lay out the farm*, *Give your pet a notebook*. Most try something the wrong way first and show the player's own two runs side by side.
 - Every lesson can be started, paused, skipped and replayed. Field Guide training costs no energy and is never saved automatically.
 - A banner shows the current step, *why* it matters and, where useful, a button that does it ("Test my Approach here"). The control it refers to is outlined and scrolled into view.
-- The Guide also holds the **Trainer's notebook** (a checklist built from measured results) and a **glossary**.
+- The Guide also holds the **Trainer's notebook** (a checklist built from measured results) and a **glossary** with a searchable list of every card (where it fits, and a one-line example).
 - **Coaching tips** appear in reports and on the farm when the evidence suggests a common mistake (pinned pen, loophole, too little practice, too many situations, poor transfer, two pets on the same job), each linking to its lesson. Requests on the neighbours' board carry a "How:" hint and a lesson link.
 
 Outside the tutorial, a training run is 4 taps from the farm (Teach → Curriculum → a recipe → Train).

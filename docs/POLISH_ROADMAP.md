@@ -97,6 +97,21 @@ Status: **official**. We stop adding features and improve what exists. It follow
   - No file over 700 lines.
 
 ### Phase 4: Teach what's there
+**Status: done.**
+- *Responsibilities* gains three steps, built with the picker:
+  - "Goods waiting" UNTIL Compare → Stored → Any ripe crop ≤ 0;
+  - OR USE Basket run;
+  - "Harvest what's ripe" aimed at Nearest → Any ripe crop to Home.
+- *Give your pet a notebook* gains "Note or measure?". *Combine skills* gains "Why routines exist" (the Long chain finding).
+- The Glossary lists every card, searchable, with where it fits and a one-line example.
+- The browser test plays all three changed lessons and searches the reference.
+- **Changed from the plan:** the qualifier is taught as a job's aim on the farm, not as a sense in a pen lesson. No pen lesson has both berries and a house, and on the farm "nearest the house" is a real reason to pick one crop.
+- **Found and fixed while teaching:**
+  - optional slots missing from a card's phrase couldn't be filled (Nearest to, Furthest from, Which storage, Than, In this one);
+  - "Any ripe crop" in a responsibility was flagged as not placed;
+  - a half-built "Nearest …" aim crashed the page while the farm ran;
+  - notes that only decide treats got one "not sensed" notice each; now one calm notice covers them all.
+
 - **Fold the new cards into existing lessons:**
   - *Responsibilities:* add an UNTIL with **Stored ≥ 3**, and an OR USE.
   - *Give your pet a notebook:* show where a measure (Stored, Sold) replaces a hand-made counter, and when a note is still the right tool.

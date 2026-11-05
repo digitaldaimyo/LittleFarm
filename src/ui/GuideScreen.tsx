@@ -1,3 +1,4 @@
+import { searchCards } from '../domain/cardref';
 import { useState } from 'react';
 import { store, useStore } from './store';
 import { closeTraining } from './training';
@@ -142,9 +143,37 @@ const GLOSSARY: [string, string][] = [
 
 function Glossary() {
   return (
-    <div className="panel">
-      <h3>Glossary</h3>
-      <dl className="glossary">{GLOSSARY.map(([k, v]) => <div key={k}><dt>{k}</dt><dd className="small">{v}</dd></div>)}</dl>
+    <>
+      <div className="panel">
+        <h3>Glossary</h3>
+        <dl className="glossary">{GLOSSARY.map(([k, v]) => <div key={k}><dt>{k}</dt><dd className="small">{v}</dd></div>)}</dl>
+      </div>
+      <CardReference />
+    </>
+  );
+}
+
+/** Every card, searchable by title or hint, with where it fits and how it reads (polish phase 4). */
+function CardReference() {
+  const [q, setQ] = useState('');
+  const found = searchCards(q);
+  const shown = found.slice(0, q ? 60 : 24);
+  return (
+    <div className="panel" data-tut="card-ref">
+      <h3>Every card</h3>
+      <input type="search" className="card-search" data-tut="card-search" placeholder="Search cards: stored, nearest, note…" aria-label="Search cards" value={q} onChange={(e) => setQ(e.target.value)} />
+      <p className="small muted">{q ? `${found.length} card${found.length === 1 ? '' : 's'} found.` : `${found.length} cards. Search to find one.`}</p>
+      <ul className="card-ref">
+        {shown.map((c) => (
+          <li key={c.id}>
+            <div className="row between"><strong>{c.title}</strong><span className="chip">{c.sheet}</span></div>
+            {c.hint && <div className="small">{c.hint}</div>}
+            <div className="small muted">Fits: {c.fits}</div>
+            <div className="small muted">Reads like: “{c.example}”</div>
+          </li>
+        ))}
+      </ul>
+      {found.length > shown.length && <p className="small muted">…and {found.length - shown.length} more. Search to narrow it down.</p>}
     </div>
   );
 }
