@@ -7,9 +7,7 @@ import { newGame } from '../src/game/state';
 import { activeRevision, adoptPet, getSkill } from '../src/game/pets';
 import { createRuntime, cropSpot, farmTick, harvestTarget, heldBasket, toteTarget } from '../src/game/farm';
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
-import { Trainer } from '../src/learning/trainer';
-import { buildReport } from '../src/learning/report';
-import { recipeStage, trainAndSave, giveFarmJobs, giveRoutine } from './helpers';
+import { recipeStage, trainAndSave, trainAndSaveRoutine, giveFarmJobs, giveRoutine } from './helpers';
 
 /** A basket with stock under the pet, a house two steps east and a shed three steps south. */
 function yard(stock = 4) {
@@ -101,13 +99,14 @@ describe('stocked storage in pens', () => {
     expect(empty({ w } as never)).toBe(true);
   });
 
-  it('the “Empty the basket” recipe trains: lift it, carry it home, put it down (well above random)', () => {
-    const st = recipeStage('empty-basket');
-    const t = new Trainer({ stage: st, episodes: st.learner.episodes, traits: { ...DEFAULT_TRAITS } });
-    while (!t.done) t.runChunk(500, false);
-    const r = buildReport(st, DEFAULT_TRAITS, null, t.policy(), null);
-    expect(r.random.successRate).toBeLessThan(0.1);
-    expect(r.after.successRate).toBeGreaterThanOrEqual(0.6);
+  it('the “Empty the basket” routine trains over Approach: lift it, carry it home, put it down (well above random)', () => {
+    const s = newGame();
+    const p = adoptPet(s, 'Pip', 'meadow');
+    p.traits = { ...DEFAULT_TRAITS };
+    trainAndSave(s, p, recipeStage('go-to-berry'));
+    const e = trainAndSaveRoutine(s, p, recipeStage('empty-basket')).eval;
+    expect(e.randomRate).toBeLessThan(0.1);
+    expect(e.successRate).toBeGreaterThanOrEqual(0.8);
   }, 60000);
 });
 

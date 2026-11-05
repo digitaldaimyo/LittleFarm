@@ -41,7 +41,8 @@ function waitForIt(): StageSpec {
     success: n('cond.and', { all: [atT(), n('cond.stayedFor', { actor: pet(n), ticks: 5 })] }),
     fail: null,
     seed: 505, maxTicks: 50,
-    learner: { skill: 'Wait for it', template: 'sense', focus: 'target', episodes: 2500,
+    // Polish sweep: 2,500 tries dipped to 70% on one seed; 5,000: 80–95% on 6.
+    learner: { skill: 'Wait for it', template: 'sense', focus: 'target', episodes: 5000,
       senses: [n('sense.nearest', { what: n('ref.target') }), n('sense.blocked'), n('sense.heading'), n('sense.still')] },
     evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.7 },
   };
@@ -69,7 +70,8 @@ function keepClear(): StageSpec {
     success: n('cond.farFrom', { actor: pet(n), what: n('ref.target'), dist: 2 }),
     fail: n('cond.at', { actor: pet(n), what: k(n, 'pond') }),
     seed: 606, maxTicks: 30,
-    learner: { skill: 'Keep clear', template: 'sense', focus: 'pond', episodes: 2000,
+    // Polish sweep: 2,000 tries dipped to 75%; 4,000: 80–95% on 6 seeds.
+    learner: { skill: 'Keep clear', template: 'sense', focus: 'pond', episodes: 4000,
       senses: [n('sense.nearest', { what: n('ref.target') }), n('sense.blocked'), n('sense.hazards')] },
     evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.7 },
   };
@@ -99,18 +101,27 @@ function waterGarden(): StageSpec {
     fail: null,
     seed: 707, maxTicks: 60,
     // Deliberately lean: walls are already masked as illegal moves, so a Walls sense would only slow learning here.
-    learner: { skill: 'Water the garden', template: 'sense', focus: 'patch', episodes: 10000,
+    // Polish sweep: 3× practice (≥80% on every seed); Heading or Walls only slowed it.
+    learner: { skill: 'Water the garden', template: 'sense', focus: 'patch', episodes: 30000,
       senses: [n('sense.nearest', { what: k(n, 'well') }), n('sense.nearestDry', { what: n('ref.target') }), n('sense.water')] },
     evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.7 },
   };
 }
 
-/** Example player-style skill: a basket starts with stock; lift it, carry it to the house and put it down there (it empties). */
+/**
+ * Example player-style skill: a basket starts with stock; lift it, carry it to the house and put it down there (it
+ * empties). Polish sweep: as one sense skill it looped (70–85% even at 4× practice), so it is a routine of three
+ * legs — the “long chain” finding's own advice.
+ */
 function emptyBasket(): StageSpec {
   const n = maker('eb');
+  const carrying = () => n('cond.carryingAny', { actor: pet(n) });
+  const not = (inner: SpecNode) => n('cond.not', { inner });
+  const atBin = () => n('cond.at', { actor: pet(n), what: k(n, 'bin') });
+  const atHome = () => n('cond.at', { actor: pet(n), what: k(n, 'home') });
   return {
-    id: 'stage-empty-basket', name: 'Empty the basket', recipeId: 'empty-basket', version: 1,
-    blurb: 'A custom skill: lift a stocked basket, carry it to the house and put it down there to empty it.',
+    id: 'stage-empty-basket', name: 'Empty the basket', recipeId: 'empty-basket', version: 2,
+    blurb: 'A routine from cards: walk to a stocked basket, lift it, carry it to the house and put it down there to empty it.',
     size: { w: 8, h: 8 },
     environment: [
       n('place.pet', { mode: 'random', x: 0, y: 0 }),
@@ -120,7 +131,6 @@ function emptyBasket(): StageSpec {
     ],
     abilities: ['move', 'drop', 'lift'],
     rules: [
-      // A small, once-only treat for lifting: without it the only treat is at the very end, and practice rarely finds it.
       n('rule', { label: 'Lifted', when: n('ev.lift', { actor: pet(n), what: k(n, 'bin') }), then: [n('eff.reward', { amount: 1 })], limit: n('lim.once') }),
       n('rule', { label: 'Emptied at the house', when: n('ev.empty', { what: k(n, 'bin'), into: k(n, 'home') }), then: [n('eff.reward', { amount: 6 }), n('eff.end', { outcome: 'judge' })], limit: n('lim.once') }),
       n('rule', { label: 'Hurry up', when: n('ev.tick'), then: [n('eff.penalty', { amount: 0.03 })] }),
@@ -128,8 +138,18 @@ function emptyBasket(): StageSpec {
     success: n('cond.storage', { level: 'empty' }),
     fail: null,
     seed: 909, maxTicks: 80,
-    learner: { skill: 'Empty the basket', template: 'sense', focus: 'bin', episodes: 8000,
-      senses: [n('sense.nearest', { what: k(n, 'bin') }), n('sense.nearest', { what: k(n, 'home') }), n('sense.carrying')] },
+    learner: {
+      skill: 'Empty the basket', template: 'routine', focus: 'bin', destination: 'home', episodes: 800,
+      routine: {
+        options: [
+          n('opt.skill', { skill: 'Approach', aim: k(n, 'bin'), when: not(carrying()) }),
+          n('opt.action', { action: 'lift', when: atBin() }),
+          n('opt.skill', { skill: 'Approach', aim: k(n, 'home'), when: carrying() }),
+          n('opt.action', { action: 'drop', when: n('cond.and', { all: [carrying(), atHome()] }) }),
+        ],
+        watch: [carrying(), atBin(), atHome()],
+      },
+    },
     evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.6 },
   };
 }
@@ -162,8 +182,9 @@ function patrol(withNote = true): StageSpec {
     success: leg('gte', 3),
     fail: null,
     seed: 4242, maxTicks: 80,
-    learner: { skill: 'Patrol', template: 'sense', focus: 'well', episodes: 10000,
-      senses: [n('sense.nearest', { what: k(n, 'well') }), n('sense.nearest', { what: k(n, 'home') }), ...(withNote ? [n('sense.note', { name: 'leg', cap: 2 })] : [])] },
+    // Polish sweep: Heading stops it pacing between two tiles; 3× practice lifts it to ≥80% on every seed.
+    learner: { skill: 'Patrol', template: 'sense', focus: 'well', episodes: 30000,
+      senses: [n('sense.nearest', { what: k(n, 'well') }), n('sense.nearest', { what: k(n, 'home') }), n('sense.heading'), ...(withNote ? [n('sense.note', { name: 'leg', cap: 2 })] : [])] },
     evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.6 },
   };
 }
@@ -195,7 +216,8 @@ function herdChicken(): StageSpec {
     success: n('cond.allInArea', { what: n('ref.target'), area: coopArea(n) }),
     fail: null,
     seed: 808, maxTicks: 60,
-    learner: { skill: 'Herd', template: 'sense', focus: 'chicken', episodes: 8000,
+    // Polish sweep: 8,000 tries dipped to 70%; 16,000: 80–95% on 6 seeds.
+    learner: { skill: 'Herd', template: 'sense', focus: 'chicken', episodes: 16000,
       senses: [n('sense.outside', { what: n('ref.target'), area: coopArea(n) }), n('sense.areaFrom', { what: n('ref.target'), area: coopArea(n) })] },
     evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.6 },
   };
@@ -228,7 +250,8 @@ function fetchAsRoutine(): StageSpec {
   s.blurb = 'Fetch, built from cards: Approach → berry, Approach → basket, pick up, put down.';
   const carrying = () => n('cond.carrying', { actor: pet(n), what: n('ref.target') });
   s.learner = {
-    skill: 'Fetch routine', template: 'routine', focus: 'berry', destination: 'bin', episodes: 400,
+    // Polish sweep: 400 tries left one seed at 0%; 800: 85–95% on 6 seeds.
+    skill: 'Fetch routine', template: 'routine', focus: 'berry', destination: 'bin', episodes: 800,
     routine: {
       options: [
         n('opt.skill', { skill: 'Approach', aim: n('ref.target'), when: n('cond.not', { inner: carrying() }) }),
@@ -566,6 +589,26 @@ function approach(): StageSpec {
   };
 }
 
+/**
+ * The curriculum's Approach (polish roadmap, phase 1): practised among some obstacles, 3,000 tries. Every routine
+ * walks with Approach, so its sturdiness decides theirs: with the classic pen (3 rocks, 1,500 tries) Harvest,
+ * Harvest to storage and Plant fell to 65–75% on some seeds and walks looped on the farm; with this one they pass at
+ * 85–100% on 6 seeds. The Field Guide's Approach experiments keep the classic pen (`classicApproachStage`).
+ */
+function sturdyApproach(): StageSpec {
+  const s = approach();
+  const n = maker('apx');
+  s.environment = s.environment.filter((p) => !(p.cardId === 'place.random' && (p.args.kind as SpecNode).cardId === 'kind:rock'));
+  s.environment.push(n('place.obstacles', { amount: 'some', kind: 'rocks' }));
+  s.learner.episodes = 3000;
+  return s;
+}
+
+/** The classic Approach pen (3 rocks, 1,500 tries): the base of the Field Guide's practice / scatter / where lessons. */
+export function classicApproachStage(): StageSpec {
+  return approach();
+}
+
 /** Tutorial pen: a pet and rocks, waiting for the player to add a berry and choose rules. */
 function tutorialApproach(): StageSpec {
   const s = approach();
@@ -597,7 +640,8 @@ function avoid(): StageSpec {
     success: n('cond.at', { actor: pet(n), what: k(n, 'berry') }),
     fail: n('cond.at', { actor: pet(n), what: k(n, 'pond') }),
     seed: 202, maxTicks: 40,
-    learner: { skill: 'Avoid', template: 'sense', senses: presetSenses(), focus: 'berry', episodes: 8000 },
+    // Polish sweep: 3× practice (≥80% on every seed).
+    learner: { skill: 'Avoid', template: 'sense', senses: presetSenses(), focus: 'berry', episodes: 24000 },
     evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.8 },
   };
 }
@@ -622,7 +666,8 @@ function fetchRecipe(): StageSpec {
     success: n('cond.delivered', { what: k(n, 'berry'), into: k(n, 'bin'), count: 1 }),
     fail: null,
     seed: 303, maxTicks: 80,
-    learner: { skill: 'Fetch', template: 'fetch', focus: 'berry', destination: 'bin', navigator: 'Approach', episodes: 400 },
+    // Polish sweep: 400 tries left one seed at 0% (its greedy choice looped); 800: 85–95% on 6 seeds.
+    learner: { skill: 'Fetch', template: 'fetch', focus: 'berry', destination: 'bin', navigator: 'Approach', episodes: 800 },
     evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.65 },
   };
 }
@@ -644,7 +689,7 @@ function payPerPickup(): StageSpec {
 }
 
 export const RECIPES: Recipe[] = [
-  { id: 'go-to-berry', name: 'Go to the berry', blurb: 'Approach: walk to a target from anywhere.', skill: 'Approach', build: approach },
+  { id: 'go-to-berry', name: 'Go to the berry', blurb: 'Approach: walk to a target from anywhere — around obstacles.', skill: 'Approach', build: sturdyApproach },
   { id: 'bring-it-home', name: 'Bring it home', blurb: 'Fetch: carry a crop to the basket, reusing Approach.', skill: 'Fetch', unlock: 'fetch', build: fetchRecipe },
   { id: 'avoid-pond', name: 'Avoid the pond', blurb: 'Avoid: reach the goal while staying dry.', skill: 'Avoid', unlock: 'avoid', build: avoid },
   { id: 'wait-for-it', name: 'Wait for it', blurb: 'Your own skill: go to the target and stay put.', skill: 'Wait for it', unlock: 'custom', optional: true, build: waitForIt },

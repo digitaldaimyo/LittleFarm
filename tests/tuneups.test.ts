@@ -10,7 +10,9 @@ import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import { recipeStage, trainAndSave, trainAndSaveRoutine } from './helpers';
 
 describe('recipes certify reliably (default traits, 6 training seeds)', () => {
-  for (const id of ['plant', 'open-gate', 'shut-gate']) {
+  // Polish phase 1 adds the routines the sturdier Approach (obstacle practice) and the routine rebuild fixed; the slow
+  // sense recipes are checked by scripts/recipe-sweep.ts.
+  for (const id of ['plant', 'open-gate', 'shut-gate', 'empty-basket', 'harvest', 'basket-run']) {
     it(`${id}: ≥ 80% on every seed`, () => {
       const rates: number[] = [];
       for (const seed of [0, 11, 22, 33, 44, 55]) { // 0: the recipe's own seed

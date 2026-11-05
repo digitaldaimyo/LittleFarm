@@ -269,6 +269,11 @@ export class Trainer {
     };
   }
 
+  /** How often each rule fired over all practice tries (the report's "never happened" finding). */
+  practiceCounts(): { episodes: number; counts: Record<string, number> } {
+    return { episodes: this.episode, counts: Object.fromEntries([...this.ledger.values()].map((e) => [e.ruleId, e.count])) };
+  }
+
   policy(): SerializedQ {
     return this.q.serialize();
   }

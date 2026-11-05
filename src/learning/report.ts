@@ -1,3 +1,4 @@
+import { diagnose, type LearnFinding, type PracticeCounts } from './diagnose';
 import { REGISTRY } from '../domain/registry';
 import type { Diagnostic, StageSpec } from '../domain/types';
 import { EVAL_SEED_BASE, TRANSFER_SEED_BASE, evalSeeds } from '../domain/recipes';
@@ -17,6 +18,8 @@ export interface TrainingReport {
   /** Pens that pin the target or the start: the same lesson with those positions scattered. */
   scattered?: EvalResult;
   exploits: ExploitFinding[];
+  /** "Why isn't it learning?" (polish phase 1): plain findings when the skill doesn't pass. */
+  findings?: LearnFinding[];
   passed: boolean;
   evalSeeds: number[];
 }
@@ -47,7 +50,7 @@ export function heldOutSeeds(stage: StageSpec): number[] {
   return s.length >= 10 ? s : evalSeeds(Math.max(10, stage.evaluation.episodes));
 }
 
-export function buildReport(stage: StageSpec, traits: Traits, before: SerializedQ | null, after: SerializedQ, navigator: SerializedQ | null, navigatorDef?: SenseSkillDef, subskills?: SubSkills): TrainingReport {
+export function buildReport(stage: StageSpec, traits: Traits, before: SerializedQ | null, after: SerializedQ, navigator: SerializedQ | null, navigatorDef?: SenseSkillDef, subskills?: SubSkills, practice?: PracticeCounts): TrainingReport {
   const seeds = heldOutSeeds(stage);
   const spec = (q: SerializedQ | null, st: StageSpec = stage) => policySpecFor(st, q, navigator, navigatorDef, undefined, subskills, traits);
   const beforeR = evaluate(stage, spec(before), seeds, 'before', traits);
@@ -62,6 +65,7 @@ export function buildReport(stage: StageSpec, traits: Traits, before: Serialized
   return {
     before: beforeR, after: afterR, random, transfer, randomOptions, scattered,
     exploits: findExploits(stage, afterR),
+    findings: diagnose(stage, spec(after), seeds, traits, afterR.successRate, practice),
     passed: afterR.successRate >= stage.evaluation.minimumSuccessRate,
     evalSeeds: seeds,
   };

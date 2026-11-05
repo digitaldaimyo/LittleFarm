@@ -3,7 +3,7 @@ import type { GameState } from './types';
 import type { SpecNode, StageSpec } from '../domain/types';
 import { activePet, getSkill } from './pets';
 import { isNode, node, placedKinds } from '../domain/spec';
-import { buildTutorialStage, patrolWithoutNote, recipeStage } from '../domain/recipes';
+import { buildTutorialStage, patrolWithoutNote, recipeStage , classicApproachStage } from '../domain/recipes';
 import { addJournal } from './journal';
 import { starterPlan } from './plan';
 import { evaluate } from '../learning/episodes';
@@ -109,7 +109,7 @@ export function isPinned(st: StageSpec): boolean {
 
 /** A copy of the standard Approach lesson used by Field Guide experiments. */
 function guideStage(id: string, name: string, tweak: (s: StageSpec) => void): StageSpec {
-  const s = recipeStage('go-to-berry');
+  const s = classicApproachStage(); // the classic pen: the lessons' measured numbers are for it
   s.id = id;
   s.name = name;
   s.recipeId = 'guide';

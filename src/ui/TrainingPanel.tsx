@@ -3,6 +3,11 @@ import { useEffect } from 'react';
 import { isGuideStage } from '../game/tutorial';
 import { Tips } from './Tips';
 import { reportTips } from '../game/coach';
+import { CHAPTERS } from '../game/tutorial';
+import type { LearnFinding } from '../learning/diagnose';
+
+const FINDING_TITLE: Record<LearnFinding['id'], string> = { 'never-happened': 'The big treat never happened.', 'cant-tell': 'It can’t tell two situations apart.', loops: 'It gets stuck in a loop.', 'long-chain': 'This is a long chain for one skill.' };
+const CHAPTER_NAME = (id: string) => CHAPTERS.find((c) => c.id === id)?.title ?? 'the Guide';
 import { BehaviorSummaryView } from './Summary';
 import { curiosities } from '../learning/summary';
 import { store, useStore } from './store';
@@ -184,6 +189,15 @@ export function TrainingPanel() {
         <div className="small muted">Held-out seeds {r.evalSeeds[0]}…{r.evalSeeds.at(-1)} (n={r.evalSeeds.length}) are never used in training. Lesson took {(t.ms / 1000).toFixed(1)}s of compute.</div>
 
         <Tips tips={reportTips(t.stage, r, p?.episode ?? t.stage.learner.episodes)} />
+        {(r.findings ?? []).map((f) => (
+          <div key={f.id} className="diag info" data-tut={`finding-${f.id}`}>
+            <strong>{FINDING_TITLE[f.id]}</strong> {f.text}
+            <div className="row gap">
+              {f.replay && <button className="btn ghost small" onClick={() => { t.replay = f.replay!; store.emit(); }}>Watch it</button>}
+              {f.lesson && <button className="btn ghost small" onClick={() => s.setUi({ screen: 'guide' })}>Field Guide: {CHAPTER_NAME(f.lesson)}</button>}
+            </div>
+          </div>
+        ))}
         {r.exploits.map((x) => (
           <div key={x.ruleId} className="diag warn" data-tut="report-exploit">
             <strong>Loophole found!</strong> {x.diagnostic.message}

@@ -23,6 +23,8 @@ function bigLesson(): StageSpec {
     node('rule', { label: 'All out', when: node('ev.tick'), if: [node('cond.storage', { level: 'empty' })], then: [node('eff.reward', { amount: 5 }), node('eff.end', { outcome: 'judge' })], limit: node('lim.once') }),
     node('rule', { label: 'Hurry up', when: node('ev.tick'), then: [node('eff.penalty', { amount: 0.03 })] }),
   ];
+  // The recipe is a routine now; this lesson is the sense-skill version of it.
+  st.learner = { skill: 'Empty the basket', template: 'sense', focus: 'bin', episodes: 8000, senses: [] };
   st.learner.senses = [node('sense.nearest', { what: node('kind:bin') }), node('sense.nearest', { what: node('kind:home') }), node('sense.carrying'), node('sense.stock'), node('sense.blocked'), node('sense.heading')];
   return st;
 }
