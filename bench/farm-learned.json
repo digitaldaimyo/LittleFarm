@@ -21,7 +21,7 @@
    "switchesPerMin": 19.3,
    "restShare": 27,
    "idleShare": 9,
-   "msPerTick": 0.096,
+   "msPerTick": 0.097,
    "byJob": {
     "basketRun": {
      "started": 12,
@@ -80,7 +80,7 @@
    "switchesPerMin": 19.8,
    "restShare": 28,
    "idleShare": 9,
-   "msPerTick": 0.095,
+   "msPerTick": 0.071,
    "byJob": {
     "basketRun": {
      "started": 12,
@@ -139,7 +139,7 @@
    "switchesPerMin": 17.2,
    "restShare": 26,
    "idleShare": 8,
-   "msPerTick": 0.087,
+   "msPerTick": 0.06,
    "byJob": {
     "basketRun": {
      "started": 9,
@@ -198,7 +198,7 @@
    "switchesPerMin": 19.3,
    "restShare": 28,
    "idleShare": 9,
-   "msPerTick": 0.082,
+   "msPerTick": 0.062,
    "byJob": {
     "basketRun": {
      "started": 10,
@@ -257,7 +257,7 @@
    "switchesPerMin": 18.5,
    "restShare": 26,
    "idleShare": 9,
-   "msPerTick": 0.059,
+   "msPerTick": 0.077,
    "byJob": {
     "basketRun": {
      "started": 9,
@@ -316,7 +316,7 @@
    "switchesPerMin": 20.1,
    "restShare": 27,
    "idleShare": 9,
-   "msPerTick": 0.082,
+   "msPerTick": 0.07,
    "byJob": {
     "basketRun": {
      "started": 2,
@@ -375,7 +375,7 @@
    "switchesPerMin": 19,
    "restShare": 26,
    "idleShare": 9,
-   "msPerTick": 0.063,
+   "msPerTick": 0.064,
    "byJob": {
     "basketRun": {
      "started": 11,
@@ -493,7 +493,7 @@
    "switchesPerMin": 21.8,
    "restShare": 28,
    "idleShare": 10,
-   "msPerTick": 0.077,
+   "msPerTick": 0.064,
    "byJob": {
     "basketRun": {
      "started": 1,
@@ -552,7 +552,7 @@
    "switchesPerMin": 17.5,
    "restShare": 27,
    "idleShare": 8,
-   "msPerTick": 0.047,
+   "msPerTick": 0.05,
    "byJob": {
     "basketRun": {
      "started": 1,
@@ -611,7 +611,7 @@
    "switchesPerMin": 19.3,
    "restShare": 27,
    "idleShare": 9,
-   "msPerTick": 0.075,
+   "msPerTick": 0.064,
    "byJob": {
     "basketRun": {
      "started": 12,
@@ -670,7 +670,7 @@
    "switchesPerMin": 19.8,
    "restShare": 28,
    "idleShare": 9,
-   "msPerTick": 0.071,
+   "msPerTick": 0.066,
    "byJob": {
     "basketRun": {
      "started": 12,
@@ -729,7 +729,7 @@
    "switchesPerMin": 17.2,
    "restShare": 26,
    "idleShare": 8,
-   "msPerTick": 0.053,
+   "msPerTick": 0.078,
    "byJob": {
     "basketRun": {
      "started": 9,
@@ -788,7 +788,7 @@
    "switchesPerMin": 19.3,
    "restShare": 28,
    "idleShare": 9,
-   "msPerTick": 0.068,
+   "msPerTick": 0.062,
    "byJob": {
     "basketRun": {
      "started": 10,
@@ -847,7 +847,7 @@
    "switchesPerMin": 18.5,
    "restShare": 26,
    "idleShare": 9,
-   "msPerTick": 0.061,
+   "msPerTick": 0.058,
    "byJob": {
     "basketRun": {
      "started": 9,
@@ -906,7 +906,7 @@
    "switchesPerMin": 10.8,
    "restShare": 6,
    "idleShare": 5,
-   "msPerTick": 0.061,
+   "msPerTick": 0.062,
    "byJob": {
     "harvest": {
      "started": 115,
@@ -937,7 +937,7 @@
    "switchesPerMin": 9.5,
    "restShare": 6,
    "idleShare": 4,
-   "msPerTick": 0.052,
+   "msPerTick": 0.053,
    "byJob": {
     "harvest": {
      "started": 100,
@@ -968,7 +968,7 @@
    "switchesPerMin": 8.2,
    "restShare": 5,
    "idleShare": 4,
-   "msPerTick": 0.052,
+   "msPerTick": 0.047,
    "byJob": {
     "harvest": {
      "started": 87,
@@ -999,7 +999,7 @@
    "switchesPerMin": 9.6,
    "restShare": 5,
    "idleShare": 5,
-   "msPerTick": 0.052,
+   "msPerTick": 0.061,
    "byJob": {
     "harvest": {
      "started": 103,
@@ -1030,7 +1030,7 @@
    "switchesPerMin": 9.2,
    "restShare": 5,
    "idleShare": 4,
-   "msPerTick": 0.055,
+   "msPerTick": 0.054,
    "byJob": {
     "harvest": {
      "started": 98,
@@ -1061,7 +1061,7 @@
    "switchesPerMin": 24.4,
    "restShare": 26,
    "idleShare": 11,
-   "msPerTick": 0.129,
+   "msPerTick": 0.134,
    "byJob": {
     "basketRun": {
      "started": 1,
@@ -1120,7 +1120,7 @@
    "switchesPerMin": 24.7,
    "restShare": 27,
    "idleShare": 12,
-   "msPerTick": 0.141,
+   "msPerTick": 0.115,
    "byJob": {
     "basketRun": {
      "started": 1,
@@ -1179,7 +1179,7 @@
    "switchesPerMin": 23.5,
    "restShare": 27,
    "idleShare": 11,
-   "msPerTick": 0.131,
+   "msPerTick": 0.129,
    "byJob": {
     "basketRun": {
      "started": 1,
@@ -1297,7 +1297,7 @@
    "switchesPerMin": 23.4,
    "restShare": 26,
    "idleShare": 11,
-   "msPerTick": 0.117,
+   "msPerTick": 0.116,
    "byJob": {
     "basketRun": {
      "started": 2,
@@ -1356,7 +1356,7 @@
    "switchesPerMin": 9.5,
    "restShare": 13,
    "idleShare": 4,
-   "msPerTick": 0.049,
+   "msPerTick": 0.056,
    "byJob": {
     "skill": {
      "started": 74,
@@ -1387,7 +1387,7 @@
    "switchesPerMin": 11.3,
    "restShare": 19,
    "idleShare": 5,
-   "msPerTick": 0.042,
+   "msPerTick": 0.05,
    "byJob": {
     "skill": {
      "started": 65,
@@ -1418,7 +1418,7 @@
    "switchesPerMin": 5.4,
    "restShare": 5,
    "idleShare": 3,
-   "msPerTick": 0.036,
+   "msPerTick": 0.038,
    "byJob": {
     "skill": {
      "started": 56,
@@ -1449,7 +1449,7 @@
    "switchesPerMin": 9.3,
    "restShare": 11,
    "idleShare": 4,
-   "msPerTick": 0.056,
+   "msPerTick": 0.049,
    "byJob": {
     "skill": {
      "started": 76,
@@ -1480,7 +1480,7 @@
    "switchesPerMin": 6.5,
    "restShare": 5,
    "idleShare": 3,
-   "msPerTick": 0.04,
+   "msPerTick": 0.046,
    "byJob": {
     "skill": {
      "started": 68,
@@ -1511,7 +1511,7 @@
    "switchesPerMin": 19.1,
    "restShare": 27,
    "idleShare": 9,
-   "msPerTick": 0.061,
+   "msPerTick": 0.058,
    "byJob": {
     "basketRun": {
      "started": 1,
@@ -1570,7 +1570,7 @@
    "switchesPerMin": 20,
    "restShare": 26,
    "idleShare": 9,
-   "msPerTick": 0.095,
+   "msPerTick": 0.071,
    "byJob": {
     "basketRun": {
      "started": 13,
@@ -1629,7 +1629,7 @@
    "switchesPerMin": 18.4,
    "restShare": 27,
    "idleShare": 9,
-   "msPerTick": 0.058,
+   "msPerTick": 0.056,
    "byJob": {
     "basketRun": {
      "started": 3,
@@ -1688,7 +1688,7 @@
    "switchesPerMin": 20.7,
    "restShare": 27,
    "idleShare": 10,
-   "msPerTick": 0.072,
+   "msPerTick": 0.078,
    "byJob": {
     "basketRun": {
      "started": 10,
@@ -1747,7 +1747,7 @@
    "switchesPerMin": 17.3,
    "restShare": 25,
    "idleShare": 8,
-   "msPerTick": 0.086,
+   "msPerTick": 0.06,
    "byJob": {
     "basketRun": {
      "started": 11,
@@ -1806,7 +1806,7 @@
    "switchesPerMin": 21,
    "restShare": 27,
    "idleShare": 10,
-   "msPerTick": 0.069,
+   "msPerTick": 0.072,
    "byJob": {
     "basketRun": {
      "started": 1,
@@ -1865,7 +1865,7 @@
    "switchesPerMin": 21,
    "restShare": 28,
    "idleShare": 10,
-   "msPerTick": 0.064,
+   "msPerTick": 0.067,
    "byJob": {
     "basketRun": {
      "started": 1,
@@ -1924,7 +1924,7 @@
    "switchesPerMin": 21.7,
    "restShare": 28,
    "idleShare": 10,
-   "msPerTick": 0.104,
+   "msPerTick": 0.076,
    "byJob": {
     "basketRun": {
      "started": 1,
@@ -1983,7 +1983,7 @@
    "switchesPerMin": 22.1,
    "restShare": 28,
    "idleShare": 10,
-   "msPerTick": 0.096,
+   "msPerTick": 0.073,
    "byJob": {
     "basketRun": {
      "started": 1,
@@ -2042,7 +2042,7 @@
    "switchesPerMin": 20.1,
    "restShare": 28,
    "idleShare": 9,
-   "msPerTick": 0.058,
+   "msPerTick": 0.061,
    "byJob": {
     "basketRun": {
      "started": 1,
@@ -2101,7 +2101,7 @@
    "switchesPerMin": 19.1,
    "restShare": 27,
    "idleShare": 9,
-   "msPerTick": 0.055,
+   "msPerTick": 0.062,
    "byJob": {
     "basketRun": {
      "started": 1,
@@ -2219,7 +2219,7 @@
    "switchesPerMin": 18.4,
    "restShare": 27,
    "idleShare": 9,
-   "msPerTick": 0.05,
+   "msPerTick": 0.052,
    "byJob": {
     "basketRun": {
      "started": 3,
@@ -2278,7 +2278,7 @@
    "switchesPerMin": 20.7,
    "restShare": 27,
    "idleShare": 10,
-   "msPerTick": 0.067,
+   "msPerTick": 0.066,
    "byJob": {
     "basketRun": {
      "started": 10,
@@ -2337,7 +2337,7 @@
    "switchesPerMin": 17.3,
    "restShare": 25,
    "idleShare": 8,
-   "msPerTick": 0.055,
+   "msPerTick": 0.063,
    "byJob": {
     "basketRun": {
      "started": 11,
@@ -2396,7 +2396,7 @@
    "switchesPerMin": 10.2,
    "restShare": 6,
    "idleShare": 5,
-   "msPerTick": 0.057,
+   "msPerTick": 0.074,
    "byJob": {
     "harvest": {
      "started": 108,
@@ -2427,7 +2427,7 @@
    "switchesPerMin": 9.9,
    "restShare": 7,
    "idleShare": 5,
-   "msPerTick": 0.05,
+   "msPerTick": 0.053,
    "byJob": {
     "harvest": {
      "started": 101,
@@ -2489,7 +2489,7 @@
    "switchesPerMin": 8.9,
    "restShare": 5,
    "idleShare": 4,
-   "msPerTick": 0.063,
+   "msPerTick": 0.066,
    "byJob": {
     "harvest": {
      "started": 91,
@@ -2520,7 +2520,7 @@
    "switchesPerMin": 9.7,
    "restShare": 5,
    "idleShare": 5,
-   "msPerTick": 0.057,
+   "msPerTick": 0.071,
    "byJob": {
     "harvest": {
      "started": 104,
@@ -2551,7 +2551,7 @@
    "switchesPerMin": 19.9,
    "restShare": 28,
    "idleShare": 9,
-   "msPerTick": 0.098,
+   "msPerTick": 0.111,
    "byJob": {
     "basketRun": {
      "started": 1,
@@ -2610,7 +2610,7 @@
    "switchesPerMin": 22.7,
    "restShare": 27,
    "idleShare": 11,
-   "msPerTick": 0.131,
+   "msPerTick": 0.134,
    "byJob": {
     "basketRun": {
      "started": 1,
@@ -2669,7 +2669,7 @@
    "switchesPerMin": 21.8,
    "restShare": 27,
    "idleShare": 10,
-   "msPerTick": 0.109,
+   "msPerTick": 0.155,
    "byJob": {
     "basketRun": {
      "started": 1,
@@ -2728,7 +2728,7 @@
    "switchesPerMin": 21.3,
    "restShare": 27,
    "idleShare": 10,
-   "msPerTick": 0.092,
+   "msPerTick": 0.114,
    "byJob": {
     "basketRun": {
      "started": 1,
@@ -2787,7 +2787,7 @@
    "switchesPerMin": 17.7,
    "restShare": 27,
    "idleShare": 8,
-   "msPerTick": 0.084,
+   "msPerTick": 0.097,
    "byJob": {
     "basketRun": {
      "started": 1,
@@ -2846,7 +2846,7 @@
    "switchesPerMin": 10.2,
    "restShare": 6,
    "idleShare": 5,
-   "msPerTick": 0.057,
+   "msPerTick": 0.09,
    "byJob": {
     "skill": {
      "started": 108,
@@ -2877,7 +2877,7 @@
    "switchesPerMin": 10.9,
    "restShare": 11,
    "idleShare": 5,
-   "msPerTick": 0.056,
+   "msPerTick": 0.054,
    "byJob": {
     "skill": {
      "started": 91,
@@ -2939,7 +2939,7 @@
    "switchesPerMin": 10.5,
    "restShare": 11,
    "idleShare": 5,
-   "msPerTick": 0.051,
+   "msPerTick": 0.059,
    "byJob": {
     "skill": {
      "started": 86,
@@ -2970,7 +2970,7 @@
    "switchesPerMin": 9.6,
    "restShare": 6,
    "idleShare": 5,
-   "msPerTick": 0.065,
+   "msPerTick": 0.06,
    "byJob": {
     "skill": {
      "started": 102,

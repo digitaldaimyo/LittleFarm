@@ -12,12 +12,43 @@ src/
   persistence/  versioned save format + IndexedDB storage (localStorage fallback)
   audio/        sound kit (synthesis recipes) and the Web Audio engine (browser only)
   ui/           React presentation only (store, screens, cards/sleeves, charts, replay)
-tests/          vitest suites (+ fixtures/: a real v1 save, and layout fingerprints)
+tests/          vitest suites (+ fixtures/: a real v1 save, a rich v10 save, a player's skill card, layout fingerprints)
 scripts/        bench.ts (npm run bench), tutorial-evidence.ts (npm run evidence),
                 e2e-guide.mjs (npm run e2e, Playwright) + e2e-save.ts (its prepared save),
                 layout-fingerprint.ts (the layouts fixture)
 public/sw.js    service worker for offline play
 ```
+
+## Modules and names (polish phase 3)
+
+Large files were split by purpose; each original module re-exports its parts, so imports didn't change.
+
+| Module | Holds |
+|---|---|
+| `game/farm.ts` | the farm runtime: `FarmRuntime`, `farmTick`, a pet's turn, events, duty and the crew of pets |
+| `game/farmworld.ts` | world upkeep: size, crops and prices, the day clock, weather, creatures, regrowth, `cropSpot`, `toteTarget`, `describeTile` |
+| `game/farmjobs.ts` | job executors (`buildExecutor`, through `runCapability`) and claims |
+| `game/farmexec.ts` | the executive glue: `farmContext`, `chooseInvocation`, `finishInvocation`, `workDone` |
+| `game/farmlessons.ts` | runs on farm copies: `previewPlan`, `practiseExecutive`, `compareExecutives` |
+| `game/responsibilities.ts` | `starterPlan`, `jobPlan`, `compilePlan`, `jobPossible`, warnings |
+| `game/plan.ts` | the ordered executive: `chooseDuty`, `afterDutyJob`, cooldowns, the trace |
+| `game/learnedpicks.ts` | learned picks: `ExecValues`, `rankWeight`, exploring |
+| `ui/TeachScreen.tsx` + `EnvironmentBinder` / `RulesBinder` / `PetBinder` / `CurriculumBinder` | the Teach screen and its binders |
+| `domain/recipes.ts` + `jobrecipes.ts` + `recipekit.ts` | recipes: skills, farm-job routines, and the builder helpers |
+| `sim/compile.ts` + `sim/generate.ts` | compiling a lesson, and building a pen's world for a seed |
+
+**Names match what players see.**
+- Jobs: `harvest`, `haul`, `basketRun`, `plant`, `rest`, `skill`.
+- Their cards: `job.harvest`, `job.haul`, `job.basketRun`.
+- A responsibility is the `plan.responsibility` card (type `Responsibility`). A pet's list is `Responsibilities`, kept in `pet.plan`.
+- The executive's modes are `order` and `learned` (comparisons add `random`).
+
+**Old names still load.** Saves migrate at v10 → v11. Skill and lesson cards rename old card ids on import (`domain/aliases.ts`: `job.forage`, `job.deliver`, `job.tote`, `plan.row`).
+
+**Removed:**
+- The retired bandit's `ExecutiveTable`, `describeContext`, and the plan's `chooser` / `table`.
+- `harvestTarget` / `harvestDestination`: Harvest aims at `@storage`, which `objIs` resolves to storage with room.
+- The runtime conversion of direct jobs and plan mode: the v9 migration does it, and `Assignment.mode` is `auto` or `manual`.
 
 Game rules never import React. The UI edits the **canonical spec** (`StageSpec`, `SpecNode`) and the simulator and learners compile from it. The Inspect binder shows that exact JSON.
 
@@ -65,7 +96,7 @@ The same simulator runs pens, evaluation and the farm. Fixed seed + fixed action
 - Saved routine revisions keep `uses: {skill, rev}[]` and a copy of their lesson (`stage`). `routineRunFor` runs them on the farm, and `staleUses` reports sub-skills that changed since certification.
 
 ### Farm plans (Milestone 4)
-- `pet.plan = { rows: SpecNode[] (plan.row), chooser: 'first' | 'learned', guard, table? }`, and `assignment.mode = 'plan'`.
+- `pet.plan = { rows: SpecNode[] (plan.responsibility), guard }` (since v11; the chooser, table and plan mode are gone).
 - `game/plan.ts`: `compilePlan` turns rows into `{ holds(world), job: {behaviorId, args} }`. Job cards map to behaviors (`job.goto` → `goto`, a `NavRun` to the aimed kind; `job.skill` → `skill`). `jobPossible` mirrors `eligibleBehaviors`. `choosePlanRow` returns the first applicable row (or a bandit pick), with the anti-dithering guard (`isThrashing`, `guardUntil`, `lastHold`).
 - `chooseInvocation` (farm) handles plan mode after the "too sleepy" safety check. Invocations carry `chosenBy: 'plan'` and `args.row`. `world.petEnergy` is set each tick so `cond.energyBelow` works.
 - `applyPlan` resets the runtime (no half-finished job, fresh plan memory, RNG from `farm.rngState`). `previewPlan` deep-clones the game, applies the plan and runs `farmTick`, so it is the real future under determinism.
@@ -111,8 +142,8 @@ The same simulator runs pens, evaluation and the farm. Fixed seed + fixed action
 ### Farm life: storage and selling (phase A)
 - **Sim:** `ObjectDef.storage` (`slots`, `perSlot`) and `sells`; `Obj.store: { kind, n }[]` exists only on farm storage, so pens' containers stay unlimited. Dropping onto a container stores (if `storeAccepts`), sells (house: `World.sold++`) or, when full, emits `full` and leaves the item there. `pick` on storage takes one item from the fullest slot (`pickup` with `into` = the source).
 - **Farm:** `SELL_PRICE` is paid on `deliver` into `home`; storing is an effect plus a journal entry.
-  - **Harvest** (`forage`): walk to the nearest ripe berry or carrot, `pick`, walk to `harvestDestination` (the house without Fetch; else the nearest storage that accepts it, or the house), `drop`. Walks use `FarmWalk`: a `NavRun` with earlier stuck recovery (farm only).
-  - **Haul** (`deliver`): a `FetchRun` with eggs or the fullest storage as the item, the house as the destination, and "done" counted by `World.sold`.
+  - **Harvest** (`harvest`; it was `forage`, and it was scripted then, learned now): walk to the nearest ripe berry or carrot, `pick`, walk to the house or storage with room, `drop`. Walks use `FarmWalk`: a `NavRun` with earlier stuck recovery (farm only).
+  - **Haul** (`haul`, was `deliver`): a `FetchRun` with eggs or the fullest storage as the item, the house as the destination, and "done" counted by `World.sold`.
   - The executive context reads `berry` as "something ripe", `carrot` as "goods to haul" (eggs or storage), plus `storeHalf`. The starter plan mirrors the rules with the `cond.storage` card.
   - Pets may share container tiles (no `buddy` obstacle there). Claims cover crops and eggs, never storage.
 - **Saves v6:** the farm's bin gets an empty one-slot store; `sold` starts at 0.
@@ -136,8 +167,8 @@ The same simulator runs pens, evaluation and the farm. Fixed seed + fixed action
 - Field Guide lesson 11 (`notes`): `NOTES_STAGE` from `patrolWithoutNote()`, variants `no-note` / `note`.
 
 ### Baskets you can carry
-- **Sim:** `ObjectDef.portable` (the basket). Action `lift` (ability *Lift basket*, last in `ABILITY_ORDER`) carries it, store and all; `drop` of a carried basket (`dropBasket`) empties it into a container on the tile (per-item `deliver` events, then `empty`; `full` if nothing fit) and keeps it in the paws, or sets it down on a clear tile. Events `lift`, `empty`; cards `ev.lift`, `ev.empty`, `sense.stock` (radix 3), `cond.storage` level `empty`, `place.stocked` (a storage object with a pre-filled store; in `generateWorld`), `job.tote`.
-- **Farm:** `toteTarget` (a basket ≥ half full, else an empty one with no unlocked plot within 1 tile, if `cropSpot` finds a tile next to ≥ 2 plots), `cropSpot`, `heldBasket`. Behaviour `tote`: fetch (walk to that basket with the others hidden — `only()`), lift, unload at the nearest house or shed (never another basket), place (walk to the plot beside the spot, then a BFS step onto it), drop. Context flags `basket` / `tote` (appended to the learned executive's key only when set). Rules and the starter plan: "Holding a basket" first, "Basket needs a run" before "Storage filling up". `harvestTarget` returns the specific storage, and Harvest walks hide the other baskets so the learned Approach heads for it.
+- **Sim:** `ObjectDef.portable` (the basket). Action `lift` (ability *Lift basket*, last in `ABILITY_ORDER`) carries it, store and all; `drop` of a carried basket (`dropBasket`) empties it into a container on the tile (per-item `deliver` events, then `empty`; `full` if nothing fit) and keeps it in the paws, or sets it down on a clear tile. Events `lift`, `empty`; cards `ev.lift`, `ev.empty`, `sense.stock` (radix 3), `cond.storage` level `empty`, `place.stocked` (a storage object with a pre-filled store; in `generateWorld`), `job.basketRun` (was `job.tote`).
+- **Farm:** `toteTarget` (a basket ≥ half full, else an empty one with no unlocked plot within 1 tile, if `cropSpot` finds a tile next to ≥ 2 plots), `cropSpot`, `heldBasket`. Behaviour `basketRun` (was `tote`): fetch (walk to that basket with the others hidden — `only()`), lift, unload at the nearest house or shed (never another basket), place (walk to the plot beside the spot, then a BFS step onto it), drop. Context flags `basket` / `tote` (appended to the learned executive's key only when set). Rules and the starter plan: "Holding a basket" first, "Basket needs a run" before "Storage filling up". Harvest to storage aims at `@storage` (storage with room for what the pet carries).
 
 ### Farm life: pets (phase D)
 - **Crew:** `FarmState.helpers` (up to 3; `{ petId, current, stun, queue, rngState }`) beside the lead (`dutyPetId`, whose job state stays in `current` / `stun` / `queue`). Helper bodies are `World.crew[i]`; helper runtimes are `FarmRuntime.crew[i]` (created on demand from `rngState`). `farmTick` runs the lead, then each helper; a helper's turn swaps its body, job, stun and queue into the primary slots and reuses `petTurn` (as the second pet always did).
@@ -211,11 +242,11 @@ Saves are v2. The v1 → v2 migration adds templates and explicit preset senses.
 
 ### Responsibilities and the executive (learned-farm phase 4)
 
-`src/game/plan.ts` holds the responsibilities (the farm plan's `plan.row` cards with `if` = WHEN, `do` = USE, `also` = OR USE and `until` = UNTIL) and the deterministic executive. `compilePlan` turns rows into `CompiledRow`s, each with `jobs` that carry evidence keys. `chooseDuty` handles needs → priority → commitment → evidence → cooldowns and returns a reason. `afterDutyJob` records evidence (`Pet.evidence`), failures and cooldowns, judging progress by a world fingerprint (`workDone` in farm.ts). The runtime state (`PlanRuntime`: commit, cooldown, fails, trace, switches) lives in each pet's `FarmRuntime.plan`. Auto, and old saves' `plan` mode, go through it in `chooseInvocation`. `ExecHow` picks the mode (`rules`, `learned`, `random`); learned values (`ExecValues` on `Pet.executive.values`, upper and lower) are updated in `afterDutyJob` → `learnFromPending`. `practiseExecutive` and `compareExecutives` (farm.ts) run executive lessons on copies of the farm (`executiveCopy`).
+`src/game/responsibilities.ts` and `plan.ts` hold the responsibilities (`plan.responsibility` cards with `if` = WHEN, `do` = USE, `also` = OR USE and `until` = UNTIL) and the deterministic executive. `compilePlan` turns rows into `CompiledRow`s, each with `jobs` that carry evidence keys. `chooseDuty` handles needs → priority → commitment → evidence → cooldowns and returns a reason. `afterDutyJob` records evidence (`Pet.evidence`), failures and cooldowns, judging progress by a world fingerprint (`workDone` in farmexec.ts). The runtime state (`PlanRuntime`: commit, cooldown, fails, trace, switches) lives in each pet's `FarmRuntime.plan`. Auto goes through it in `chooseInvocation`. `ExecHow` picks the mode (`order`, `learned`, `random`); learned values (`ExecValues` on `Pet.executive.values`, upper and lower) are updated in `afterDutyJob` → `learnFromPending`. `practiseExecutive` and `compareExecutives` (farmlessons.ts) run executive lessons on copies of the farm (`executiveCopy`).
 
 ### Learned jobs (learned-farm phase 3)
 
-`src/game/capability.ts` binds farm jobs to learned skills: `LEARNED_JOBS` (`forage` → Harvest to storage / Harvest, aimed at `@crop`; `deliver` → Fetch; `tote` → Basket run; `plant` → Plant; `gateOpen`/`gateShut` → Open / Shut the gate), `jobSkills`/`jobSkill(pet, job)` (the player's pick in `Pet.jobSkills`, else skills taught by the job's recipes or named after it, preferred first) and `jobCapability(pet, job, state?)` (null unless the farm may use it; with the state, Harvest picks storage only when it's nearer than the house and someone can empty it). The job executors in `farm.ts` call `runCapability`, which takes `RunOptions` (`goal` replaces the skill's own goal, e.g. "the basket is set down"; `dest`/`count` for Fetch); with no bound skill the job isn't eligible and the job card is locked. There is no scripted fallback.
+`src/game/capability.ts` binds farm jobs to learned skills: `LEARNED_JOBS` (`harvest` → Harvest to storage / Harvest, aimed at `@crop`; `haul` → Fetch; `basketRun` → Basket run; `plant` → Plant; `gateOpen`/`gateShut` → Open / Shut the gate), `jobSkills`/`jobSkill(pet, job)` (the player's pick in `Pet.jobSkills`, else skills taught by the job's recipes or named after it, preferred first) and `jobCapability(pet, job, state?)` (null unless the farm may use it; with the state, Harvest picks storage only when it's nearer than the house and someone can empty it). The job executors in `farmjobs.ts` call `runCapability`, which takes `RunOptions` (`goal` replaces the skill's own goal, e.g. "the basket is set down"; `dest`/`count` for Fetch); with no bound skill the job isn't eligible and the job card is locked. There is no scripted fallback.
 
 ## Persistence
 

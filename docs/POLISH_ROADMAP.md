@@ -69,6 +69,16 @@ Status: **official**. We stop adding features and improve what exists. It follow
   - The full suite passes 3 times in a row.
 
 ### Phase 3: Clean-up and renames (no behaviour change)
+**Status: done.**
+- Renamed: jobs to `harvest` / `haul` / `basketRun`, their cards, `plan.row` to `plan.responsibility`, `FarmPlan` to `Responsibilities`, and the `rules` mode to `order`. Saves v11 migrate old data; skill and lesson cards rename old ids on import.
+- Removed the dead code and the runtime conversion of old modes.
+- Split `farm.ts` into 5 modules, `plan.ts` into 3, `TeachScreen.tsx` into 5, and `recipes.ts` and `compile.ts` as well. The largest file is now `sim/world.ts` at 685 lines.
+- Tests changed only in names and imports, with three exceptions:
+  - tests that set a retired direct job now use `onJob`;
+  - two tests of the removed helpers now test `@storage`;
+  - the v9-migration test expects `chooser` gone.
+- `bench:farm --learned` is identical on all 60 runs. A v10 save fixture loads intact and plays its next day identically.
+
 - **Rename internals to the player's words:**
   - jobs: `forage`→`harvest`, `deliver`→`haul`, `tote`→`basketRun`;
   - the responsibility card id gets an alias, with the old id still loading;

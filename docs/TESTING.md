@@ -1,7 +1,7 @@
 # Testing and benchmarks
 
 ## Automated suites (`npm test`)
-318 tests in 43 files. **CI** (`.github/workflows/ci.yml`, on every push and pull request): typecheck, lint, `npm test`, build, then `npm run e2e:cards`. Run the same before pushing. The full browser test, `npm run e2e` (every lesson, under 2 min after a build), stays local. Browser checks run against the built app: `npm run build` first.
+322 tests in 44 files. **CI** (`.github/workflows/ci.yml`, on every push and pull request): typecheck, lint, `npm test`, build, then `npm run e2e:cards`. Run the same before pushing. The full browser test, `npm run e2e` (every lesson, under 2 min after a build), stays local. Browser checks run against the built app: `npm run build` first.
 
 **Test pets have a fixed temperament.** `tests/setup.ts` gives every pet adopted in a test the default traits, because adoption seeds a random temperament from the clock and twice made a test fail only in the full run. A test that wants a random one calls `adoptRandomPet` from `tests/helpers.ts`.
 
@@ -38,6 +38,7 @@
 | `tests/execworker.test.ts` | Polish phase 2: executive practice in steps gives exactly the values and comparison of `practiseExecutive` + `compareExecutives`, needs only the practising pet, reports progress in order, stops on cancel with no result, and reports a missing pet as an error |
 | `tests/hygiene.test.ts` | Test pets get the default temperament; `adoptRandomPet` gives varied ones in the game's range |
 | `tests/playerpen.test.ts` | A playtester's pen as a fixture (`fixtures/fill-basket-r6.skill.json.gz`: fill a basket with 5 berries, then lift it; 19 rules, notes as counters and a home-made loop check, 94,100 tries): it imports, validates and scores exactly what it did when trained (95%, bigger pens 80%, random 0%), with no findings |
+| `tests/savev10.test.ts` | Polish phase 3 gate: a rich v10 save (`fixtures/save-v10.json.gz`, made before the renames by `scripts/save-v10-fixture.ts`) loads with every skill, revision and responsibility (pinned in words); it comes out as v11 with new card and job ids everywhere, retired fields gone and key order kept; old card ids in skill cards load; and the next farm day plays exactly as it did at v10 (the pet's path, coins and sales are pinned) |
 | `tests/tuneups.test.ts` | Pen & cards phase 5 and polish phase 1: Plant, Open the gate, Shut the gate, Empty the basket, Harvest and Basket run certify at ≥ 80% on 6 training seeds at default traits; learned picks explore until practised, then stop, unless the player chose |
 | `tests/cardref.test.ts` | `docs/CARD_REFERENCE.md` matches the card registry (`npm run cards:ref` regenerates it) |
 | `tests/aims.test.ts` | Follow-up: “picks up the furthest berry from the house” pays for that berry, judged before the step (not the near one); a qualifier still can't go in a delivery's Into; aims read as words; Harvest aimed at the furthest berry picks it first; Go to aimed at a qualifier gets there |
@@ -157,6 +158,8 @@ Seeds 101 / 202 / 303 / 404 / 505 (was 3), 2,400 ticks. Each row reports the mea
 | Learned Harvest only | 150 (133–163, ±8%) | 215 (186–242, ±9%) |
 
 A change smaller than the spread on one seed isn't a finding; compare means over all 5 seeds.
+
+**Polish phase 3 (renames, removals, file splits):** all 60 runs (12 setups × 5 seeds) give exactly the same coins, sales and jobs as before (the gate allowed ±2%).
 
 **Executive practice in the browser:** with practice and the comparison in a worker, the L14 browser check records no main-thread task over 50 ms (the long-task threshold) while practising. Before, the 4 practice days and 9 comparison days ran in one synchronous call on the page (about 0.4 s in Node).
 
