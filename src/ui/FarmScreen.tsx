@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PlanMat } from './PlanMat';
 import { compilePlan, keepsLearning, rankWeight, starterPlan } from '../game/plan';
 import { Tips } from './Tips';
@@ -11,7 +11,9 @@ import { WorldView } from './WorldView';
 import { PetSprite, type PetMood } from './art';
 import { activePet, getSkill, isCertified, petById } from '../game/pets';
 import { jobCapability } from '../game/capability';
-import { DAY_TICKS, MAX_ON_DUTY, compareExecutives, practiseExecutive, type ExecComparisonRow, crewSummary, dayInfo, describeTile, dutyPets, makeLead, petActivity, queueManual, queueManualPath, recentProduction, restartPet, setOnDuty, TIRED } from '../game/farm';
+import { startExecPractice, type ExecPracticeHandle } from './execpractice';
+import type { ExecPracticeProgress } from '../game/execpractice';
+import { DAY_TICKS, MAX_ON_DUTY, type ExecComparisonRow, crewSummary, dayInfo, describeTile, dutyPets, makeLead, petActivity, queueManual, queueManualPath, recentProduction, restartPet, setOnDuty, TIRED } from '../game/farm';
 import { RosterStrip, toggleDuty, leadPet, petStatus } from './Roster';
 import { nextUnlock } from '../game/progression';
 import { BEHAVIOR_LABEL } from '../learning/executive';
@@ -325,18 +327,31 @@ function RequestsBoard() {
  */
 function ExecutiveLesson({ pet }: { pet: Pet }) {
   const [cmp, setCmp] = useState<ExecComparisonRow[] | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [run, setRun] = useState<{ handle: ExecPracticeHandle; progress: ExecPracticeProgress | null } | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const busy = !!run;
   const v = pet.executive.values;
+  // Polish phase 2: practice runs in a worker; leaving the lesson stops it.
+  const runRef = useRef<ExecPracticeHandle | null>(null);
+  useEffect(() => () => runRef.current?.cancel(), []);
   const practise = () => {
-    setBusy(true);
-    // Let the button show "Practising…" before the (synchronous) practice runs.
-    setTimeout(() => {
-      store.mutate((g) => { practiseExecutive(g, pet.id, 4); });
-      const rows = compareExecutives(store.state, pet.id);
-      setCmp(rows);
-      store.mutate((g) => { g.progress.flags.execCompared = true; });
-      setBusy(false);
-    }, 20);
+    setNote(null);
+    const handle = startExecPractice(store.state, pet.id, 4, (m) => {
+      if (m.type === 'progress') { setRun((r) => (r ? { ...r, progress: m.progress } : r)); return; }
+      runRef.current = null;
+      setRun(null);
+      if (m.type === 'done') {
+        store.mutate((g) => {
+          const p = g.pets.find((x) => x.id === pet.id);
+          if (p) p.executive.values = m.result.values;
+          g.progress.flags.execCompared = true;
+        });
+        setCmp(m.result.rows);
+      } else if (m.type === 'cancelled') setNote('Practice stopped. Nothing was learned from it.');
+      else setNote(`Practice stopped: ${m.error}`);
+    });
+    runRef.current = handle;
+    setRun({ handle, progress: null });
   };
   const label = { rules: 'In your order', learned: 'Learned picks', random: 'Random picks (baseline)' } as const;
   return (
@@ -347,8 +362,16 @@ function ExecutiveLesson({ pet }: { pet: Pet }) {
       </p>
       <div className="row gap wrap">
         <button className="btn small" data-tut="exec-practise" disabled={busy} onClick={practise}>{busy ? 'Practising…' : 'Practise deciding (4 farm days)'}</button>
-        {v && <button className="btn ghost small" onClick={() => { if (confirm(`Forget what ${pet.name} learned about choosing? Skills are kept.`)) { store.mutate((g) => { delete g.pets.find((x) => x.id === pet.id)!.executive.values; }); setCmp(null); } }}>Forget what it learned</button>}
+        {run && <button className="btn ghost small" data-tut="exec-cancel" onClick={() => run.handle.cancel()}>Stop</button>}
+        {!run && v && <button className="btn ghost small" onClick={() => { if (confirm(`Forget what ${pet.name} learned about choosing? Skills are kept.`)) { store.mutate((g) => { delete g.pets.find((x) => x.id === pet.id)!.executive.values; }); setCmp(null); } }}>Forget what it learned</button>}
       </div>
+      {run && (
+        <div className="small" data-tut="exec-progress">
+          {run.progress?.label ?? 'Starting…'}
+          <div className="bar" role="progressbar" aria-valuemin={0} aria-valuemax={run.progress?.total ?? 1} aria-valuenow={run.progress?.done ?? 0} aria-label="Practice progress"><i style={{ width: `${run.progress ? (100 * run.progress.done) / run.progress.total : 0}%` }} /></div>
+        </div>
+      )}
+      {note && <p className="small muted" data-tut="exec-note">{note}</p>}
       <label className="small"><input type="checkbox" checked={keepsLearning(pet)} onChange={(e) => store.mutate((g) => { g.pets.find((x) => x.id === pet.id)!.executive.explore = e.target.checked; })} /> keep learning on the farm (tries something else 1–5% of the time, by Curiosity){pet.executive.explore === undefined ? ` — ${keepsLearning(pet) ? 'on until it has practised' : 'off now that it has practised'}` : ''}</label>
       {v && Object.keys(v.upper).length > 0 && <ExecutiveInspector pet={pet} />}
       {cmp && (

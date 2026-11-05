@@ -51,6 +51,14 @@ Status: **official**. We stop adding features and improve what exists. It follow
   - Every recipe is ≥ 80% on all 6 seeds.
 
 ### Phase 2: Background practice, test hygiene, CI
+**Status: done.**
+- Executive practice and comparison run in a worker, with progress and Stop. The browser test records no long tasks while practising, and a test checks the steps give exactly the old results.
+- Test pets get the default temperament (`tests/setup.ts`); `adoptRandomPet` gives a random one.
+- CI (`ci.yml`) runs typecheck, lint, the unit tests, a build and `e2e:cards` on every push.
+- `bench:farm` uses 5 seeds and reports the spread.
+- The suite passed 3 times in a row (318 tests).
+- A playtester's pen ("fill basket") is now a fixture: its card must keep importing and scoring 95%.
+
 - **Executive practice and comparison run in a worker**, like pen training, with progress and a cancel button. The page stays responsive.
 - **Test helpers adopt pets with fixed traits by default.** A test that wants a random temperament asks for it.
 - **CI on push:** typecheck, lint, unit tests and `e2e:cards`.

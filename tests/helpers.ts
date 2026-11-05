@@ -5,6 +5,7 @@ import { buildReport } from '../src/learning/report';
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import type { SerializedQ } from '../src/learning/qtable';
 import { saveRevision, subskillsFor } from '../src/game/pets';
+import * as pets from '../src/game/pets';
 import type { GameState, Pet } from '../src/game/types';
 
 export function trainAndSave(s: GameState, pet: Pet, stage: StageSpec, navigator?: SerializedQ) {
@@ -64,6 +65,11 @@ export function giveRoutine(s: GameState, pet: Pet, recipe: string) {
 }
 
 export { recipeStage, DEFAULT_TRAITS };
+
+/** A pet with a random temperament, as in the game (tests/setup.ts gives every other test pet the default one). */
+export function adoptRandomPet(s: GameState, name: string, palette: Parameters<typeof import('../src/game/pets').adoptPet>[2]): Pet {
+  return (pets as unknown as { adoptRandomPet: typeof import('../src/game/pets').adoptPet }).adoptRandomPet(s, name, palette);
+}
 
 /** The farm's basic learned jobs (phase 3c): Harvest and Plant, trained in pens over the pet's Approach. */
 export function giveFarmJobs(s: GameState, pet: Pet) {

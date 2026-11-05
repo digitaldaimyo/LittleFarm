@@ -191,6 +191,8 @@ Saves are v2. The v1 → v2 migration adds templates and explicit preset senses.
 
 **Level C, executive:** on the farm, behaviours are invoked with `{ behaviorId, args, intention, timeout, chosenBy }`. Two selectors share that contract: `rulesSelect` (deterministic baseline) and `learnedSelect`, a tabular contextual bandit over (tired, something ripe, goods to haul, carrying, recent failure, night, fireflies, empty soil). It learns from coins earned per behaviour, with ε set by Curiosity. The executive runs only at option boundaries. A failed job (timeout) triggers a few labelled random "sniffing" steps so a pet can't repeat a stuck loop forever.
 
+**Executive practice (polish phase 2):** `game/execpractice.ts` splits practice and the comparison into steps (one farm day each: 4 practice days, then 3 ways of choosing × 3 held-out farms). The Farm screen runs them in `game/exec.worker.ts` with progress and Stop; a Stop terminates the worker. Without workers they run inline, a step at a time. The worker gets only the practising pet and the farm, and the page applies the returned executive values. `practiseExecutive` and `compareExecutives` are the same steps in one call, for tests and scripts.
+
 **Training loop:** `learning/session.ts` (`TrainingLoop`) is shared by the Web Worker (`trainer.worker.ts`) and an inline main-thread fallback. It runs in chunks, honours pause, resume, cancel and speed between chunks, and throttles progress messages. When training finishes it builds a `TrainingReport` with before / random / after on held-out seeds, transfer on bigger unseen pens, and exploit findings.
 
 **Seeds:** training seeds are `hash(stage.seed, i) mod 800000`. Evaluation seeds live in `[900000, 999999]`, so they never overlap.

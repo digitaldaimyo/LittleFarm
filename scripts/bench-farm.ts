@@ -19,7 +19,7 @@ import type { GameState, Pet } from '../src/game/types';
 import { DEFAULT_TRAITS } from '../src/learning/episodes';
 import { trainAndSave, trainAndSaveRoutine } from '../tests/helpers';
 
-const SEEDS = [101, 202, 303];
+const SEEDS = [101, 202, 303, 404, 505]; // polish phase 2: 5 seeds (was 3); each row also reports the spread
 const LEARNED = process.argv.includes('--learned');
 const TICKS = 2400; // two farm days
 type Setup = 'auto-rules' | 'auto-learned' | 'starter-plan' | 'harvest-job' | 'two-pets' | 'learned-harvest';
@@ -103,22 +103,28 @@ function run(setup: Setup, seed: number, layout: 'standard' | 'held-out') {
 
 const rows: ReturnType<typeof run>[] = [];
 console.log(`Farm ${LEARNED ? 'learned' : 'baseline'} — ${TICKS} ticks, seeds ${SEEDS.join('/')}\n`);
-console.log('setup          layout    coins (per seed)     sold  jobs  ok%  timeouts  switch/min  rest%  idle%  ms/tick');
+console.log('setup          layout    coins (per seed)            mean  spread (min–max, sd)   sold  jobs  ok%  timeouts  switch/min  rest%  idle%  ms/tick');
 for (const layout of ['standard', 'held-out'] as const) for (const setup of SETUPS) {
   const r = SEEDS.map((seed) => run(setup, seed, layout));
   rows.push(...r);
   const sum = (k: 'sold' | 'jobs' | 'ok' | 'timeouts') => r.reduce((a, x) => a + x[k], 0);
   const avg = (k: 'switchesPerMin' | 'restShare' | 'idleShare') => Math.round((r.reduce((a, x) => a + x[k], 0) / r.length) * 10) / 10;
-  console.log(`${setup.padEnd(14)} ${layout.padEnd(9)} ${r.map((x) => String(x.coins).padStart(4)).join(' /').padEnd(20)} ${String(sum('sold')).padStart(5)} ${String(sum('jobs')).padStart(5)} ${String(Math.round((100 * sum('ok')) / Math.max(1, sum('jobs')))).padStart(4)} ${String(sum('timeouts')).padStart(9)} ${String(avg('switchesPerMin')).padStart(11)} ${String(avg('restShare')).padStart(6)} ${String(avg('idleShare')).padStart(6)} ${Math.max(...r.map((x) => x.msPerTick)).toFixed(3).padStart(8)}`);
+  const c = r.map((x) => x.coins);
+  const mean = c.reduce((a, x) => a + x, 0) / c.length;
+  const sd = Math.sqrt(c.reduce((a, x) => a + (x - mean) ** 2, 0) / c.length);
+  const spread = `${Math.min(...c)}–${Math.max(...c)}, ±${Math.round(sd)} (${Math.round((100 * sd) / Math.max(1, mean))}%)`;
+  console.log(`${setup.padEnd(14)} ${layout.padEnd(9)} ${c.map((x) => String(x).padStart(4)).join(' /').padEnd(27)} ${String(Math.round(mean)).padStart(5)}  ${spread.padEnd(21)} ${String(sum('sold')).padStart(5)} ${String(sum('jobs')).padStart(5)} ${String(Math.round((100 * sum('ok')) / Math.max(1, sum('jobs')))).padStart(4)} ${String(sum('timeouts')).padStart(9)} ${String(avg('switchesPerMin')).padStart(11)} ${String(avg('restShare')).padStart(6)} ${String(avg('idleShare')).padStart(6)} ${Math.max(...r.map((x) => x.msPerTick)).toFixed(3).padStart(8)}`);
 }
 mkdirSync('bench', { recursive: true });
 const out = LEARNED ? 'bench/farm-learned.json' : 'bench/farm-baseline.json';
 if (LEARNED && existsSync('bench/farm-baseline.json')) {
   // The ≥ 80% gate: learned coins vs the phase-0 baseline, per setup and layout (summed over seeds).
   const base = JSON.parse(readFileSync('bench/farm-baseline.json', 'utf8')).rows as typeof rows;
-  console.log('\nvs phase-0 baseline (coins, all seeds):');
+  // Compared on the seeds both runs have (the phase-0 baseline used 3).
+  const shared = SEEDS.filter((sd) => base.some((r) => r.seed === sd));
+  console.log(`\nvs phase-0 baseline (coins, seeds ${shared.join('/')}):`);
   for (const layout of ['standard', 'held-out'] as const) for (const setup of SETUPS) {
-    const sum = (rs: typeof rows) => rs.filter((r) => r.setup === setup && r.layout === layout).reduce((a, r) => a + r.coins, 0);
+    const sum = (rs: typeof rows) => rs.filter((r) => r.setup === setup && r.layout === layout && shared.includes(r.seed)).reduce((a, r) => a + r.coins, 0);
     const b = sum(base), l = sum(rows);
     console.log(`${setup.padEnd(14)} ${layout.padEnd(9)} ${String(l).padStart(5)} vs ${String(b).padStart(5)}  ${b ? Math.round((100 * l) / b) : '–'}%`);
   }

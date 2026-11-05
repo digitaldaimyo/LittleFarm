@@ -1024,17 +1024,25 @@ function executiveCopy(s: GameState, petId: string, seed: number, how: ExecHow):
 export function practiseExecutive(s: GameState, petId: string, days = 4): { ticks: number; updates: number } {
   const pet = petById(s, petId);
   if (!pet) return { ticks: 0, updates: 0 };
-  const v0 = execValues(pet);
-  const before = v0.updates;
-  for (let d = 0; d < days; d++) {
-    const seed = 1000 + v0.practised / DAY_TICKS + d * 7919;
-    const { g, rt, p } = executiveCopy(s, petId, seed, { mode: 'learned', eps: 0.1 + 0.3 * pet.traits.curiosity });
-    p.executive.values = execValues(pet);
-    for (let t = 0; t < DAY_TICKS; t++) farmTick(g, rt);
-    pet.executive.values = structuredClone(execValues(p));
-    pet.executive.values.practised += DAY_TICKS;
-  }
+  const before = execValues(pet).updates;
+  const seedBase = execValues(pet).practised;
+  for (let d = 0; d < days; d++) practiseExecutiveDay(s, petId, d, seedBase);
   return { ticks: days * DAY_TICKS, updates: execValues(pet).updates - before };
+}
+
+/**
+ * One farm day of practice (polish phase 2: practice runs a day at a time, so a worker can report progress and stop
+ * between days). `seedBase` is the pet's practised ticks when the practice began, so the days get the same seeds.
+ */
+export function practiseExecutiveDay(s: GameState, petId: string, d: number, seedBase: number): void {
+  const pet = petById(s, petId);
+  if (!pet) return;
+  const seed = 1000 + seedBase / DAY_TICKS + d * 7919;
+  const { g, rt, p } = executiveCopy(s, petId, seed, { mode: 'learned', eps: 0.1 + 0.3 * pet.traits.curiosity });
+  p.executive.values = execValues(pet);
+  for (let t = 0; t < DAY_TICKS; t++) farmTick(g, rt);
+  pet.executive.values = structuredClone(execValues(p));
+  pet.executive.values.practised += DAY_TICKS;
 }
 
 export interface ExecComparisonRow {
@@ -1046,25 +1054,31 @@ export interface ExecComparisonRow {
 }
 /** Held-out farm seeds for comparisons (practice never uses them). */
 export const EXEC_EVAL_SEEDS = [900101, 900202, 900303];
+export const EXEC_MODES = ['rules', 'learned', 'random'] as const;
+
+/** One way of choosing on one held-out farm copy (a step of the comparison). */
+export interface ExecRun { coins: number; tiredWork: number; switches: number }
+export function compareExecutiveRun(s: GameState, petId: string, mode: ExecHow['mode'], seed: number, ticks = DAY_TICKS): ExecRun {
+  const { g, rt, p } = executiveCopy(s, petId, seed, { mode, eps: 0 });
+  const c0 = g.progress.totalCoins;
+  let tiredWork = 0;
+  for (let t = 0; t < ticks; t++) {
+    const before = g.farm.current;
+    farmTick(g, rt);
+    const cur = g.farm.current;
+    if (cur && cur !== before && p.energy < TIRED && !['rest', 'tote', 'wander'].includes(cur.behaviorId)) tiredWork++;
+  }
+  return { coins: g.progress.totalCoins - c0, tiredWork, switches: rt.plan.switches };
+}
+/** Sum a mode's runs into its comparison row. */
+export function comparisonRow(mode: ExecHow['mode'], runs: ExecRun[], ticks = DAY_TICKS): ExecComparisonRow {
+  const sum = (k: keyof ExecRun) => runs.reduce((a, r) => a + r[k], 0);
+  return { mode, coins: sum('coins'), tiredWork: sum('tiredWork'), switchesPerMin: Math.round(((sum('switches') * 214) / (ticks * runs.length)) * 10) / 10 };
+}
 
 /** Compare the player's order, the learned values and random picks on held-out copies of the farm (no exploring). */
 export function compareExecutives(s: GameState, petId: string, ticks = DAY_TICKS, seeds = EXEC_EVAL_SEEDS): ExecComparisonRow[] {
-  return (['rules', 'learned', 'random'] as const).map((mode) => {
-    let coins = 0, tiredWork = 0, switches = 0;
-    for (const seed of seeds) {
-      const { g, rt, p } = executiveCopy(s, petId, seed, { mode, eps: 0 });
-      const c0 = g.progress.totalCoins;
-      for (let t = 0; t < ticks; t++) {
-        const before = g.farm.current;
-        farmTick(g, rt);
-        const cur = g.farm.current;
-        if (cur && cur !== before && p.energy < TIRED && !['rest', 'tote', 'wander'].includes(cur.behaviorId)) tiredWork++;
-      }
-      coins += g.progress.totalCoins - c0;
-      switches += rt.plan.switches;
-    }
-    return { mode, coins, tiredWork, switchesPerMin: Math.round(((switches * 214) / (ticks * seeds.length)) * 10) / 10 };
-  });
+  return EXEC_MODES.map((mode) => comparisonRow(mode, seeds.map((seed) => compareExecutiveRun(s, petId, mode, seed, ticks)), ticks));
 }
 
 /** Phase 6 retired direct jobs: a pet on one (an old save) gets it as responsibilities instead and goes on Auto. */

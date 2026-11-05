@@ -1,0 +1,39 @@
+name: CI
+
+# Polish phase 2: every push is typechecked, linted and tested, and the pen & card browser checks run.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+
+      # The browser checks use Playwright, which isn't a project dependency (the dev container has it preinstalled).
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm run e2e:cards

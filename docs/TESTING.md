@@ -1,7 +1,9 @@
 # Testing and benchmarks
 
 ## Automated suites (`npm test`)
-306 tests in 39 files. CI-style check before every push: `npm run typecheck && npm run lint && npm test && npm run build`. Browser checks: `npm run e2e:cards` (pens and cards only, about 17 s) or `npm run e2e` (every lesson too, about 10 min).
+318 tests in 43 files. **CI** (`.github/workflows/ci.yml`, on every push and pull request): typecheck, lint, `npm test`, build, then `npm run e2e:cards`. Run the same before pushing. The full browser test, `npm run e2e` (every lesson, under 2 min after a build), stays local. Browser checks run against the built app: `npm run build` first.
+
+**Test pets have a fixed temperament.** `tests/setup.ts` gives every pet adopted in a test the default traits, because adoption seeds a random temperament from the clock and twice made a test fail only in the full run. A test that wants a random one calls `adoptRandomPet` from `tests/helpers.ts`.
 
 | File | Covers |
 |---|---|
@@ -33,6 +35,9 @@
 | `tests/qualifiers.test.ts` | Pen & cards phase 3: nearest / furthest (from the pet or another thing), ties, nothing to point at, fullest / emptiest storage, what it carries; in conditions (at, Storage of one), measures (Stored in this one), senses (aimed at the furthest berry from the house); wording, hand, validation (not in events or placements, the moving-target warning); gate: “reach the furthest berry from the house” trains to ≥ 80% (measured 100%, random 35%) and transfers (90%) |
 | `tests/focus.test.ts` | Pen & cards phase 4: the card picker's next slot after a pick (depth first inside the new card, then back up the chain), optional slots skipped, nothing left → close, and tapping a slot by hand starts afresh |
 | `tests/diagnose.test.ts` | Polish phase 1, "Why isn't it learning?": each report finding is reproduced by a small pen. *Keep 3 berries* as a sense skill reports *big treat never happened* and *long chain*; *Bring it home* without a Carrying sense reports *can't tell apart* (carrying); the Field Guide routine watching two things reports *standing at the basket* (add it to Watches); Approach with only the Nearest sense reports *loops* with a replay and suggests Walls and Heading; a passing skill has no findings |
+| `tests/execworker.test.ts` | Polish phase 2: executive practice in steps gives exactly the values and comparison of `practiseExecutive` + `compareExecutives`, needs only the practising pet, reports progress in order, stops on cancel with no result, and reports a missing pet as an error |
+| `tests/hygiene.test.ts` | Test pets get the default temperament; `adoptRandomPet` gives varied ones in the game's range |
+| `tests/playerpen.test.ts` | A playtester's pen as a fixture (`fixtures/fill-basket-r6.skill.json.gz`: fill a basket with 5 berries, then lift it; 19 rules, notes as counters and a home-made loop check, 94,100 tries): it imports, validates and scores exactly what it did when trained (95%, bigger pens 80%, random 0%), with no findings |
 | `tests/tuneups.test.ts` | Pen & cards phase 5 and polish phase 1: Plant, Open the gate, Shut the gate, Empty the basket, Harvest and Basket run certify at ≥ 80% on 6 training seeds at default traits; learned picks explore until practised, then stop, unless the player chose |
 | `tests/cardref.test.ts` | `docs/CARD_REFERENCE.md` matches the card registry (`npm run cards:ref` regenerates it) |
 | `tests/aims.test.ts` | Follow-up: “picks up the furthest berry from the house” pays for that berry, judged before the step (not the near one); a qualifier still can't go in a delivery's Into; aims read as words; Harvest aimed at the furthest berry picks it first; Go to aimed at a qualifier gets there |
@@ -138,6 +143,22 @@ What it took:
 - **Empty the basket became a routine** (Approach → basket, lift, Approach → house, put down). As one sense skill it stayed at 70–85% even with Walls, Heading and 4× practice, and the new report said *loops*; it is the *long chain* case.
 - Lessons that compare setups keep their old practice so the contrast stays clear: *Invent a skill* (2,500 tries) and *Give your pet a notebook* (Patrol without Heading, 10,000 tries).
 - Farm effect (`bench:farm --learned`, 3 seeds, vs before): Auto 103% / 100% (standard / held-out), learned picks 109% / 105%, two pets 127% / 114%, Harvest only 90% / 94% (within the single-seed spread).
+
+## Farm benchmark on 5 seeds (polish phase 2): `npm run bench:farm -- --learned`
+
+Seeds 101 / 202 / 303 / 404 / 505 (was 3), 2,400 ticks. Each row reports the mean and spread. Seeds 101–303 give the same coins as the 3-seed run, so the comparison with the phase-0 baseline uses those three.
+
+| Setup | Standard farm: mean (min–max, sd) | Held-out farm: mean (min–max, sd) |
+|---|---|---|
+| Auto (your order) | 258 (240–268, ±4%) | 227 (193–261, ±11%) |
+| Auto (learned picks) | 247 (206–268, ±9%) | 200 (191–210, ±3%) |
+| Two pets | 302 (250–320, ±9%) | 273 (225–294, ±9%) |
+| Harvest job only | 150 (113–174, ±14%) | 209 (190–225, ±6%) |
+| Learned Harvest only | 150 (133–163, ±8%) | 215 (186–242, ±9%) |
+
+A change smaller than the spread on one seed isn't a finding; compare means over all 5 seeds.
+
+**Executive practice in the browser:** with practice and the comparison in a worker, the L14 browser check records no main-thread task over 50 ms (the long-task threshold) while practising. Before, the 4 practice days and 9 comparison days ran in one synchronous call on the page (about 0.4 s in Node).
 
 ## Farm baseline (learned-farm roadmap, phase 0): `npm run bench:farm`
 

@@ -391,9 +391,23 @@ try {
     await page.click('[data-tut="job-auto"]');
     await page.click('[data-tut="exec-learned"]');
     await step('Practise deciding', 'L14: “Learns what pays off” chosen');
+    // Polish phase 2: practice runs in a worker, with progress and Stop.
+    await page.click('[data-tut="exec-practise"]');
+    check(await page.waitForSelector('[data-tut="exec-progress"]', { timeout: 5000 }).then(() => true, () => false), 'L14: practice shows its progress');
+    await page.click('[data-tut="exec-cancel"]');
+    check(await page.waitForSelector('[data-tut="exec-note"]:has-text("Practice stopped")', { timeout: 5000 }).then(() => true, () => false) && !(await page.$('[data-tut="exec-compare"]')), 'L14: Stop ends practice with no comparison');
+    // Gate: while it practises, no task on the page's thread takes over 100 ms.
+    await page.evaluate(() => {
+      window.__long = [];
+      window.__longObs = new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__long.push(Math.round(e.duration)); });
+      window.__longObs.observe({ type: 'longtask' });
+    });
     await page.click('[data-tut="exec-practise"]');
     const cmpShown = await page.waitForSelector('[data-tut="exec-compare"]', { timeout: 60000 }).then(() => true, () => false);
     check(cmpShown, 'L14: practice runs and the comparison appears');
+    const longTasks = await page.evaluate(() => { window.__longObs.disconnect(); return window.__long; });
+    console.log('   L14 long tasks during practice (ms):', longTasks.length ? longTasks.join(', ') : 'none');
+    check(longTasks.every((d) => d <= 100), 'L14: the page stays responsive while practising (no task over 100 ms)');
     const cmpText = cmpShown ? (await page.textContent('[data-tut="exec-compare"]')).replace(/\s+/g, ' ') : '';
     console.log('   L14 comparison:', cmpText.slice(0, 200));
     check(/In your order/.test(cmpText) && /Learned picks/.test(cmpText) && /Random picks/.test(cmpText), 'L14: comparison shows your order, learned picks and random picks');
