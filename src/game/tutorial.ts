@@ -257,6 +257,7 @@ export const CHAPTERS: Chapter[] = [
       st.id = INVENT_STAGE;
       st.name = 'Field guide: Wait for it';
       st.recipeId = 'guide';
+      st.learner.episodes = 2500; // the practice from before the polish sweep: the lesson compares senses at equal, modest practice
       st.seed = 202; // a training seed where the extra-sense contrast is clear (measured: 90% lean vs 20% with “How far is rock”)
       st.extensions = { guide: true };
       st.abilities = ['move'];

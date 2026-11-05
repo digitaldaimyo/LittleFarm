@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { parseGame } from '../src/persistence/save';
 import { SAVE_VERSION } from '../src/game/types';
-import { recipeStage } from '../src/domain/recipes';
+import { classicApproachStage, recipeStage } from '../src/domain/recipes';
 import { compileStage } from '../src/sim/compile';
 import { FetchController, FetchRun, isDone } from '../src/learning/policies';
 import { sensePolicyOf, activeRevision, getSkill, adoptPet } from '../src/game/pets';
@@ -58,7 +58,8 @@ describe('M1: v1 saves keep working', () => {
     const nav = sensePolicyOf(activeRevision(getSkill(pet, 'Approach'))!)!;
     const ctrl = FetchController.from(activeRevision(getSkill(pet, 'Fetch'))!.policy)!;
     for (const [id, stageId] of [['approach', 'go-to-berry'], ['avoid', 'avoid-pond']] as const) {
-      const cs = compileStage(recipeStage(stageId));
+      // The v1 fixture's actions were recorded on the Approach pen from before the polish sweep (no obstacle practice).
+      const cs = compileStage(stageId === 'go-to-berry' ? classicApproachStage() : recipeStage(stageId));
       for (let i = 0; i < 15; i++) {
         const w = cs.generate(900001 + i * 7);
         const acts: string[] = [];

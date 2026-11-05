@@ -188,9 +188,15 @@ function patrol(withNote = true): StageSpec {
     evaluation: { episodes: 20, seedSet: evalSeeds(20), minimumSuccessRate: 0.6 },
   };
 }
-/** The same patrol without the Note sense (the Field Guide's experiment). */
+/**
+ * The same patrol without the Note sense (the Field Guide's experiment). The lesson keeps the setup from before the
+ * polish sweep (no Heading, 10,000 tries): Heading lets a note-less pet half-guess its leg, which blurs the contrast.
+ */
 export function patrolWithoutNote(): StageSpec {
-  return patrol(false);
+  const st = patrol(false);
+  st.learner.episodes = 10000;
+  st.learner.senses = st.learner.senses!.filter((x) => x.cardId !== 'sense.heading');
+  return st;
 }
 
 const coopArea = (n: Mk) => n('area.named', { name: 'coop' });

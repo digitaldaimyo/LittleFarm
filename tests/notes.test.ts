@@ -17,6 +17,13 @@ import type { StageSpec } from '../src/domain/types';
 import { recipeStage, trainAndSave } from './helpers';
 
 const codes = (st: StageSpec) => validateStage(st).map((d) => d.code);
+/** The Field Guide's Patrol after its step “Let it read the note”: the lesson's pen plus the Note sense. */
+function lessonWithNote() {
+  const st = patrolWithoutNote();
+  st.learner.senses!.push(node('sense.note', { name: 'leg', cap: 2 }));
+  return st;
+}
+
 function train(st: StageSpec) {
   const t = new Trainer({ stage: st, episodes: st.learner.episodes, traits: { ...DEFAULT_TRAITS } });
   while (!t.done) t.runChunk(1000, false);
@@ -51,7 +58,7 @@ describe('notes: written by rules, read by conditions and the Note sense', () =>
     expect(enc.encode(w)).toEqual([1]);
     w.notes = { leg: 7 };
     expect(enc.encode(w)).toEqual([2]);
-    expect(stateSpaceSize(recipeStage('patrol').learner.senses!)).toBe(stateSpaceSize(patrolWithoutNote().learner.senses!) * 3);
+    expect(stateSpaceSize(lessonWithNote().learner.senses!)).toBe(stateSpaceSize(patrolWithoutNote().learner.senses!) * 3);
   });
 
   it('a rule writes notes when it fires; notes start empty every try', () => {
@@ -87,7 +94,7 @@ describe('notes: written by rules, read by conditions and the Note sense', () =>
 
 describe('Patrol: the note makes the job learnable', () => {
   it('learns with the Note sense (≥ 60%) and not without it (≤ 35%), same pen, rules and practice', () => {
-    const withNote = train(recipeStage('patrol'));
+    const withNote = train(lessonWithNote());
     const without = train(patrolWithoutNote());
     expect(withNote.after.successRate).toBeGreaterThanOrEqual(0.6); // measured 70–80% on 5 seeds
     expect(without.after.successRate).toBeLessThanOrEqual(0.35); // measured 10–20%

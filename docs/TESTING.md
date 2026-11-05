@@ -32,6 +32,7 @@
 | `tests/measures.test.ts` | Pen & cards phase 2: Stored (any / baskets / sheds / carried, trait aims), Sold / delivered by kind, Distance between, Energy, Seed money, Water, Step, Note value, Time until ripe (the farm's growing plots; 99 in pens); Compare's six comparisons, measure against measure (and how it reads), old saves' meaning, a farm responsibility using Stored; the Storage of… sense bands; gate: “keep 3 berries in the basket” (a routine, SUCCESS = stored berries ≥ 3, no notes) trains to ≥ 60% (measured 75%, random 0%) |
 | `tests/qualifiers.test.ts` | Pen & cards phase 3: nearest / furthest (from the pet or another thing), ties, nothing to point at, fullest / emptiest storage, what it carries; in conditions (at, Storage of one), measures (Stored in this one), senses (aimed at the furthest berry from the house); wording, hand, validation (not in events or placements, the moving-target warning); gate: “reach the furthest berry from the house” trains to ≥ 80% (measured 100%, random 35%) and transfers (90%) |
 | `tests/focus.test.ts` | Pen & cards phase 4: the card picker's next slot after a pick (depth first inside the new card, then back up the chain), optional slots skipped, nothing left → close, and tapping a slot by hand starts afresh |
+| `tests/diagnose.test.ts` | Polish phase 1, "Why isn't it learning?": each report finding is reproduced by a small pen. *Keep 3 berries* as a sense skill reports *big treat never happened* and *long chain*; *Bring it home* without a Carrying sense reports *can't tell apart* (carrying); the Field Guide routine watching two things reports *standing at the basket* (add it to Watches); Approach with only the Nearest sense reports *loops* with a replay and suggests Walls and Heading; a passing skill has no findings |
 | `tests/tuneups.test.ts` | Pen & cards phase 5 and polish phase 1: Plant, Open the gate, Shut the gate, Empty the basket, Harvest and Basket run certify at ≥ 80% on 6 training seeds at default traits; learned picks explore until practised, then stop, unless the player chose |
 | `tests/cardref.test.ts` | `docs/CARD_REFERENCE.md` matches the card registry (`npm run cards:ref` regenerates it) |
 | `tests/aims.test.ts` | Follow-up: “picks up the furthest berry from the house” pays for that berry, judged before the step (not the near one); a qualifier still can't go in a delivery's Into; aims read as words; Harvest aimed at the furthest berry picks it first; Go to aimed at a qualifier gets there |
@@ -114,6 +115,29 @@ Before farm life (coins at the bush): one forager 178, two foragers 183, forager
 | Auto + Haul | 208 | 18 | 30 |
 
 The Harvest job doesn't plant, so once the first carrots are picked their plots sit empty: a farm with nobody on Auto, Plant or a plan with a Plant row lives on berries alone. The coaching tip "field plots are empty" says so. With a planter, the fields (not the walking) limit the farm, so a second pet adds less than before.
+
+## Recipe sweep (polish phase 1): `npx tsx scripts/recipe-sweep.ts`
+
+Every built-in recipe at default traits on 6 training seeds (its own, 11, 22, 33, 44, 55), with Approach (and Morning chores' four skills) trained first. Gate: ≥ 80% on unseen layouts on every seed. After the fixes (about 3 minutes):
+
+| Recipe | % per seed | Recipe | % per seed |
+|---|---|---|---|
+| Go to the berry | 85 85 90 90 85 85 | Harvest | 90 90 85 85 95 95 |
+| Bring it home | 95 95 100 95 85 95 | Harvest to storage | 90 90 85 85 95 95 |
+| Avoid the pond | 90 90 85 85 80 90 | Basket run | 85 90 95 95 100 100 |
+| Wait for it | 90 85 80 95 95 90 | Plant | 90 95 90 85 100 100 |
+| Keep clear | 90 95 85 80 85 85 | Herd a chicken | 80 85 95 90 85 90 |
+| Water the garden | 80 90 90 100 95 80 | Open the gate | 95 100 95 95 95 100 |
+| Empty the basket | 95 100 100 90 95 95 | Shut the gate | 90 90 95 90 90 95 |
+| Patrol | 85 90 90 80 85 85 | Fetch routine | 95 95 100 95 85 95 |
+| Morning chores | 85 95 95 100 95 80 | | |
+
+What it took:
+- **Approach practises among obstacles** (*Obstacles: some rocks*, 3,000 tries). That alone lifted Harvest, Harvest to storage, Plant and Basket run, which walk with it, from dips of 55–75% to ≥ 85%. The Field Guide's first lessons keep the classic pen.
+- **More practice** where the per-seed misses were noise of too little practice: Bring it home, Wait for it, Keep clear, Herd and Fetch routine ×2; Avoid, Water the garden and Patrol ×3 (Patrol also gains Heading). Heading or Walls made Water the garden worse.
+- **Empty the basket became a routine** (Approach → basket, lift, Approach → house, put down). As one sense skill it stayed at 70–85% even with Walls, Heading and 4× practice, and the new report said *loops*; it is the *long chain* case.
+- Lessons that compare setups keep their old practice so the contrast stays clear: *Invent a skill* (2,500 tries) and *Give your pet a notebook* (Patrol without Heading, 10,000 tries).
+- Farm effect (`bench:farm --learned`, 3 seeds, vs before): Auto 103% / 100% (standard / held-out), learned picks 109% / 105%, two pets 127% / 114%, Harvest only 90% / 94% (within the single-seed spread).
 
 ## Farm baseline (learned-farm roadmap, phase 0): `npm run bench:farm`
 

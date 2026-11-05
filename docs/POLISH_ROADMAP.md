@@ -37,6 +37,8 @@ Status: **official**. We stop adding features and improve what exists. It follow
 ## Phases and gates
 
 ### Phase 1: "Why isn't it learning?"
+**Status: done.** Findings live in `src/learning/diagnose.ts` and show in the training report with a lesson link and, for loops, a replay. Every recipe passes the sweep (≥ 80% on 6 seeds; numbers in `TESTING.md`). Fixes: Approach practises among rocks, more practice for eight recipes, Patrol gains Heading, and *Empty the basket* is now a routine.
+
 - **New report findings** (they show beside the existing loophole and below-random warnings, each with a lesson link):
   - **Big treat never happened:** a rule with *End try* / SUCCESS never fired, or fired in under 1% of practice tries. Suggests stepping-stone treats, or a routine for multi-step jobs.
   - **Can't tell apart:** practice keeps meeting the same sense state where different actions paid off in different layouts, so a sense is missing. The report names the situation in words ("standing at the basket, carrying nothing").
