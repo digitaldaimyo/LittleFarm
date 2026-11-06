@@ -1,6 +1,6 @@
 # Academy roadmap: from farm to creature-training puzzles
 
-Status: **draft for review**. It follows playtests by the developer, a reviewer and family members. It replaces the remaining phase 7 of `POLISH_ROADMAP.md`; phase 7's measures are folded in here.
+Status: **draft for review** (decisions 1–7 agreed; 8–12 proposed). It follows playtests by the developer, a reviewer and family members. It replaces the remaining phase 7 of `POLISH_ROADMAP.md`; phase 7's measures are folded in here.
 
 ## Why
 
@@ -28,14 +28,17 @@ The Academy teaches the systems players later use freely in the Lab. The Homeste
 2. **The farm economy does not survive.** Selling produce, the shop's farm items and requests go. The Homestead keeps farm life as rich flavour and is where currency is spent.
 3. **Saves don't carry forward.** This is a clean break: a new save format, with no migration of farm-era saves.
 4. **The Lab is the sandbox.** Skills and routines trained there are saved to the pet and can be used in challenges, e.g. a routine challenge that calls an Approach trained in the Lab.
+5. **Stars over hard limits.** A challenge fixes only its pen and SUCCESS / FAIL. Constraints (sense or card budgets, practice budgets, transfer, no loophole) are optional mastery stars, so every challenge has a straightforward way through.
+6. **Certifications are per pet.** Each pet earns its own certificates and rank, and shows them at home. Currency goes to the player's shared purse.
+7. **A school with ranks.** The Academy is a school: courses (tracks) of challenges, each ending in a rank exam (the capstone, visible from the start). A mentor introduces each course and each new card. Pets rise in rank, e.g. Novice → Apprentice → Journeypet → Adept → Master, as they pass exams. Rank names and the mentor's character are settled in phase 0.
 
 ## Proposed decisions (to confirm)
 
-5. **One currency, earned only in the Academy.** It comes from certifications and mastery stars, and is spent in the Homestead. Nothing else earns money, so nothing competes with the main loop.
-6. **The Academy introduces cards; the Lab offers every card met so far.** There is no currency gate on Lab vocabulary. The Academy stays the teacher and the Lab stays free.
-7. **Certification is reproducible.** A challenge trains and tests on fixed seeds, so the same lesson with the same pet gives the same result. A player never fails by luck. Each challenge ships with a reference solution that clears its bar with margin on several pets' temperaments, checked in tests (as the recipe sweep checks recipes).
-8. **Show the destination from the start.** The Academy is a map of tracks, with the capstone challenges visible but locked. Each pet has a certificate board. The Homestead shows what each certification unlocked. This answers "what am I working towards?" directly.
-9. **No energy cost for challenges.** Practice time is the only pacing. Energy and naps remain Homestead flavour.
+8. **One currency, earned only in the Academy.** It comes from certifications and mastery stars, and is spent in the Homestead. Nothing else earns money, so nothing competes with the main loop.
+9. **The Academy introduces cards; the Lab offers every card met so far.** There is no currency gate on Lab vocabulary. The Academy stays the teacher and the Lab stays free.
+10. **Certification is reproducible.** A challenge trains and tests on fixed seeds, so the same lesson with the same pet gives the same result. A player never fails by luck. Each challenge ships with a reference solution that clears its bar with margin on several pets' temperaments, checked in tests (as the recipe sweep checks recipes).
+11. **Show the destination from the start.** The Academy is a map of courses, with each rank exam visible but locked. Each pet has a certificate board and a rank. The Homestead shows what each certification unlocked. This answers "what am I working towards?" directly.
+12. **No energy cost for challenges.** Practice time is the only pacing. Energy and naps remain Homestead flavour.
 
 ## Mapping what exists
 
@@ -130,7 +133,6 @@ Each track ends in a capstone that is visible from the start.
 
 ## Open questions
 
-1. **How far may a challenge narrow the toolkit?** E.g. "only 3 senses" as a hard rule, or only as a mastery star? I'd keep hard limits rare and put most constraints in stars, so every challenge has a straightforward way through.
-2. **Can a challenge require a skill from the Lab?** E.g. a routine challenge that needs a certified Approach first. Or does the Academy always offer an in-challenge way to train it?
-3. **Multiple pets:** are certifications per pet (each pet earns its own board) or per player? Per pet fits the Homestead, where each pet shows what it can do.
-4. **Tone and framing:** the Academy as a school with ranks and a mentor, or something else? It shapes the map, the copy and the Homestead's rewards.
+1. **Can a challenge require a skill from the Lab?** E.g. a routine challenge that needs a certified Approach first. Or does the Academy always offer an in-challenge way to train it?
+
+Resolved: stars over hard limits (5), certifications per pet (6), a school with ranks (7).
