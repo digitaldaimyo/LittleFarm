@@ -42,6 +42,6 @@ The Field Guide's *First lesson* walks you through it:
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | How it's built: the typed spec and cards, the simulator, learning, the farm and its executive, saves, sound |
 | [`docs/TESTING.md`](docs/TESTING.md) | Test suites, CI, the recipe sweep, benchmarks, performance and browser checks |
 | [`docs/CARD_REFERENCE.md`](docs/CARD_REFERENCE.md) | Every card with its slots, settings and hint (generated; also searchable in the game's Guide) |
-| [`docs/ACADEMY_ROADMAP.md`](docs/ACADEMY_ROADMAP.md) | Draft: the next direction (Challenge Academy, Training Laboratory, Homestead), for review |
+| [`docs/ACADEMY_ROADMAP.md`](docs/ACADEMY_ROADMAP.md) | The current roadmap: Challenge Academy, Training Laboratory and Homestead |
 | [`docs/POLISH_ROADMAP.md`](docs/POLISH_ROADMAP.md) | The polish roadmap: phases 1–6 done; phase 7 folded into the Academy roadmap |
 | [`docs/history/`](docs/history/README.md) | Finished plans and roadmaps, the architecture log and earlier measurements |
