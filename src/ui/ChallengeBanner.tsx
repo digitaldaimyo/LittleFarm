@@ -5,6 +5,7 @@
 import { store, useStore } from './store';
 import { audio } from '../audio/engine';
 import { SCHOOL, acornText, petRecordOf } from '../game/academy';
+import { measureCertify } from '../game/measures';
 import { certify, challengeOf, challengeStatus, courseOf, type CertifyResult } from '../game/challenges';
 import { activePet } from '../game/pets';
 import type { StageSpec } from '../domain/types';
@@ -41,7 +42,7 @@ export function CertifyButton({ run, petId, stage, report, episodes, resumed, sa
   if (!ch || !report || !pet) return null;
   const go = () => {
     let r: CertifyResult | null = null;
-    store.mutate((g) => { r = certify(g, pet.id, { stage, report, episodes, resumed }); });
+    store.mutate((g) => { r = certify(g, pet.id, { stage, report, episodes, resumed }); measureCertify(g, ch.id, !!r?.ok); });
     if (r && (r as CertifyResult).ok && !saved) save(); // the certified skill is the pet's
     if (r) store.setUi({ certify: { run, result: r } });
     audio.play(r && (r as CertifyResult).ok ? 'train.certified' : 'card.reject');

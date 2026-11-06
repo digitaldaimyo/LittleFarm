@@ -27,9 +27,11 @@ Requires Node 18+ (developed on Node 22). No secrets or environment variables. C
 ## Your first hour
 
 Pen Deck is becoming **Willowbrook Academy**: a school where your pets pass challenges, rise through ranks (Novice → Apprentice → Journeypet → Adept → Master) and earn acorns for their home (see [`docs/ACADEMY_ROADMAP.md`](docs/ACADEMY_ROADMAP.md)). A new game opens in the Academy, with three tabs:
-- **Academy:** the course map, with each course's exam visible from the start, and every pet's rank and rosettes. Challenges arrive in the next phases.
-- **Lab:** the full training pen. Build pens and rules from cards, train, and save skills and routines. Practice is free.
-- **Homestead:** your pets' home, where they do what they've learned. Nothing here is for sale.
+- **Academy:** the course map, with each course's exam visible from the start, and every pet's rank and rosettes. *First Steps* has seven challenges: the pen and SUCCESS are set, and you teach the rest. Each pass earns a rosette, merit badges and acorns, and its exam earns a rank.
+- **Lab:** the training pen. Build pens and rules from the cards your courses have introduced, train, and save skills and routines. Practice is free, and recipes open as you pass the challenges they answer.
+- **Homestead:** your pets' home. Spend acorns on decorations, and watch your pets practise what they were certified in.
+
+Settings has optional, local **playtest measures** (off by default) that you can export and share.
 
 ## Documentation
 

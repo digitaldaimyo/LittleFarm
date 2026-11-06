@@ -4,6 +4,7 @@
  */
 import { useStore } from './store';
 import { closeTraining } from './training';
+import { measureOpen } from '../game/measures';
 import { COURSES, RANKS, SCHOOL, acornText, petRank, petRecordOf } from '../game/academy';
 import { activePet, isCertified } from '../game/pets';
 import { challengeStatus, courseChallenges, courseOpen, openChallenge } from '../game/challenges';
@@ -53,7 +54,7 @@ export function AcademyScreen() {
                             <span><b>{ch.exam ? '🎓 ' : ''}{ch.title}</b>{cert && <span className="small"> · 🏵{cert.badges.length ? ` + ${cert.badges.length} badge${cert.badges.length === 1 ? '' : 's'}` : ''}</span>}</span>
                             {status === 'locked'
                               ? <span className="small muted">🔒 after the course’s other challenges</span>
-                              : <button className="btn small" data-tut={`open-${ch.id}`} onClick={() => { const t = s.ui.training; if (t && t.status !== 'running' && t.status !== 'paused' && t.stage.id !== `challenge-${ch.id}`) closeTraining(); s.mutate((x) => { openChallenge(x, ch.id); }); s.setUi({ screen: 'teach', binder: 'rules', slot: null, placing: null }); }}>{cert ? 'Try again' : 'Open'}</button>}
+                              : <button className="btn small" data-tut={`open-${ch.id}`} onClick={() => { const t = s.ui.training; if (t && t.status !== 'running' && t.status !== 'paused' && t.stage.id !== `challenge-${ch.id}`) closeTraining(); s.mutate((x) => { openChallenge(x, ch.id); measureOpen(x, ch.id); }); s.setUi({ screen: 'teach', binder: 'rules', slot: null, placing: null }); }}>{cert ? 'Try again' : 'Open'}</button>}
                           </div>
                           <div className="small muted">{ch.brief}</div>
                         </li>

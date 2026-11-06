@@ -144,6 +144,31 @@ Retired:
   - a challenge can't be certified through a flagged loophole.
 
 ### Phase 2: Vertical slice, then playtest
+**Status: built; the playtest is next (yours to run).**
+- **First Steps has seven challenges**, each teaching one idea, with measured contrasts:
+  - *To the berry*: treats vs SUCCESS.
+  - *Enough practice*: 300 tries 10%, 4,000 tries 90%.
+  - *Sit and stay*: abilities and senses.
+  - *Mind the pond*: FAIL and hazards.
+  - *Keep clear*: judged when time is up.
+  - *Less is more*: at 400 tries, six senses 30–35%, one sense 90–95%.
+  - *The Apprentice exam*: rocks and pens that change size.
+
+  Every reference clears its bar by ≥ 10 points at three temperaments.
+- **Courses open in order:** each opens once any pet passes the previous exam. The Lab offers the cards of open courses (decision 9). Each course owns a set of cards, and the last course takes the rest, so passing every exam opens every card.
+- **Lab recipes are rewards:** a recipe opens with its course and, if it answers a challenge, once a pet has passed that challenge.
+- **A minimal Homestead:**
+  - acorns buy six decorations, placed by the house and drawn over the farm (never in the way);
+  - with nothing to do, a pet sometimes practises what it was certified in: it sits by the well, keeps clear of the pond, or trots to the crops;
+  - the Homestead panel shows the shop and each pet's rosettes.
+- **Playtest measures** (`game/measures.ts`): off by default, and nothing is recorded while off. They record opens, training runs and best success, the findings shown and whether the next run improved, certify presses, and time and run to pass. Settings shows a plain summary; the export holds challenge ids and numbers only.
+- **Gate:**
+  - the browser test plays all of First Steps from a new game, each solution built card by card with default settings at a middling temperament (set with the Pet binder's sliders);
+  - then the rank, the next course opening, a recipe opening, a decoration bought and the measures summary;
+  - the same solutions are a unit test.
+
+  **The playtest with the same group is the remaining half of the gate.**
+
 - **Academy track 1:** about 8 challenges, each introducing one idea. Mostly existing recipes and Field Guide lessons, recast as challenges.
 - **The Laboratory:** today's Teach screen.
 - **A minimal Homestead:**

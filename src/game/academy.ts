@@ -47,6 +47,8 @@ export interface AcademyState {
   greeted: string[];
   /** Homestead decorations bought with acorns (drawn over the farm, never in the way). */
   decor?: { id: number; item: string; x: number; y: number }[];
+  /** Playtest measures, recorded only while the player has them on (game/measures.ts). */
+  measures?: import('./measures').Measures;
 }
 
 export function newAcademyState(): AcademyState {

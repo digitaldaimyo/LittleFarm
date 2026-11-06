@@ -18,5 +18,7 @@ const pip = adoptPet(s, 'Pip', 'meadow');
 pip.traits = { curiosity: 0.5, persistence: 0.5, caution: 0.5 };
 const rev = trainAndSave(s, pip, recipeStage('go-to-berry'));
 giveHarvest(s, pip);
+// Every course open (the card checks use later courses' cards): Pip has passed every exam.
+s.academy!.pets[pip.id] = { certificates: {}, exams: ['first-steps', 'fetch-carry', 'thinking-ahead', 'working-together'] };
 writeFileSync(out, serializeGame(s));
 console.log(`prepared academy save: Approach r${rev.rev} (${Math.round(rev.eval.successRate * 100)}%, ${rev.eval.passed ? 'certified' : 'NOT certified'}), skills ${pip.skills.map((k) => k.name).join(', ')}`);

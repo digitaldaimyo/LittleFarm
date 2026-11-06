@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { store, useStore } from './store';
 import { parseAcademySave, serializeGame } from '../persistence/save';
+import { exportMeasures, measuresSummary } from '../game/measures';
 import { newAcademyGame } from '../game/state';
 import { clearLocal } from '../persistence/storage';
 import { startChapter } from '../game/tutorial';
@@ -43,14 +44,14 @@ export function SettingsScreen() {
         </label>
       </div>
       <SoundSettings />
-      <div className="panel">
+      {g.academy ? <MeasuresSettings /> : <div className="panel">
         <h3>Field Guide</h3>
         <p className="small">Lessons on how to set up training that works — replay any of them, any time.</p>
         <div className="row gap">
           <button className="btn" onClick={() => s.setUi({ screen: 'guide' })}>Open the Guide</button>
           <button className="btn ghost" onClick={() => { s.mutate((x) => startChapter(x, 'first')); s.setUi({ screen: 'teach' }); }}>Replay the first lesson</button>
         </div>
-      </div>
+      </div>}
       <div className="panel">
         <h3>Your save</h3>
         <p className="small muted">Everything lives on this device (IndexedDB). No accounts, no servers, no analytics. Auto-saves every few seconds and after lessons.</p>
@@ -75,6 +76,37 @@ export async function resetGame() {
   await clearLocal();
   store.load(newAcademyGame());
   store.setUi({ modal: 'adopt', screen: 'academy' });
+}
+
+/** Playtest measures (Academy phase 2): off by default, local, exported only on request, without names or text. */
+function MeasuresSettings() {
+  const s = useStore();
+  const g = s.state;
+  const isOn = g.settings.measures === true;
+  const download = () => {
+    const blob = new Blob([exportMeasures(g)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `pen-deck-measures-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+  return (
+    <div className="panel" data-tut="measures">
+      <h3>Playtest measures</h3>
+      <p className="small">Helps the game get better: how long challenges take, how many training runs, which hints appeared and whether the next run improved. It stays on this device. Nothing is sent anywhere; you can export it to share it yourself. It never includes your pets’ names or anything you typed.</p>
+      <label className="small"><input type="checkbox" data-tut="measures-on" checked={isOn} onChange={(e) => s.mutate((x) => { x.settings.measures = e.target.checked; })} /> Record playtest measures</label>
+      {(isOn || g.academy?.measures) && (
+        <>
+          <ul className="small" data-tut="measures-summary">{measuresSummary(g).map((l, i) => <li key={i}>{l}</li>)}</ul>
+          <div className="row gap">
+            <button className="btn small" data-tut="measures-export" onClick={download}>Export measures</button>
+            <button className="btn ghost small" onClick={() => { if (confirm('Clear the recorded measures?')) s.mutate((x) => { delete x.academy!.measures; }); }}>Clear</button>
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 function SoundSettings() {

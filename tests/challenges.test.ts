@@ -182,3 +182,32 @@ describe('courses open in order; the Lab offers their cards; recipes are rewards
     expect([...REGISTRY.cards.keys()].every((id) => labCardAllowed(g, id))).toBe(true);
   });
 });
+
+describe('First Steps can be played with cards at their default settings (the browser test’s solutions)', () => {
+  it('each simple, click-built solution clears its bar at a middling temperament', () => {
+    const pet = () => node('actor.pet');
+    const traits = { curiosity: 0.5, persistence: 0.5, caution: 0.5 };
+    const berry = () => node('rule', { label: 'Rule 1', when: node('ev.reach', { actor: pet(), what: node('kind:berry') }), if: [], then: [node('eff.reward', { amount: 1 }), node('eff.end', { outcome: 'judge' })] });
+    const solve: Record<string, (st: StageSpec) => void> = {
+      'fs-berry': (st) => { st.rules = [berry()]; },
+      'fs-practice': (st) => { st.rules = [berry()]; st.learner.episodes = 4000; },
+      'fs-stay': (st) => {
+        st.abilities = ['move', 'stay']; st.learner.senses!.push(node('sense.still')); st.learner.episodes = 5000;
+        st.rules = [node('rule', { label: 'Rule 1', when: node('ev.tick'), if: [node('cond.at', { actor: pet(), what: node('ref.target') }), node('cond.stayedFor', { actor: pet(), ticks: 5 })], then: [node('eff.reward', { amount: 1 }), node('eff.end', { outcome: 'judge' })] })];
+      },
+      'fs-pond': (st) => { st.rules = [berry()]; st.learner.senses!.push(node('sense.hazards'), node('sense.blocked')); st.learner.episodes = 24000; },
+      'fs-clear': (st) => { st.rules = [node('rule', { label: 'Rule 1', when: node('ev.tick'), if: [node('cond.farFrom', { actor: pet(), what: node('ref.target'), dist: 2 })], then: [node('eff.reward', { amount: 1 })] })]; },
+      'fs-lean': (st) => { st.rules = [berry()]; st.learner.senses = [st.learner.senses![0]]; },
+      'fs-exam': (st) => { st.rules = [berry()]; st.learner.senses!.push(node('sense.blocked')); st.learner.episodes = 3000; },
+    };
+    expect(Object.keys(solve).sort()).toEqual(CHALLENGES.filter((c) => c.course === 'first-steps').map((c) => c.id).sort());
+    for (const [id, f] of Object.entries(solve)) {
+      const ch = challengeById(id)!;
+      const st = challengeBase(ch);
+      f(st);
+      const { report } = run(st, traits);
+      expect(report.after.successRate, id).toBeGreaterThanOrEqual(ch.bar);
+      expect(report.exploits, id).toEqual([]);
+    }
+  }, 120000);
+});

@@ -28,6 +28,9 @@ public/sw.js    service worker for offline play
 - **Challenges** (`game/challenges.ts`, Academy phase 1):
   - `CHALLENGES` (each with a base lesson, a bar, stars, allowed cards and a reference solution); `openChallenge`; `enforceChallengeLocks`, which the store runs after every change; `cardAllowed`, used by the hand; `certify`; `challengeStatus`.
   - UI: `ui/ChallengeBanner.tsx` (the brief in the Lab, and the Certify button on a finished report).
+- **Courses and the Lab** (Academy phase 2): `courseOpen`, `courseOfCard`, `labCardAllowed` (the Lab's hand) and `recipeLock` (the Curriculum's recipes), in `game/challenges.ts`.
+- **The Homestead** (`game/homestead.ts`): `DECOR` and `buyDecoration` (stored in `academy.decor`, drawn by `WorldView`'s `decor` layer), and `homeLife`, which `chooseInvocation` asks when an academy pet has nothing to do.
+- **Playtest measures** (`game/measures.ts`): `measureOpen` / `measureRun` / `measureCertify`, which record only while `settings.measures` is on, plus `measuresSummary` and `exportMeasures`.
 
 **Ground rules.**
 - Game rules never import React.

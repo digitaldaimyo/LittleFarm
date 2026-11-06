@@ -216,6 +216,8 @@ export interface Settings {
   farmSpeed: number;
   trainSpeed: 'watch' | 'normal' | 'fast';
   showExpert: boolean;
+  /** Playtest measures (Academy edition): off unless the player turns them on. */
+  measures?: boolean;
 }
 
 export interface Progress {

@@ -261,6 +261,7 @@ export function parseGame(text: string): LoadResult {
   // because the option was never shown, so they start with sound on, like new games.
   if (!isObj(g.settings.audio)) g.settings.sound = true;
   g.settings.sound = g.settings.sound !== false;
+  if (g.settings.measures !== undefined) g.settings.measures = g.settings.measures === true; // playtest measures: off unless turned on
   g.settings.audio = sanitizeAudio(g.settings.audio);
   for (const key of ['coins', 'berries', 'carrots', 'fireflies', 'eggs']) {
     if ((key === 'fireflies' || key === 'eggs') && g.resources[key] === undefined) continue;

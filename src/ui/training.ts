@@ -17,6 +17,8 @@ import { trainingCost } from '../game/state';
 import { addJournal } from '../game/journal';
 import { recordGuideRun } from '../game/tutorial';
 import { curiosities } from '../learning/summary';
+import { challengeOf } from '../game/challenges';
+import { measureRun } from '../game/measures';
 
 export interface TrainingSessionState {
   petId: string;
@@ -84,6 +86,8 @@ function onMessage(m: FromWorker) {
       if (pet) {
         pet.stats.trainingRuns++;
         pet.stats.episodes += m.progress.episode;
+        const ch = challengeOf(t.stage);
+        if (ch) measureRun(s, ch.id, m.report.after.successRate, (m.report.findings ?? []).map((f) => f.id));
         recordGuideRun(s, t.stage, m.progress.episode, m.report.after.successRate, m.report.randomOptions?.successRate ?? m.report.random.successRate, m.report.transfer.successRate, m.report.scattered?.successRate, m.report.after.meanReward);
         const r = m.report.after;
         addJournal(s, pet.id, 'training', `${pet.name} practised “${t.stage.name}” ${m.progress.episode} times. On ${r.episodes} new layouts: ${r.successes} successes (before: ${m.report.before.successes}).`);

@@ -65,8 +65,15 @@ try {
   check(['First Steps', 'Fetch and Carry', 'Thinking Ahead', 'Working Together', 'A Day’s Work'].every((c) => map.includes(c)) && (await page.locator('.course .chip.locked').count()) === 5, 'the map shows all five courses, each exam visible and locked');
   check((await page.textContent('[data-tut="pet-board"]')).includes('Novice'), 'Pip starts as a Novice');
   check(!(await page.textContent('.top-res')).includes('coins') && (await page.textContent('.top-res')).includes('acorns'), 'the header shows acorns, not coins');
-  // The Lab: build the first rule and SUCCESS card by card, train, save.
+  // Playtest measures on (opt-in), fast training, and a middling temperament (the solutions below are measured at it).
+  await nav('Settings');
+  await page.selectOption('label:has-text("Default training speed") select', 'fast');
+  await page.check('[data-tut="measures-on"]');
   await nav('Lab');
+  await page.click('.tab:has-text("Pet")');
+  for (const r of await page.locator('.trait input[type=range]').all()) await r.fill('0.5');
+  await page.click('.tab:has-text("Environment")');
+  // The Lab: build the first rule and SUCCESS card by card, train, save.
   await page.click('[data-tut="env-berry"]');
   await page.click('rect.tile >> nth=20');
   check(await page.waitForSelector('.toast:has-text("Sound is on")', { timeout: 4000 }).then(() => true, () => false), 'sound: one-time “Sound is on” note with the first sound');
@@ -133,6 +140,78 @@ try {
   await page.click('.training .actions button:has-text("Close")');
   await nav('Academy');
   check((await page.textContent('[data-tut="challenge-fs-berry"]')).includes('🏵') && !(await page.textContent('.top-res')).includes(' 0 acorns'), 'challenges: the rosette shows on the map, acorns in the header');
+  // Phase 2: the rest of First Steps, each built card by card as a player would (solutions measured at this temperament).
+  const pick = async (title) => {
+    const vis = page.locator(`.sleeve .hand-row .card:has-text("${title}")`).first();
+    if (!(await vis.isVisible().catch(() => false)) && (await page.locator('.sleeve details.more > summary').count())) await page.click('.sleeve details.more > summary');
+    await page.locator(`.sleeve .card:has-text("${title}")`).first().click();
+  };
+  const closeSleeve = async () => { if (await page.locator('.sleeve').count()) await page.keyboard.press('Escape'); };
+  const openCh = async (id) => { await nav('Academy'); await page.click(`[data-tut="open-${id}"]`); };
+  const newRule = async () => { await page.click('.tab:has-text("Rules")'); await page.click('[data-tut="add-rule"]'); return page.locator('.binder-body .rule:not(.success-row):not(.fail-row)').last(); };
+  const thenTreat = async (r, end) => {
+    await r.locator('.rule-line:has-text("THEN") .slot').first().click(); await pick('Treat');
+    if (end) { await r.locator('.rule-line:has-text("THEN") .slot:has-text("+ effect")').click(); await pick('End try'); }
+    await closeSleeve();
+  };
+  const berryRule = async () => { const r = await newRule(); await pick('Reaches'); await pick('Berry'); await thenTreat(r, true); };
+  const addSense = async (title) => { await page.click('.tab:has-text("Pet")'); await page.click('[data-tut="senses"] .slot:has-text("+ sense")'); await pick(title); await closeSleeve(); };
+  const practice = async (n) => { await page.click('.tab:has-text("Pet")'); await page.fill('[data-tut="practice-slider"] input.num-input', String(n)); };
+  const certifyRun = async (title) => {
+    await page.click('[data-tut="train-btn"]');
+    await page.waitForSelector('[data-tut="certify"]', { timeout: 240000 });
+    await page.click('[data-tut="certify"]');
+    const t = (await page.textContent('[data-tut="certify-area"]')).replace(/\s+/g, ' ');
+    console.log(`   ${title}:`, t.slice(0, 120));
+    check(t.includes(`earned a rosette: ${title}`), `track 1: “${title}” certified`);
+    await page.click('.training .actions button:has-text("Close"), .training .actions button:has-text("Discard")');
+  };
+  // Enough practice: the same rule, with more practice.
+  await openCh('fs-practice'); await berryRule(); await practice(4000); await certifyRun('Enough practice');
+  // Sit and stay: the Stay ability, the Patience sense, and a rule that pays for staying 5 steps on the target.
+  await openCh('fs-stay');
+  await page.click('.tab:has-text("Pet")'); await page.click('[data-tut="abilities"] button:has-text("Stay")');
+  await addSense('Patience');
+  { const r = await newRule(); await pick('Every step');
+    await r.locator('.rule-line:has-text("IF") .slot:has-text("+ condition")').click(); await pick('Is at'); await pick('The target'); await closeSleeve();
+    await r.locator('.rule-line:has-text("IF") .slot:has-text("+ condition")').click(); await pick('Has stayed'); await closeSleeve();
+    await thenTreat(r, true); }
+  await practice(5000); await certifyRun('Sit and stay');
+  // Mind the pond: sense hazards (and walls), and practise long enough.
+  await openCh('fs-pond'); await berryRule(); await addSense('Hazards nearby'); await addSense('Walls nearby'); await practice(24000); await certifyRun('Mind the pond');
+  // Keep clear: pay for every step spent far from the pond.
+  await openCh('fs-clear');
+  { const r = await newRule(); await pick('Every step');
+    await r.locator('.rule-line:has-text("IF") .slot:has-text("+ condition")').click(); await pick('Is far from'); await pick('The target'); await closeSleeve();
+    await thenTreat(r, false); }
+  await certifyRun('Keep clear');
+  // Less is more: remove five of the six senses.
+  await openCh('fs-lean'); await berryRule(); await page.click('.tab:has-text("Pet")');
+  for (let i = 0; i < 5; i++) {
+    const chip = page.locator('[data-tut="senses"] > .node').last();
+    if (await chip.locator('.node-handle').count()) await chip.locator('.node-handle').click(); else await chip.click();
+    await page.click('.sleeve button:has-text("Remove")');
+  }
+  check((await page.locator('[data-tut="senses"] > .node').count()) === 1, 'track 1: Less is more keeps one sense');
+  await certifyRun('Less is more');
+  // The exam: rocks and changing pens. Walls help.
+  await openCh('fs-exam'); await berryRule(); await addSense('Walls nearby'); await practice(3000); await certifyRun('The Apprentice exam');
+  await nav('Academy');
+  check((await page.textContent('[data-tut="pet-board"]')).includes('Apprentice') && (await page.textContent('[data-tut="pet-board"]')).includes('7 rosettes'), 'track 1: seven rosettes and Pip is an Apprentice');
+  check(!(await page.locator('[data-tut="course-locked-fetch-carry"]').count()) && (await page.locator('[data-tut="course-locked-thinking-ahead"]').count()) === 1, 'the next course (Fetch and Carry) opens; the one after stays locked');
+  // Recipes are rewards: Wait for it opens once Sit and stay is passed.
+  await nav('Lab'); await page.click('.tab:has-text("Curriculum")');
+  check(!(await page.locator('[data-tut="recipe-wait-for-it"]').isDisabled()) && (await page.locator('[data-tut="recipe-patrol"]').isDisabled()), 'Lab recipes: Wait for it opened by its challenge; Patrol waits for its course');
+  // The Homestead: spend acorns, see the decoration and the rosettes.
+  await nav('Homestead');
+  await page.click('[data-tut="buy-flowers"]');
+  check((await page.locator('[data-tut="decor-flowers"]').count()) === 1, 'Homestead: a flower bed bought with acorns appears by the house');
+  check((await page.textContent('[data-tut="rosette-boards"]')).includes('Sit and stay'), 'Homestead: Pip’s rosettes are on the board');
+  // Playtest measures: recorded (they were switched on), readable, no names in the export.
+  await nav('Settings');
+  const ms = (await page.textContent('[data-tut="measures-summary"]')).replace(/\s+/g, ' ');
+  console.log('   measures:', ms.slice(0, 160));
+  check(ms.includes('7 challenges opened, 7 passed'), 'playtest measures: the summary counts the track');
   const a1 = await au();
   check(a1.rendered === CUE_COUNT && a1.state === 'running', `sound: all ${CUE_COUNT} cues rendered, audio running (${a1.rendered}, ${a1.state})`);
   check(a1.quiet.length === 0, `sound: no cue renders as silence ${a1.quiet.length ? JSON.stringify(a1.quiet) : ''}`);
