@@ -7,7 +7,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
 const ROOT = resolve(__dirname, '..');
-const CURRENT = ['README.md', 'docs/DESIGN.md', 'docs/ARCHITECTURE.md', 'docs/TESTING.md', 'docs/CARD_REFERENCE.md', 'docs/POLISH_ROADMAP.md'];
+const CURRENT = ['README.md', 'docs/DESIGN.md', 'docs/ARCHITECTURE.md', 'docs/TESTING.md', 'docs/CARD_REFERENCE.md', 'docs/POLISH_ROADMAP.md', 'docs/ACADEMY_ROADMAP.md'];
 const allDocs = (dir: string): string[] => readdirSync(join(ROOT, dir)).flatMap((f) => {
   const p = join(dir, f);
   return statSync(join(ROOT, p)).isDirectory() ? allDocs(p) : p.endsWith('.md') ? [p] : [];

@@ -155,6 +155,8 @@ Status: **official**. We stop adding features and improve what exists. It follow
 - **Gate:** no current doc describes retired behaviour (direct jobs, wander, the starter plan as Auto rules, the old bandit). Links in the README and in the docs resolve.
 
 ### Phase 7: Playtest measures
+**Status: folded into `ACADEMY_ROADMAP.md` (phase 2)**, after the playtest feedback changed the game's direction.
+
 - **Local, opt-in measures:** time to the first coin, time and tries per lesson, reports at 0%, which report findings appeared and whether the next try improved, and lessons skipped or abandoned.
 - Shown in Settings as a plain summary; exported with the save, or on its own, only when the player chooses.
 - **Gate:**
