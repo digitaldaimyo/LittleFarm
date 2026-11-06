@@ -452,3 +452,8 @@ button.node { padding: 2px 9px; font-weight: 600; }
 }
 
 .num-input { width: 6.5em; margin-left: 6px; }
+/* Willowbrook Academy (Academy phase 0) */
+.academy .courses, .academy .pet-boards { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+.academy .course, .academy .pet-board { padding: 10px 12px; border-radius: 10px; background: var(--mat); display: grid; gap: 3px; }
+.academy .mentor { margin: 6px 0 0; }
+.academy .ranks .on { font-weight: 700; }
