@@ -14,6 +14,7 @@ import { deployedRevision, jobCapability } from './capability';
 import { GUARD_HOLD, afterDutyJob, chooseDuty, compilePlan, deployExploreExec, starterPlan, traceDecision, type ExecHow } from './plan';
 import { TIRED, CROPS, storeHalfFull, canPlantSomewhere, heldBasket, toteTarget } from './farmworld';
 import type { FarmRuntime, FarmFx } from './farm';
+import { homeLife } from './homestead';
 
 export function farmContext(s: GameState, pet: Pet, recentFail: boolean): ExecContext {
   const w = s.farm.world;
@@ -69,6 +70,8 @@ export function chooseInvocation(s: GameState, pet: Pet, rt: FarmRuntime): Invoc
   const d = chooseDuty(s, pet, plan, rows, ctx, rt.plan, rt.rng, how);
   if (d.guarded) rt.plan.guarded++;
   traceDecision(rt.plan, s.farm.tick, d.row ? `${d.row.label} → ${d.job!.label}: ${d.why}` : d.why);
+  // Academy edition: with nothing to do, a pet sometimes practises what it was certified in (Homestead, phase 2).
+  if (s.academy && !d.need && !d.guarded && (!d.row || d.job?.behaviorId === 'rest')) { const h = homeLife(s, pet, rt.rng); if (h) return h; }
   if (!d.row) return d.guarded && !d.need ? { ...mk('rest', 'plan', d.why), timeout: GUARD_HOLD } : mk('rest', 'plan', d.why);
   const row = d.row, job = d.job!;
   const prev = rt.plan.starts.at(-1)?.row;

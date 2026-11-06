@@ -5,7 +5,10 @@ import { Tips } from './Tips';
 import { LayoutPanel, layoutTap, openLayout } from './LayoutPanel';
 import { farmTips } from '../game/coach';
 import { describeRequest, requestHelp } from '../game/requests';
-import { SCHOOL } from '../game/academy';
+import { SCHOOL, petRank, petRecordOf } from '../game/academy';
+import { audio } from '../audio/engine';
+import { DECOR, buyDecoration } from '../game/homestead';
+import { CHALLENGES } from '../game/challenges';
 import { chapterById, startChapter } from '../game/tutorial';
 import { store, useStore } from './store';
 import { WorldView } from './WorldView';
@@ -137,6 +140,7 @@ export function FarmScreen() {
             highlight={layout ? layout.pick : g.pets.length > 1 && body ? { x: body.x, y: body.y } : null}
             label={`Farm. ${lead.name} is at column ${f.world.pet.x}, row ${f.world.pet.y}.`}
             fx={s.ui.fx}
+            decor={g.academy?.decor}
             onTile={layout ? layoutTap : manual ? (x, y) => { if (!queueManualPath(g, store.runtime, x, y)) store.toast('Can’t get there.', 'warn'); } : tapTile}
             tileLabel={(x, y) => (layout ? `Layout: tile ${x},${y}` : manual ? `Walk to ${x},${y}` : `Farm tile ${x},${y}`)}
           />
@@ -270,8 +274,9 @@ export function FarmScreen() {
         {g.academy ? (
           <div className="panel" data-tut="homestead-panel">
             <h3>Your homestead</h3>
-            <p className="small">Your pets live here. On Auto they look after the place with the skills they’ve learned: harvesting, hauling, planting, catching fireflies. Nothing here is for sale; it’s their home.</p>
-            <p className="small muted">Coming soon: decorate with the acorns your pets earn at {SCHOOL.name}, and see their rosettes on the wall.</p>
+            <p className="small">Your pets live here. When there’s nothing to do, they practise what they were certified in at {SCHOOL.name}: you’ll see them sit by the well or keep clear of the pond. Nothing here is for sale; it’s their home.</p>
+            <HomesteadShop />
+            <RosetteBoards />
             <div className="resources small muted">
               <span><b>{g.resources.berries}</b> berries gathered</span>
               <span><b>{g.resources.carrots}</b> carrots</span>
@@ -447,5 +452,45 @@ function ExecutiveInspector({ pet }: { pet: Pet }) {
       </table>
       <p className="small muted">Value = what choosing it got done (progress, weighted by its place in your list; quicker is worth a little more). One that gets nothing done in practice sinks toward 0, wherever it is listed.</p>
     </details>
+  );
+}
+
+/** Decorations bought with acorns (Academy phase 2: a few items, placed by the house; phase 3 adds placement). */
+function HomesteadShop() {
+  const s = useStore();
+  const a = s.state.academy!;
+  return (
+    <div data-tut="decor-shop">
+      <div className="row between wrap"><h4>Decorate</h4><span className="chip">{a.acorns} {SCHOOL.currency.many}</span></div>
+      {a.acorns === 0 && !(a.decor ?? []).length && <p className="small muted">Earn acorns with rosettes and merit badges at the Academy, then spend them here.</p>}
+      <div className="row gap wrap">
+        {DECOR.map((d) => (
+          <button key={d.id} className="btn small" data-tut={`buy-${d.id}`} title={d.about} disabled={a.acorns < d.price} onClick={() => {
+            let r: { ok: boolean; reason?: string } = { ok: false };
+            store.mutate((g) => { r = buyDecoration(g, d.id); });
+            if (r.ok) { audio.play('ui.unlock'); store.toast(`${d.label} placed by the house.`, 'good'); } else store.toast(r.reason ?? 'Can’t buy that.', 'warn');
+          }}>{d.label} · {d.price}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Each pet's rosettes from the Academy, with their merit badges. */
+function RosetteBoards() {
+  const s = useStore();
+  const g = s.state;
+  return (
+    <div data-tut="rosette-boards">
+      <h4>Rosettes</h4>
+      {g.pets.map((p) => {
+        const certs = Object.values(petRecordOf(g, p.id).certificates);
+        return (
+          <div key={p.id} className="small">
+            <b>{p.name}</b> · {petRank(g, p)} · {certs.length ? certs.map((c) => `🏵 ${CHALLENGES.find((x) => x.id === c.challengeId)?.title ?? c.challengeId}${c.badges.length ? ` (${c.badges.length} badge${c.badges.length === 1 ? '' : 's'})` : ''}`).join(' · ') : 'no rosettes yet'}
+          </div>
+        );
+      })}
+    </div>
   );
 }

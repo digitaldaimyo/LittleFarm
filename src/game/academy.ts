@@ -45,6 +45,8 @@ export interface AcademyState {
   pets: Record<string, { certificates: Record<string, Certificate>; exams: string[] }>;
   /** Courses whose opening word from Hazel the player has read. */
   greeted: string[];
+  /** Homestead decorations bought with acorns (drawn over the farm, never in the way). */
+  decor?: { id: number; item: string; x: number; y: number }[];
 }
 
 export function newAcademyState(): AcademyState {

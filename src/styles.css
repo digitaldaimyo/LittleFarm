@@ -463,3 +463,4 @@ button.node { padding: 2px 9px; font-weight: 600; }
 .challenge-banner { display: grid; gap: 4px; margin-bottom: 8px; }
 .challenge-banner .badges { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .certify { margin: 8px 0; }
+.decor { opacity: .95; }

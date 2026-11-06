@@ -232,6 +232,7 @@ export function parseGame(text: string): LoadResult {
     if (!isObj(a) || !isObj(a.pets)) return { ok: false, diagnostics: ['The Academy record in this save is malformed.'] };
     a.acorns = clamp(Number(a.acorns), 0, 1e9, 0);
     a.greeted = Array.isArray(a.greeted) ? a.greeted.filter((x: unknown) => typeof x === 'string') : [];
+    if (a.decor !== undefined) a.decor = Array.isArray(a.decor) ? a.decor.filter((d: any) => isObj(d) && typeof d.item === 'string' && Number.isInteger(d.x) && Number.isInteger(d.y)) : [];
   }
   let g: any = raw.game;
   let v = Number(g.version) || 1;

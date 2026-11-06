@@ -1,6 +1,6 @@
 import type { World } from '../sim/world';
 import type { PaletteId } from '../game/types';
-import { ObjectGlyph, PetSprite, type PetMood } from './art';
+import { DecorGlyph, ObjectGlyph, PetSprite, type PetMood } from './art';
 import type { FxItem } from './store';
 import { OBJECT_BY_ID } from '../domain/packs/farm';
 
@@ -26,11 +26,13 @@ export interface WorldViewProps {
   arrows?: { x: number; y: number; action: string; confidence: number; guessed: boolean }[];
   /** The other pets on duty (`world.crew`, same order). */
   crew?: { palette: PaletteId; mood: PetMood; name: string }[];
+  /** Homestead decorations (academy edition), drawn under objects and pets. */
+  decor?: { id: number; item: string; x: number; y: number }[];
 }
 
 const ARROW_ROT: Record<string, number> = { N: 0, E: 90, S: 180, W: 270 };
 
-export function WorldView({ world, palette, mood = 'idle', label, onTile, tileLabel, ghostIds, trail, fx, highlight, className, ground = 'pen', darkness, arrows, crew }: WorldViewProps) {
+export function WorldView({ world, palette, mood = 'idle', label, onTile, tileLabel, ghostIds, trail, fx, highlight, className, ground = 'pen', darkness, arrows, crew, decor }: WorldViewProps) {
   const dark = darkness ?? (world.night ? 1 : 0);
   const W = world.w * C, H = world.h * C;
   const tiles = [];
@@ -67,6 +69,11 @@ export function WorldView({ world, palette, mood = 'idle', label, onTile, tileLa
       {trail && trail.length > 1 && (
         <polyline className="trail" points={trail.map((p) => `${p.x * C + C / 2},${p.y * C + C / 2}`).join(' ')} />
       )}
+      {decor?.map((d) => (
+        <g key={`decor${d.id}`} transform={`translate(${d.x * C} ${d.y * C})`} pointerEvents="none" className="decor" data-tut={`decor-${d.item}`}>
+          <g transform="translate(4 4) scale(0.8)"><DecorGlyph item={d.item} /></g>
+        </g>
+      ))}
       {objs.map((o) => (
         <g key={o.id} transform={`translate(${o.x * C} ${o.y * C})`} className={ghostIds?.has(o.id) ? 'ghost' : 'obj'} pointerEvents="none">
           <g transform={o.kind === 'pond' ? undefined : 'translate(4 4) scale(0.8)'}><ObjectGlyph kind={o.kind === 'gate' && o.open ? 'gate-open' : o.kind} /></g>

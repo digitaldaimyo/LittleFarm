@@ -269,3 +269,74 @@ export function ObjectIcon({ kind, size = 24, title }: { kind: string; size?: nu
     </svg>
   );
 }
+
+/** Homestead decorations (Academy phase 2), in the same 40×40 space as object glyphs. */
+export function DecorGlyph({ item }: { item: string }) {
+  switch (item) {
+    case 'flowers':
+      return (
+        <g>
+          <rect x="6" y="26" width="28" height="8" rx="4" fill="#8F7A55" />
+          {[10, 17, 24, 31].map((x, i) => (
+            <g key={x}>
+              <path d={`M${x} 27 v-8`} stroke="#4E9A5B" strokeWidth="2" />
+              <circle cx={x} cy={18} r="4" fill={['#E06C8B', '#F0B44C', '#9C6ADE', '#EE8E4A'][i]} />
+              <circle cx={x} cy={18} r="1.5" fill="#FFF3C4" />
+            </g>
+          ))}
+        </g>
+      );
+    case 'lantern':
+      return (
+        <g>
+          <path d="M20 4 v6" stroke="#5B4A3A" strokeWidth="2" />
+          <rect x="13" y="10" width="14" height="18" rx="4" fill="#F7D774" stroke="#5B4A3A" strokeWidth="2" />
+          <circle cx="20" cy="19" r="4" fill="#FFF6D0" />
+          <rect x="15" y="28" width="10" height="4" rx="1" fill="#5B4A3A" />
+          <path d="M20 32 v4" stroke="#5B4A3A" strokeWidth="2" />
+        </g>
+      );
+    case 'bench':
+      return (
+        <g>
+          <rect x="5" y="14" width="30" height="5" rx="2" fill="#A0703F" />
+          <rect x="5" y="21" width="30" height="5" rx="2" fill="#B9844D" />
+          <rect x="8" y="26" width="3" height="9" fill="#6B4A2B" />
+          <rect x="29" y="26" width="3" height="9" fill="#6B4A2B" />
+        </g>
+      );
+    case 'birdhouse':
+      return (
+        <g>
+          <path d="M20 22 v14" stroke="#6B4A2B" strokeWidth="3" />
+          <path d="M9 14 L20 5 L31 14 Z" fill="#C2554A" />
+          <rect x="12" y="14" width="16" height="12" rx="2" fill="#E8C98E" />
+          <circle cx="20" cy="20" r="3" fill="#5B4A3A" />
+        </g>
+      );
+    case 'bunting':
+      return (
+        <g>
+          <path d="M3 8 q17 8 34 0" stroke="#5B4A3A" strokeWidth="1.5" fill="none" />
+          {[7, 14, 21, 28, 34].map((x, i) => <path key={x} d={`M${x - 3} ${9 + (i === 2 ? 3 : i % 2 ? 2 : 1)} l3 9 l3 -9 z`} fill={['#E06C8B', '#F0B44C', '#4E9A5B', '#5B8DD6', '#9C6ADE'][i]} />)}
+          <path d="M3 8 v28 M37 8 v28" stroke="#6B4A2B" strokeWidth="2" />
+        </g>
+      );
+    case 'ribbons':
+      return (
+        <g>
+          <rect x="6" y="5" width="28" height="22" rx="3" fill="#8F6A45" />
+          <rect x="8" y="7" width="24" height="18" rx="2" fill="#E9DCC4" />
+          {[13, 20, 27].map((x, i) => (
+            <g key={x}>
+              <circle cx={x} cy="13" r="3.5" fill={['#5B8DD6', '#C2554A', '#F0B44C'][i]} />
+              <path d={`M${x - 2} 16 l-1 6 l3 -2 l3 2 l-1 -6`} fill={['#5B8DD6', '#C2554A', '#F0B44C'][i]} />
+            </g>
+          ))}
+          <path d="M11 27 v8 M29 27 v8" stroke="#6B4A2B" strokeWidth="2.5" />
+        </g>
+      );
+    default:
+      return <circle cx="20" cy="20" r="8" fill="#ccc" />;
+  }
+}
