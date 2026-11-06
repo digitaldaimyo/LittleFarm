@@ -136,7 +136,7 @@ export function startTraining(pet: Pet, stage: StageSpec, opts: { resume: boolea
   if (opts.resume && current && templateOf(stage) === 'sense' && !sameSenseDef(current.learner, senseDefFor(stage))) {
     return `${pet.name}'s ${stage.learner.skill} r${current.rev} was trained with different senses or abilities. Use “Train fresh” to start a new version.`;
   }
-  const cost = trainingCost(stage);
+  const cost = trainingCost(stage, store.state);
   const prevSession = store.ui.training;
   const unsaved = opts.resume && prevSession?.policy && !prevSession.saved && prevSession.stage.id === stage.id && prevSession.petId === pet.id ? prevSession.policy : null;
   const resumeFrom = opts.resume && current && !unsaved ? current : null;

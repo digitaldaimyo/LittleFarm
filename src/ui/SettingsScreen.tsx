@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { store, useStore } from './store';
-import { parseGame, serializeGame } from '../persistence/save';
-import { newGame } from '../game/state';
+import { parseAcademySave, serializeGame } from '../persistence/save';
+import { newAcademyGame } from '../game/state';
 import { clearLocal } from '../persistence/storage';
 import { startChapter } from '../game/tutorial';
 import { audio } from '../audio/engine';
@@ -21,7 +21,7 @@ export function SettingsScreen() {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
   const importSave = async (f: File) => {
-    const r = parseGame(await f.text());
+    const r = parseAcademySave(await f.text());
     if (!r.ok) return store.toast(`Import failed: ${r.diagnostics.join(' ')}`, 'warn');
     store.load(r.game!, r.diagnostics);
     await store.saveNow();
@@ -73,8 +73,8 @@ export function SettingsScreen() {
 
 export async function resetGame() {
   await clearLocal();
-  store.load(newGame());
-  store.setUi({ modal: 'adopt', screen: 'farm' });
+  store.load(newAcademyGame());
+  store.setUi({ modal: 'adopt', screen: 'academy' });
 }
 
 function SoundSettings() {

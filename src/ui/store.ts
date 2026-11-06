@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import type { LayoutDraft, LayoutItemId, LayoutPreview } from '../game/layout';
 import type { GameState } from '../game/types';
-import { newGame } from '../game/state';
+import { newAcademyGame } from '../game/state';
 import { createRuntime, farmTick, type FarmFx, type FarmRuntime } from '../game/farm';
 import { advanceTutorial, chapterById, guide } from '../game/tutorial';
 import { saveLocal } from '../persistence/storage';
@@ -10,7 +10,7 @@ import type { TrainingSessionState } from './training';
 import type { EpisodeTrace } from '../learning/episodes';
 import { audio } from '../audio/engine';
 
-export type Screen = 'farm' | 'teach' | 'pets' | 'journal' | 'settings' | 'guide';
+export type Screen = 'academy' | 'farm' | 'teach' | 'pets' | 'journal' | 'settings' | 'guide';
 export type Binder = 'environment' | 'rules' | 'pet' | 'curriculum' | 'behaviors' | 'inspect';
 
 export interface SlotRef {
@@ -72,10 +72,10 @@ export interface LayoutUi {
 }
 
 class GameStore {
-  state: GameState = newGame();
+  state: GameState = newAcademyGame();
   runtime: FarmRuntime = createRuntime(this.state.farm);
   ui: UiState = {
-    screen: 'farm', binder: 'environment', slot: null, placing: null, placeMode: 'random', zoneStart: null, previewSeed: 1,
+    screen: 'academy', binder: 'environment', slot: null, placing: null, placeMode: 'random', zoneStart: null, previewSeed: 1,
     modal: null, toasts: [], fx: [], training: null, penReplay: null, farmPaused: false, loadDiagnostics: [], layout: null, farmPet: null, inspect: null,
   };
   version = 0;

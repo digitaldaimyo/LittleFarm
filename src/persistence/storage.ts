@@ -1,10 +1,11 @@
 import type { GameState } from '../game/types';
-import { parseGame, serializeGame } from './save';
+import { parseAcademySave, serializeGame } from './save';
 
 /** Local-only storage: IndexedDB with a localStorage fallback. Nothing leaves the device. */
 const DB = 'pen-deck';
 const STORE = 'saves';
-const KEY = 'slot1';
+// Academy edition (Academy roadmap): a fresh slot, so a farm-edition save is left alone and never loaded.
+const KEY = 'academy1';
 
 function openDb(): Promise<IDBDatabase | null> {
   return new Promise((resolve) => {
@@ -53,7 +54,7 @@ export async function loadLocal(): Promise<{ game: GameState | null; diagnostics
     try { text = localStorage.getItem(`${DB}:${KEY}`); } catch { text = null; }
   }
   if (!text) return { game: null, diagnostics: [] };
-  const r = parseGame(text);
+  const r = parseAcademySave(text);
   return { game: r.ok ? r.game! : null, diagnostics: r.diagnostics };
 }
 

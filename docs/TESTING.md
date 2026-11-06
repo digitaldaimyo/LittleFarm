@@ -1,7 +1,7 @@
 # Testing and benchmarks
 
 ## Automated suites (`npm test`)
-335 tests in 47 files. **CI** (`.github/workflows/ci.yml`, on every push and pull request): typecheck, lint, `npm test`, build, then `npm run e2e:cards`. Run the same before pushing. The full browser test, `npm run e2e` (every lesson, under 2 min after a build), stays local. Browser checks run against the built app: `npm run build` first.
+340 tests in 48 files. **CI** (`.github/workflows/ci.yml`, on every push and pull request): typecheck, lint, `npm test`, build, then `npm run e2e:cards`. Run the same before pushing. The full browser test, `npm run e2e` (every lesson, under 2 min after a build), stays local. Browser checks run against the built app: `npm run build` first.
 
 **Test pets have a fixed temperament.** `tests/setup.ts` gives every pet adopted in a test the default traits, because adoption seeds a random temperament from the clock and twice made a test fail only in the full run. A test that wants a random one calls `adoptRandomPet` from `tests/helpers.ts`.
 
@@ -42,6 +42,7 @@
 | `tests/teachwhat.test.ts` | Polish phase 4: the Guide's card reference lists every usable card with where it fits and a filled-in example (no “…”), and search finds cards by title (title matches first) or a hint word; each new card family (Compare and Stored, UNTIL, OR USE, a “which one” aim, measures vs notes, long chain, learned picks) is taught by a lesson; a half-built qualifier aim (“the nearest …”) reads as “…” and the farm keeps running while it is edited |
 | `tests/orderdiagnosis.test.ts` | Polish phase 5 gate: with “Otherwise nap” first (seeds 101 and 202), the diagnosis names that row and suggests moving it to the bottom (it has no WHEN); one tap brings the order within 5% of the learned picks (measured 98–99%), and the next check says it is fine. A good order is called fine; collecting the tally doesn't change the comparison; from a constructed tally it moves a row below the lowest one chosen instead, offers a preferred job first, and calls rare or unprofitable differences fine; the lesson's steps run check → read → mistake → fix → mode |
 | `tests/docs.test.ts` | Polish phase 6 gate: the current docs (README, DESIGN, ARCHITECTURE, TESTING, the card reference, the roadmap) don't present retired behaviour (direct jobs, Wander, Forage/Deliver, the bandit, plan mode, the rules executive) as current, every markdown link in the README and the docs resolves, and every file a current doc names exists |
+| `tests/academy.test.ts` | Academy phase 0 gate: a new game is the academy edition (Willowbrook's record, no Field Guide, the Lab open and free); a skill saved in the Lab is the pet's everywhere (skills, Homestead jobs, Academy board); no farm economy runs (a farm day earns no coins, posts no requests, plants with free seeds; the same farm in the farm edition earns and posts); the `pen-deck-academy` save round-trips and farm-edition saves are refused with a reason; five courses, ranks rising one per exam |
 | `tests/tuneups.test.ts` | Pen & cards phase 5 and polish phase 1: Plant, Open the gate, Shut the gate, Empty the basket, Harvest and Basket run certify at ≥ 80% on 6 training seeds at default traits; learned picks explore until practised, then stop, unless the player chose |
 | `tests/cardref.test.ts` | `docs/CARD_REFERENCE.md` matches the card registry (`npm run cards:ref` regenerates it) |
 | `tests/aims.test.ts` | Follow-up: “picks up the furthest berry from the house” pays for that berry, judged before the step (not the near one); a qualifier still can't go in a delivery's Into; aims read as words; Harvest aimed at the furthest berry picks it first; Go to aimed at a qualifier gets there |
@@ -119,12 +120,20 @@ This is emulation, not a real device. Most of the cost is style and paint from C
 ## Browser test (`npm run e2e`, `npm run e2e:cards`)
 
 Headless Chromium plays the game with real clicks against the built app (`npm run build` first). It starts its own preview server on port 4179.
-- **`e2e:cards`** (about 20 s, also run by CI): the card editor, picker focus, slots a card's phrase leaves out, your cards and lesson cards, pens (size, example layouts, play it yourself), the measured checks and their repairs, the Guide's card reference, and sound.
-- **`e2e`** (under 2 minutes): all of that, plus all 13 Field Guide lessons. Lessons 1–3 start from a new game. From lesson 4 on, it uses a prepared save (`scripts/e2e-save.ts`).
-  - Lesson 9 builds UNTIL, OR USE and a "which one" aim with the picker.
-  - Lesson 14 checks the order, puts "Otherwise nap" first, applies the one-tap fix, and confirms no task over 100 ms while practising.
-  - Then the pet roster.
+- **Part 1, from a new game** (`npm run e2e`):
+  - Willowbrook Academy's welcome; the tabs (Academy, Lab, Homestead, Pets, Journal, Settings); the course map with each exam locked; Pip as a Novice; acorns in the header.
+  - In the Lab, the first rule and SUCCESS built card by card, trained (no energy cost) and saved. The skill then shows on the Academy board and in Pets.
+  - A Homestead with no shop, layout or requests board.
+  - Sound: no AudioContext before the first click, every cue rendered and audible, gentle ambience.
+- **Part 2, from a prepared academy save** (`scripts/e2e-save.ts`; `npm run e2e:cards` runs only this part, and CI runs it):
+  - the card editor, picker focus, and slots a card's phrase leaves out;
+  - your cards and lesson cards;
+  - pens (size, example layouts, play it yourself);
+  - the measured checks and their repairs;
+  - the card reference in the Academy's Library;
+  - the music box, ambience, and muting.
 - Throughout: no page errors (they are printed when they happen) and no request leaves the page's origin. On a failure it saves a screenshot.
+- The farm edition's Field Guide walkthrough was removed in Academy phase 0. Its lessons return as Academy challenges in phase 2.
 
 ## Manual checks done
 In headless Chromium (Playwright), at desktop 1280×900 and phone 390×844:

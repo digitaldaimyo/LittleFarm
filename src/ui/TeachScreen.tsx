@@ -278,7 +278,7 @@ function TrainBar({ stage, pet, blocked }: { stage: StageSpec; pet: Pet; blocked
   const s = useStore();
   const t = s.ui.training;
   const busy = !!t && (t.status === 'running' || t.status === 'paused' || t.status === 'evaluating');
-  const can = canTrain(pet, stage);
+  const can = canTrain(pet, stage, s.state);
   const needsNav = templateOf(stage) === 'fetch' && !activeRevision(getSkill(pet, 'Approach')) && !activeRevision(getSkill(pet, 'Avoid'));
   const preflight = () => {
     const seeds = heldOutSeeds(stage).slice(0, 10);
@@ -298,7 +298,7 @@ function TrainBar({ stage, pet, blocked }: { stage: StageSpec; pet: Pet; blocked
     <div className="train-bar">
       <div className="small muted">
         {isGuideStage(stage) && <span className="badge-exp">Field Guide · free</span>}{' '}
-        {pet.name}: {Math.round(pet.energy)} energy · lesson costs {trainingCost(stage)} · {stage.learner.episodes} tries
+        {pet.name}: {Math.round(pet.energy)} energy · lesson costs {trainingCost(stage, s.state)} · {stage.learner.episodes} tries
         {existing ? ` · has ${stage.learner.skill} r${existing.activeRev}` : ''}
       </div>
       <div className="row gap wrap">

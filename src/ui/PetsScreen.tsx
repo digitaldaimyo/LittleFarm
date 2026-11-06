@@ -42,7 +42,7 @@ export function PetsScreen() {
             </div>
           </div>
           <div className="stats-grid">
-            <span>Coins earned <b>{pet.stats.coins}</b></span>
+            {!s.state.academy && <span>Coins earned <b>{pet.stats.coins}</b></span>}
             <span>Berries <b>{pet.stats.berries}</b></span>
             <span>Deliveries <b>{pet.stats.deliveries}</b></span>
             <span>Pond dips <b>{pet.stats.dips}</b></span>

@@ -422,6 +422,7 @@ export function chapterById(id: string | null): Chapter | null {
 
 /** Advance the active lesson, finish it when all steps are done, and offer newly relevant lessons. Returns true if anything changed. */
 export function advanceTutorial(s: GameState): boolean {
+  if (s.academy) return false; // the academy edition has no Field Guide: its lessons become Academy courses (phase 2)
   const g = guide(s);
   let moved = false;
   const ch = chapterById(g.active);

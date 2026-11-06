@@ -18,7 +18,7 @@ npm run dev        # http://localhost:5173
 | `npm run build` | Typecheck and production build into `dist/` (static files; `npm run preview` serves them) |
 | `npm run typecheck` / `npm run lint` | TypeScript / ESLint |
 | `npm test` | Vitest: every unit and gate test (see `docs/TESTING.md`) |
-| `npm run e2e:cards` / `npm run e2e` | Browser tests with real clicks: the card editor (about 20 s), or that plus all 13 Field Guide lessons (under 2 min). Run `npm run build` first; needs Playwright with Chromium |
+| `npm run e2e:cards` / `npm run e2e` | Browser tests with real clicks: the card editor and pens (about 20 s), or that plus a new game through the Academy, Lab and Homestead. Run `npm run build` first; needs Playwright with Chromium |
 | `npm run bench` / `npm run bench:farm -- --learned` | Pen and farm benchmarks on 5 seeds |
 | `npm run cards:ref` | Regenerates `docs/CARD_REFERENCE.md` from the card registry |
 
@@ -26,13 +26,10 @@ Requires Node 18+ (developed on Node 22). No secrets or environment variables. C
 
 ## Your first hour
 
-The Field Guide's *First lesson* walks you through it:
-1. Adopt a pet.
-2. Scatter a berry in the pen.
-3. Build the treat rule and SUCCESS card by card, then train **Approach**.
-4. Read the report: before, random and after, on 20 layouts your pet never saw. Then save the skill.
-5. *Teach a job: Harvest* builds the farm's first job as a routine, and the first coins come in.
-6. From there, lessons open as they become useful: Fetch, Avoid, your own skills, routines, responsibilities, the farm's layout, notes, and checking your order.
+Pen Deck is becoming **Willowbrook Academy**: a school where your pets pass challenges, rise through ranks (Novice → Apprentice → Journeypet → Adept → Master) and earn acorns for their home (see [`docs/ACADEMY_ROADMAP.md`](docs/ACADEMY_ROADMAP.md)). A new game opens in the Academy, with three tabs:
+- **Academy:** the course map, with each course's exam visible from the start, and every pet's rank and rosettes. Challenges arrive in the next phases.
+- **Lab:** the full training pen. Build pens and rules from cards, train, and save skills and routines. Practice is free.
+- **Homestead:** your pets' home, where they do what they've learned. Nothing here is for sale.
 
 ## Documentation
 

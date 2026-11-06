@@ -59,6 +59,7 @@ export function createRuntime(f: FarmState): FarmRuntime {
 }
 
 function earn(s: GameState, pet: Pet, amount: number, x: number, y: number, fx: FarmFx[]) {
+  if (s.academy) return; // academy edition: produce is flavour, not income (Academy roadmap, decision 2)
   s.resources.coins += amount;
   s.progress.totalCoins += amount;
   pet.stats.coins += amount;
@@ -68,7 +69,7 @@ function earn(s: GameState, pet: Pet, amount: number, x: number, y: number, fx: 
 
 function handleEvents(s: GameState, pet: Pet, events: SimEvent[], rt: FarmRuntime, fx: FarmFx[]): void {
   const w = s.farm.world;
-  trackRequests(s, events);
+  if (!s.academy) trackRequests(s, events);
   for (const e of events) {
     if (e.type === 'enter') {
       s.farm.stun = 3;
@@ -113,9 +114,9 @@ function handleEvents(s: GameState, pet: Pet, events: SimEvent[], rt: FarmRuntim
       addJournalOnce(s, pet.id, 'first-berry', `${pet.name} picked their first berry on the farm${rt.inv?.chosenBy === 'player' && rt.inv.behaviorId === 'manual' ? ' with your help' : ' all on their own'}. It earns coins once it reaches the house.`);
     } else if (e.type === 'plant') {
       // Sowing costs the seed; the plot starts growing.
-      const price = seedPrice(e.kind ?? 'carrot');
+      const price = s.academy ? 0 : seedPrice(e.kind ?? 'carrot'); // academy edition: seeds are free
       s.resources.coins -= price;
-      s.farm.production.push({ tick: s.farm.tick, coins: -price });
+      if (price) s.farm.production.push({ tick: s.farm.tick, coins: -price });
       pet.stats.planted = (pet.stats.planted ?? 0) + 1;
       fx.push({ type: 'sound', x: e.x, y: e.y, text: 'plant' });
       addJournalOnce(s, pet.id, 'first-plant', `${pet.name} planted ${e.kind === 'pumpkin' ? 'a pumpkin' : e.kind === 'sunflower' ? 'a sunflower' : 'carrots'} (seed: ${price} coin${price === 1 ? '' : 's'}). Field crops are replanted after every harvest; berry bushes regrow by themselves.`);
@@ -173,14 +174,14 @@ export function farmTick(s: GameState, rt: FarmRuntime): TickResult {
   }
   if (!pet) {
     f.rngState = rt.rng.state;
-    return { fx, unlocked: checkUnlocks(s) };
+    return { fx, unlocked: s.academy ? [] : checkUnlocks(s) };
   }
   syncCrew(s, rt, helpers);
   withOthers(s, rt, -1, () => petTurn(s, pet, rt, fx, {}));
   f.rngState = rt.rng.state;
   for (let i = 0; i < helpers.length; i++) helperTurn(s, i, rt, fx);
   if (f.production.length && f.tick - f.production[0].tick > 2400) f.production = f.production.filter((p) => f.tick - p.tick <= 2400);
-  return { fx, unlocked: checkUnlocks(s) };
+  return { fx, unlocked: s.academy ? [] : checkUnlocks(s) };
 }
 
 /** A pet's job changed: drop what it's doing so it decides afresh next tick (lead or helper). */
@@ -380,7 +381,7 @@ function petTurn(s: GameState, pet: Pet, rt: FarmRuntime, fx: FarmFx[], opts: St
   const f = s.farm;
   pet.mood += (60 - pet.mood) * 0.002;
   f.world.petEnergy = pet.energy;
-  f.world.seedCoins = s.resources.coins; // what planting may spend
+  f.world.seedCoins = s.academy ? undefined : s.resources.coins; // what planting may spend (academy edition: free)
   if (f.stun > 0) {
     f.stun--;
     return;

@@ -68,8 +68,8 @@ export function RosterModal() {
           })}
         </ul>
         <div className="row between">
-          <span className="small muted">{g.resources.coins} coins</span>
-          <button className="btn" disabled={g.resources.coins < ADOPT_PRICE} onClick={() => store.setUi({ modal: 'adopt-paid' })}>Adopt another pet ({ADOPT_PRICE})</button>
+          {!g.academy && <span className="small muted">{g.resources.coins} coins</span>}
+          <button className="btn" disabled={!g.academy && g.resources.coins < ADOPT_PRICE} onClick={() => store.setUi({ modal: 'adopt-paid' })}>Adopt another pet{g.academy ? '' : ` (${ADOPT_PRICE})`}</button>
         </div>
       </div>
     </div>

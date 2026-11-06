@@ -5,6 +5,7 @@ import { Tips } from './Tips';
 import { LayoutPanel, layoutTap, openLayout } from './LayoutPanel';
 import { farmTips } from '../game/coach';
 import { describeRequest, requestHelp } from '../game/requests';
+import { SCHOOL } from '../game/academy';
 import { chapterById, startChapter } from '../game/tutorial';
 import { store, useStore } from './store';
 import { WorldView } from './WorldView';
@@ -149,8 +150,8 @@ export function FarmScreen() {
           </div>
           <span className={`clock ${clock.night ? 'night' : ''}`} aria-label={`Day ${clock.day}, ${clock.label}`}>{clock.night ? '☾' : '☀'} Day {clock.day} · {clock.label}</span>
           {f.world.raining && <span className="clock rain" aria-label="Raining">☂ Rain — plots watered</span>}
-          <span className="muted small">{perMin} coins in the last minute</span>
-          {!layout && <button className="btn ghost small" data-tut="layout-btn" onClick={openLayout}>Layout…</button>}
+          {!g.academy && <span className="muted small">{perMin} coins in the last minute</span>}
+          {!layout && !g.academy && <button className="btn ghost small" data-tut="layout-btn" onClick={openLayout}>Layout…</button>}
         </div>
         {s.ui.inspect && !layout && (
           <div className="inspect small" role="status" aria-live="polite">
@@ -264,8 +265,20 @@ export function FarmScreen() {
           <button className="btn ghost" data-tut="plan-edit" onClick={() => setShowPlan(true)}>Edit responsibilities…</button>
         )}
 
-        <RequestsBoard />
+        {!g.academy && <RequestsBoard />}
 
+        {g.academy ? (
+          <div className="panel" data-tut="homestead-panel">
+            <h3>Your homestead</h3>
+            <p className="small">Your pets live here. On Auto they look after the place with the skills they’ve learned: harvesting, hauling, planting, catching fireflies. Nothing here is for sale; it’s their home.</p>
+            <p className="small muted">Coming soon: decorate with the acorns your pets earn at {SCHOOL.name}, and see their rosettes on the wall.</p>
+            <div className="resources small muted">
+              <span><b>{g.resources.berries}</b> berries gathered</span>
+              <span><b>{g.resources.carrots}</b> carrots</span>
+              {(g.resources.fireflies ?? 0) > 0 && <span><b>{g.resources.fireflies}</b> fireflies</span>}
+            </div>
+          </div>
+        ) : (
         <div className="panel">
           <div className="resources">
             <span><b>{g.resources.coins}</b> coins</span>
@@ -283,6 +296,7 @@ export function FarmScreen() {
           ) : <div className="small muted">All main unlocks earned. Try the shop!</div>}
           <button className="btn" onClick={() => s.setUi({ modal: 'shop' })}>Open shop</button>
         </div>
+        )}
       </aside>
     </div>
   );

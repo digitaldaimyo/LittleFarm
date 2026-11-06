@@ -20,6 +20,12 @@ scripts/        benchmarks (bench.ts, bench-farm.ts, recipe-sweep.ts), the card 
 public/sw.js    service worker for offline play
 ```
 
+**The academy edition (Academy roadmap, phase 0).** `game/academy.ts` holds the school (courses, ranks, per-pet records, acorns).
+- **Edition switch:** a game with `GameState.academy` is the academy edition. `newAcademyGame()` makes one, and the app uses only that. `newGame()` (the farm edition) remains for tests and benchmarks until Academy phase 6.
+- **What the academy edition switches off:** earnings, requests, seed costs, unlocks from coins and lesson energy, each checked at its source in `game/farm.ts`, `game/farmworld.ts` and `game/state.ts`.
+- **Saves:** the `pen-deck-academy` format (`ACADEMY_SAVE_VERSION`), loaded only by `parseAcademySave`, in a fresh storage slot.
+- **UI:** `ui/AcademyScreen.tsx` is the Academy tab.
+
 **Ground rules.**
 - Game rules never import React.
 - The UI edits the **canonical spec** (`StageSpec`, `SpecNode`), and everything else compiles from it. The Inspect binder shows that exact JSON.

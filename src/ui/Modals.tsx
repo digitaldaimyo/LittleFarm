@@ -7,6 +7,7 @@ import { NAME_SUGGESTIONS, PALETTES, adoptPet } from '../game/pets';
 import { SHOP, buy, canBuy } from '../game/progression';
 import type { PaletteId } from '../game/types';
 import { resetGame } from './SettingsScreen';
+import { SCHOOL } from '../game/academy';
 
 function Dialog({ title, children, onClose }: { title: string; children: React.ReactNode; onClose?: () => void }) {
   return (
@@ -27,7 +28,7 @@ export function AdoptModal({ paid }: { paid?: boolean }) {
   const first = s.state.pets.length === 0;
   const done = () => {
     store.mutate((g) => {
-      if (paid) { if (!buy(g, 'adopt').ok) return; }
+      if (paid && !g.academy) { if (!buy(g, 'adopt').ok) return; } // academy edition: free until the Homestead prices things (phase 3)
       adoptPet(g, name, pal);
     });
     audio.unlock(); // the first click of a new game is a user gesture: sound can start here
@@ -36,8 +37,10 @@ export function AdoptModal({ paid }: { paid?: boolean }) {
     void store.saveNow();
   };
   return (
-    <Dialog title={first ? 'Welcome to Pen Deck' : 'Adopt another pet'} onClose={first ? undefined : () => store.setUi({ modal: null })}>
-      {first && <p>You run a little farm. Your pet can learn real skills in the training pen — then put them to work. Let’s meet your first trainee.</p>}
+    <Dialog title={first ? (s.state.academy ? `Welcome to ${SCHOOL.name}` : 'Welcome to Pen Deck') : 'Adopt another pet'} onClose={first ? undefined : () => store.setUi({ modal: null })}>
+      {first && (s.state.academy
+        ? <p>{SCHOOL.mentor} trains pets the old way: you teach, they learn, for real. Pass a course’s exam and your pet rises a rank. Let’s meet your first pupil.</p>
+        : <p>You run a little farm. Your pet can learn real skills in the training pen — then put them to work. Let’s meet your first trainee.</p>)}
       <div className="adopt">
         <PetSprite palette={pal} size={96} mood="celebrate" />
         <div className="grow">
@@ -49,7 +52,7 @@ export function AdoptModal({ paid }: { paid?: boolean }) {
         </div>
       </div>
       <div className="row gap end">
-        <button className="btn primary" disabled={!name.trim()} onClick={done}>{paid ? 'Adopt (20 coins)' : `Adopt ${name || ''}`}</button>
+        <button className="btn primary" disabled={!name.trim()} onClick={done}>{paid && !s.state.academy ? 'Adopt (20 coins)' : `Adopt ${name || ''}`}</button>
       </div>
     </Dialog>
   );

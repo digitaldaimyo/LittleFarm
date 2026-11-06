@@ -100,7 +100,8 @@ export function regrow(s: GameState): void {
 
 /** Empty soil whose seed the farm can afford right now. */
 export function canPlantSomewhere(w: World): boolean {
-  return w.objects.some((o) => o.kind === 'soil' && onGround(o) && (w.seedCoins ?? 0) >= seedPrice(o.crop ?? 'carrot'));
+  // No purse (pens, and the academy edition's free seeds) means planting is free — as `cond.canAfford` reads it.
+  return w.objects.some((o) => o.kind === 'soil' && onGround(o) && (w.seedCoins === undefined || w.seedCoins >= seedPrice(o.crop ?? 'carrot')));
 }
 
 /** Is any basket or shed (on the ground) at least half full? */
@@ -248,10 +249,10 @@ export function seedGift(s: GameState, fx: FarmFx[] = []): boolean {
 export function updateClock(s: GameState, rt: FarmRuntime, fx: FarmFx[]): void {
   const w = s.farm.world;
   const { night, day } = dayInfo(s.farm.tick);
-  if (!s.farm.requests && s.pets.length) postRequests(s, rt.rng, day); // first board of the game
+  if (!s.academy && !s.farm.requests && s.pets.length) postRequests(s, rt.rng, day); // first board of the game (no requests in the academy edition)
   if (night === !!w.night) return;
   w.night = night;
-  if (night) nightfallRequests(s);
+  if (s.academy) { /* no requests board in the academy edition */ } else if (night) nightfallRequests(s);
   else postRequests(s, rt.rng, day);
   if (night) {
     const free: [number, number][] = [];
@@ -269,7 +270,7 @@ export function updateClock(s: GameState, rt: FarmRuntime, fx: FarmFx[]): void {
   } else {
     w.objects = w.objects.filter((o) => o.kind !== 'firefly');
     fx.push({ type: 'sound', x: w.pet.x, y: w.pet.y, text: 'dawn' });
-    seedGift(s, fx);
+    if (!s.academy) seedGift(s, fx);
   }
 }
 

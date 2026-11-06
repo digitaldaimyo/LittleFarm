@@ -10,8 +10,15 @@ import { stageRoots, walk } from '../domain/spec';
 import type { SpecNode } from '../domain/types';
 import { presetSenses } from '../learning/senses';
 
+/**
+ * The academy edition's save (Academy roadmap, phase 0): a new format, its own version line, and no migration from
+ * farm-edition saves (decision 3). Its game has the same shape plus `academy`.
+ */
+export const ACADEMY_FORMAT = 'pen-deck-academy';
+export const ACADEMY_SAVE_VERSION = 1;
+
 export interface SaveEnvelope {
-  format: 'pen-deck-save';
+  format: 'pen-deck-save' | typeof ACADEMY_FORMAT;
   version: number;
   exportedAt: number;
   game: GameState;
@@ -24,7 +31,9 @@ export interface LoadResult {
 }
 
 export function serializeGame(g: GameState): string {
-  const env: SaveEnvelope = { format: 'pen-deck-save', version: SAVE_VERSION, exportedAt: Date.now(), game: g };
+  const env: SaveEnvelope = g.academy
+    ? { format: ACADEMY_FORMAT, version: ACADEMY_SAVE_VERSION, exportedAt: Date.now(), game: g }
+    : { format: 'pen-deck-save', version: SAVE_VERSION, exportedAt: Date.now(), game: g };
   return JSON.stringify(env);
 }
 
@@ -215,7 +224,15 @@ export function parseGame(text: string): LoadResult {
   } catch {
     return { ok: false, diagnostics: ['This file is not valid JSON.'] };
   }
-  if (!isObj(raw) || raw.format !== 'pen-deck-save' || !isObj(raw.game)) return { ok: false, diagnostics: ['This is not a Pen Deck save file.'] };
+  const academy = isObj(raw) && raw.format === ACADEMY_FORMAT;
+  if (!isObj(raw) || (raw.format !== 'pen-deck-save' && !academy) || !isObj(raw.game)) return { ok: false, diagnostics: ['This is not a Pen Deck save file.'] };
+  if (academy) {
+    if (Number(raw.version) > ACADEMY_SAVE_VERSION) return { ok: false, diagnostics: [`This save is from a newer version of the Academy (v${raw.version}). Please update the game.`] };
+    const a = raw.game.academy;
+    if (!isObj(a) || !isObj(a.pets)) return { ok: false, diagnostics: ['The Academy record in this save is malformed.'] };
+    a.acorns = clamp(Number(a.acorns), 0, 1e9, 0);
+    a.greeted = Array.isArray(a.greeted) ? a.greeted.filter((x: unknown) => typeof x === 'string') : [];
+  }
   let g: any = raw.game;
   let v = Number(g.version) || 1;
   if (v > SAVE_VERSION) return { ok: false, diagnostics: [`This save is from a newer version (v${v}). Please update the game.`] };
@@ -274,4 +291,16 @@ export function parseGame(text: string): LoadResult {
 
 function clamp(x: number, lo: number, hi: number, d: number): number {
   return Number.isFinite(x) ? Math.max(lo, Math.min(hi, x)) : d;
+}
+
+/**
+ * The app's loader (academy edition): academy saves only. A farm-edition save is refused with a clear reason, since
+ * the Academy is a fresh start (Academy roadmap, decision 3).
+ */
+export function parseAcademySave(text: string): LoadResult {
+  let raw: any;
+  try { raw = JSON.parse(text); } catch { return { ok: false, diagnostics: ['This file is not valid JSON.'] }; }
+  if (isObj(raw) && raw.format === 'pen-deck-save') return { ok: false, diagnostics: ['This save is from the farm edition of Pen Deck. Willowbrook Academy is a fresh start, so farm saves can’t be opened here.'] };
+  if (!isObj(raw) || raw.format !== ACADEMY_FORMAT) return { ok: false, diagnostics: ['This is not a Pen Deck save file.'] };
+  return parseGame(text);
 }

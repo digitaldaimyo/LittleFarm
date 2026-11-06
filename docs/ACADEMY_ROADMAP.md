@@ -39,6 +39,26 @@ The Academy teaches the systems players later use freely in the Lab. The Homeste
 12. **No energy cost for challenges.** Practice time is the only pacing. Energy and naps remain Homestead flavour.
 13. **A challenge may require a skill the pet already has, but only one an earlier challenge taught.** For example, a routine exam needs a certified Approach. The Academy always teaches it first, so the Lab is where a pet gets better, never where a player is forced to go. A requirement names the skill and the course that teaches it.
 
+## The school (phase 0 framing)
+
+- **Willowbrook Academy:** a small, cozy school at the edge of a village green, with a training yard, a library of cards and a ribbon wall.
+- **Professor Hazel,** an old, unhurried tortoise who has trained pets for decades, is the mentor. She is warm and a little dry. She speaks when a course opens and when a new card appears, then steps back:
+  > "Pip will only learn what you reward. Shall we see what you're rewarding?"
+- **Ranks**, per pet: Novice → Apprentice → Journeypet → Adept → Master. A pet starts as a Novice and rises one rank with each course's exam.
+- **Courses**, each ending in a rank exam that is visible from the start:
+
+  | Course | About | Exam earns |
+  |---|---|---|
+  | First Steps | Going places, treats and SUCCESS | Apprentice |
+  | Fetch and Carry | Carrying things where they belong | Journeypet |
+  | Thinking Ahead | Senses, notes and measures | Adept |
+  | Working Together | Routines that combine skills | Master |
+  | A Day's Work | Responsibilities, several pets, a whole day | (an honour, not a rank) |
+
+- **Certificates:** a passed challenge earns the pet a **rosette**. Each mastery star adds a **merit badge** to it. Rosettes hang on the pet's board at home.
+- **Currency: acorns.** Earned from certificates and merit badges, spent in the Homestead.
+- **Pets stay "pets":** no species names in the fiction.
+
 ## Mapping what exists
 
 | Existing | Becomes |
@@ -61,6 +81,25 @@ Retired:
 ## Phases and gates
 
 ### Phase 0: Decisions and the new shell
+**Status: done.**
+- **The framing** is above (*The school*). `src/game/academy.ts` holds the school, ranks, courses, per-pet records and acorns.
+- **New games are the academy edition:**
+  - they open in Willowbrook Academy, whose map shows the five courses with their exams visible and locked;
+  - each pet has a rank and a certificate board, and the header shows acorns;
+  - tabs: Academy, Lab (the Teach screen), Homestead (the farm), Pets, Journal, Settings;
+  - the Guide's notebook, glossary and card reference are the Academy's Library.
+- **Saves** use the new `pen-deck-academy` format (v1) in a fresh storage slot; farm-edition saves are refused with a reason.
+- **No farm economy in the academy edition:**
+  - nothing sells, no requests board, no shop or Layout;
+  - seeds are free, and nothing unlocks from coins;
+  - practice in the Lab costs no energy;
+  - adopting is free for now.
+
+  Until the Academy introduces cards (phase 2), the Lab offers every card.
+- **Kept until phase 6:** the farm edition stays reachable only from tests and benchmarks (`newGame()`), so existing tests keep guarding the shared engine.
+- **Found and fixed:** with free seeds, pets never planted (an unset purse read as 0 coins).
+- **Gate:** `tests/academy.test.ts` and the browser test (`npm run e2e`, part 1). A new game starts in the Academy; a skill saved in the Lab is on the pet's board, in its skills and usable at home; over a farm day no coins are earned, no requests posted, seeds are free, and produce still counts as flavour.
+
 - Settle the proposed decisions above.
 - Define the new save format (v1 of the Academy era).
 - **The app shell:** Academy, Lab and Homestead tabs; pets and their skills shared across all three.

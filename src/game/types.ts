@@ -1,3 +1,4 @@
+import type { AcademyState } from './academy';
 import type { AudioSettings } from './sound';
 import type { LearnerTemplate, SkillName, SpecNode, StageSpec, Template } from '../domain/types';
 import type { SenseSkillDef } from '../learning/policies';
@@ -247,5 +248,7 @@ export interface GameState {
   recentCards: string[];
   favorites: string[];
   purchases: string[];
+  /** The academy edition (Academy roadmap): the school's record. Absent in farm-edition games (legacy, tests only). */
+  academy?: AcademyState;
   extensions?: Record<string, unknown>;
 }

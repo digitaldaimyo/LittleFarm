@@ -9,13 +9,15 @@ import { SettingsScreen } from './SettingsScreen';
 import { AdoptModal, ConfirmReset, ShopModal } from './Modals';
 import { ackStep, currentStep, guide, pauseChapter } from '../game/tutorial';
 import { GuideScreen } from './GuideScreen';
+import { AcademyScreen } from './AcademyScreen';
+import { SCHOOL } from '../game/academy';
 import { activePet } from '../game/pets';
 import { warmTrainingWorker } from './training';
 import { audio } from '../audio/engine';
 import { toggleSound } from './sound';
 import { voicePitch } from '../game/sound';
 
-const NAV: { id: Screen; label: string }[] = [
+const FARM_NAV: { id: Screen; label: string }[] = [
   { id: 'farm', label: 'Farm' },
   { id: 'teach', label: 'Teach' },
   { id: 'pets', label: 'Pets' },
@@ -23,7 +25,16 @@ const NAV: { id: Screen; label: string }[] = [
   { id: 'journal', label: 'Journal' },
   { id: 'settings', label: 'Settings' },
 ];
-const SCREEN_LABEL: Record<string, string> = { farm: 'the Farm', teach: 'Teach', pets: 'Pets', guide: 'the Guide', journal: 'the Journal' };
+/** The academy edition (Academy roadmap): Academy (main progression), Lab (the Teach screen), Homestead (the farm). */
+const ACADEMY_NAV: { id: Screen; label: string }[] = [
+  { id: 'academy', label: 'Academy' },
+  { id: 'teach', label: 'Lab' },
+  { id: 'farm', label: 'Homestead' },
+  { id: 'pets', label: 'Pets' },
+  { id: 'journal', label: 'Journal' },
+  { id: 'settings', label: 'Settings' },
+];
+const SCREEN_LABEL: Record<string, string> = { farm: 'the Farm', teach: 'Teach', pets: 'Pets', guide: 'the Guide', journal: 'the Journal', academy: 'the Academy' };
 
 export function App() {
   const s = useStore();
@@ -31,6 +42,7 @@ export function App() {
   const step = currentStep(g);
   const offered = Object.values(guide(g).status).filter((x) => x === 'offered').length;
   const pet = activePet(g);
+  const NAV = g.academy ? ACADEMY_NAV : FARM_NAV;
 
   useEffect(() => {
     const mq = window.matchMedia?.('(prefers-reduced-motion: reduce)');
@@ -69,14 +81,14 @@ export function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand"><span className="logo" aria-hidden>▦</span> Pen Deck</div>
+        <div className="brand"><span className="logo" aria-hidden>▦</span> Pen Deck{g.academy && <span className="small muted hide-sm"> · {SCHOOL.name}</span>}</div>
         <nav className="nav" aria-label="Main">
           {NAV.map((n) => (
             <button key={n.id} data-tut={`nav-${n.id}`} className={`nav-btn ${s.ui.screen === n.id ? 'on' : ''} ${step?.screen === n.id && s.ui.screen !== n.id ? 'pulse' : ''}`} aria-current={s.ui.screen === n.id ? 'page' : undefined} onClick={() => s.setUi({ screen: n.id, slot: null, placing: null })}>{n.label}</button>
           ))}
         </nav>
         <div className="top-res" aria-label="Resources">
-          <span title="Coins"><b>{g.resources.coins}</b> coins</span>
+          {g.academy ? <span title={`Earned at ${SCHOOL.name}`}><b>{g.academy.acorns}</b> {SCHOOL.currency.many}</span> : <span title="Coins"><b>{g.resources.coins}</b> coins</span>}
           <button className="icon-btn small mute-btn" aria-pressed={!g.settings.sound} aria-label={g.settings.sound ? 'Mute sound (M)' : 'Turn sound on (M)'} title={g.settings.sound ? 'Mute sound (M)' : 'Turn sound on (M)'} onClick={toggleSound}>{g.settings.sound ? '🔈' : '🔇'}</button>
           {pet && <span className="small muted hide-sm">{pet.name} · {Math.round(pet.energy)}⚡</span>}
         </div>
@@ -104,6 +116,7 @@ export function App() {
       {step?.highlight && <style>{`[data-tut="${step.highlight}"]{outline:3px solid #F0B44C;outline-offset:3px;border-radius:10px;animation:tutglow 1.6s ease-in-out infinite}`}</style>}
 
       <main className="main">
+        {s.ui.screen === 'academy' && <AcademyScreen />}
         {s.ui.screen === 'farm' && <FarmScreen />}
         {s.ui.screen === 'teach' && <TeachScreen />}
         {s.ui.screen === 'pets' && <PetsScreen />}

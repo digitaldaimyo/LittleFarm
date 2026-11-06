@@ -141,7 +141,7 @@ const GLOSSARY: [string, string][] = [
   ['Responsibilities', 'What a pet on Auto looks after: WHEN … USE a job (OR USE others) … UNTIL …, in priority order. Needs (rest, sleep) come first.'],
 ];
 
-function Glossary() {
+export function Glossary() {
   return (
     <>
       <div className="panel">
@@ -154,7 +154,7 @@ function Glossary() {
 }
 
 /** Every card, searchable by title or hint, with where it fits and how it reads (polish phase 4). */
-function CardReference() {
+export function CardReference() {
   const [q, setQ] = useState('');
   const found = searchCards(q);
   const shown = found.slice(0, q ? 60 : 24);

@@ -1,5 +1,7 @@
 # Design
 
+> **Changing now:** the game is becoming Willowbrook Academy (`docs/ACADEMY_ROADMAP.md`). Since Academy phase 0, a new game opens in the Academy, with the Lab (the Teach screen) and the Homestead (the farm). Coins, selling, requests, the shop, Layout, lesson energy and the Field Guide described below are off in new games. Teaching, learning, pets and responsibilities work as described. This document is rewritten in Academy phase 6.
+
 What Pen Deck is and how it plays today. How it is built is in `docs/ARCHITECTURE.md`; the measurements behind the numbers here are in `docs/TESTING.md`. Earlier plans and the history of each feature are in `docs/history/`.
 
 ## The idea

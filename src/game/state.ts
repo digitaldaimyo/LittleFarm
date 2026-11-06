@@ -3,6 +3,8 @@ import type { StageSpec } from '../domain/types';
 import { buildTutorialStage } from '../domain/recipes';
 import { createFarm } from './farm';
 import { SAVE_VERSION, type GameState, type Pet } from './types';
+import { newAcademyState } from './academy';
+import { UNLOCKS } from './progression';
 
 export function newGame(): GameState {
   const tut = buildTutorialStage();
@@ -29,14 +31,29 @@ export function newGame(): GameState {
   };
 }
 
-/** Training costs energy (it's tiring!). Naps refill it. */
-export function trainingCost(stage: StageSpec): number {
+/**
+ * A new game of the academy edition (Academy roadmap, phase 0): it starts in Willowbrook Academy. No farm economy:
+ * nothing is sold, no requests, free seeds. Until the Academy introduces cards (phase 2), the Lab offers everything.
+ */
+export function newAcademyGame(): GameState {
+  const g = newGame();
+  g.academy = newAcademyState();
+  g.progress.guide = { status: {}, active: null, step: 0 };
+  g.progress.tutorialDone = true;
+  g.progress.unlocks = [...UNLOCKS.map((u) => u.id), 'trees', 'fences', 'scarecrow', 'sunflowers', 'pumpkins'];
+  g.stages[0].name = 'Lab: Go to the berry';
+  return g;
+}
+
+/** Training costs energy (it's tiring!). Naps refill it. In the academy edition practice is free (decision 12). */
+export function trainingCost(stage: StageSpec, s?: GameState): number {
+  if (s?.academy) return 0;
   if (stage.id === 'stage-tutorial' || (stage.extensions as Record<string, unknown> | undefined)?.guide) return 0; // Field Guide lessons are free
   return stage.learner.skill === 'Avoid' ? 20 : 15;
 }
 
-export function canTrain(p: Pet, stage: StageSpec): { ok: boolean; reason?: string } {
-  const cost = trainingCost(stage);
+export function canTrain(p: Pet, stage: StageSpec, s?: GameState): { ok: boolean; reason?: string } {
+  const cost = trainingCost(stage, s);
   if (p.energy < cost) return { ok: false, reason: `${p.name} is sleepy (${Math.round(p.energy)} energy, lessons cost ${cost}). Let them nap on the farm or buy a snack.` };
   return { ok: true };
 }
