@@ -210,7 +210,7 @@ export interface JournalEntry {
 export interface Settings {
   reducedMotion: 'system' | 'on' | 'off';
   sound: boolean;
-  /** Volumes and sound options (docs/SOUND_PLAN.md). Filled from defaults when loading older saves. */
+  /** Volumes and sound options (docs/history/SOUND_PLAN.md). Filled from defaults when loading older saves. */
   audio: AudioSettings;
   farmSpeed: number;
   trainSpeed: 'watch' | 'normal' | 'fast';

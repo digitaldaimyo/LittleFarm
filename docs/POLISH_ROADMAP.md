@@ -15,7 +15,7 @@ Status: **official**. We stop adding features and improve what exists. It follow
 3. **Learned picks have an unclear pitch.** On a good order they earn 84–95% of the fixed order; they only win when the order has a mistake.
 4. **Executive practice freezes the page.** Practice plus comparison runs on the main thread (about 0.4 s in Node, more in a browser). Pen training already uses a worker.
 5. **Code health:**
-   - Code names differ from what players see: `forage` / `deliver` / `tote` / `bin` / `plan.row` / `chooser` versus Harvest / Haul / Basket run / Basket / Responsibility.
+   - Code names differed (before phase 3) from what players see: `forage` / `deliver` / `tote` / `bin` / `plan.row` / `chooser` versus Harvest / Haul / Basket run / Basket / Responsibility.
    - Dead code remains: `harvestTarget` / `harvestDestination`, the old bandit's `ExecutiveTable`, `describeContext`, `FarmPlan.chooser`.
    - Old modes (direct jobs, plan) are converted at runtime as well as in saves.
    - Some files are large: `farm.ts` 1,077 lines, `TeachScreen.tsx` 1,060, and `plan.ts` mixes responsibilities with both executives.
@@ -80,7 +80,7 @@ Status: **official**. We stop adding features and improve what exists. It follow
 - `bench:farm --learned` is identical on all 60 runs. A v10 save fixture loads intact and plays its next day identically.
 
 - **Rename internals to the player's words:**
-  - jobs: `forage`→`harvest`, `deliver`→`haul`, `tote`→`basketRun`;
+  - jobs (old → new): `forage`→`harvest`, `deliver`→`haul`, `tote`→`basketRun`;
   - the responsibility card id gets an alias, with the old id still loading;
   - `FarmPlan`→`Responsibilities`;
   - executive modes `rules`/`learned`→`order`/`learned`.
@@ -142,6 +142,13 @@ Status: **official**. We stop adding features and improve what exists. It follow
   - On a good order, it says the order is fine.
 
 ### Phase 6: Docs consolidation
+**Status: done.**
+- `docs/DESIGN.md` (new) and `docs/ARCHITECTURE.md` (rewritten) describe the game and the code as they are.
+- `docs/TESTING.md` keeps the suites and current measurements.
+- Finished plans, the old design doc, the phase-by-phase architecture log and earlier measurements are in `docs/history/`, with an index.
+- The README is a short front page.
+- `tests/docs.test.ts` enforces the gate: no retired behaviour presented as current, links resolve, and named files exist.
+
 - **One current `docs/DESIGN.md`** (what the game is and how it plays now) and **one `docs/ARCHITECTURE.md`**.
 - Finished plans and roadmaps move to `docs/history/`.
 - The README becomes a short front page linking to them.

@@ -1,0 +1,269 @@
+# Architecture
+
+```
+src/
+  domain/       canonical typed spec, card registry (Farm pack), validation, contextual hand, recipes, repairs
+  sim/          deterministic gridworld (rng, world, compile: spec → runnable stage)
+  domain/describe.ts  cards and rules as plain sentences
+  learning/     features, Double-Q tables, policies/executors, trainer, evaluation/report, executive, worker,
+                summaries, probe, measured lesson checks (lint)
+  game/         pets & skills, farm runtime, plans, requests, expansion, progression/shop,
+                Field Guide (tutorial), coaching tips, skill cards, lesson cards, sound cues, journal, game state
+  persistence/  versioned save format + IndexedDB storage (localStorage fallback)
+  audio/        sound kit (synthesis recipes) and the Web Audio engine (browser only)
+  ui/           React presentation only (store, screens, cards/sleeves, charts, replay)
+tests/          vitest suites (+ fixtures/: a real v1 save, a rich v10 save, a player's skill card, layout fingerprints)
+scripts/        bench.ts (npm run bench), tutorial-evidence.ts (npm run evidence),
+                e2e-guide.mjs (npm run e2e, Playwright) + e2e-save.ts (its prepared save),
+                layout-fingerprint.ts (the layouts fixture)
+public/sw.js    service worker for offline play
+```
+
+## Modules and names (polish phase 3)
+
+Large files were split by purpose; each original module re-exports its parts, so imports didn't change.
+
+| Module | Holds |
+|---|---|
+| `game/farm.ts` | the farm runtime: `FarmRuntime`, `farmTick`, a pet's turn, events, duty and the crew of pets |
+| `game/farmworld.ts` | world upkeep: size, crops and prices, the day clock, weather, creatures, regrowth, `cropSpot`, `toteTarget`, `describeTile` |
+| `game/farmjobs.ts` | job executors (`buildExecutor`, through `runCapability`) and claims |
+| `game/farmexec.ts` | the executive glue: `farmContext`, `chooseInvocation`, `finishInvocation`, `workDone` |
+| `game/farmlessons.ts` | runs on farm copies: `previewPlan`, `practiseExecutive`, `compareExecutives` |
+| `game/responsibilities.ts` | `starterPlan`, `jobPlan`, `compilePlan`, `jobPossible`, warnings |
+| `game/plan.ts` | the ordered executive: `chooseDuty`, `afterDutyJob`, cooldowns, the trace |
+| `game/learnedpicks.ts` | learned picks: `ExecValues`, `rankWeight`, exploring |
+| `ui/TeachScreen.tsx` + `EnvironmentBinder` / `RulesBinder` / `PetBinder` / `CurriculumBinder` | the Teach screen and its binders |
+| `domain/recipes.ts` + `jobrecipes.ts` + `recipekit.ts` | recipes: skills, farm-job routines, and the builder helpers |
+| `sim/compile.ts` + `sim/generate.ts` | compiling a lesson, and building a pen's world for a seed |
+
+**Names match what players see.**
+- Jobs: `harvest`, `haul`, `basketRun`, `plant`, `rest`, `skill`.
+- Their cards: `job.harvest`, `job.haul`, `job.basketRun`.
+- A responsibility is the `plan.responsibility` card (type `Responsibility`). A pet's list is `Responsibilities`, kept in `pet.plan`.
+- The executive's modes are `order` and `learned` (comparisons add `random`).
+
+**Old names still load.** Saves migrate at v10 → v11. Skill and lesson cards rename old card ids on import (`domain/aliases.ts`: `job.forage`, `job.deliver`, `job.tote`, `plan.row`).
+
+**Removed:**
+- The retired bandit's `ExecutiveTable`, `describeContext`, and the plan's `chooser` / `table`.
+- `harvestTarget` / `harvestDestination`: Harvest aims at `@storage`, which `objIs` resolves to storage with room.
+- The runtime conversion of direct jobs and plan mode: the v9 migration does it, and `Assignment.mode` is `auto` or `manual`.
+
+**Polish phase 4:**
+- `domain/cardref.ts` builds the Guide's card reference from the registry: where each card fits (by its output type), a one-line example (its required slots filled with simple cards, read back by `describe`), and `searchCards`.
+- `NodeChip` shows active slots that a card's phrase doesn't mention after the phrase (Nearest to, Furthest from, Which storage, Compare's Than, Stored's In this one), so they can be filled.
+- Validation counts a trait kind (Any ripe crop, Storage with room) as placed when any placed object has the trait.
+- `selectorText` reads a half-built qualifier as "…" instead of throwing.
+
+**Polish phase 5:** `game/orderdiagnosis.ts`. In comparisons only, `PlanRuntime.picks` tallies each free learned choice against what the order would pick (`rows["X>Y"]`, `jobs["R|A>B"]`); the farm itself never sets it. `diagnoseOrder` calls the order fine unless learned picks earn ≥ 5% more. Then it names the row skipped in ≥ 10% of choices: to the bottom if it has no WHEN, else below the lowest row chosen instead; or it names a job preferred over the USE. `applySuggestion` is the one-tap edit. `compareAndDiagnose` (farmlessons.ts) and the worker's steps return it with the comparison.
+
+Game rules never import React. The UI edits the **canonical spec** (`StageSpec`, `SpecNode`) and the simulator and learners compile from it. The Inspect binder shows that exact JSON.
+
+## Canonical spec and registry
+
+- `TypeExpr` is nominal (`Event`) or generic with trait arguments (`Kind<Carryable>`). `fits(socket, out)` requires the same base name and that every trait the socket asks for is one the output carries. So `PickUp(actor: Actor<CanCarry>, what: Kind<Carryable>)` rejects a Rock card.
+- `CardDef` has a stable `id`, `pack`, `version`, `output`, typed `sockets` (required / many), literal `params`, an `evaluator` binding, `bindsIt` (whether the event binds the scoped reference `it`), an optional `unlock`, and presentation (title, sheet, phrase template).
+- `SpecNode = { id, cardId, args, extensions? }`. Unknown args and `extensions` round-trip untouched. Unknown card ids are kept and reported, never dropped.
+- Rule grammar: `WHEN Event [IF Condition…] THEN Effect… [LIMIT]`, plus stage-level `SUCCESS` / `FAIL` conditions. Limits: every time, once per try, once per object, cooldown.
+- `validateStage` reports these as **errors**: unknown cards, type mismatches, missing inputs, bad params, out-of-scope `it`, references to kinds not placed in the pen, missing success, and walled-in fixed goals. It reports these as **warnings**: repeatable rewards, positive per-tick rewards, inverse pick/drop loops, closer-only shaping, and no reward at all. Warnings carry optional repair actions (`domain/repairs.ts`).
+- `buildHand` runs compatible → available → relevant. Ranking is deterministic, using type fit, placed kinds, the learner's focus, recency and favorites, with id as the tiebreak. Locked cards stay visible with a reason.
+- Content packs: `domain/packs/farm.ts` declares object definitions (traits, solid/hazard/carryable/container) and cards. Kind cards are generated from object definitions, so a new pack adds data, not screens.
+
+## Simulation
+
+`sim/world.ts` is a tick-based grid. Each `step(world, action)` returns an event list (`tick, move, bump, reach, enter, pickup, drop, deliver, fumble`). Rewards, diagnostics, animation and the journal all consume that list. Solid objects block movement, hazards are walkable but emit `enter`, carried objects move with the pet, and dropping onto a container delivers.
+
+`sim/compile.ts` turns a `StageSpec` into a `CompiledStage`:
+- `generate(seed)` places fixed objects, then the pet, then scattered objects. It re-rolls up to 40 times until every goal object has a dry path from the pet.
+- `evalStep` applies rules with limit bookkeeping and produces reward, per-rule hits for the ledger, and termination.
+- `isSuccess` / `isFail` evaluate the stage conditions. **Task success is always measured by the SUCCESS condition, never by reward.**
+
+The same simulator runs pens, evaluation and the farm. Fixed seed + fixed actions gives identical traces (tested).
+
+### Watering and night (sim)
+- `World.night`, `PetBody.water` (0–3) and `Obj.wet` are optional fields, so older worlds stay valid.
+- The `water` action is contextual. On a `WaterSource` (well) it fills up and emits `fill`. With water on a dry `Plot` it soaks the plot and emits `water` with `it` bound to the plot. Otherwise it emits `fumble`. Legality masking permits it only where it would do something.
+- `place.time` (Time of day: day/night/random) sets `world.night` per generated layout. On the farm, `updateClock` sets it from `dayInfo(tick)` and spawns or removes fireflies at dusk and dawn. Reaching a firefly catches it (farm rule).
+- New cards: `ev.fill`, `ev.water(it)`, `cond.watered(kind, n)`, `cond.hasWater`, `cond.night`, and the senses `sense.nearestDry(kind<Plot>)` (27), `sense.water` (2) and `sense.night` (2).
+- `ref.target` now takes on the traits of the kind it is aimed at (`effectiveOutput`), so "the target" fits `Kind<Plot>` sockets when a skill is aimed at a patch.
+- Saves are v3. The v2 → v3 migration adds a well to existing farms.
+
+### Creatures and areas (Milestone 2)
+- Creatures are objects whose `ObjectDef.mover` is `wander` (chicken, solid) or `crow` (flies, not solid). After the pet acts, `moveCreatures` runs in id order using `world.rng`. Crows step toward the nearest crop (avoiding scarecrow radius 2) and `peck` it on arrival (`world.counts.pecks`).
+- `shoo` (ability `shoo`) acts on creatures within 1 tile. A chicken is pushed one tile directly away if the tile is free (`shoo` event). A crow leaves (`scare`). Movement that crosses an area boundary emits `enterArea` / `leaveArea` with the area name.
+- `World.areas: {name,x,y,w,h}[]` come from `zone.rect` placements (fixed or random each try). Random placements skip area tiles. On the farm, the coop is `{coop, 0,5, 2×2}`.
+- Cards: `area.named(name)` (type `Area`; validation errors on unknown names); `ev.shoo(it)`, `ev.peck(it)`, `ev.entersArea(it)`, `ev.leavesArea(it)`; `cond.inArea(count)`, `cond.allInArea`, `cond.petInArea`; `q.pecks`; senses `sense.area` (27), `sense.outside` (nearest one outside an area, 27) and `sense.areaFrom` (direction from that one to the area, 27).
+- Farm: `updateCreatures` handles egg laying (coop only) and crow arrivals and departures. Deliver/Fetch picks the nearest carrot or egg. Saves are v4 (adds the coop area and creature PRNG).
+
+### Routines (Milestone 3)
+- Template `routine`: `learner.routine = { options: SpecNode[] (opt.skill | opt.action, ≤6), watch: SpecNode[] (Condition, ≤4) }`.
+- `learning/routine.ts → compileRoutine(stage, subskills, traits, target?)` builds the state bitmask from the watched conditions (≤16 states) and the options. Each option gets a legality test (its *only when* card plus intrinsic "can it do anything now") and a runner: `NavRun` for Approach/Avoid, `SkillRun` (until the sub-skill's own SUCCESS or its time limit) for custom skills, or one tick of an action. Every option takes at least one tick.
+- `SubSkills` are snapshots of the pet's **active** sense-skill revisions (`subskillsFor(pet)`), resolved at training, evaluation and run time. Improving a sub-skill changes every routine that uses it, with no retraining.
+- `Trainer` runs Fetch and routines through one SMDP Double-Q option loop (α 0.3, γ 0.9). When no option is legal, the routine idles a tick without a learning update. Reports add `randomOptions` (random legal option at each boundary).
+- Saved routine revisions keep `uses: {skill, rev}[]` and a copy of their lesson (`stage`). `routineRunFor` runs them on the farm, and `staleUses` reports sub-skills that changed since certification.
+
+### Farm plans (Milestone 4)
+- `pet.plan = { rows: SpecNode[] (plan.responsibility), guard }` (since v11; the chooser, table and plan mode are gone).
+- `game/plan.ts`: `compilePlan` turns rows into `{ holds(world), job: {behaviorId, args} }`. Job cards map to behaviors (`job.goto` → `goto`, a `NavRun` to the aimed kind; `job.skill` → `skill`). `jobPossible` mirrors `eligibleBehaviors`. `choosePlanRow` returns the first applicable row (or a bandit pick), with the anti-dithering guard (`isThrashing`, `guardUntil`, `lastHold`).
+- `chooseInvocation` (farm) handles plan mode after the "too sleepy" safety check. Invocations carry `chosenBy: 'plan'` and `args.row`. `world.petEnergy` is set each tick so `cond.energyBelow` works.
+- `applyPlan` resets the runtime (no half-finished job, fresh plan memory, RNG from `farm.rngState`). `previewPlan` deep-clones the game, applies the plan and runs `farmTick`, so it is the real future under determinism.
+
+### Gates, weather, expansion, requests (Milestone 5)
+- `Obj.open` (gates). `blocks(o)` = solid object or a closed gate; `isSolidAt` uses it, so senses, legality, BFS and chickens all respect gates. The `nudge` action toggles `nudgeableGate(world)` (on or next to the pet; an open gate isn't shut on a pet or creature) and emits `gate` with `state`. Layout generation treats a closed gate as reachable from a neighbouring tile.
+- `World.raining` comes from `place.weather` in pens (rain wets all plots at generation) or from `updateWeather` on the farm (`farm.rainUntil`, `farm.puddles`).
+- `game/expand.ts → expandFarm` grows the world in place. Existing objects keep their coordinates, and orchard plots carry `unlock: 'orchard'`.
+- `game/requests.ts`: `postRequests` at dawn (and at the first tick), `trackRequests` on every farm event list, `nightfallRequests` at dusk. Eligibility depends on what the farm has (chickens, Fetch, carrots, a watering skill, crows).
+
+### Discovery tools and a second pet (Milestone 6)
+- `learning/summary.ts`: `summarize(stage, traces, ledger)` re-simulates every held-out trace to build a `BehaviorSummary` (heatmap of offsets from the nearest target, action mix, endings, reward shares). `evaluate(... 'evaluation')` attaches it, and `saveRevision` stores it. `curiosities(stage, summary, name)` turns it into journal notes.
+- `learning/probe.ts`: `probeTile`/`probeField` read Q-values (with the same backoff as acting) and report action, softmax confidence and whether a coarser view was used. `probePath` follows the greedy policy.
+- `game/skillcard.ts`: `exportSkillCard` / `importSkillCard` (validated JSON, `format: 'pen-deck-skill'`). Custom sense skills now keep a copy of their lesson on each revision, too.
+- Two pets: `farm.duty2PetId`, `world.pet2`, `farm.current2/stun2/queue2/rngState2`, `runtime.second`. `farmTick` runs `petTurn` for the first pet (creatures move and the clock advances), then `secondTurn`, which swaps the second pet into the primary slots and calls the same `petTurn` with `step(..., { advance: false })`. `withOtherPet` adds a transient solid `buddy` object at the other pet's tile and sets `hidden` on its claimed object (`runtime.claim`, the nearest target of its current job). `onGround` ignores hidden objects. Both are removed after the turn.
+
+### Field Guide and coaching (tutorial)
+- `game/tutorial.ts`: `CHAPTERS` (lesson 1 *First lesson*, then lessons 2–9). A chapter has `offered(s)`, an `opensWhen` hint for the Guide list, an optional `start(s)` that creates its practice pen (a stage with `extensions.guide`), `steps` (`done(s)`, optional `ack`, `action`, `highlight` = a `data-tut` key) and an optional `compare` (which recorded runs to show side by side).
+- State lives in `progress.guide = { status, active, step }` and `progress.guideRuns` (one entry per finished guide training run: episodes, after, random, transfer, scattered, treats, variant). `advanceTutorial` runs after every store mutation: it advances the active step, finishes the chapter and offers newly relevant ones.
+- Guide stages and the tutorial pen are free (`trainingCost` 0). Reports add a *Scattered layouts* row whenever a pen pins its target or start.
+- `game/coach.ts`: pure functions from (stage, report, game) to tips with lesson links, dismissible for good via `progress.flags`.
+- UI: `App.tsx` draws the lesson banner and injects a style rule that outlines `[data-tut="…"]` and scrolls it into view; `GuideScreen.tsx` holds the lesson list, comparisons, notebook and glossary.
+
+### Teaching polish (memory, honest endings, measured checks)
+- **Event tally:** `step()` records every notable event (not moves or ticks) in `World.tally`, but only in worlds that have one: `generateWorld` adds it when the lesson uses a memory card (`usesMemory`), and a farm `SkillRun` adds it when it starts. Lessons without memory pay nothing (training speed measured against the previous commit: within noise; an always-on tally cost 5–15%). The tally stores as `type|kind|state|area|into` → [count, last tick]. `cloneWorld` copies it; generated layouts start empty. *Has done…* (`cond.happened`) matches tally keys with the wrapped event's compiled matcher (`countSince`), *Just…* (`cond.just`) checks the last tick, and the *Done … yet?* sense (`sense.did`, ×2) does the same for the learner. Optional `CondCtx.base` / `encode(w, base)` let a farm `SkillRun` count from its own start (it snapshots the tally when it starts). Farm plans reject memory conditions for now.
+- **End try** has three outcomes, `EndOutcome = 'judge' | 'success' | 'fail'`. A rule ending ✓ or ✗ sets `World.verdict`, which `isSuccess` / `isFail` honour before SUCCESS / FAIL. Save v5 migrates the old `'success'` (which meant "SUCCESS decides") to `'judge'` everywhere in a save (`migrateLegacyEndOutcomes`), and skill cards v1 → v2 the same way.
+- **SUCCESS / FAIL lists** are stored as `cond.and` / `cond.any` roots. The UI (`ConditionList`) shows them as a list with an all/any switch and **+ and…** (which wraps a single card).
+- `domain/describe.ts` renders cards and rules as sentences from their phrase templates. `domain/hand.ts` adds a slot role (`slotRole`) and ranks by abilities (`EVENT_ABILITY`), role and whether the pen has what a card needs; More cards are grouped (`COND_GROUP`).
+- `learning/lint.ts → rolloutChecks` runs 30 random tries (seeds 700001+), recomputed when the lesson changes. It flags `goal-rule-shadowed` (SUCCESS ends ≥ ⅓ of tries before a goal rule ever fires), `end-never-success` (a rule ends tries judged by SUCCESS and none counted) and `success-at-start` (SUCCESS true at the start of ≥ 20% of layouts), each with a repair from `domain/repairs.ts`.
+
+### Better pens (teaching polish, phase B)
+- `generateWorld` gains Scatter regions (`inArea`, `nextTo`, `awayFrom`, `farFromPet`, with the conditional sockets `ref` / `area`), count variation (`vary`) and `chance`, the `place.obstacles` card, pet starts `inArea` / `awayFrom` (an *away from* pet is placed last, so it can avoid scattered things), and `StageSpec.varySize`. New options draw random numbers only when used; `tests/layouts.test.ts` pins every existing lesson's layouts to a fixture.
+- `SocketDef.when` marks sockets used only for some parameter values. Validation, chips (`NodeChip`) and sentences (`describe`) skip them otherwise (`socketActive`).
+- Conditions `cond.nextTo` (Chebyshev 1), `cond.kindNear` (any A within N of any B) and `cond.time` (step before or after N).
+- Rules carry `args.off = 1` when switched off: they stay on the mat and in saves, `compileStage` skips them, and validation and the measured checks ignore them.
+- UI: `PenView` has *Play it yourself* (its own compiled stage, world and rule state, stepping `step` + `evalStep` with sounds; never training) and `LayoutStrip` (six layouts from training seeds; tap to preview). The Environment binder adds pen-size buttons, Obstacles, and pickers for *next to / away from* and *inside*.
+
+### Your cards, lesson cards, memory in plans (teaching polish, phase C)
+- **Your cards** are `Template`s (`saveTemplate`). `placeTemplate` copies one with fresh ids, stores its name in `extensions.card` (shown as a tag by `NodeChip`), and leaves *blanks* (`exposed`: ids of kind cards inside it, chosen from `blankCandidates`) empty, returning the first blank's slot so the editor focuses it. The hand lists matching templates first under "Your cards", for any slot type, so named conditions work in SUCCESS, rules, routine watches and plans. They are copies, not references.
+- **Lesson cards** (`game/lessoncard.ts`): `{ format: 'pen-deck-lesson', version: 1, lesson }`. Import checks format, shape, size (4–16), time and practice ranges, node count and unknown cards before adding anything. It then re-ids the lesson (`cloneStage`), renames on clash, and drops the Field Guide flag.
+- **Memory in plans:** `CompiledRow.holds(w, base)`. The farm keeps a tally only when the duty pet's plan uses *Has done…* / *Just…* (`planUsesMemory`), and snapshots it into `PlanRuntime.base` whenever a job starts. Rows are tried between jobs, so they count what happened during the job that just finished.
+
+### Farm life: storage and selling (phase A)
+- **Sim:** `ObjectDef.storage` (`slots`, `perSlot`) and `sells`; `Obj.store: { kind, n }[]` exists only on farm storage, so pens' containers stay unlimited. Dropping onto a container stores (if `storeAccepts`), sells (house: `World.sold++`) or, when full, emits `full` and leaves the item there. `pick` on storage takes one item from the fullest slot (`pickup` with `into` = the source).
+- **Farm:** `SELL_PRICE` is paid on `deliver` into `home`; storing is an effect plus a journal entry.
+  - **Harvest** (`harvest`; it was `forage`, and it was scripted then, learned now): walk to the nearest ripe berry or carrot, `pick`, walk to the house or storage with room, `drop`. Walks use `FarmWalk`: a `NavRun` with earlier stuck recovery (farm only).
+  - **Haul** (`haul`, was `deliver`): a `FetchRun` with eggs or the fullest storage as the item, the house as the destination, and "done" counted by `World.sold`.
+  - The executive context reads `berry` as "something ripe", `carrot` as "goods to haul" (eggs or storage), plus `storeHalf`. The starter plan mirrors the rules with the `cond.storage` card.
+  - Pets may share container tiles (no `buddy` obstacle there). Claims cover crops and eggs, never storage.
+- **Saves v6:** the farm's bin gets an empty one-slot store; `sold` starts at 0.
+
+### Learned farm: capabilities and one runtime (roadmap phase 1)
+- `Outcome` (`learning/policies.ts`): `success | fail | timeout | interrupted | cancelled`; `succeeded()`. `NavRun`, `FetchRun`, `SkillRun`, `RoutineRun` and the farm's executors return `timeout` when time runs out. `SkillRun` / `RoutineRun` take an optional `survived` check for *survive* skills. The farm's stuck-recovery sniffing follows walking timeouts, not skill timeouts.
+- `game/capability.ts`: `Capability` (skill or routine × aim), `deployedRevision` (`Skill.pinnedRev`, else active), `allowedOnFarm` (`Skill.farmUse`), `eligibility` (reason codes plus warnings), `runCapability` (sense skills via `SkillRun` with notes and survive, Fetch via `FetchRun`, routines via `routineRunFor`), `noteRunnerFor`. The farm's `skill` behaviour (direct jobs and plan rows) calls `runCapability`.
+- Trait aims: `TRAIT_AIMS`, `aimIs(kind, aim)`, `objIs(w, o, aim)` in `sim/world.ts`; `nearest`, `atFocus`, *Standing on* and the compiled conditions and events use them. Cards `kind:@crop` / `kind:@storage`; `effectiveOutput` gives *the target* their traits. In `generateWorld`, `put()` turns them into a real kind per try (`TRAIT_CROPS`, or an empty basket); `cond.delivered` sums aimed kinds.
+- Parity (phase 2): `place.energy` (sets `World.petEnergy` and `energyPen`; `step` drains 0.12 or restores 1.5 on `wait`), `sense.tired` (radix 3, also on the farm via `petEnergy`), `place.purse` (`seedCoins`; `plant` deducts). `sinceStart` (and `routineRunFor(..., startWorld)`) judges a farm run's goal from deliveries since it began. `deployExplore(pet)` (2–8% by Curiosity) gives deployed `NavRun` / `SkillRun` / routine walks occasional random steps; training passes 0. Recipe *Harvest* (routine).
+- Option learners (Fetch, routines) use a semi-Markov update: step-discounted option reward, and `OPTION_GAMMA_PER_TICK ** ticks` for the next value.
+
+### Looser limits: Big brain, longer runs
+- `DoubleQ` keeps dense typed arrays up to `DENSE_MAX_STATES` (100,000) situations and a sparse `Map` of visited rows above that (or when asked). Both use Float32 values and the same update, so they compute identical tables (tested); `visits(s)` replaces direct array access. Serialisation is unchanged (`double-q/v1`, visited rows only).
+- `LearnerSpec.brain` (`'standard' | 'big'`), `BRAINS` limits (senses, situations, warning), `MAX_EPISODES` (100,000 sense / 20,000 composite), `MAX_TICKS` (400). Validation, the Pet binder meter and skill-card import read the brain's limits.
+- `trimBigTables` (on save) keeps the tables of a Big skill's active and newest revisions; older ones get `tableDropped` (no rollback). The learning curve keeps ≤ ~400 points for long runs (unchanged up to 10,000 tries). `TrainingEstimate` times 30 tries on the main thread and scales.
+
+### Notes (flags and counters)
+- Cards `eff.note` (name, op, value), `cond.note` (name, test, value), `sense.note` (name, cap → radix cap + 1, via `radixOf`). `World.notes` (absent until a rule writes; `cloneWorld` copies it). `compileRule` collects a rule's note writes; `evalStep` applies them with `writeNotes` (clamped 0–9) when the rule fires.
+- Farm: `noteRunnerFor(stage, target)` compiles only the note-writing rules of a custom skill (aimed at the farm target); `SkillRun` keeps its own notebook, lends it to the world while it acts or observes (`withNotes`), and `petTurn` calls `observe(world, prev, events)` after each step. `w.verdict` is restored so a rule's *End try* means nothing on the farm.
+- Validation: `too-many-notes` (error, > 4), `note-never-written` (warning, with a near-name suggestion), `note-never-read` and `note-not-sensed` (info). The hand ranks the Note sense and *Note says* high once the rules write a note; `createNode` gives new note cards the lesson's existing note name.
+- Field Guide lesson 11 (`notes`): `NOTES_STAGE` from `patrolWithoutNote()`, variants `no-note` / `note`.
+
+### Baskets you can carry
+- **Sim:** `ObjectDef.portable` (the basket). Action `lift` (ability *Lift basket*, last in `ABILITY_ORDER`) carries it, store and all; `drop` of a carried basket (`dropBasket`) empties it into a container on the tile (per-item `deliver` events, then `empty`; `full` if nothing fit) and keeps it in the paws, or sets it down on a clear tile. Events `lift`, `empty`; cards `ev.lift`, `ev.empty`, `sense.stock` (radix 3), `cond.storage` level `empty`, `place.stocked` (a storage object with a pre-filled store; in `generateWorld`), `job.basketRun` (was `job.tote`).
+- **Farm:** `toteTarget` (a basket ≥ half full, else an empty one with no unlocked plot within 1 tile, if `cropSpot` finds a tile next to ≥ 2 plots), `cropSpot`, `heldBasket`. Behaviour `basketRun` (was `tote`): fetch (walk to that basket with the others hidden — `only()`), lift, unload at the nearest house or shed (never another basket), place (walk to the plot beside the spot, then a BFS step onto it), drop. Context flags `basket` / `tote` (appended to the learned executive's key only when set). Rules and the starter plan: "Holding a basket" first, "Basket needs a run" before "Storage filling up". Harvest to storage aims at `@storage` (storage with room for what the pet carries).
+
+### Farm life: pets (phase D)
+- **Crew:** `FarmState.helpers` (up to 3; `{ petId, current, stun, queue, rngState }`) beside the lead (`dutyPetId`, whose job state stays in `current` / `stun` / `queue`). Helper bodies are `World.crew[i]`; helper runtimes are `FarmRuntime.crew[i]` (created on demand from `rngState`). `farmTick` runs the lead, then each helper; a helper's turn swaps its body, job, stun and queue into the primary slots and reuses `petTurn` (as the second pet always did).
+- **`withOthers`:** while one pet acts, every other body is a `buddy` obstacle (except on container tiles) and every other runtime's claim is hidden. With two pets this is exactly the old `withOtherPet`: a two-pet farm is tick-for-tick identical before and after the refactor (4 job mixes × 3,000 ticks, hashed).
+- **API:** `dutyPets`, `setOnDuty(s, petId, on, rt?)` (refuses a 5th; taking the lead off promotes the first helper), `makeLead` (swaps bodies and roles, restarts decisions), `restartPet`, `petActivity`, `crewSummary`, `describeTile`. `applyPlan` for a helper restarts only that helper.
+- **UI:** `ui/Roster.tsx` (`RosterModal`, `RosterStrip`); `FarmScreen` shows the card of `ui.farmPet` (default the lead) and routes taps: the house → roster, a pet → its card, anything else → `ui.inspect`. Steering a helper makes it the lead. `WorldView` draws `world.crew` with each pet's palette and mood.
+- **Saves v8:** `duty2PetId` / `current2` / `stun2` / `queue2` / `rngState2` and `world.pet2` become `helpers[0]` and `world.crew[0]`.
+- **Performance:** 0.19 ms per farm tick with 4 pets (0.06 with 1); the farm runs at most ~15 ticks/s.
+
+### Farm life: your layout (phase C)
+- **`game/layout.ts`:** `LAYOUT_ITEMS` (catalog: kind, price, crop, requires, max, grants), a `LayoutDraft` (a cloned world + plots, net cost, ids placed in this draft, pen-card grants, a change log), `place` / `move` / `remove` with `canPlace` / `canMove` / `canRemove` returning reasons, `unreachable(world)` (BFS from the house's door tile over non-solid tiles, gates counted open; a solid target counts when a walkable tile touches it), `plotBudget`, `applyLayout` (pays, swaps in the world and plots, grants unlocks, journals), and `previewLayout` (two `farmTick` runs on clones from the same state: as is vs draft).
+- `Obj.fixed` marks the orchard's fence and gate (set by `expandFarm`; migrated for v6 saves).
+- **UI:** `ui/LayoutPanel.tsx` keeps the draft in `ui.layout`; the farm loop skips ticks while it's open; `WorldView` draws the draft and routes taps to `layoutTap`. Applying clears the runtime's current jobs and claims.
+- **Shop:** the bush, patch, shed and scarecrow items left the shop for Layout. Locked pen cards for scarecrow, sunflower and pumpkin say to place one on the farm.
+- **Two pets:** a pet resting while another is on duty walks (BFS) to the house and naps there, a tile both may share, so it never blocks the other's path. Single-pet farms are unchanged.
+- **Saves v7:** plots that waited for the removed shop items ("Two more bushes", "Third carrot patch") and were never bought are removed with their objects; the orchard's fence and gate get `fixed`.
+
+### Farm life: crops and planting (phase B)
+- **Sim:** `ObjectDef.crop { grows, seed?, sells }` is the single source of crop numbers (`GROW_TICKS`, `SELL_PRICE` and `seedPrice` derive from it). Empty field plots are `soil` objects with `Obj.crop`; the `plant` action turns the soil under the pet into a `patch` when `World.seedCoins` covers the seed (undefined in pens: free) and emits `plant`, otherwise `fumble`. `plant` is last in `ABILITY_ORDER`. Crows aim for sunflowers as if they were 8 tiles nearer.
+- **Cards:** `ev.plant`, `cond.canAfford`, `job.plant`.
+- **Farm:** `regrow` turns a harvested or pecked field plot back into soil (it then doesn't grow); `petTurn` sets `seedCoins` from the farm's coins; the `plant` event pays the seed. The executive context has `soil` (affordable empty soil); `rulesSelect` and the starter plan's "Empty soil" row plant before harvesting. The learned executive's key gains an `s` only when soil is present, so older tables keep their keys. `seedGift` runs at dawn. Shop patches are added by `addCropPlot` (`game/expand.ts`).
+
+### Sound
+- `game/sound.ts` (pure): cue ids and their bus, priority, cooldown and length; `cueForFx`/`cuesForFarmFx` map one tick's `FarmFx` to cues (by type and tag; coins merge; stereo position from x; naps and rain listed in `SILENT_FX`). The farm adds sound-only effects (`type: 'sound'`: shoo, firefly, crow, dawn, dusk) that the view doesn't draw. `cuesForSimEvents` maps replay frames to the same cues (`SILENT_EVENTS` for moves, ticks and the like). `ambienceMix` says which background layers play; `CueLimiter` (per-cue cooldown, voice cap, thinner low-priority cues at high farm speeds, fake-clock testable); `AudioSettings` defaults, `sanitizeAudio`, `cueGain`.
+- `audio/kit.ts`: one synthesis recipe per cue (oscillators and filtered noise with envelopes, glides, vibrato). `audio/engine.ts`: creates the AudioContext on the first user gesture with sound on, renders every recipe once with `OfflineAudioContext`, plays buffers through a compressor with ±3% pitch variety and stereo panning, and suspends while the tab is hidden. It never fetches anything. Ambience: three 12 s loops (`ambienceRecipe`: seeded birdsong, crickets, rain) rendered at 22 kHz with an extra 0.8 s folded back into the start for a seamless loop; each plays on its own gain, which glides to `ambienceMix × master × background` (×0.4 off the Farm screen) whenever the scene changes. Noise voices share one 4.1 s noise buffer.
+- Cues come from the farm loop (`store.startFarm` → `audio.playFarm`, Farm screen only unless "Farm sounds on other screens"; it also sets the ambience scene and notices requests completed), replays (`ui/replay.ts` keeps each frame's sim events; `useReplay(..., sound)` plays them, off while training runs), the Field Guide (`store.mutate`: step, new lesson, lesson done), unlocks (`store.mutate` notices a new unlock), training (`ui/training.ts`: start; certified / not / loophole on the report) and UI handlers (cards, pen placement, save, adopt, shop). `ui/sound.ts` toggles sound (header button, M key).
+- Phase C: the duty pet's voice (`voicePitch(name, palette)`, set from `App`) pitches a `pet.chirp` added by `playFarm` after pickups and finished jobs; naps starting play `pet.sigh`. The probe's traced path plays `probe.pluck`s. `trainTickCrossed` adds optional ticks at 25/50/75% (not at Fast speed). The **music box** schedules `musicBar(mood, bar)` (seeded pentatonic bars; mood = day / night on the farm, pen elsewhere) about 1.5 s ahead on the audio clock into its own gain node, which ducks under result jingles (`DUCK`).
+- Settings: `settings.sound` and `settings.audio` (volumes and options). Additive, no save version bump: `parseGame` fills and clamps them, and older saves start with sound on because the old `sound: false` was never a player's choice.
+
+## Learning
+
+### Templates, senses and abilities (Milestone 1)
+A lesson's `LearnerSpec` has a **template**:
+- `sense`: a tabular learner over player-chosen **Sense cards**. Approach and Avoid are presets of it.
+- `fetch`: the option controller.
+- `routine`: an option controller over the player's own skills and actions (see *Routines* above).
+
+`learning/senses.ts` compiles sense cards into a mixed-radix `SenseEncoder`. The radix of each card is declared on its `CardDef`. The preset `[Where is the target (27), Walls (16), Hazards (16), Last heading (4)]` reproduces the v1 index exactly, so v1 policies load unchanged (tested move-for-move against a fixture).
+
+**Abilities** (`move`, `stay`, `pickup`, `drop`, and later `water`, `shoo`, `nudge`) map to an ordered action list. Physically impossible actions (walking into walls, dropping with empty paws) are always masked. Backoff for rarely seen states zeroes droppable senses in a fixed order: hazards, walls, patience, carrying, standing-on.
+
+Validation enforces 1–5 senses and a **state budget**: it warns above 50k situations and errors above 100k.
+
+`ref.target` is a Kind card resolved at compile time (`withTarget`) to the skill's focus. Every saved revision stores its own `{ senses, actions }`, focus, SUCCESS condition and outcome mode. Evaluation, comparison and the farm always use the revision's own definition, never the current lesson's. *Refine* refuses when the senses changed. `outcome: 'survive'` lessons judge SUCCESS when time runs out (and only if FAIL never held).
+
+Saves are v2. The v1 → v2 migration adds templates and explicit preset senses.
+
+**Level A, movement skills (Approach, Avoid; presets of the `sense` template):** tabular Double Q-learning over a factored, layout-independent observation: direction to the nearest focus object (9) × distance bucket (3) × blocked neighbours (16) × hazard neighbours (16) × last heading (4). That's 27,648 states, stored sparsely. Moving into walls is illegal and masked. Rarely visited states back off to coarser views (ignore hazards, then walls). Settings: ε-greedy, decaying to a floor set by *Curiosity*; α = 0.25, γ = 0.95. Avoid is the same learner trained in pens with ponds and a fail condition, so it learns to read the hazard bits.
+
+**Level B, reusable options:** every saved skill has a typed signature, initiation and termination text, a timeout (scaled by *Persistence*), an evaluator (the held-out report), a revision number and provenance. `Fetch(item, into)` is a learned SMDP controller (16 states: carrying × on item × at bin × item visible; options goItem / goDest / pick / drop, with illegal options masked). Its movement options call the pet's **currently active** Approach or Avoid revision. Swapping the Approach revision changes Fetch behaviour without retraining Fetch (tested).
+
+**Level C, executive:** on the farm, behaviours are invoked with `{ behaviorId, args, intention, timeout, chosenBy }`. Two selectors share that contract: `rulesSelect` (deterministic baseline) and `learnedSelect`, a tabular contextual bandit over (tired, something ripe, goods to haul, carrying, recent failure, night, fireflies, empty soil). It learns from coins earned per behaviour, with ε set by Curiosity. The executive runs only at option boundaries. A failed job (timeout) triggers a few labelled random "sniffing" steps so a pet can't repeat a stuck loop forever.
+
+**Executive practice (polish phase 2):** `game/execpractice.ts` splits practice and the comparison into steps (one farm day each: 4 practice days, then 3 ways of choosing × 3 held-out farms). The Farm screen runs them in `game/exec.worker.ts` with progress and Stop; a Stop terminates the worker. Without workers they run inline, a step at a time. The worker gets only the practising pet and the farm, and the page applies the returned executive values. `practiseExecutive` and `compareExecutives` are the same steps in one call, for tests and scripts.
+
+**Training loop:** `learning/session.ts` (`TrainingLoop`) is shared by the Web Worker (`trainer.worker.ts`) and an inline main-thread fallback. It runs in chunks, honours pause, resume, cancel and speed between chunks, and throttles progress messages. When training finishes it builds a `TrainingReport` with before / random / after on held-out seeds, transfer on bigger unseen pens, and exploit findings.
+
+**Seeds:** training seeds are `hash(stage.seed, i) mod 800000`. Evaluation seeds live in `[900000, 999999]`, so they never overlap.
+
+**Temperament → parameters:** Curiosity sets the exploration floor and the executive's ε. Persistence sets the option timeout (1×–2×). Caution adds up to −3 per hazard entry during training, shown as its own ledger line.
+
+**Feedback:** 👍/👎 on a replayed movement episode adds ±0.5 (clamped to ±1) to those (state, action) pairs. That bonus is added to reward in later lessons for that stage and shown as "Your feedback" in the ledger.
+
+### Qualifiers
+
+`obj.*` cards compile (`resolveKind`) to selector strings such as `#["furthest","berry","home"]` (`selector` in sim/world.ts). `nearest`, `objIs` and `aimIs` resolve them with `resolveSelector`, so kind-taking conditions, measures and senses work with them unchanged. Kind-level checks (`aimIs`, used for events and carried kinds) fall back to the kind a qualifier picks from, which is why validation keeps qualifiers out of events. `typecheck.fits` lets `Object<Qualifier>` into `Kind` slots; `objectArg` (compile.ts) reads an Object slot as *It* or a qualifier. Inside events, `compileEvent` matches the event's object against `World.selBefore` (what each qualifier pointed at when the step began, recorded by `step` for the selectors in `watchSel`, which `compileStage`'s `generate` sets). As aims, selectors travel like any target string; farm jobs read an optional `args.aim` (compilePlan).
+
+### Storage identity
+
+`StoreSlot.ids` (sim/world.ts) remembers which items went into a slot. `pick` from storage gives back the same id, and emptying a basket moves ids along. So "once per object" (`lim.perObject`, keyed by object id) counts an item once, wherever it has travelled. `runEpisode` records `sameObject` (the most treats one object earned per rule), and `findExploits` names it in the loophole warning.
+
+### Responsibilities and the executive (learned-farm phase 4)
+
+`src/game/responsibilities.ts` and `plan.ts` hold the responsibilities (`plan.responsibility` cards with `if` = WHEN, `do` = USE, `also` = OR USE and `until` = UNTIL) and the deterministic executive. `compilePlan` turns rows into `CompiledRow`s, each with `jobs` that carry evidence keys. `chooseDuty` handles needs → priority → commitment → evidence → cooldowns and returns a reason. `afterDutyJob` records evidence (`Pet.evidence`), failures and cooldowns, judging progress by a world fingerprint (`workDone` in farmexec.ts). The runtime state (`PlanRuntime`: commit, cooldown, fails, trace, switches) lives in each pet's `FarmRuntime.plan`. Auto goes through it in `chooseInvocation`. `ExecHow` picks the mode (`order`, `learned`, `random`); learned values (`ExecValues` on `Pet.executive.values`, upper and lower) are updated in `afterDutyJob` → `learnFromPending`. `practiseExecutive` and `compareExecutives` (farmlessons.ts) run executive lessons on copies of the farm (`executiveCopy`).
+
+### Learned jobs (learned-farm phase 3)
+
+`src/game/capability.ts` binds farm jobs to learned skills: `LEARNED_JOBS` (`harvest` → Harvest to storage / Harvest, aimed at `@crop`; `haul` → Fetch; `basketRun` → Basket run; `plant` → Plant; `gateOpen`/`gateShut` → Open / Shut the gate), `jobSkills`/`jobSkill(pet, job)` (the player's pick in `Pet.jobSkills`, else skills taught by the job's recipes or named after it, preferred first) and `jobCapability(pet, job, state?)` (null unless the farm may use it; with the state, Harvest picks storage only when it's nearer than the house and someone can empty it). The job executors in `farmjobs.ts` call `runCapability`, which takes `RunOptions` (`goal` replaces the skill's own goal, e.g. "the basket is set down"; `dest`/`count` for Fetch); with no bound skill the job isn't eligible and the job card is locked. There is no scripted fallback.
+
+## Persistence
+
+Saves are currently **v9** (`SAVE_VERSION`; v8 → v9 is the learned-farm migration, see `docs/history/LEARNED_FARM_ROADMAP.md` §6). `persistence/save.ts` handles the save envelope `{ format: 'pen-deck-save', version, game }`. It has a migration table (version N → N+1), fills missing sections from defaults, validates shapes, clamps numbers, checks policy formats, and reports unknown cards. Saves never execute code. `storage.ts` writes to IndexedDB with a localStorage fallback. Export and Import JSON live in Settings.
+
+## Extension points
+
+- New objects and cards: add to a pack file. Kind cards and hands pick them up automatically.
+- New evaluators: add a case in `sim/compile.ts` (conditions, events, quantities, effects, limits).
+- New skills: most need no code at all (a custom skill is a lesson with senses, abilities and rules). A new learner *template* needs a case in `learning/trainer.ts`, an executor in `learning/policies.ts`, and metadata in `game/pets.ts`.
+- New Field Guide lessons: add a chapter to `game/tutorial.ts` (and `data-tut` hooks on any new control it highlights).
+- A future local model (Level D) would implement the same `Invocation` contract as the executive selectors.

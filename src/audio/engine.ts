@@ -1,7 +1,7 @@
 /**
  * Sound playback (browser only). Renders each kit recipe once into a buffer, then plays cues through a
  * gentle compressor. The AudioContext is created on the first user gesture with sound on, and suspended
- * while the tab is hidden. Nothing is fetched. See docs/SOUND_PLAN.md.
+ * while the tab is hidden. Nothing is fetched. See docs/history/SOUND_PLAN.md.
  */
 import { CUES, CueLimiter, DEFAULT_AUDIO, ambienceMix, cueGain, cuesForFarmFx, cuesForSimEvents, musicBar, type AudioSettings, type CueId, type CueRequest, type MusicMood } from '../game/sound';
 import type { SimEvent } from '../sim/world';

@@ -1,6 +1,6 @@
 # Pen Deck roadmap: player-authored behaviors and a livelier farm
 
-> **Status (all six milestones shipped).** Everything below was planned before it was built; each milestone has a *Status* note recording what changed from the plan. The tutorial was then rebuilt as the Trainer's Field Guide (`docs/TUTORIAL_PLAN.md`). Candidates for what comes next are at the end of this file.
+> **Status (all six milestones shipped).** Everything below was planned before it was built; each milestone has a *Status* note recording what changed from the plan. The tutorial was then rebuilt as the Trainer's Field Guide (`docs/history/TUTORIAL_PLAN.md`). Candidates for what comes next are at the end of this file.
 
 ## Goal
 
@@ -227,19 +227,19 @@ The milestones shipped in the recommended order: M1 → M5 (watering + day/night
 3. **Creatures:** chickens and crows shipped (M2). Nothing else has been requested.
 
 ## After the milestones (shipped)
-- **The Trainer's Field Guide:** nine lessons on setting up training that works, the notebook, glossary, coaching tips, and request hints (`docs/TUTORIAL_PLAN.md`).
+- **The Trainer's Field Guide:** nine lessons on setting up training that works, the notebook, glossary, coaching tips, and request hints (`docs/history/TUTORIAL_PLAN.md`).
 - **Sound, phases A–C:**
   - core cues, settings and mute;
   - the whole farm, replays and background sounds;
-  - pet voices, nap sighs, probe plucks, optional training ticks, and an optional generative music box (`docs/SOUND_PLAN.md`).
-- **Teaching polish, phases A–C** (`docs/TEACHING_PLAN.md`):
+  - pet voices, nap sighs, probe plucks, optional training ticks, and an optional generative music box (`docs/history/SOUND_PLAN.md`).
+- **Teaching polish, phases A–C** (`docs/history/TEACHING_PLAN.md`):
   - *Has done…* / *Just…* / *Any of*, an honest End try, SUCCESS lists, a context-aware hand, sentences, measured checks;
   - better pens, play it yourself, example layouts, rule housekeeping;
   - your cards with blanks and names, lesson cards, memory in farm plans.
 - **Fixes found along the way:** the random baseline never used Shoo or Stay (learned results unchanged); lesson 9 could get stuck on busy farms; a starting lesson's report covered the next one.
 
 ## Next: farm life (in progress)
-Phase A shipped: produce travels to storage (baskets, sheds) and sells only at the house, with Harvest and Haul jobs. Phase B shipped: field crops (carrot, sunflower, pumpkin) need replanting, each seed costs coins, and a Plant job, ability and cards do the work. Phase C shipped: a Layout mode (place, move, remove, validated as you go, previewed against the farm as it is) and Field Guide lesson 10. Since then: pets carry baskets (Lift; a Basket run job that Auto uses), and pens can start with stocked storage (the *Empty the basket* recipe). Phase D shipped: tap a pet for its card, the house for the roster, anything else for what it is; up to 4 pets on duty. See `docs/FARM_LIFE_PLAN.md`.
+Phase A shipped: produce travels to storage (baskets, sheds) and sells only at the house, with Harvest and Haul jobs. Phase B shipped: field crops (carrot, sunflower, pumpkin) need replanting, each seed costs coins, and a Plant job, ability and cards do the work. Phase C shipped: a Layout mode (place, move, remove, validated as you go, previewed against the farm as it is) and Field Guide lesson 10. Since then: pets carry baskets (Lift; a Basket run job that Auto uses), and pens can start with stocked storage (the *Empty the basket* recipe). Phase D shipped: tap a pet for its card, the house for the roster, anything else for what it is; up to 4 pets on duty. See `docs/history/FARM_LIFE_PLAN.md`.
 
 ## What could come next
 Not committed; listed roughly smallest first.

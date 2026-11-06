@@ -1,5 +1,5 @@
 /**
- * Evidence for docs/TUTORIAL_PLAN.md: what makes training pens work in Pen Deck.
+ * Evidence for docs/history/TUTORIAL_PLAN.md: what makes training pens work in Pen Deck.
  * Trains under 3 seeds and tests on 30 held-out scattered layouts. Run: npm run evidence
  */
 import { recipeStage, evalSeeds } from '../src/domain/recipes';

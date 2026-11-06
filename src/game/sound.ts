@@ -1,7 +1,7 @@
 /**
  * Sound cues: which moments make a sound, and how often. Pure and deterministic (no audio APIs),
  * so the mapping and the rate limiter are unit-tested like the rest of the game.
- * Playback lives in `audio/engine.ts`; recipes in `audio/kit.ts`. See docs/SOUND_PLAN.md.
+ * Playback lives in `audio/engine.ts`; recipes in `audio/kit.ts`. See docs/history/SOUND_PLAN.md.
  */
 import type { FarmFx } from './farm';
 import type { SimEvent, SimEventType } from '../sim/world';
