@@ -423,8 +423,8 @@ try {
     await start('Let them choose');
     await nav('Farm');
     await page.click('[data-tut="job-auto"]');
-    await page.click('[data-tut="exec-learned"]');
-    await step('Practise deciding', 'L14: “Learns what pays off” chosen');
+    // Polish phase 5: the lesson leads with “Check my order” (in your order), not the mode.
+    await step('Check your order', 'L14: asks to check the order, with the pet picking in your order');
     // Polish phase 2: practice runs in a worker, with progress and Stop.
     await page.click('[data-tut="exec-practise"]');
     check(await page.waitForSelector('[data-tut="exec-progress"]', { timeout: 5000 }).then(() => true, () => false), 'L14: practice shows its progress');
@@ -445,7 +445,27 @@ try {
     const cmpText = cmpShown ? (await page.textContent('[data-tut="exec-compare"]')).replace(/\s+/g, ' ') : '';
     console.log('   L14 comparison:', cmpText.slice(0, 200));
     check(/In your order/.test(cmpText) && /Learned picks/.test(cmpText) && /Random picks/.test(cmpText), 'L14: comparison shows your order, learned picks and random picks');
-    await step('Read the comparison', 'L14: asks to read the comparison');
+    const v1 = (await page.textContent('[data-tut="exec-diagnosis"]')).replace(/\s+/g, ' ');
+    console.log('   L14 verdict:', v1.slice(0, 160));
+    check(/Your order looks fine|suggest a change/.test(v1), 'L14: a verdict on the order appears with the comparison');
+    await step('What it says about your order', 'L14: asks to read the verdict');
+    await looked();
+    await step('Experiment: a mistake in the order', 'L14: asks to put “Otherwise nap” first');
+    if (!(await page.locator('[data-tut="plan-rows"]').count())) await page.click('[data-tut="plan-edit"]');
+    while ((await rowNames()).indexOf('Otherwise nap') > 0) {
+      await page.locator('[data-tut="plan-rows"] > li').nth((await rowNames()).indexOf('Otherwise nap')).locator('button[aria-label="Move up"]').click();
+    }
+    await page.click('[data-tut="exec-practise"]');
+    const suggested = await page.waitForSelector('[data-tut="exec-apply"]', { timeout: 60000 }).then(() => true, () => false);
+    const v2 = (await page.textContent('[data-tut="exec-diagnosis"]')).replace(/\s+/g, ' ');
+    console.log('   L14 verdict with nap first:', v2.slice(0, 200));
+    check(suggested && v2.includes('“Otherwise nap”'), 'L14: with “Otherwise nap” first, the verdict names it and offers a one-tap move');
+    await step('Fix it in one tap', 'L14: asks to apply the suggestion');
+    await page.click('[data-tut="exec-apply"]');
+    check((await rowNames()).at(-1) === 'Otherwise nap', 'L14: one tap moved “Otherwise nap” to the bottom');
+    await step('Or let them choose', 'L14: then offers learned picks as a mode');
+    await page.click('[data-tut="exec-learned"]');
+    check((await page.textContent('[data-tut="exec-lesson"]')).includes('keep learning on the farm'), 'L14: “Learns what pays off” shows its own settings');
     await looked();
     await lessonDone('Let them choose');
     await nav('Guide');

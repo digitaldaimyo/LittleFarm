@@ -56,6 +56,8 @@ Large files were split by purpose; each original module re-exports its parts, so
 - Validation counts a trait kind (Any ripe crop, Storage with room) as placed when any placed object has the trait.
 - `selectorText` reads a half-built qualifier as "…" instead of throwing.
 
+**Polish phase 5:** `game/orderdiagnosis.ts`. In comparisons only, `PlanRuntime.picks` tallies each free learned choice against what the order would pick (`rows["X>Y"]`, `jobs["R|A>B"]`); the farm itself never sets it. `diagnoseOrder` calls the order fine unless learned picks earn ≥ 5% more. Then it names the row skipped in ≥ 10% of choices: to the bottom if it has no WHEN, else below the lowest row chosen instead; or it names a job preferred over the USE. `applySuggestion` is the one-tap edit. `compareAndDiagnose` (farmlessons.ts) and the worker's steps return it with the comparison.
+
 Game rules never import React. The UI edits the **canonical spec** (`StageSpec`, `SpecNode`) and the simulator and learners compile from it. The Inspect binder shows that exact JSON.
 
 ## Canonical spec and registry

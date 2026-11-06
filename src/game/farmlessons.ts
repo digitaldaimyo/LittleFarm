@@ -4,7 +4,8 @@
  */
 import type { Responsibilities, GameState, Pet } from './types';
 import { petById } from './pets';
-import { execValues, starterPlan, type ExecHow } from './plan';
+import { execValues, newPickTally, starterPlan, type ExecHow, type PickTally } from './plan';
+import { addTally, diagnoseOrder, emptyTally, type OrderDiagnosis } from './orderdiagnosis';
 import { createRuntime, applyPlan, farmTick, DAY_TICKS, TIRED, type FarmRuntime } from './farm';
 
 export interface PlanPreview {
@@ -106,10 +107,11 @@ export const EXEC_EVAL_SEEDS = [900101, 900202, 900303];
 export const EXEC_MODES = ['order', 'learned', 'random'] as const;
 
 /** One way of choosing on one held-out farm copy (a step of the comparison). */
-export interface ExecRun { coins: number; tiredWork: number; switches: number }
+export interface ExecRun { coins: number; tiredWork: number; switches: number; /** Learned runs: where they differed from the order. */ picks?: PickTally }
 
 export function compareExecutiveRun(s: GameState, petId: string, mode: ExecHow['mode'], seed: number, ticks = DAY_TICKS): ExecRun {
   const { g, rt, p } = executiveCopy(s, petId, seed, { mode, eps: 0 });
+  if (mode === 'learned') rt.plan.picks = newPickTally(); // polish phase 5: the diagnosis of the order
   const c0 = g.progress.totalCoins;
   let tiredWork = 0;
   for (let t = 0; t < ticks; t++) {
@@ -118,16 +120,27 @@ export function compareExecutiveRun(s: GameState, petId: string, mode: ExecHow['
     const cur = g.farm.current;
     if (cur && cur !== before && p.energy < TIRED && !['rest', 'basketRun', 'wander'].includes(cur.behaviorId)) tiredWork++;
   }
-  return { coins: g.progress.totalCoins - c0, tiredWork, switches: rt.plan.switches };
+  return { coins: g.progress.totalCoins - c0, tiredWork, switches: rt.plan.switches, ...(rt.plan.picks ? { picks: rt.plan.picks } : {}) };
 }
 
 /** Sum a mode's runs into its comparison row. */
 export function comparisonRow(mode: ExecHow['mode'], runs: ExecRun[], ticks = DAY_TICKS): ExecComparisonRow {
-  const sum = (k: keyof ExecRun) => runs.reduce((a, r) => a + r[k], 0);
+  const sum = (k: 'coins' | 'tiredWork' | 'switches') => runs.reduce((a, r) => a + r[k], 0);
   return { mode, coins: sum('coins'), tiredWork: sum('tiredWork'), switchesPerMin: Math.round(((sum('switches') * 214) / (ticks * runs.length)) * 10) / 10 };
 }
 
 /** Compare the player's order, the learned values and random picks on held-out copies of the farm (no exploring). */
 export function compareExecutives(s: GameState, petId: string, ticks = DAY_TICKS, seeds = EXEC_EVAL_SEEDS): ExecComparisonRow[] {
   return EXEC_MODES.map((mode) => comparisonRow(mode, seeds.map((seed) => compareExecutiveRun(s, petId, mode, seed, ticks)), ticks));
+}
+
+/**
+ * The comparison plus what it says about the player's order (polish phase 5): which responsibility learned picks
+ * skip, and a one-tap change — or that the order is fine.
+ */
+export function compareAndDiagnose(s: GameState, petId: string, ticks = DAY_TICKS, seeds = EXEC_EVAL_SEEDS): { rows: ExecComparisonRow[]; diagnosis: OrderDiagnosis } {
+  const picks = emptyTally();
+  const rows = EXEC_MODES.map((mode) => comparisonRow(mode, seeds.map((seed) => { const r = compareExecutiveRun(s, petId, mode, seed, ticks); addTally(picks, r.picks); return r; }), ticks));
+  const pet = petById(s, petId)!;
+  return { rows, diagnosis: diagnoseOrder(pet.plan ?? starterPlan(), rows, picks) };
 }

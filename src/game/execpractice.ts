@@ -5,12 +5,13 @@
  */
 import type { GameState } from './types';
 import type { ExecValues } from './plan';
-import { execValues } from './plan';
+import { execValues, starterPlan } from './plan';
+import { addTally, diagnoseOrder, emptyTally, type OrderDiagnosis } from './orderdiagnosis';
 import { petById } from './pets';
 import { EXEC_EVAL_SEEDS, EXEC_MODES, compareExecutiveRun, comparisonRow, practiseExecutiveDay, type ExecComparisonRow, type ExecRun } from './farm';
 
 export interface ExecPracticeJob { state: GameState; petId: string; days: number }
-export interface ExecPracticeResult { values: ExecValues; rows: ExecComparisonRow[] }
+export interface ExecPracticeResult { values: ExecValues; rows: ExecComparisonRow[]; /** Polish phase 5: what the learned picks say about the order. */ diagnosis: OrderDiagnosis }
 export interface ExecPracticeProgress { done: number; total: number; label: string }
 
 export type ToExecWorker = { type: 'start'; job: ExecPracticeJob } | { type: 'cancel' };
@@ -39,17 +40,21 @@ export function* execPracticeSteps(job: ExecPracticeJob): Generator<ExecPractice
     done++;
   }
   const rows: ExecComparisonRow[] = [];
+  const picks = emptyTally();
   for (const mode of EXEC_MODES) {
     const runs: ExecRun[] = [];
     for (const seed of EXEC_EVAL_SEEDS) {
       yield { done, total, label: 'Comparing on farms it hasn’t practised on' };
-      runs.push(compareExecutiveRun(s, job.petId, mode, seed));
+      const r = compareExecutiveRun(s, job.petId, mode, seed);
+      addTally(picks, r.picks);
+      runs.push(r);
       done++;
     }
     rows.push(comparisonRow(mode, runs));
   }
   yield { done, total, label: 'Done' };
-  return { values: structuredClone(execValues(petById(s, job.petId)!)), rows };
+  const p = petById(s, job.petId)!;
+  return { values: structuredClone(execValues(p)), rows, diagnosis: diagnoseOrder(p.plan ?? starterPlan(), rows, picks) };
 }
 
 /** Run the steps to the end, pausing between them (`pause` yields to the page or to the worker's message queue). */

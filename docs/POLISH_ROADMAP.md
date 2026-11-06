@@ -124,6 +124,16 @@ Status: **official**. We stop adding features and improve what exists. It follow
   - A card-reference search finds cards by title or hint.
 
 ### Phase 5: Learned picks as a diagnosis of your order
+**Status: done.**
+- During the comparison, each free learned choice is tallied against your order's pick.
+- If learned picks earn ≥ 5% more, the verdict names the responsibility they skip and offers a one-tap edit: move it to the bottom (no WHEN) or below what they chose instead, or use a preferred job first. Otherwise it says the order is fine.
+- "Check my order" works on Auto whichever way the pet picks.
+- *Let them choose* now runs check → read → put "Otherwise nap" first → one-tap fix → learned picks as a mode.
+- **Measured on 3 farms:**
+  - "Otherwise nap" first: order 20 coins, learned picks 400–412; after the tap, the order earns 98–99% of them.
+  - Good orders are called fine.
+  - `bench:farm --learned` is identical on all 60 runs.
+
 - After practice, the comparison also **names what the learned picks changed**, e.g. "it skips *Otherwise nap* at the top — move it down?" or "it prefers Haul over Basket run when storage is half full". It offers a one-tap edit to the order.
 - Learned picks stay available as a mode, but the lesson leads with the diagnosis.
 - **Gate:**

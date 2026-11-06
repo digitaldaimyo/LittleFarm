@@ -12,6 +12,7 @@ import { PetSprite, type PetMood } from './art';
 import { activePet, getSkill, isCertified, petById } from '../game/pets';
 import { jobCapability } from '../game/capability';
 import { startExecPractice, type ExecPracticeHandle } from './execpractice';
+import { applySuggestion, type OrderDiagnosis } from '../game/orderdiagnosis';
 import type { ExecPracticeProgress } from '../game/execpractice';
 import { DAY_TICKS, MAX_ON_DUTY, type ExecComparisonRow, crewSummary, dayInfo, describeTile, dutyPets, makeLead, petActivity, queueManual, queueManualPath, recentProduction, restartPet, setOnDuty, TIRED } from '../game/farm';
 import { RosterStrip, toggleDuty, leadPet, petStatus } from './Roster';
@@ -249,7 +250,7 @@ export function FarmScreen() {
               </div>
             </div>
           )}
-          {selected === 'auto' && pet.executive.mode === 'learned' && <ExecutiveLesson pet={pet} />}
+          {selected === 'auto' && <ExecutiveLesson pet={pet} />}
           {f.queue.length > 0 && (
             <details className="queue">
               <summary>Recent decisions</summary>
@@ -327,6 +328,8 @@ function RequestsBoard() {
  */
 function ExecutiveLesson({ pet }: { pet: Pet }) {
   const [cmp, setCmp] = useState<ExecComparisonRow[] | null>(null);
+  const [diag, setDiag] = useState<{ d: OrderDiagnosis; applied: boolean } | null>(null);
+  const learnedMode = pet.executive.mode === 'learned';
   const [run, setRun] = useState<{ handle: ExecPracticeHandle; progress: ExecPracticeProgress | null } | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const busy = !!run;
@@ -345,8 +348,10 @@ function ExecutiveLesson({ pet }: { pet: Pet }) {
           const p = g.pets.find((x) => x.id === pet.id);
           if (p) p.executive.values = m.result.values;
           g.progress.flags.execCompared = true;
+          if (m.result.diagnosis.suggestion) g.progress.flags.execSuggested = true;
         });
         setCmp(m.result.rows);
+        setDiag({ d: m.result.diagnosis, applied: false });
       } else if (m.type === 'cancelled') setNote('Practice stopped. Nothing was learned from it.');
       else setNote(`Practice stopped: ${m.error}`);
     });
@@ -357,13 +362,15 @@ function ExecutiveLesson({ pet }: { pet: Pet }) {
   return (
     <div className="exec-lesson" data-tut="exec-lesson">
       <p className="small muted">
-        {pet.name} learns, for each situation, which responsibility (and which job for it) actually gets something done — weighted by your order, so the top of the list still matters most.
-        Needs, cooldowns and commitments still apply. {v ? `Practised ${Math.round(v.practised / DAY_TICKS)} farm day${Math.round(v.practised / DAY_TICKS) === 1 ? '' : 's'}; ${Object.keys(v.upper).length} situations learned.` : 'Nothing learned yet: it starts out picking in your order.'}
+        {learnedMode
+          ? `${pet.name} learns, for each situation, which responsibility (and which job for it) actually gets something done, weighted by your order, so the top of the list still matters most. Needs, cooldowns and commitments still apply.`
+          : `Check your order: ${pet.name} practises deciding on copies of your farm, then its learned picks are compared with your order. If they earn clearly more, you’ll see what they do differently and a one-tap change to your list.`}
+        {' '}{v ? `Practised ${Math.round(v.practised / DAY_TICKS)} farm day${Math.round(v.practised / DAY_TICKS) === 1 ? '' : 's'}; ${Object.keys(v.upper).length} situations learned.` : 'Nothing learned yet.'}
       </p>
       <div className="row gap wrap">
-        <button className="btn small" data-tut="exec-practise" disabled={busy} onClick={practise}>{busy ? 'Practising…' : 'Practise deciding (4 farm days)'}</button>
+        <button className="btn small" data-tut="exec-practise" disabled={busy} onClick={practise}>{busy ? 'Practising…' : 'Check my order (4 practice days)'}</button>
         {run && <button className="btn ghost small" data-tut="exec-cancel" onClick={() => run.handle.cancel()}>Stop</button>}
-        {!run && v && <button className="btn ghost small" onClick={() => { if (confirm(`Forget what ${pet.name} learned about choosing? Skills are kept.`)) { store.mutate((g) => { delete g.pets.find((x) => x.id === pet.id)!.executive.values; }); setCmp(null); } }}>Forget what it learned</button>}
+        {!run && v && <button className="btn ghost small" onClick={() => { if (confirm(`Forget what ${pet.name} learned about choosing? Skills are kept.`)) { store.mutate((g) => { delete g.pets.find((x) => x.id === pet.id)!.executive.values; }); setCmp(null); setDiag(null); } }}>Forget what it learned</button>}
       </div>
       {run && (
         <div className="small" data-tut="exec-progress">
@@ -372,8 +379,26 @@ function ExecutiveLesson({ pet }: { pet: Pet }) {
         </div>
       )}
       {note && <p className="small muted" data-tut="exec-note">{note}</p>}
-      <label className="small"><input type="checkbox" checked={keepsLearning(pet)} onChange={(e) => store.mutate((g) => { g.pets.find((x) => x.id === pet.id)!.executive.explore = e.target.checked; })} /> keep learning on the farm (tries something else 1–5% of the time, by Curiosity){pet.executive.explore === undefined ? ` — ${keepsLearning(pet) ? 'on until it has practised' : 'off now that it has practised'}` : ''}</label>
-      {v && Object.keys(v.upper).length > 0 && <ExecutiveInspector pet={pet} />}
+      {diag && (
+        <div className={`diag ${diag.d.verdict === 'fine' ? 'info' : 'warning'}`} data-tut="exec-diagnosis">
+          <strong>{diag.d.verdict === 'fine' ? 'Your order looks fine' : 'Learned picks suggest a change'}</strong>
+          <div className="small">{diag.d.text}</div>
+          {diag.d.suggestion && !diag.applied && (
+            <button className="btn small" data-tut="exec-apply" onClick={() => {
+              const sug = diag.d.suggestion!;
+              store.mutate((g) => {
+                const p = g.pets.find((x) => x.id === pet.id);
+                if (p?.plan && applySuggestion(p.plan, sug)) g.progress.flags.execApplied = true;
+              });
+              setDiag({ ...diag, applied: true });
+              store.toast(`${sug.text}: done. Check again to see what it changes.`, 'good');
+            }}>{diag.d.suggestion.button}</button>
+          )}
+          {diag.applied && <div className="small muted">Changed. Check again to compare.</div>}
+        </div>
+      )}
+      {learnedMode && <label className="small"><input type="checkbox" checked={keepsLearning(pet)} onChange={(e) => store.mutate((g) => { g.pets.find((x) => x.id === pet.id)!.executive.explore = e.target.checked; })} /> keep learning on the farm (tries something else 1–5% of the time, by Curiosity){pet.executive.explore === undefined ? ` — ${keepsLearning(pet) ? 'on until it has practised' : 'off now that it has practised'}` : ''}</label>}
+      {learnedMode && v && Object.keys(v.upper).length > 0 && <ExecutiveInspector pet={pet} />}
       {cmp && (
         <table className="small compare" data-tut="exec-compare">
           <thead><tr><th>On 3 farms it hasn’t practised on (1 day each)</th><th>coins</th><th>switches/min</th><th>jobs started tired</th></tr></thead>

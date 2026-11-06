@@ -39,7 +39,15 @@ export interface PlanRuntime {
   /** Learned executive (phase 5): the last choice, and its finished-but-not-yet-learned-from result. */
   decided?: { state: string; row: string; job: string; index: number; tick: number };
   pending?: { state: string; row: string; job: string; index: number; tick: number; r: number };
+  /**
+   * Polish phase 5: when set (comparisons only), learned picks tally where they differ from the player's order:
+   * `n` free choices; `rows["X>Y"]` = the order would pick row X, learned picked Y; `jobs["R|A>B"]` likewise for jobs.
+   */
+  picks?: PickTally;
 }
+
+export interface PickTally { n: number; rows: Record<string, number>; jobs: Record<string, number> }
+export const newPickTally = (): PickTally => ({ n: 0, rows: {}, jobs: {} });
 
 export function newPlanRuntime(): PlanRuntime {
   return { starts: [], fires: {}, switches: 0, guarded: 0, guardUntil: -1, lastHold: -1, commit: null, cooldown: {}, fails: {}, trace: [] };
@@ -154,6 +162,7 @@ export function chooseDuty(
     else {
       let bv = -Infinity;
       for (const r of candidates) { const q = v.upper[upperKey(state, r.id)]?.q ?? upperPrior(r.index); if (q > bv) { bv = q; row = r; } }
+      if (pr.picks) { pr.picks.n++; if (row !== candidates[0]) { const k = `${candidates[0].id}>${row.id}`; pr.picks.rows[k] = (pr.picks.rows[k] ?? 0) + 1; } }
       why = row === candidates[0] ? `“${row.label}” — learned it’s the best pick here, as listed` : `“${row.label}” — learned it pays off more here than “${candidates[0].label}”`;
     }
   }
@@ -167,6 +176,11 @@ export function chooseDuty(
       // Learned value first; ties (e.g. nothing learned yet here) go to the farm-wide evidence.
       const q = (j: DutyJob) => v.lower[lowerKey(state, row.id, j.key)]?.q ?? LOWER_PRIOR;
       for (const j of jobs) if (q(j) > q(job) + 1e-9 || (Math.abs(q(j) - q(job)) <= 1e-9 && jobScore(p, j.key) > jobScore(p, job.key))) job = j;
+      if (pr.picks) {
+        let ordered = jobs[0];
+        for (const j of jobs) if (jobScore(p, j.key) > jobScore(p, ordered.key)) ordered = j;
+        if (ordered !== job) { const k = `${row.id}|${ordered.key}>${job.key}`; pr.picks.jobs[k] = (pr.picks.jobs[k] ?? 0) + 1; }
+      }
     }
     why += ` — using ${job.label} (learned)`;
   } else {
