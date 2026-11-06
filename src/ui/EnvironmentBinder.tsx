@@ -14,12 +14,21 @@ import { HandCardView, cardOf, withSnapshot } from './cards';
 import { ObjectIcon } from './art';
 import type { Pet } from '../game/types';
 import { kindOf } from './TeachScreen';
+import { challengeOf } from '../game/challenges';
 
 export function EnvironmentBinder({ stage }: { stage: StageSpec }) {
   const s = useStore();
   const hand = buildHand(REGISTRY, { socket: { kind: 'nominal', name: 'Kind' }, stage, unlocks: new Set(s.state.progress.unlocks), recent: s.state.recentCards, favorites: s.state.favorites, itBound: false, placing: true });
   const all = [...hand.recommended, ...Object.values(hand.bySheet).flat()];
   const update = (fn: (st: StageSpec) => void) => withSnapshot(stage.id, fn);
+  if (challengeOf(stage)) {
+    return (
+      <div className="binder-body" data-tut="env-locked">
+        <p className="small"><b>🔒 Set by the challenge.</b> This is the pen your pet is tested in{stage.varySize ? ' (its size changes every try)' : ''}:</p>
+        <ul className="small">{stage.environment.map((p) => <li key={p.id}>{placementText(stage, p)}</li>)}</ul>
+      </div>
+    );
+  }
   return (
     <div className="binder-body">
       <p className="small muted">Pick a thing, then tap the pen. <b>Scatter</b> puts it somewhere new each try (best for skills that work anywhere). <b>Place here</b> pins it to one tile.</p>

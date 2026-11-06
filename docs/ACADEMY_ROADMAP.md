@@ -109,6 +109,27 @@ Retired:
   - no farm-economy code runs.
 
 ### Phase 1: The challenge engine
+**Status: done.**
+- **`game/challenges.ts`:** a `ChallengeSpec` gives a base lesson whose pen, SUCCESS / FAIL, target, time per try and seeds are locked, the cards allowed, a bar, merit badges and a reference solution.
+- **Locks:** the store restores a challenge's locked parts after any change, by any path, and certification refuses a lesson whose locked parts differ.
+- **Allowed cards:** the hand offers only the challenge's cards (things, the pet, the target and "it" are always allowed). Certification also refuses others, so an imported lesson can't smuggle cards in.
+- **Certification** refuses a run below the bar on the fixed test layouts, a flagged loophole, and an exam before the course's other rosettes.
+- **Rewards:** a pass earns a rosette (5 acorns, plus 10 for an exam) and a merit badge per star: works in bigger pens, lean (senses), quick study (tries, in one fresh run), tidy (rules), 2 acorns each. Re-certifying pays only for new badges. An exam raises the pet's rank.
+- **Course 1 (First Steps) ships four challenges:** *To the berry*, *Sit and stay*, *Keep clear*, and *The Apprentice exam* (berries among rocks in pens that change size). Phase 2 completes the track.
+- **UI:** challenges are listed under their course on the Academy map. Open one in the Lab and it shows Hazel's brief, the locked pen and SUCCESS (🔒), and the badges to earn. Suggested rules are hidden in challenges. A finished report has **Certify**, which saves the skill on a pass.
+- **Gate:** `tests/challenges.test.ts`:
+  - the same lesson and pet give the same policy and result;
+  - every shipped reference clears its bar by ≥ 10 points at three temperaments and certifies;
+  - a flagged loophole is refused;
+  - plus locks, allowed cards, badges, acorns and exam to rank.
+
+  The browser test opens *To the berry*, is refused with no treats ("15% … the bar is 70%"), builds the rule, trains and certifies (a rosette, two badges, 9 acorns).
+- **Found and fixed:**
+  - the Keep clear reference needed *Far from* in course 1's cards and more practice for a margin at every temperament;
+  - the certify result was lost on the store update (now kept in UI state per run);
+  - opening a challenge now closes a finished report from another lesson.
+- **For phase 2:** the Lab's Curriculum still lists the farm-era recipes, which contain challenge answers. Decide whether recipes open as challenges complete.
+
 - **`ChallengeSpec`:** a locked pen and SUCCESS / FAIL; what the player may edit (cards allowed, budgets); a fixed seed set; a certification bar; mastery conditions; rewards; a reference solution.
 - **Locked parts** are shown but can't be edited. The hand offers only allowed cards.
 - **Mastery stars** come from things already measured:

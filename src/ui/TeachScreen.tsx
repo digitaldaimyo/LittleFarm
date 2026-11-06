@@ -1,3 +1,5 @@
+import { ChallengeBanner } from './ChallengeBanner';
+import { challengeOf } from '../game/challenges';
 import { useEffect, useMemo, useState } from 'react';
 import { cloneWorld, legalActions, step, type Action, type World } from '../sim/world';
 import { probeField, probePath } from '../learning/probe';
@@ -59,6 +61,7 @@ export function TeachScreen() {
       <aside className="side-col">
         {training ? <TrainingPanel /> : (
           <>
+            <ChallengeBanner stage={stage} />
             <div className="tabs" role="tablist" aria-label="Binders">
               {BINDERS.map((b) => (
                 <button key={b.id} role="tab" aria-selected={s.ui.binder === b.id} className={`tab ${s.ui.binder === b.id ? 'on' : ''} ${tutorialWants(s.state, b.id) ? 'pulse' : ''}`} onClick={() => s.setUi({ binder: b.id, slot: null, placing: null })}>{b.label}</button>
@@ -184,6 +187,7 @@ function PenView({ stage, pet }: { stage: StageSpec; pet: Pet }) {
   const mood = showingReplay ? (replay.frame >= replay.frames && trace!.success ? 'celebrate' : last?.hits?.length ? 'celebrate' : 'move') : 'idle';
 
   const onTile = (x: number, y: number) => {
+    if (challengeOf(stage)) { store.toast('This pen is set by the challenge. Teach in the Rules and Pet binders.', 'info'); return; }
     if (showingReplay) return;
     if (probing) { setProbeAt({ x, y }); if (!store.state.progress.flags.probePath) store.mutate((g) => { g.progress.flags.probePath = true; }); return; }
     const placing = s.ui.placing;

@@ -9,6 +9,7 @@ import type { SlotRef } from './store';
 import { store, useStore } from './store';
 import { createNode, nextEmptySlot, noteNames, placeTemplate, saveTemplate, setSlot, slotInfo, slotRole, templatesFor } from './edit';
 import { describe } from '../domain/describe';
+import { cardAllowed, challengeOf } from '../game/challenges';
 import { snapshotStage } from '../game/state';
 import { audio } from '../audio/engine';
 
@@ -222,7 +223,7 @@ export function Hand({ stage, slot, onPick }: { stage: StageSpec; slot: SlotRef;
   const info = slotInfo(stage, slot);
   if (!info) return null;
   const hand = buildHand(REGISTRY, {
-    socket: info.socket.type, stage, unlocks: new Set(s.state.progress.unlocks), recent: s.state.recentCards,
+    socket: info.socket.type, stage, unlocks: new Set(s.state.progress.unlocks), allowed: challengeOf(stage) ? (id: string) => cardAllowed(challengeOf(stage), id) : undefined, recent: s.state.recentCards,
     favorites: s.state.favorites, itBound: info.itBound, placing: false, role: slotRole(stage, slot),
   });
   const tpls = templatesFor(s.state.templates, info.socket.type);

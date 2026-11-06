@@ -1,4 +1,5 @@
 import { audio } from '../audio/engine';
+import { CertifyButton } from './ChallengeBanner';
 import { useEffect } from 'react';
 import { isGuideStage } from '../game/tutorial';
 import { Tips } from './Tips';
@@ -102,7 +103,7 @@ export function TrainingPanel() {
     <div className="training panel" aria-live="polite">
       <div className="row between">
         <div>
-          {isGuideStage(t.stage) && <span className="badge-exp">{t.stage.id === 'stage-tutorial' ? 'Field Guide lesson · free' : 'Field Guide experiment · free · saved only if you choose'}</span>}
+          {!s.state.academy && isGuideStage(t.stage) && <span className="badge-exp">{t.stage.id === 'stage-tutorial' ? 'Field Guide lesson · free' : 'Field Guide experiment · free · saved only if you choose'}</span>}
           <div className="eyebrow">{t.status === 'evaluating' ? 'Testing on held-out layouts…' : running ? `${pet?.name} is learning ${t.stage.learner.skill} — real tries, real treats` : t.status === 'done' ? 'Lesson report' : t.status}</div>
           <strong>{t.stage.name}</strong>
           {t.navigator && <div className="small muted">Movement option: {t.navigator.skill} r{t.navigator.rev} (reused, not retrained)</div>}
@@ -232,6 +233,7 @@ export function TrainingPanel() {
             </span>
           )}
         </div>
+        <CertifyButton run={t.startedAt} petId={t.petId} stage={t.stage} report={t.report} episodes={p?.episode ?? 0} resumed={!!t.resumedFrom} saved={t.saved} save={save} />
         <div className="row gap wrap actions">
           <button className="btn primary" data-tut="save-skill" disabled={t.saved} onClick={save}>{t.saved ? `Saved r${nextRev - 1}` : r.passed ? `Save skill as r${nextRev}` : `Save anyway as r${nextRev}`}</button>
           <button className="btn" onClick={() => { const err = pet && startTraining(pet, store.state.stages.find((x) => x.id === t.stage.id) ?? t.stage, { resume: !!getSkill(pet, t.stage.learner.skill) }); if (err) { audio.play('card.reject'); store.toast(err, 'warn'); } }}>Train more</button>

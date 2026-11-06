@@ -1,4 +1,5 @@
 /** Teach screen: the Rules binder — treats, SUCCESS and FAIL, and what is wrong with them (split from TeachScreen.tsx, polish phase 3). */
+import { challengeOf } from '../game/challenges';
 import { useMemo } from 'react';
 import { audio } from '../audio/engine';
 import { describe, describeRule } from '../domain/describe';
@@ -20,7 +21,7 @@ export function RulesBinder({ stage }: { stage: StageSpec }) {
   const diags = validateStage(stage, REGISTRY, new Set(s.state.progress.unlocks));
   const errs = nodesWithErrors(diags);
   const update = (fn: (st: StageSpec) => void) => withSnapshot(stage.id, fn);
-  const sugg = suggestedRules(stage);
+  const sugg = challengeOf(stage) ? [] : suggestedRules(stage); // a challenge's answer isn't one tap away
   const building = ['treat-rule', 'success'].includes(currentStep(s.state)?.id ?? '');
   const suggestions = sugg.map((g) => (
         <button key={g.label} className="suggest" onClick={() => update((st) => { st.rules = g.rules; st.success = g.success; })}>
@@ -71,6 +72,9 @@ function ConditionList({ stage, which, errs }: { stage: StageSpec; which: 'succe
   const read = root ? describe(root, { petName: pet?.name ?? 'your pet', target: stage.learner.focus }) : null;
   const setRoot = (st: StageSpec, n: SpecNode | null) => { if (which === 'success') st.success = n; else st.fail = n; };
   const getRoot = (st: StageSpec) => (which === 'success' ? st.success : st.fail);
+  if (challengeOf(stage)) {
+    return <div className="rule-line" data-tut={`${which}-locked`}>{kw}<span className="small">🔒 {read ?? (which === 'fail' ? 'never (no FAIL)' : '…')}</span></div>;
+  }
   if (!isList) {
     return (
       <>

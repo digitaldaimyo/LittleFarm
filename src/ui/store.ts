@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import type { LayoutDraft, LayoutItemId, LayoutPreview } from '../game/layout';
 import type { GameState } from '../game/types';
 import { newAcademyGame } from '../game/state';
+import { enforceChallengeLocks, type CertifyResult } from '../game/challenges';
 import { createRuntime, farmTick, type FarmFx, type FarmRuntime } from '../game/farm';
 import { advanceTutorial, chapterById, guide } from '../game/tutorial';
 import { saveLocal } from '../persistence/storage';
@@ -60,6 +61,8 @@ export interface UiState {
   farmPet: string | null;
   /** Farm: a tapped tile and what's on it. */
   inspect: { x: number; y: number; text: string } | null;
+  /** Academy: the last certification result, for the training run that started at `run`. */
+  certify?: { run: number; result: CertifyResult } | null;
 }
 
 export interface LayoutUi {
@@ -113,6 +116,7 @@ class GameStore {
     const unlocks0 = this.state.progress.unlocks.length;
     const done0 = { status: { ...g0.status } };
     fn(this.state);
+    enforceChallengeLocks(this.state); // a challenge's pen and SUCCESS / FAIL can't be changed, by any path
     if (this.state.progress.unlocks.length > unlocks0) audio.play('ui.unlock');
     advanceTutorial(this.state);
     const g1 = guide(this.state);

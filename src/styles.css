@@ -457,3 +457,9 @@ button.node { padding: 2px 9px; font-weight: 600; }
 .academy .course, .academy .pet-board { padding: 10px 12px; border-radius: 10px; background: var(--mat); display: grid; gap: 3px; }
 .academy .mentor { margin: 6px 0 0; }
 .academy .ranks .on { font-weight: 700; }
+.academy .challenges { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
+.academy .challenge { padding: 8px 10px; border-radius: 8px; background: var(--paper); display: grid; gap: 2px; }
+.academy .challenge.locked { opacity: .7; }
+.challenge-banner { display: grid; gap: 4px; margin-bottom: 8px; }
+.challenge-banner .badges { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.certify { margin: 8px 0; }

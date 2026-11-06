@@ -25,6 +25,9 @@ public/sw.js    service worker for offline play
 - **What the academy edition switches off:** earnings, requests, seed costs, unlocks from coins and lesson energy, each checked at its source in `game/farm.ts`, `game/farmworld.ts` and `game/state.ts`.
 - **Saves:** the `pen-deck-academy` format (`ACADEMY_SAVE_VERSION`), loaded only by `parseAcademySave`, in a fresh storage slot.
 - **UI:** `ui/AcademyScreen.tsx` is the Academy tab.
+- **Challenges** (`game/challenges.ts`, Academy phase 1):
+  - `CHALLENGES` (each with a base lesson, a bar, stars, allowed cards and a reference solution); `openChallenge`; `enforceChallengeLocks`, which the store runs after every change; `cardAllowed`, used by the hand; `certify`; `challengeStatus`.
+  - UI: `ui/ChallengeBanner.tsx` (the brief in the Lab, and the Certify button on a finished report).
 
 **Ground rules.**
 - Game rules never import React.

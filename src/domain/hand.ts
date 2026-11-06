@@ -23,6 +23,8 @@ export interface HandContext {
   placing: boolean;
   /** Which part of the lesson the slot belongs to (ranks cards that make sense there). */
   role?: SlotRole;
+  /** Academy challenges: only the cards the challenge allows (Academy roadmap, phase 1). */
+  allowed?: (cardId: string) => boolean;
 }
 
 export type SlotRole = 'success' | 'fail' | 'when' | 'if' | 'then' | 'sense' | 'other';
@@ -120,6 +122,7 @@ export function buildHand(reg: Registry, ctx: HandContext): Hand {
     if (!fits(ctx.socket, effectiveOutput(reg, card, ctx.stage.learner.focus))) continue;
     if (ctx.placing && card.presentation.group === 'reference') continue;
     if (card.retired) continue;
+    if (ctx.allowed && !ctx.allowed(card.id)) continue;
     let status: HandCard['status'] = 'available';
     let reason: string | undefined;
     const kind = kindOfCard(card.id);

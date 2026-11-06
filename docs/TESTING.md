@@ -1,7 +1,7 @@
 # Testing and benchmarks
 
 ## Automated suites (`npm test`)
-340 tests in 48 files. **CI** (`.github/workflows/ci.yml`, on every push and pull request): typecheck, lint, `npm test`, build, then `npm run e2e:cards`. Run the same before pushing. The full browser test, `npm run e2e` (every lesson, under 2 min after a build), stays local. Browser checks run against the built app: `npm run build` first.
+349 tests in 49 files. **CI** (`.github/workflows/ci.yml`, on every push and pull request): typecheck, lint, `npm test`, build, then `npm run e2e:cards`. Run the same before pushing. The full browser test, `npm run e2e` (every lesson, under 2 min after a build), stays local. Browser checks run against the built app: `npm run build` first.
 
 **Test pets have a fixed temperament.** `tests/setup.ts` gives every pet adopted in a test the default traits, because adoption seeds a random temperament from the clock and twice made a test fail only in the full run. A test that wants a random one calls `adoptRandomPet` from `tests/helpers.ts`.
 
@@ -43,6 +43,7 @@
 | `tests/orderdiagnosis.test.ts` | Polish phase 5 gate: with “Otherwise nap” first (seeds 101 and 202), the diagnosis names that row and suggests moving it to the bottom (it has no WHEN); one tap brings the order within 5% of the learned picks (measured 98–99%), and the next check says it is fine. A good order is called fine; collecting the tally doesn't change the comparison; from a constructed tally it moves a row below the lowest one chosen instead, offers a preferred job first, and calls rare or unprofitable differences fine; the lesson's steps run check → read → mistake → fix → mode |
 | `tests/docs.test.ts` | Polish phase 6 gate: the current docs (README, DESIGN, ARCHITECTURE, TESTING, the card reference, the roadmap) don't present retired behaviour (direct jobs, Wander, Forage/Deliver, the bandit, plan mode, the rules executive) as current, every markdown link in the README and the docs resolves, and every file a current doc names exists |
 | `tests/academy.test.ts` | Academy phase 0 gate: a new game is the academy edition (Willowbrook's record, no Field Guide, the Lab open and free); a skill saved in the Lab is the pet's everywhere (skills, Homestead jobs, Academy board); no farm economy runs (a farm day earns no coins, posts no requests, plants with free seeds; the same farm in the farm edition earns and posts); the `pen-deck-academy` save round-trips and farm-edition saves are refused with a reason; five courses, ranks rising one per exam |
+| `tests/challenges.test.ts` | Academy phase 1 gate: the same lesson and pet give the same policy and certification; each shipped challenge's reference solution clears its bar by ≥ 10 points at three temperaments (0.35 / 0.5 / 0.65) and certifies; a flagged loophole is never certified; locked parts snap back after changes and a changed lesson is refused; the hand and certification allow only the challenge's cards; rosette and badge acorns are paid once; the exam opens after the course and raises the rank; certificates are per pet |
 | `tests/tuneups.test.ts` | Pen & cards phase 5 and polish phase 1: Plant, Open the gate, Shut the gate, Empty the basket, Harvest and Basket run certify at ≥ 80% on 6 training seeds at default traits; learned picks explore until practised, then stop, unless the player chose |
 | `tests/cardref.test.ts` | `docs/CARD_REFERENCE.md` matches the card registry (`npm run cards:ref` regenerates it) |
 | `tests/aims.test.ts` | Follow-up: “picks up the furthest berry from the house” pays for that berry, judged before the step (not the near one); a qualifier still can't go in a delivery's Into; aims read as words; Harvest aimed at the furthest berry picks it first; Go to aimed at a qualifier gets there |
@@ -123,6 +124,7 @@ Headless Chromium plays the game with real clicks against the built app (`npm ru
 - **Part 1, from a new game** (`npm run e2e`):
   - Willowbrook Academy's welcome; the tabs (Academy, Lab, Homestead, Pets, Journal, Settings); the course map with each exam locked; Pip as a Novice; acorns in the header.
   - In the Lab, the first rule and SUCCESS built card by card, trained (no energy cost) and saved. The skill then shows on the Academy board and in Pets.
+  - A challenge (*To the berry*): the exam is locked; the brief, the locked pen and SUCCESS, no suggested answer, only allowed cards; refused with no treats; then taught, trained and certified (a rosette and acorns, shown on the map).
   - A Homestead with no shop, layout or requests board.
   - Sound: no AudioContext before the first click, every cue rendered and audible, gentle ambience.
 - **Part 2, from a prepared academy save** (`scripts/e2e-save.ts`; `npm run e2e:cards` runs only this part, and CI runs it):
