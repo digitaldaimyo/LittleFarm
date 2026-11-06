@@ -8,6 +8,7 @@
 import type { SpecNode, StageSpec } from '../domain/types';
 import { node } from '../domain/spec';
 import { classicApproachStage, recipeStage } from '../domain/recipes';
+import { presetSenses } from '../learning/senses';
 import type { TrainingReport } from '../learning/report';
 import type { GameState } from './types';
 import { COURSES, petRank, petRecord, petRecordOf, type Rank } from './academy';
@@ -44,7 +45,7 @@ export const ROSETTE_ACORNS = 5;
 export const BADGE_ACORNS = 2;
 export const EXAM_ACORNS = 10;
 
-const COURSE1_CARDS = [
+export const COURSE1_CARDS = [
   'rule', 'ev.reach', 'ev.enter', 'ev.tick', 'ev.stay', 'ev.bump',
   'eff.reward', 'eff.penalty', 'eff.end', 'lim.once', 'lim.every', 'lim.perObject', 'lim.cooldown',
   'cond.at', 'cond.near', 'cond.farFrom', 'cond.nextTo', 'cond.not', 'cond.and', 'cond.any', 'cond.stayedFor', 'cond.time',
@@ -52,14 +53,14 @@ const COURSE1_CARDS = [
 ];
 
 /** A challenge's starting lesson: the recipe's pen and SUCCESS / FAIL, no rules, and a plain learner to build on. */
-function blank(st: StageSpec, id: string, title: string, senses: SpecNode[], abilities: StageSpec['abilities'], skill: string): StageSpec {
+function blank(st: StageSpec, id: string, title: string, senses: SpecNode[], abilities: StageSpec['abilities'], skill: string, episodes?: number): StageSpec {
   st.id = `challenge-${id}`;
   st.name = title;
   st.recipeId = 'challenge';
   st.extensions = { ...(st.extensions ?? {}), challenge: id };
   st.rules = [];
   st.abilities = abilities;
-  st.learner = { ...st.learner, skill, senses, episodes: Math.min(st.learner.episodes, 1500) };
+  st.learner = { ...st.learner, skill, senses, episodes: episodes ?? Math.min(st.learner.episodes, 1500) };
   return st;
 }
 /** The reference keeps the challenge's id and name but takes a recipe's rules and learner. */
@@ -83,6 +84,23 @@ export const CHALLENGES: ChallengeSpec[] = [
     reference: (base) => withRecipe(base, classicApproachStage()),
   },
   {
+    id: 'fs-practice', course: 'first-steps', title: 'Enough practice',
+    brief: 'A bigger pen with more rocks. Your pet starts with 300 tries of practice: is that enough? If the report looks broken, try more practice before you change anything else.',
+    base: () => {
+      const st = blank(classicApproachStage(), 'fs-practice', 'Enough practice', presetSenses(), ['move'], 'Approach');
+      st.size = { w: 10, h: 10 };
+      st.environment.push(node('place.obstacles', { amount: 'some', kind: 'rocks' }));
+      st.maxTicks = 60;
+      st.learner.episodes = 300;
+      return st;
+    },
+    bar: 0.7,
+    stars: [{ id: 'transfer', label: 'Works in bigger pens' }, { id: 'quick', label: 'Quick study', limit: 4000 }, { id: 'tidy', label: 'Tidy: 2 rules or fewer', limit: 2 }],
+    cards: COURSE1_CARDS,
+    // Measured: 300 tries 10%; 4,000 tries 90% at all three temperaments.
+    reference: (base) => { const r = withRecipe(base, classicApproachStage()); r.learner.senses = presetSenses(); r.learner.episodes = 4000; return r; },
+  },
+  {
     id: 'fs-stay', course: 'first-steps', title: 'Sit and stay',
     brief: 'Teach your pet to go to the target and stay there for 5 steps. It will need to be able to stay, and to sense how long it has waited.',
     base: () => blank(recipeStage('wait-for-it'), 'fs-stay', 'Sit and stay', [nearestTarget()], ['move'], 'Wait for it'),
@@ -92,6 +110,16 @@ export const CHALLENGES: ChallengeSpec[] = [
     reference: (base) => withRecipe(base, recipeStage('wait-for-it')),
   },
   {
+    id: 'fs-pond', course: 'first-steps', title: 'Mind the pond',
+    brief: 'The berry again, but there is a pond, and stepping in it is a FAIL. Your pet can only avoid what it can sense.',
+    base: () => blank(recipeStage('avoid-pond'), 'fs-pond', 'Mind the pond', [node('sense.nearest', { what: node('kind:berry') })], ['move'], 'Avoid'),
+    bar: 0.7,
+    stars: [{ id: 'transfer', label: 'Works in bigger pens' }, { id: 'lean', label: 'Lean: 3 senses or fewer', limit: 3 }, { id: 'quick', label: 'Quick study', limit: 25000 }],
+    cards: COURSE1_CARDS,
+    // Measured: 24,000 tries dipped to 60% at one temperament; 40,000: 80–100%.
+    reference: (base) => { const r = withRecipe(base, recipeStage('avoid-pond')); r.learner.episodes = 40000; return r; },
+  },
+  {
     id: 'fs-clear', course: 'first-steps', title: 'Keep clear',
     brief: 'Teach your pet to stay well away from the pond until time is up. Success is judged when the time runs out.',
     base: () => blank(recipeStage('keep-clear'), 'fs-clear', 'Keep clear', [nearestTarget()], ['move', 'stay'], 'Keep clear'),
@@ -99,6 +127,19 @@ export const CHALLENGES: ChallengeSpec[] = [
     stars: [{ id: 'transfer', label: 'Works in bigger pens' }, { id: 'lean', label: 'Lean: 3 senses or fewer', limit: 3 }, { id: 'tidy', label: 'Tidy: 2 rules or fewer', limit: 2 }],
     cards: COURSE1_CARDS,
     reference: (base) => { const r = withRecipe(base, recipeStage('keep-clear')); r.learner.episodes = 6000; return r; }, // more practice: a margin at every temperament
+  },
+  {
+    id: 'fs-lean', course: 'first-steps', title: 'Less is more',
+    brief: 'Someone gave your pet six senses for a simple walk to the berry, and only 400 tries to practise. Every sense multiplies what it must practise. Choose the few that decide the next step.',
+    base: () => blank(classicApproachStage(), 'fs-lean', 'Less is more', [
+      node('sense.nearest', { what: node('kind:berry') }), node('sense.distance', { what: node('kind:rock') }), node('sense.blocked'),
+      node('sense.hazards'), node('sense.heading'), node('sense.still'),
+    ], ['move'], 'Approach', 400),
+    bar: 0.8,
+    stars: [{ id: 'lean', label: 'Lean: 2 senses or fewer', limit: 2 }, { id: 'quick', label: 'Quick study: 400 tries or fewer', limit: 400 }, { id: 'transfer', label: 'Works in bigger pens' }],
+    cards: COURSE1_CARDS,
+    // Measured at 400 tries: six senses 30–35%, one (where is the berry) 90–95%.
+    reference: (base) => { const r = withRecipe(base, classicApproachStage()); r.learner.senses = [node('sense.nearest', { what: node('kind:berry') })]; r.learner.episodes = 400; return r; },
   },
   {
     id: 'fs-exam', course: 'first-steps', title: 'The Apprentice exam', exam: true,
@@ -162,6 +203,7 @@ export type ChallengeStatus = 'open' | 'passed' | 'locked';
 export function challengeStatus(s: GameState, petId: string, ch: ChallengeSpec): ChallengeStatus {
   const rec = petRecordOf(s, petId);
   if (rec.certificates[ch.id]) return 'passed';
+  if (!courseOpen(s, ch.course)) return 'locked';
   if (!ch.exam) return 'open';
   return CHALLENGES.filter((c) => c.course === ch.course && !c.exam).every((c) => rec.certificates[c.id]) ? 'open' : 'locked';
 }
@@ -247,3 +289,61 @@ export function certify(s: GameState, petId: string, inp: CertifyInput): Certify
 /** Challenges of a course, in order (its exam last). */
 export const courseChallenges = (courseId: string) => CHALLENGES.filter((c) => c.course === courseId).sort((a, b) => Number(!!a.exam) - Number(!!b.exam));
 export const courseOf = (ch: ChallengeSpec) => COURSES.find((c) => c.id === ch.course)!;
+/*
+ * Courses open in order, and the Lab offers the cards of every open course (Academy roadmap, decision 9). A course
+ * opens when any pet passes the previous course's exam. Each course owns a set of cards; everything not claimed by
+ * an earlier course belongs to the last one, so passing every exam opens every card.
+ */
+const COURSE_CARDS: Record<string, (id: string) => boolean> = {
+  'first-steps': (id) => COURSE1_CARDS.includes(id),
+  'fetch-carry': (id) => /^(ev\.(pickup|drop|deliver|lift|empty|full|fill|water|fumble)|cond\.(carrying|carryingAny|storage|delivered|watered|hasWater)|sense\.(carrying|stock|water|nearestDry|stored))$/.test(id),
+  'thinking-ahead': (id) => /^(eff\.note|cond\.(note|happened|just|compare|energyBelow|night|raining|canAfford)|sense\.(note|did|tired|night|rain)|q\.|obj\.)/.test(id),
+  'working-together': (id) => /^(opt\.|ev\.(shoo|scare|peck|entersArea|leavesArea|gate|plant)|cond\.(inArea|allInArea|petInArea|gates|kindNear)|sense\.(area|outside|areaFrom|gate)|area\.)/.test(id),
+};
+const ALWAYS = (id: string) => id.startsWith('kind:') || id === 'actor.pet' || id === 'ref.target' || id === 'ref.it' || id.startsWith('place.') || id === 'zone.rect';
+
+/** The course a card is taught in. */
+export function courseOfCard(id: string): string {
+  return COURSES.find((c) => COURSE_CARDS[c.id]?.(id))?.id ?? COURSES[COURSES.length - 1].id;
+}
+
+/** Is a course open? The first always; each later one once any pet passed the previous course's exam. */
+export function courseOpen(s: GameState, courseId: string): boolean {
+  const i = COURSES.findIndex((c) => c.id === courseId);
+  if (i <= 0) return true;
+  const prev = COURSES[i - 1].id;
+  return Object.values(s.academy?.pets ?? {}).some((r) => r.exams.includes(prev));
+}
+
+/** Can the Lab offer this card? Farm-edition games offer everything. */
+export function labCardAllowed(s: GameState, cardId: string): boolean {
+  if (!s.academy || ALWAYS(cardId)) return true;
+  return courseOpen(s, courseOfCard(cardId));
+}
+
+/** Which course each recipe belongs to, and the challenge it answers (if any). */
+const RECIPE_COURSE: Record<string, { course: string; answers?: string }> = {
+  'go-to-berry': { course: 'first-steps', answers: 'fs-exam' },
+  'wait-for-it': { course: 'first-steps', answers: 'fs-stay' },
+  'keep-clear': { course: 'first-steps', answers: 'fs-clear' },
+  'avoid-pond': { course: 'first-steps', answers: 'fs-pond' },
+  'bring-it-home': { course: 'fetch-carry' }, 'pay-per-pickup': { course: 'fetch-carry' }, 'empty-basket': { course: 'fetch-carry' },
+  'water-garden': { course: 'fetch-carry' }, harvest: { course: 'fetch-carry' }, 'harvest-store': { course: 'fetch-carry' }, plant: { course: 'fetch-carry' },
+  patrol: { course: 'thinking-ahead' },
+  'herd-chicken': { course: 'working-together' }, 'shoo-loophole': { course: 'working-together' }, 'open-gate': { course: 'working-together' },
+  'shut-gate': { course: 'working-together' }, 'fetch-routine': { course: 'working-together' }, 'morning-chores': { course: 'working-together' },
+  'basket-run': { course: 'days-work' },
+};
+
+/**
+ * Recipes in the Lab are rewards, not spoilers: a recipe opens when its course is open and, if it answers a
+ * challenge, once a pet has passed that challenge. Returns null when open, else why not.
+ */
+export function recipeLock(s: GameState, recipeId: string): string | null {
+  if (!s.academy) return null;
+  const r = RECIPE_COURSE[recipeId] ?? { course: COURSES[COURSES.length - 1].id };
+  const course = COURSES.find((c) => c.id === r.course)!;
+  if (!courseOpen(s, r.course)) return `Opens with the course “${course.title}”`;
+  if (r.answers && !Object.values(s.academy.pets).some((p) => p.certificates[r.answers!])) return `Opens when a pet passes “${challengeById(r.answers)?.title}”`;
+  return null;
+}

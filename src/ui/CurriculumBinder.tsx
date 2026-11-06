@@ -6,6 +6,7 @@ import { exportLessonCard, importLessonCard } from '../game/lessoncard';
 import type { StageSpec } from '../domain/types';
 import { REGISTRY } from '../domain/registry';
 import { RECIPES, instantiateRecipe } from '../domain/recipes';
+import { recipeLock } from '../game/challenges';
 import { cloneStage, newId } from '../domain/spec';
 import { store, useStore } from './store';
 import { blankCandidates } from './edit';
@@ -63,11 +64,12 @@ export function CurriculumBinder({ stage, pet }: { stage: StageSpec; pet: Pet })
       <h4>New lesson from a recipe</h4>
       <div className="recipes">
         {RECIPES.map((r) => {
-          const locked = r.unlock && !unlocks.has(r.unlock);
+          const academyLock = recipeLock(s.state, r.id); // academy edition: recipes are rewards, not spoilers
+          const locked = academyLock ?? (r.unlock && !unlocks.has(r.unlock) ? `Unlocks with ${r.unlock === 'fetch' ? 'Fetch lessons' : 'Avoid lessons'}` : null);
           return (
-            <button key={r.id} className="suggest" disabled={!!locked} onClick={() => s.mutate((g) => { const st = instantiateRecipe(r.id); g.stages.push(st); g.activeStageId = st.id; store.ui.slot = null; })}>
+            <button key={r.id} className="suggest" data-tut={`recipe-${r.id}`} disabled={!!locked} onClick={() => s.mutate((g) => { const st = instantiateRecipe(r.id); g.stages.push(st); g.activeStageId = st.id; store.ui.slot = null; })}>
               <strong>{r.name}</strong>{r.optional && <span className="chip">experiment</span>}
-              <span className="small muted">{locked ? `🔒 Unlocks with ${r.unlock === 'fetch' ? 'Fetch lessons' : 'Avoid lessons'}` : r.blurb}</span>
+              <span className="small muted">{locked ? `🔒 ${locked}` : r.blurb}</span>
             </button>
           );
         })}

@@ -132,9 +132,12 @@ describe('the challenge engine (Academy phase 1)', () => {
     expect(quick.newBadges.map((b) => b.id)).toEqual(['quick']);
     expect(quick.acorns).toBe(BADGE_ACORNS);
     expect(g.academy!.pets[p.id].certificates['fs-berry'].badges).toEqual(expect.arrayContaining(['quick', ...first.badges.map((b) => b.id)]));
-    pass('fs-stay');
-    expect(challengeStatus(g, p.id, challengeById('fs-exam')!)).toBe('locked');
-    pass('fs-clear');
+    const rest = CHALLENGES.filter((c) => c.course === 'first-steps' && !c.exam && c.id !== 'fs-berry');
+    for (const [i, c] of rest.entries()) {
+      expect(challengeStatus(g, p.id, challengeById('fs-exam')!)).toBe('locked');
+      expect(pass(c.id).ok, c.id).toBe(true);
+      void i;
+    }
     expect(challengeStatus(g, p.id, challengeById('fs-exam')!)).toBe('open');
     expect(petRank(g, p)).toBe('Novice');
     const before = g.academy!.acorns;
@@ -148,4 +151,34 @@ describe('the challenge engine (Academy phase 1)', () => {
     expect(petRank(g, q)).toBe('Novice');
     expect(challengeStatus(g, q.id, challengeById('fs-berry')!)).toBe('open');
   }, 60000);
+});
+
+describe('courses open in order; the Lab offers their cards; recipes are rewards (Academy phase 2)', () => {
+  it('every card belongs to a course; a new game’s Lab has First Steps’ cards; passing an exam opens the next course', async () => {
+    const { courseOfCard, courseOpen, labCardAllowed, recipeLock, COURSE1_CARDS } = await import('../src/game/challenges');
+    const { COURSES } = await import('../src/game/academy');
+    const { RECIPES } = await import('../src/domain/recipes');
+    for (const id of COURSE1_CARDS) expect(REGISTRY.cards.has(id), id).toBe(true);
+    for (const c of REGISTRY.cards.values()) expect(COURSES.map((x) => x.id)).toContain(courseOfCard(c.id));
+    const { g, p } = academy();
+    expect(courseOpen(g, 'first-steps')).toBe(true);
+    expect(courseOpen(g, 'fetch-carry')).toBe(false);
+    for (const id of ['ev.reach', 'eff.reward', 'eff.end', 'cond.at', 'sense.nearest', 'kind:berry', 'place.random']) expect(labCardAllowed(g, id), id).toBe(true);
+    for (const id of ['ev.pickup', 'eff.note', 'cond.compare', 'opt.skill']) expect(labCardAllowed(g, id), id).toBe(false);
+    expect(challengeStatus(g, p.id, challengeById('fs-berry')!)).toBe('open');
+    // Recipes: the course must be open, and an answer only after its challenge is passed.
+    expect(recipeLock(g, 'wait-for-it')).toMatch(/Sit and stay/);
+    expect(recipeLock(g, 'bring-it-home')).toMatch(/Fetch and Carry/);
+    expect(RECIPES.every((r) => recipeLock(g, r.id) !== undefined)).toBe(true);
+    g.academy!.pets[p.id] = { certificates: { 'fs-stay': { challengeId: 'fs-stay', at: 0, badges: [] } }, exams: [] };
+    expect(recipeLock(g, 'wait-for-it')).toBeNull();
+    g.academy!.pets[p.id].exams.push('first-steps');
+    expect(courseOpen(g, 'fetch-carry')).toBe(true);
+    expect(labCardAllowed(g, 'ev.pickup')).toBe(true);
+    expect(labCardAllowed(g, 'eff.note')).toBe(false); // Thinking Ahead is the next course after that
+    expect(recipeLock(g, 'bring-it-home')).toBeNull();
+    // Every exam passed: every card.
+    g.academy!.pets[p.id].exams.push('fetch-carry', 'thinking-ahead', 'working-together');
+    expect([...REGISTRY.cards.keys()].every((id) => labCardAllowed(g, id))).toBe(true);
+  });
 });

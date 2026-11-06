@@ -6,7 +6,7 @@ import { useStore } from './store';
 import { closeTraining } from './training';
 import { COURSES, RANKS, SCHOOL, acornText, petRank, petRecordOf } from '../game/academy';
 import { activePet, isCertified } from '../game/pets';
-import { challengeStatus, courseChallenges, openChallenge } from '../game/challenges';
+import { challengeStatus, courseChallenges, courseOpen, openChallenge } from '../game/challenges';
 import { Glossary, Notebook } from './GuideScreen';
 
 export function AcademyScreen() {
@@ -40,6 +40,7 @@ export function AcademyScreen() {
                 </div>
                 <div className="small">{c.about}</div>
                 <div className="small muted">“{c.hazel}”</div>
+                {!courseOpen(g, c.id) && i > 0 && <div className="small" data-tut={`course-locked-${c.id}`}>🔒 Opens when a pet passes {COURSES[i - 1].exam.replace(/^The /, 'the ')}. Its cards then join the Lab.</div>}
                 {list.length === 0 && <div className="small muted">Challenges for this course are being written. Its exam is shown so you can see where it leads.</div>}
                 {list.length > 0 && (
                   <ul className="challenges">
